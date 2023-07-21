@@ -1,0 +1,172 @@
+1689813672
+drbeco!~beco@user/beco
+is there a getopt() in standar zig library?
+
+1689814522
+drbeco!~beco@user/beco
+another question: why is pub fn main() void, and not pub fn main() int? I can't see this explanation on the documentation. 
+
+1689814674
+drbeco!~beco@user/beco
+I see pub export fn main() c_int , in a stackoverflow answer by andrewrk . I can't find more documentation explaining main()
+
+1689814679
+drbeco!~beco@user/beco
+or an example using main argumnts
+
+1689814697
+drbeco!~beco@user/beco
+https://stackoverflow.com/questions/49892119/zig-translate-c-doesnt-translate-main-function
+
+1689815160
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+main's return type can also be u8, using int isnt cross platform
+
+1689816582
+torque!~tachyon@user/torque
+drbeco, look at std.process.argsWithAllocator for the "argv" equivalent
+
+1689816642
+torque!~tachyon@user/torque
+there are actually several different `main` signatures that zig can use including `pub fn main() void`, `pub fn main() !void`, `pub fn main() u8` and `pub fn main() !u8`
+
+1689816697
+drbeco!~beco@user/beco
+thanks for pointing further reading. I'll take a look torque 
+
+1689819488
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Could someone help me understand something with UTF-8? I noticed that `std.fmt.format` iterates over the format string as bytes, not codepoints. Is it correct to do that even with arbitrary UTF-8 strings? My suspicion is that it is, but I can't find anything that explicitly says ASCII symbols will never occur in the middle of an arbitrary codepoint. The RFC says, "preserving the full US-ASCII range, providing 
+
+1689819488
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+compatibility with file systems, parsers and other software that rely on US-ASCII values." That's the closest I've come to finding a definitive answer on it.
+
+1689819574
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+I'm not intending to criticize `std.fmt.format`. I'm just trying to understand if it is safe for me to do that in my own parser for something.
+
+1689819850
+torque!~tachyon@user/torque
+not a utf-8 expert, but my understanding is that the way the encoding is defined, the high bit will always be set on all bytes of a multi-byte sequence
+
+1689819877
+torque!~tachyon@user/torque
+which is why utf-8 is a superset of 7-bit ascii
+
+1689820187
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+So, even in the middle of a codepoint, I should never encounter things like a newline, right?
+
+1689820214
+torque!~tachyon@user/torque
+correct, unless you input is not valid utf-8 of course
+
+1689820310
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+I have been thinking/hoping that was the case. I just got a bit paranoid because of all the people talking about runes and grapheme clusters on Github as if they were some field of infinite possibilities.
+
+1689820406
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+I think I can pretty much discard my parser which uses `std.unicode.Utf8Iterator` in favor of something a bit slimmer using `std.mem.indexOfAnyPos`. I'm only using ASCII characters for control flow. That'll be a bit more ergonomic also.
+
+1689820443
+Affliction!affliction@idlerpg/player/affliction
+Yeah, UTF-8 encoding is designed to be self-synchronising. You can drop in at any point in a bytestream, and conditionally skip bytes to find the start of the next codepoint. Bytes in the ASCII range are all 1-byte codepoints.
+
+1689820548
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Oh! I didn't realize it had that property also. That's beautiful.
+
+1689839517
+GreaseMonkey!greaser@user/greasemonkey
+welp, just learnt something: the order of `defer` statements is respected even for compile-time stuff
+
+1689883647
+andrewrk!~andrewrk@mail.ziglang.org
+GreaseMonkey, is that...surprising?
+
+1689885908
+GreaseMonkey!greaser@user/greasemonkey
+andrewrk: if it were anything else it would be surprising
+
+1689885920
+GreaseMonkey!greaser@user/greasemonkey
+well, "surprising" as in the principle of least surprise
+
+1689886195
+andrewrk!~andrewrk@mail.ziglang.org
+There are 82 issues left in the 0.11.0 milestone. Mostly bugs. Any help with bug squashing in the next 2 weeks would be most appreciated 🙏
+
+1689886212
+ifreund!2940d10f8b@user/ifreund
+GreaseMonkey: I don't get it, are you saying it would be less surprising if ther ordering would be diffierent?
+
+1689886703
+GreaseMonkey!greaser@user/greasemonkey
+i'm saying it would be more surprising
+
+1689892350
+ifreund!2940d10f8b@user/ifreund
+hmm, getting some kind of deadlock passing a FileSource the new Build.Step.Run.setStdIn()
+
+1689892377
+ifreund!2940d10f8b@user/ifreund
+manually reading the bytes and passing them to setStdIn() works
+
+1689892414
+ifreund!2940d10f8b@user/ifreund
+anyone have a working example of it?
+
+1689893150
+andrewrk!~andrewrk@mail.ziglang.org
+let me eyeball that code...
+
+1689893249
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I deleted an assertion that looked sus and it seems to work now
+
+1689893300
+ifreund!2940d10f8b@user/ifreund
+or wait, maybe it's just racy...
+
+1689893410
+ifreund!2940d10f8b@user/ifreund
+yeah forget that about the assertion
+
+1689893412
+ifreund!2940d10f8b@user/ifreund
+https://0x0.st/HeZm.txt
+
+1689893440
+ifreund!2940d10f8b@user/ifreund
+It could be relevant that I'm using it in combination with captureStdOut()
+
+1689893492
+andrewrk!~andrewrk@mail.ziglang.org
+I see the deadlock
+
+1689893512
+ifreund!2940d10f8b@user/ifreund
+sweet
+
+1689893554
+andrewrk!~andrewrk@mail.ziglang.org
+it's not correct to buffer all the stdin and write it like that. if the child writes to stdout, then reads from stdin, this logic would deadlock
+
+1689893578
+andrewrk!~andrewrk@mail.ziglang.org
+I should have not merged https://github.com/ziglang/zig/pull/16358 because of this, but I only noticed it wasn't optimal; I didn't notice it was incorrect
+
+1689893597
+andrewrk!~andrewrk@mail.ziglang.org
+anyway the better implementation that I noted there (https://github.com/ziglang/zig/issues/16369) would fix this deadlock too
+
+1689893660
+andrewrk!~andrewrk@mail.ziglang.org
+but that requires an enhancement to the std.process.Child API to support passing a file handle to stdin
+
+1689893763
+ifreund!2940d10f8b@user/ifreund
+yeah, letting ChildProcess take an arbitrary fd for stdin is definitely the right move
+
