@@ -1,0 +1,220 @@
+1689906682
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, I believe I have solved (in theory) https://github.com/ziglang/zig/issues/14281 - please take a look and see what you think
+
+1689906692
+andrewrk!~andrewrk@mail.ziglang.org
+(a zig build mode intended to be used when packaging an application or library for a system distribution)
+
+1689929023
+ifreund!2940d10f8b@user/ifreund
+andrewrk: nice!
+
+1689929074
+ifreund!2940d10f8b@user/ifreund
+that proposal sounds very reasonable to me and not too complex to implement or for users to understand
+
+1689929146
+ifreund!2940d10f8b@user/ifreund
+My only worry would be that the path of least resistence for zig project may be to hard depend on the zig packages for libraries that could be provided by the system
+
+1689929312
+ifreund!2940d10f8b@user/ifreund
+I'll leave a more detailed comment on the issue
+
+1689935941
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Does @setEvalBranchQuota roughly translate to the number of loops possible during comptime?
+
+1689936124
+ifreund!2940d10f8b@user/ifreund
+gcoakes: yeah, pretty much
+
+1689936154
+ifreund!2940d10f8b@user/ifreund
+it's specified as the number of backwards branches, of which there is one per loop iteration for example
+
+1689936193
+ifreund!2940d10f8b@user/ifreund
+just avoids having infinite compile times when you write an infinite loop at comptime by accident
+
+1689943403
+Akselmo!~akselmo@user/akselmo
+hi, was there going to be an official zig package manager? i remember hearing something like that but i dont know if its actually being made
+
+1689943850
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Akselmo, as I understand it, it is functional if not stable on the master branch right now. I haven't personally used it yet.
+
+1689943892
+Akselmo!~akselmo@user/akselmo
+okay, thanks :) will probably give it a go when 0.11 is out. havent yet done much with zig except ziglings
+
+1689943961
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+There's something about a file `build.zig.zon` which lets you specify URLs to tarballs and their hashes. Then, you have to expose those into your executable or library via some code in `build.zig`.
+
+1689944162
+Akselmo!~akselmo@user/akselmo
+alright, will look into it :D
+
+1689959021
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, I think you're spot on that my proposal leaves the path of least resistance being use of the zig package manager to depend on things and effectively leaves a giant "TODO" for integrating with the system. I would argue that this is actually an appropriate model of the situation
+
+1689959045
+andrewrk!~andrewrk@mail.ziglang.org
+the reality is that it takes work to package an application for a system, and the logic for dealing with not having exactly the versions of dependencies that you want has to go *somewhere*
+
+1689959073
+andrewrk!~andrewrk@mail.ziglang.org
+so the idea here is that it provides a place for that logic to go, a sanctioned area for these two parties to collaborate with each other
+
+1689959116
+andrewrk!~andrewrk@mail.ziglang.org
+that said, I'm definitely interested in making it smoother & easier to integrate with the system. I'm not sure it can be fully automated however, given that zig packages have more precise version locking than system packages
+
+1689959175
+andrewrk!~andrewrk@mail.ziglang.org
+of course, if you have any specific concerns regarding River, I am very interested to hear those
+
+1689959449
+andrewrk!~andrewrk@mail.ziglang.org
+I should just post to the issue, heh
+
+1689959465
+andrewrk!~andrewrk@mail.ziglang.org
+I'm just getting excited :)
+
+1689959546
+ifreund!2940d10f8b@user/ifreund
+hah, yeah I see your point and I think it would already be better than many language-specific package managers
+
+1689959569
+ifreund!2940d10f8b@user/ifreund
+though not quite as friendly to distros as e.g. meson which is pretty much written by distro maintainers iirc
+
+1689959624
+andrewrk!~andrewrk@mail.ziglang.org
+is it correct that meson *only* provides dependencies via the system?
+
+1689959631
+ifreund!2940d10f8b@user/ifreund
+in any case, I think the feature set you've outlined is the right one to start with, we'll see how it evolves in practice
+
+1689959665
+ifreund!2940d10f8b@user/ifreund
+andrewrk: that's the default, but it also allows projects to specifiy a fallback to fetching dependencies from some url
+
+1689959673
+andrewrk!~andrewrk@mail.ziglang.org
+oh that's interesting
+
+1689959696
+ifreund!2940d10f8b@user/ifreund
+https://mesonbuild.com/Wrap-dependency-system-manual.html
+
+1689959869
+andrewrk!~andrewrk@mail.ziglang.org
+this looks reasonable
+
+1689959983
+ifreund!2940d10f8b@user/ifreund
+yeah, it's also surprisingly similar to how zig package management is shaping up
+
+1689960027
+ifreund!2940d10f8b@user/ifreund
+I'm trying to pin down the differences in my head but I think it's mostly superficial API choices and defauls
+
+1689960499
+andrewrk!~andrewrk@mail.ziglang.org
+heh, funny when design converges like that
+
+1689960548
+andrewrk!~andrewrk@mail.ziglang.org
+I think zig is starting with upstream application development use case and converging to handle system package use case, while meson started with system package use case and converged to handle the upstream development use case
+
+1689960637
+ifreund!2940d10f8b@user/ifreund
+yep, pretty much :D
+
+1689965706
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, do you have any suggestion for the file system layout of tarballs on https://ziglang.org/download/ ? follow-up question, what about the .zip files for windows
+
+1689965914
+andrewrk!~andrewrk@mail.ziglang.org
+currently it looks like this: https://clbin.com/BK0ft
+
+1689966944
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I think the current layout is reasonable. The only potential downside I see is that people may think that exact relative positioning of the zig binary and lib/ are required when it's actually more flexible
+
+1689967020
+ifreund!2940d10f8b@user/ifreund
+that could be solved with an INSTALL.txt or something that explains copying zig to ~/.local/bin/zig and lib to ~/.local/lib/zig/ is fine and whatnot
+
+1689967045
+ifreund!2940d10f8b@user/ifreund
+I don't have any knowledge about what makes sense on window unfortunately
+
+1689967097
+andrewrk!~andrewrk@mail.ziglang.org
+I want to move all this silly logic from this CI shell script into build.zig: https://github.com/ziglang/www.ziglang.org/blob/master/.github/workflows/build-tarballs.sh#L107-L189
+
+1689967147
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose I can add a -Dupstream-tarball option that decides between aiming to match some kind of posix file system hierarchy standard, and the layout we use for upstream-provided binaries
+
+1689974073
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+shouldn't there be a flag to turn off runtime safety without having to use an optimize mode if I don't need optimizations and I just wanna see how my program behaves if it's hitting UB, without the safety?
+
+1689974086
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+i dont see a way to do that
+
+1689974115
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+except maybe if I do `@setRuntimeSafety(false)` right after `pub fn main() void {`? but that could be toggled back on later
+
+1689974138
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+there should be a flag
+
+1689974216
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+so, debug mode but without safety checks
+
+1689976408
+ifreund!2940d10f8b@user/ifreund
+terminalpusher: there is no one way a program with UB behaves
+
+1689976446
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+I wasn't saying there is
+
+1689976473
+ifreund!2940d10f8b@user/ifreund
+I don't see any use-case for such a flag, why do you want to do this?
+
+1689976562
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+hmm well I guess the use case I had just now was a bit niche anyway
+
+1689976573
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+and tbh I don't know how this would work together with setRuntimeSafety anyway
+
+1689976586
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+(the problem I had I solved differently anyway)
+
+1689976669
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+and with current plans even `@setRuntimeSafety` will go away and be replaced `@optimizeFor` so you'll be left with the same 4 options 
+
+1689976681
+terminalpusher!~terminalp@2a01:586:9fb9:1:5812:71d9:6ad6:7d52
+yeah I  think it's probably better this way
+
