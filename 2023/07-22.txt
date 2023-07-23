@@ -1,0 +1,220 @@
+1690019470
+leeward!~Ashes@83-86-211-10.cable.dynamic.v4.ziggo.nl
+I'm trying to debug something with `var memory: [size]u8 = undefined` at the top level, and when I ask gdb to print it, it just says its name. Is there a way to actually get the address for my global array? Alternatively, is there a way to tell Zig not to optimize out a value?
+
+1690039644
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Is there some way to detect if a function was called at runtime or comptime?
+
+1690039673
+ifreund!2940d10f8b@user/ifreund
+gcoakes: on master branch there is an @isComptime() builtin
+
+1690039690
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Oh, I missed that one. I'm on master branch. How long ago was that added?
+
+1690039704
+ifreund!2940d10f8b@user/ifreund
+a month or more I think?
+
+1690039739
+ifreund!2940d10f8b@user/ifreund
+it's been possible with some hacks for quite a long time before the builtin was added as well
+
+1690039766
+ifreund!2940d10f8b@user/ifreund
+gcoakes: whoops, it's @inComptime() not "is"
+
+1690039827
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Ok, maybe I'm not on master enough. My copy of the langref.html doesn't show it on 0.11.0-dev.3978+711b4e93e... Is what I was about to say. I see it now.
+
+1690039836
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Thank you.
+
+1690039857
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1690039918
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+So, I have a function `fn compile(comptime src: []const u8) []const Instruction` which I think I can turn into `fn compile(src: []const u8, alloc: ?std.mem.Allocator) []const Instruction`. This is awesome.
+
+1690039992
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+It'll make the code not so pretty though... I may just forgo it until I actually need to compile these templates at runtime (I wrote a small template engine in my toy application).
+
+1690042516
+McKael!~mikael@82-64-95-224.subs.proxad.net
+Hi, what is the current way to set/unset an environment variable (on Linux)?
+
+1690042601
+McKael!~mikael@82-64-95-224.subs.proxad.net
+I can do that by linking to the system libc and using its setenv/unsetenv functions, but I wonder if there's a better way...
+
+1690043928
+ifreund!2940d10f8b@user/ifreund
+McKael: the current intended way to do that using the zig standard library is to modify the enviroment used to spawn child process you want to be affected by it
+
+1690043981
+ifreund!2940d10f8b@user/ifreund
+libc's setenv is a pretty big footgun for multithreaded programs for example, and the goal has been to avoid that
+
+1690044026
+ifreund!2940d10f8b@user/ifreund
+That said, I totally understand that setenv() can be the more pragmatic option for single threaded programs and I admit to using it myself in river xD
+
+1690045022
+andrewrk!~andrewrk@mail.ziglang.org
+in other words, libc implements it via a global variable that lives in libc, and there are multiple reasons why zig does not introduce another global variable, including because it would not interop correctly with libc's global variable
+
+1690045048
+andrewrk!~andrewrk@mail.ziglang.org
+so, if you link against libc, I suggest to call the libc function for it
+
+1690045792
+aquamo4k!~danny@209.181.253.66
+the latest commit 4bc90f17b seems to have broken build: https://zigbin.io/b6399d ; or my problem :-)
+
+1690046138
+andrewrk!~andrewrk@mail.ziglang.org
+mm that looks like my fault. let me take a look
+
+1690046274
+andrewrk!~andrewrk@mail.ziglang.org
+aquamo4k, I'm attempting to reproduce locally. I'm guessing you did the standard git pull && ninja install ?
+
+1690046291
+andrewrk!~andrewrk@mail.ziglang.org
+or make install, same thing
+
+1690046316
+aquamo4k!~danny@209.181.253.66
+I did the recipe with ; mkdir build ; cmake .. and then make install yes.
+
+1690046388
+aquamo4k!~danny@209.181.253.66
+i rewound to 619140c0d and 6e4fff6ba and it worked
+
+1690046446
+aquamo4k!~danny@209.181.253.66
+but im still learning about the zig-cache hierarchy - not sure if I should always wipe it when trying to repro
+
+1690046948
+andrewrk!~andrewrk@mail.ziglang.org
+generally you don't need to wipe the zig cache unless you want more disk space, or unless you're editing certain components of the compiler
+
+1690046986
+andrewrk!~andrewrk@mail.ziglang.org
+I was able to reproduce the problem. not sure why I didn't run into this when I was working on that commit yesterday
+
+1690047012
+aquamo4k!~danny@209.181.253.66
+ok cool.   i was going to try repro again on a fresh vm to make sure I didn't introduce a problem, thanks
+
+1690047040
+McKael!~mikael@82-64-95-224.subs.proxad.net
+ifreund, andrewrk: thanks for the details
+
+1690047230
+McKael!~mikael@82-64-95-224.subs.proxad.net
+I'm currently using std.ChildProcess, which doesn't (IIUC) give me much control on the child environment.
+
+1690047308
+andrewrk!~andrewrk@mail.ziglang.org
+McKael, check out the env_map field 
+
+1690047359
+andrewrk!~andrewrk@mail.ziglang.org
+you can use std.process.getEnvMap to obtain a hash map of the environment variables, then mutate it, then pass it to ChildProcess
+
+1690047367
+McKael!~mikael@82-64-95-224.subs.proxad.net
+andrewrk: Oh, I see, I can change it after the init() call
+
+1690047407
+andrewrk!~andrewrk@mail.ziglang.org
+yes; this struct is one of the oldest structs in the std lib, perhaps it is due to be considered for a refactor to match some of the modern established idioms
+
+1690048044
+McKael!~mikael@82-64-95-224.subs.proxad.net
+BTW, what I'm trying to do is to use both stdin and stdout to solve ROP (CTF) challenges in Zig (a very basic version of pwntools Python stuff), and I couldn't find an example of code that would do that.  So I have something that works, but maybe my approach is bad. :)   I'm using std.ChildProcess and a custom read based on std.io.Poller (as in ChildProcess.collectOutput(), but I couldn't use this once since 
+
+1690048050
+McKael!~mikael@82-64-95-224.subs.proxad.net
+it collects the whole output).
+
+1690048526
+andrewrk!~andrewrk@mail.ziglang.org
+neat
+
+1690049570
+andrewrk!~andrewrk@mail.ziglang.org
+aquamo4k, fixed in https://github.com/ziglang/zig/commit/32a175740c8750a7db550011795a4c22c0d0bc93
+
+1690049608
+andrewrk!~andrewrk@mail.ziglang.org
+well, I should add that I actually did not reproduce your issue, I fixed a different one. so, I would be interested to see what happens for you
+
+1690049630
+aquamo4k!~danny@209.181.253.66
+ok, building now on debian and freebsd and will let you know shortly
+
+1690049941
+fddd14!~fddd14@2a02:a313:a13f:d380:86c5:a6ff:fe66:d799
+Hello. How exactly do I cast an f32 to i32 so that I can pass it to a function? Doing `@as(i32, value)` gives me this (somewhat confusing error): error: expected type 'i32', found 'f32'. When attempting to use the function mentioned in documentation (`@intFromFloat`) returns an error saying that it does not exist
+
+1690051243
+McKael!~mikael@82-64-95-224.subs.proxad.net
+fddd14: I guess the documentation relates to the master branch, and you aren't running the dev version?
+
+1690051280
+aquamo4k!~danny@209.181.253.66
+andrewk: both builds now working again, tyvm
+
+1690051765
+fddd14!~fddd14@2a02:a313:a13f:d380:86c5:a6ff:fe66:d799
+McKael: oh, man you're right. I'm using 0.10.1 and my docs switched to master... Thanks.
+
+1690052518
+andrewrk!~andrewrk@mail.ziglang.org
+fddd14, it has been renamed to @floatFromInt
+
+1690052541
+andrewrk!~andrewrk@mail.ziglang.org
+oops I mean @floatToInt has been renamed to @floatFromInt
+
+1690053861
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+How do people feel about a new function for `std.io.Writer` which returns a type erased writer. I'm thinking it would like this, `fn erased(self: Self, comptime Error: type) ErasedWriter(Error)`, and would only be defined if `@typeInfo(Context) == .Pointer`.
+
+1690053979
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+The specific use case for me is to build a chain of filtering writers which variously escape or mutate the data as it is written. i.e.: `HtmlEscape`, `Capitalize`, etc. It's not possible to generically convert all writers to an erased variant without the context available within `std.io.Writer`.
+
+1690055347
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+its hard to get the value of a truly erased writer unless you make the error anyerror
+
+1690055538
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+I've never gotten good use out of anyerror. Maybe I'm using it wrong? I thought this would be generic over an error so the erasure could abstract over a class of writers which have distinct implementations but similar failure modes.
+
+1690055656
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+what would the error be in your example above
+
+1690055768
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Generic over some input writer. I'm trying to layer a limited but runtime known number of "filters" in a runtime known order. i.e.: socket <- html escape <- captialize
+
+1690055798
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+All the filters would have the same error type being a superset of the input writer's error.
+
+1690055988
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+I'm essentially implementing a subset of the jinja templating engine, and want to have something that looks like `{{ ident | filter_b | filter_a }}`.
+
