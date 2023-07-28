@@ -1,0 +1,68 @@
+1690431004
+andrewrk!~andrewrk@mail.ziglang.org
+mattnite, now you see what I meant by "However, LLVM supports fewer targets than you think..." on #16270
+
+1690445285
+GreaseMonkey!greaser@user/greasemonkey
+ok, there's a particular bug i haven't been able to track down but it pertains to the compiler giving the wrong line numbers for errors
+
+1690445296
+GreaseMonkey!greaser@user/greasemonkey
+0.11.0-dev.4056+996eb0174 so fairly recent
+
+1690445371
+GreaseMonkey!greaser@user/greasemonkey
+this particular case pertained to a function call of type `(comptime T: type, T: value) void` where the value type was u16 but u8 was passed as T
+
+1690457581
+netvor!~netvor@2a00:ca8:a1f:cd0:e24f:f21d:2c99:5707
+why can't i do this?  `var year_s: []u8 = "2023";` ?  the error i get is `error: expected type '[]u8', found '*const [4:0]u8'` which i can't understand
+
+1690457617
+netvor!~netvor@2a00:ca8:a1f:cd0:e24f:f21d:2c99:5707
+(there's also `note: cast discards const qualifier` which is not really helpful with the amount of knowledge i have now)
+
+1690458072
+dutchie!~dutchie@user/dutchie
+A string literal is a pointer to some bytes in the data section of the binary, which are read only
+
+1690458075
+charlottia[mx]!~charlotti@2001:470:69fc:105::3:5e7d
+String literals like `”2023”` are embedded in the compiled binary, so they must be const (read-only), since they don’t exist in writable memory at runtime. `var year_s: []const u8 = "2023";` works, but if you want to modify it, you’ll need to use an allocator.
+
+1690458090
+charlottia[mx]!~charlotti@2001:470:69fc:105::3:5e7d
+(jinx!)
+
+1690458183
+dutchie!~dutchie@user/dutchie
+https://www.youtube.com/watch?v=VgjRyaRTH6E is a good intro video to help you get the hang of zig pointers
+
+1690459139
+netvor!~netvor@2a00:ca8:a1f:cd0:e24f:f21d:2c99:5707
+thanks, i'll check out the video.    so if i want (something that my python/bash brain expects to be "simple") a variable string with a hard-coded default value (eg. config path) which i then want to change by reading env, how do i do it -- is there some example? 
+
+1690459337
+dutchie!~dutchie@user/dutchie
+`const slice = try allocator.dupe(u8, "2023"); var al = std.ArrayList(u8).fromOwnedSlice(slice);`
+
+1690459376
+dutchie!~dutchie@user/dutchie
+sorry that should be `fromOwnedSlice(allocator, slice)`
+
+1690459718
+netvor!~netvor@2a00:ca8:a1f:cd0:e24f:f21d:2c99:5707
+thanks a lot!
+
+1690459972
+dutchie!~dutchie@user/dutchie
+depending on the surrounding logic/control flow it might be neater to just `std.ArrayList(u8).init(allocator)` and then `.appendSlice("2023")` later on
+
+1690473733
+mattnite!sid508577@id-508577.uxbridge.irccloud.com
+andrewrk yeah I had a feeling since AVR has been broken for us for a while, this is enough to push me on team guillotine in the LLVM debate.
+
+1690473830
+mattnite!sid508577@id-508577.uxbridge.irccloud.com
+On that note if anyone has good resources on compiler optimizations, specifically size optimizations, I’d be very grateful
+
