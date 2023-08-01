@@ -1,0 +1,156 @@
+1690812916
+haku1337!~haku@user/haku1337
+hi
+
+1690826675
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Has anyone tried compiling zig to multivalue wasm? Setting the target cpu doesn't seem to be sufficient - https://gist.github.com/jamii/bc214d6c4eb7a635d2d99b0725763fee.
+
+1690826743
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+In rust it's just `-Ctarget-feature=+multivalue`, but I wonder if they have some extra plumbing?
+
+1690826836
+andrewrk!~andrewrk@mail.ziglang.org
+jamii54, it would be interesting to look at the LLVM IR difference between the code that does what you expect and the code that does not
+
+1690826856
+andrewrk!~andrewrk@mail.ziglang.org
+this might be under the realm of "C ABI compatibility"
+
+1690826864
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Ok, I'll go dump both.
+
+1690826890
+andrewrk!~andrewrk@mail.ziglang.org
+if you're just trying to check for use of multivalue stuff you might try looking at a non-exported function
+
+1690827070
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Looks like non-exported calls are also on the shadow stack - https://gist.github.com/jamii/1b3284e0909f4261eb12aca7462731d7
+
+1690827625
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Here's rust llvm https://rust.godbolt.org/z/P1dnss5e3 vs zig llvm (from -femit-llvm-ir) https://gist.github.com/jamii/7f9e19d71e66bcb2cd18f4562809af0d
+
+1690827649
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+It looks like the zig ir already has the shadow stack logic baked in.
+
+1690827776
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Oh, here is verbose-llvm-ir https://gist.github.com/jamii/eac2ea7bfef82efd2d07bb1869c29ae3
+
+1690827836
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Still ends with store to the stack, ret void.
+
+1690827842
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Oh, maybe this is RLS?
+
+1690828142
+andrewrk!~andrewrk@mail.ziglang.org
+it's an arbitrary decision how to lower return values into LLVM IR
+
+1690828180
+andrewrk!~andrewrk@mail.ziglang.org
+arguably this is LLVM which should be lowering differently the sret, but that's not something they're going to change
+
+1690828201
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Hmmm, if I do packed struct instead of extern struct then it does produce multivalue code, but it also packs the i32s into an i64 which is not ideal. Maybe I can hand unpack the structs on the other side.
+
+1690828232
+andrewrk!~andrewrk@mail.ziglang.org
+so there are two zig issues here: 1. investigate if lowering differently is better for this particular target and CPU feature combination. this is strictly a codegen optimization improvement; you as a zig programmer have no guarantee this will or won't happen
+
+1690828252
+andrewrk!~andrewrk@mail.ziglang.org
+and 2. make sure we are adhering to the "C ABI" for exported functions on this target + cpu combination. in other words make sure we match clang
+
+1690828492
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+I don't know nearly enough about llvm to have an opinion, but should I make an issue for the user-facing behaviour. Like "There should be a way to write zig code that when compiled to wasm reliably emits (result i32 i32)".
+
+1690829083
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+For 2 would it be useful to have a c example of multivalue returns?
+
+1690834807
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+andrewrk: Luuk answered this on discord - the wasm c abi doesn't support multivalues yet, and the fact that packed structs produced multivalues in zig is a bug that they will fix soon.
+
+1690835888
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+I guess I should amend that to: clangs documented wasm c abi doesn't support multivalues yet. For c, you can pass `experimental-mv` to get the undocumented multivalue abi. I'm not sure yet whether rust is also doing that, or if they're doing their own custom thing.
+
+1690836716
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+It seems that rust will use multivalue internally, but for `extern "c" fn` it will refuse. There is also an `extern "wasm" fn` which does exactly what I want but probably won't become stable until clang stabilizes using multivalue in the c abi.
+
+1690836980
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+So there's basically nothing actionable for zig folks - there isn't a standard to be compatible with yet and trying to track the unstable abis is probably a poor use of energy.
+
+1690837010
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+The existence of the "wasm" abi in rust does seem to indicate that there is a need for more control over type signatures for interop with non-c targets.
+
+1690837064
+jamii54!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+In the meantime my best bet is probably to generate some glue code that converts between the two abis.
+
+1690839196
+andrewrk!~andrewrk@mail.ziglang.org
+jamii54, another option you have is to propose a new calling convention for this target, and try to influence the wasm specification to be better
+
+1690839208
+andrewrk!~andrewrk@mail.ziglang.org
+we can use zig's (limited) influence to attempt this
+
+1690843292
+jamii91!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+andrewrk: Proposing a new calling convention does seem to fall under 'Please do not file a proposal to change the language' :D
+
+1690843325
+andrewrk!~andrewrk@mail.ziglang.org
+you can ignore that
+
+1690843347
+andrewrk!~andrewrk@mail.ziglang.org
+everyone who bothers to have a conversation with me, engage with the community, or have a serious project in zig is welcome to ignore that
+
+1690843380
+jamii91!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Oh, I didn't see that there is a tiny 'open a blank issue' at the bottom of the list of options
+
+1690843406
+andrewrk!~andrewrk@mail.ziglang.org
+yeah. this is kind of working as designed. otherwise I would get dozens of crappy issues every day from drive-by github users
+
+1690843420
+jamii91!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+:<
+
+1690843467
+jamii91!~jamii@2604:3d08:9579:3d00:3a00:53ba:15e8:c07d
+Wow, speaking of which https://github.com/ziglang/zig/issues/16637
+
+1690843823
+terminalpusher!~terminalp@2a01:586:277e:1:8845:394e:e9f3:d204
+yeah just saw that as well
+
+1690843829
+terminalpusher!~terminalp@2a01:586:277e:1:8845:394e:e9f3:d204
+how ironic
+
+1690847185
+andrewrk!~andrewrk@mail.ziglang.org
+jamii91, thanks for pointing it out, it's gone now
+
+1690847188
+andrewrk!~andrewrk@mail.ziglang.org
+in other news: https://ziglang.org/news/welcome-jacob-young/
+
