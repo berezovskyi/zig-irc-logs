@@ -1,0 +1,120 @@
+1691049474
+plumeus!~plumeus@user/plumeus
+I noticed something while trying to update an existing build.zig to the master version of Zig
+
+1691049488
+plumeus!~plumeus@user/plumeus
+does addCSourceFile have no way to specify flags anymore?
+
+1691049496
+plumeus!~plumeus@user/plumeus
+And why? addCSourceFiles still seems to
+
+1691050933
+squeek502!~squeek502@user/squeek502
+plumeus, it now takes a CSourceFile struct which has the flags as a field: https://github.com/ziglang/zig/blob/e85a46cb84c80a7a97316f066b77e45649ce97fb/lib/std/Build/Step/Compile.zig#L220-L230
+
+1691050961
+plumeus!~plumeus@user/plumeus
+oh wait, I didn't notice that
+
+1691050965
+plumeus!~plumeus@user/plumeus
+thanks
+
+1691050972
+squeek502!~squeek502@user/squeek502
+np
+
+1691076429
+grayhatter!~grayhatte@user/grayhatter
+I'm trying to debug a deadlock in a single threaded binary, are there any docs for atomic ordering, or any suggested reading?
+
+1691080401
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, that should be very straightforward, all you need to do is attach a debugger and print a stack trace, and the deadlock should be obvious
+
+1691082351
+grayhatter!~grayhatte@user/grayhatter
+My question was more for general interest because I don't know enough. With the default stacktrace I was able to find the deadlock pretty easily, GPA alloc and free, one from the main thread, the other from a signal (which has the same thread, so it looks like a deadlock to std.atomic)
+
+1691082616
+ifreund!2940d10f8b@user/ifreund
+grayhatter: signal handling and atomics are not really related
+
+1691082759
+grayhatter!~grayhatte@user/grayhatter
+well... they can be somewhat related like in this specific example. But my interest extends beyond just fixing the bug. I've already replaced the GPA with an Arena to kick the can down the road... but also, not because of the bug I don't know what unordered means for an atomic load/store, and I would like to. 
+
+1691082842
+ifreund!2940d10f8b@user/ifreund
+grayhatter: For that I think your best bet is to refer to the definitions in the C11/C++11 memory model
+
+1691082854
+ifreund!2940d10f8b@user/ifreund
+also https://www.llvm.org/docs/Atomics.html
+
+1691082864
+grayhatter!~grayhatte@user/grayhatter
+ifreund: <3 thank you
+
+1691082954
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1691082980
+companion_cube!~simon@user/companion-cube
+https://marabos.nl/atomics/ is a good book, too
+
+1691082997
+companion_cube!~simon@user/companion-cube
+it's basically the same memory model (except it doesn't have one of the orderings C++ has… but no one implements)
+
+1691088724
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+can the zig build system help me pull in external dependencies for my project yet? examples of dependencies my project needs are: murmur3, gmp, libuv, curl, aes_siv, ed25519, etc.
+
+1691088831
+andrewrk!~andrewrk@mail.ziglang.org
+matthew-levan, yes, here is an example of pulling in ffmpeg: https://github.com/andrewrk/groovebasin/blob/zig-pkg/build.zig
+
+1691088841
+andrewrk!~andrewrk@mail.ziglang.org
+here is an example of pulling in SDL2: https://github.com/MasonRemaley/2Pew/blob/main/build.zig
+
+1691088849
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+> 4 days ago
+
+1691088851
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+good timing :D
+
+1691088930
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+great, thank you! i'm going to run a skunkworks operation to replace our current build system (bazel ...) in our project https://github.com/urbit/vere
+
+1691088939
+andrewrk!~andrewrk@mail.ziglang.org
+cool
+
+1691088963
+andrewrk!~andrewrk@mail.ziglang.org
+matthew-levan, caveat, it does require porting the dependency to the zig build system
+
+1691089041
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+by that you mean i can't use zig to execute the project's officially supported build commands?
+
+1691089063
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+(i expected that, if so)
+
+1691090126
+matthew-levan!~matthew-l@2600:2b00:a908:c600:49ba:19ad:47b0:2bdb
+any plans to be able to pull external deps from the web? see an example of us doing that here: https://github.com/urbit/vere/blob/aca51716170f45daa23e9637a9aeeeeff8360c2a/bazel/third_party/gmp/gmp.BUILD#L8 and https://github.com/urbit/vere/blob/aca51716170f45daa23e9637a9aeeeeff8360c2a/WORKSPACE.bazel#L166
+
+1691092865
+andrewrk!~andrewrk@mail.ziglang.org
+the examples that I gave you pull do that. you can fetch from arbitrary URLs
+
