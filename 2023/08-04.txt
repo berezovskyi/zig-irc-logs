@@ -1,0 +1,172 @@
+1691122323
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+Hmm, I'm very new to zig: if I want to call a function in a `defer` statement that returns `!void`, and want to either explicitly discard any errors or propagate them to the caller, how do I accomplish this?
+
+1691122415
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+functions called in [err]defer are not ever allowed to error
+
+1691122426
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+you can ignore them with 'foo() catch {}' or handle it inside that block
+
+1691122491
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+outside defer you can propogate error values with 'return' or 'try'
+
+1691122553
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+Ahhh, thanks! Makes sense. I missed that {} is a valid expression to assign to void, that works. In this case, I just wanted to last-ditch flush() a buffered writer in a defer, but I don't care if there are any problems at that point.
+
+1691122618
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+flush() can error for quite a number of reasons so its best to manully put it at the end of your function with a try
+
+1691122638
+nektro!~nektro@75-164-175-226.ptld.qwest.net
+fair enough
+
+1691125814
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/download/0.11.0/release-notes.html
+
+1691125846
+torque!~tachyon@user/torque
+congrats on a huge release
+
+1691125924
+andrewrk!~andrewrk@mail.ziglang.org
+thank you and congrats to everyone involved (269 different people)
+
+1691128893
+rockorager!d72cfa7d05@2604:bf00:561:2000::3ff
+Congrats on the release!
+
+1691129386
+DelTomix!~DelTomix@user/DelTomix
+hey wow congrats on 0.11.0 !! SO much amazing work
+
+1691129670
+Aks!~akselmo@user/akselmo
+congrats on 0.11 :)
+
+1691132577
+cnx!~cnx@tem.loang.net
+congrats, tho i wouldn't be so sure about the 269 _different_ people part xq-;
+
+1691133973
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Hey everyone! Been liking Zig. One of the biggest gripes right now I've run into is the inability to wrap a library's returned error as a Zig error, and I'm not sure what a good alternative would be.
+
+1691134102
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+In my case, I'm attempting to work with Wasmtime's error: https://github.com/bytecodealliance/wasmtime/blob/217de07e76b0aaec90b065eb875a92ab5f5823d8/crates/c-api/include/wasmtime/error.h#L26
+
+1691134170
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The best thing I could think of is returning a Zig error and then using something along the lines of "getLastError" but that's not great, especially since the function *can* totally return the error straight away.
+
+1691134203
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The other thing I thought of is reimplementing Result from Rust, but I lose out on the syntax Zig provides to deal with errors.
+
+1691134341
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'd also be happy for links to any existing discussions that happened around this, which I could not find. Would be nice to read up on this.
+
+1691145845
+schroffl!~schroffl@94.186.212.25
+I'm compiling Zig for an embedded system that doesn't have an FPU. So I set bundle_compiler_rt to true on my compilation step. However, this increases the libraries size from 4k to 340k. Is it possible to make it only include functions that I actually need? actually need? I can find l
+
+1691145946
+schroffl!~schroffl@94.186.212.25
+Woah okay, something went wrong with my IRC client there :D
+
+1691147317
+thatsaboutright!~thatsabou@62.101.184.61.dyn.user.ono.com
+heyy
+
+1691147816
+daurnimator!~daurnimat@vultr.daurnimator.com
+From https://ziglang.org/download/0.11.0/release-notes.html#Allow-Tautological-Integer-Comparisons "For instance, my_u8 == 500 is comptime-known true" shouldn't that be `false`?
+
+1691148036
+dutchie!~dutchie@user/dutchie
+typo, see https://github.com/ziglang/www.ziglang.org/pull/280
+
+1691148268
+daurnimator!~daurnimat@vultr.daurnimator.com
+ah excellent
+
+1691160332
+smallfoot-!~smallfoot@user/smallfoot-
+error: expected type '[*c]u8', found '*const [9:0]u8'
+
+1691160346
+smallfoot-!~smallfoot@user/smallfoot-
+How do I solve that? I try to to assign .foo = "foo",
+
+1691160407
+smallfoot-!~smallfoot@user/smallfoot-
+.foo is declared in the C header file as "char *foo"
+
+1691161859
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+smallfoot-: From the looks of it you have a pointer and a pointer to a slice, so like .. doubling up pointers? (Just started out with Zig though.
+
+1691162074
+smallfoot-!~smallfoot@user/smallfoot-
+I don't know
+
+1691166876
+martin2020!~martin202@2601:406:4000:181b:7a88:af3b:3041:3f03
+Hi, if I have, for example, three or more levels of my zig project hierarchy, do I need a "test { std.testing.refAllDecls(@This()); }" at every level of the project directory hierarchy except the bottom one in order to run all the tests? Or do I only need it at the top (main.zig)? 
+
+1691167286
+martin2020!~martin202@2601:406:4000:181b:7a88:af3b:3041:3f03
+I can't seem to get all of my tests to run. I have a test at the fourth level in the project hierarchy, and I think that "zig build test" is seeing that file, because it will output compilation errors in that file, but it does not output test failures. My test has a "try std.testing.expect(false)", so it should always fail, and it does when I run "zig test <my_file>.zig", but "zig build test" doesn't
+
+1691167289
+martin2020!~martin202@2601:406:4000:181b:7a88:af3b:3041:3f03
+seem to run the test. Any insight? Thanks
+
+1691167369
+martin2020!~martin202@2601:406:4000:181b:7a88:af3b:3041:3f03
+("zig build test" from the project root, one level up from main.zig)
+
+1691173609
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+I have seemed to trigged an `error G1B0D1FEF: overflow of integer type 'usize' with value '-1'` on passing a struct without public decls to std.meta.DeclEnum. found this when updating to 0.11 which includes https://github.com/ziglang/zig/pull/16547. The error triggers on https://github.com/ziglang/zig/blob/master/lib/std/meta.zig#L635
+
+1691173663
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+What is the expected behaviour or error message if the struct has no public decls?
+
+1691173765
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+I fixed it on my side by making the decls in the struct that should have been public public, but was curious how DeclEnum should handle an "empty" struct.
+
+1691185408
+sneekyfoxx!~sneekyfox@ool-2f10c6d6.dyn.optonline.net
+Sup! I'm a noob to the server and to irc
+
+1691185488
+sneekyfoxx!~sneekyfox@ool-2f10c6d6.dyn.optonline.net
+I just found out about the zig irc chat about a couple of minutes ago and thought why not join in on the chat
+
+1691186228
+sneekyfoxx!~sneekyfox@ool-2f10c6d6.dyn.optonline.net
+The zig documentation lacks explainations for most parts of the language and I waas thinking maybe I could use the chat as my documentation when in doubt 🤷🏽
+
+1691192106
+weslem!32012e016f@2604:bf00:561:2000::12f
+sneakyfoxx: what explanations are you looking for that are not covered in the Zig Language Reference? (https://ziglang.org/documentation/0.11.0/)
+
+1691192143
+weslem!32012e016f@2604:bf00:561:2000::12f
+Rather, sneekyfoxx: ^
+
+1691192779
+weslem!32012e016f@2604:bf00:561:2000::12f
+copygirl: You have the right idea with re-implementing a Result to wrap a library's errors. In Zig, "errors" are combined into a _single runtime error space_, therefore they cannot carry extra information and context. If you want additional functionality, sacrifice the error-union syntax elements in favor of a tagged-union type.
+
