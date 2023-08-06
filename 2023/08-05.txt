@@ -1,0 +1,252 @@
+1691198107
+GreaseMonkey!greaser@user/greasemonkey
+glad that 0.11.0 is released, will probably stick with this until the master branch starts getting async back
+
+1691218713
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+weslem: I hope such types will be able to make use of Zig's error-related syntax (such as try) in the future, then.
+
+1691218815
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Got another question. I see tuples being a thing, but they're a bit odd to use. Are they the only way to return multiple things from a function without creating a new type specifically for that purpose?
+
+1691218870
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+And if so, how would that look like? Though at the moment it looks like it may be a bit too awkward to use anyway, so struct may be the way to go.
+
+1691219431
+torque!~tachyon@user/torque
+tuples are basically just structs with numeric fields instead of named fields
+
+1691219434
+squeek502!~squeek502@user/squeek502
+copygirl, the relevant proposals:
+
+1691219435
+squeek502!~squeek502@user/squeek502
+https://github.com/ziglang/zig/issues/2647
+
+1691219440
+squeek502!~squeek502@user/squeek502
+https://github.com/ziglang/zig/issues/498
+
+1691219512
+torque!~tachyon@user/torque
+in general, I'd say that if you want to return some kind of aggregate value from a function, using a struct makes sense
+
+1691219527
+torque!~tachyon@user/torque
+I don't think there's anything wrong with liberally defining new types
+
+1691219753
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Fair but it's nice to just return (a, b) and not having to create my own type. Though since (afaik) there's no destructuring, access those tuple fields might be kind of annoying anyway.
+
+1691221570
+torque!~tachyon@user/torque
+you'd have to define your own type like `struct { u8, i32 }` or whatever to return a tuple
+
+1691221585
+torque!~tachyon@user/torque
+return types always have to be explicitly typed
+
+1691221712
+torque!~tachyon@user/torque
+in my opinion tuples should be used sparingly (mainly in situations where you can use their list-like behavior, e.g. for iteration) and the standard choice should be structs with explicitly named fields
+
+1691222231
+torque!~tachyon@user/torque
+in general, creating structs is "free" compared to languages like python where creating an object has a variety of overhead including calling the initializer, allocating the attribute dictionary, etc.
+
+1691222680
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Yeah tuples are just a convenience.
+
+1691234704
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'm getting an @compileError in the standard library. How do I find out where in my code the error occurs?
+
+1691238691
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+And the custom format function for my opaque type (pointer) doesn't get picked up, unfortunately?
+
+1691238724
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+pub fn format(self: *const Error, comptime fmt: []const u8, options: std.fmt.FormatOptions, writer: anytype) !void
+
+1691238758
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+According to std.fmt.format this is what it should look like. Unsure how it deals with pointers, or if they're supported at all.
+
+1691241709
+plumeus!~plumeus@user/plumeus
+Yaay
+
+1691245805
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Hmm, curious. Is there a way with comptime to define extern functions based on a const string? Something along these lines: https://gist.github.com/copygirl/e39f3a13c594430070bbb7b3b393f7b9
+
+1691245882
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Wasmtime implements a bunch of vecs that all function exactly the same. They use Rust macros to generate the code for all of these, too: https://github.com/bytecodealliance/wasmtime/blob/main/crates/c-api/src/vec.rs
+
+1691245939
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I believe if I do the extern functions manually and pass them into the comptime function I can still avoid a decent amount of repetition, just wondering if I can do even more.
+
+1691246425
+braewoods!~braewoods@user/braewoods
+copygirl, there's always the preprocessor method if nothing else will work.
+
+1691246649
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+> no hidden control flow, no hidden memory allocations, no preprocessor, and no macros.
+
+1691246674
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I can think of generating code in the build.zig but I don't know if I want to do that tbh?
+
+1691246686
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+This is the next best thing I could think of: https://gist.github.com/copygirl/20f78bdc313b178b6baa0226786e053d
+
+1691247730
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Mmm nope I can't quite do it like I wanted because of a dependency loop.
+
+1691247787
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Vec() takes the extern functions, which have a parameter that's the struct returned by Vec. Maybe I'll have to use anyopaque
+
+1691248025
+braewoods!~braewoods@user/braewoods
+copygirl, i was referring to old school code generation via templates. it's not ideal but it's always an option if somehow language or compiler features fall short.
+
+1691248119
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Any pointers for this? Zig does state that that's not a thing the language is supposed to do..?
+
+1691248151
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I tried to google preprocessor and templates in relation to Zig but could not find anything.
+
+1691248154
+braewoods!~braewoods@user/braewoods
+I believe it is referring to the lack of integrated preprocessor like a language like C or C++ has.
+
+1691248251
+braewoods!~braewoods@user/braewoods
+copygirl, any template system would suffice. it is something you would have to build in general. maybe Zig has a way to generate code from command output?
+
+1691248276
+braewoods!~braewoods@user/braewoods
+but seems unlikely
+
+1691248319
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+If it's too complicated, it's likely not worth it for this lil' project.
+
+1691248346
+braewoods!~braewoods@user/braewoods
+yea, maybe. you may be better off just hard-coding the necessary code by generating it with the aid of a script.
+
+1691248395
+braewoods!~braewoods@user/braewoods
+especially for something that doesn't need to change often.
+
+1691249207
+freshcoffee!~fresh@user/freshcoffee
+hmm we -D_FORTIFY_SOURCE=2 in RelesaeSafe mode, but not debug mode?
+
+1691249486
+freshcoffee!~fresh@user/freshcoffee
+oh never mind, google tells me that recommended usage is optmization level 1 or higher
+
+1691255708
+torque!~tachyon@user/torque
+<copygirl> Hmm, curious. Is there a way with comptime to define extern functions based on a const string? Something along these lines: https://gist.github.com/copygirl/e39f3a13c594430070bbb7b3b393f7b9
+
+1691255762
+torque!~tachyon@user/torque
+in this particular example, including the c-style "namespace" in the function names doesn't really make sense
+
+1691255819
+torque!~tachyon@user/torque
+oh I misread
+
+1691255857
+torque!~tachyon@user/torque
+as was already stated, I believe your best option would be to write a tool to generate the source
+
+1691255926
+torque!~tachyon@user/torque
+this should actually be pretty straightforward to do
+
+1691255970
+torque!~tachyon@user/torque
+for example, I believe https://github.com/riverwm/river generates some bindings from xml descriptions while it is being compiled
+
+1691256014
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Less straight-forward than what I ended up doing, I feel. I only have a handful of Vec types so being a little wordy wasn't that bad.
+
+1691256046
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It's now:
+
+1691256050
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+pub const ByteVec = Vec(u8, wasm_byte_vec_empty, wasm_byte_vec_new_uninitialized, wasm_byte_vec_new, wasm_byte_vec_copy, wasm_byte_vec_delete);
+
+1691256053
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+extern "c" fn wasm_byte_vec_empty(*anyopaque, usize) void;
+
+1691256055
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+etc.
+
+1691256067
+torque!~tachyon@user/torque
+yes, if there's only a small API surface to cover, just doing it by hand is probably the simplest
+
+1691261339
+andrewrk!~andrewrk@mail.ziglang.org
+R.I.P. Bram Moolenaar. You will be missed.
+
+1691262088
+blueagain!~blueagain@user/blueagain
+andrewrk: ya, that hit hard. But I'm glad the libera op finally settled the debate once and for all: "his relentless hard work making vim arguably the #1 editor in the world". Now we need no longer debate vim and emacs
+
+1691262115
+blueagain!~blueagain@user/blueagain
+and can concentrate on more productive endeavours!
+
+1691262132
+andrewrk!~andrewrk@mail.ziglang.org
+:)
+
+1691263235
+torque!~tachyon@user/torque
+the usage of the term "arguably" seems to invite debate rather than preclude it
+
+1691263261
+torque!~tachyon@user/torque
+I can hardly think of a more valuable expenditure of time than arguing about text editors
+
+1691276724
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0, do you plan to finish up your llvm backend project before or after we upgrade to LLVM 17 ?
+
+1691277332
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+Andrewk is the current behaviour of getting an underflow compiler error from https://github.com/ziglang/zig/blob/master/lib/std/meta.zig#L635 when you pass in a struct without any public decls the expected behaviour for DeclEnum?
+
+1691279806
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+andrewrk: I don't expect to have bitcode output until after, but I could probably get globals cleaned up and implement the last two features before
+
+1691279948
+andrewrk!~andrewrk@mail.ziglang.org
+ok good to know. maybe you can tell me when it would be least disruptive for me to start the llvm17 branch?
+
