@@ -1,0 +1,200 @@
+1691454033
+andrewrk!~andrewrk@mail.ziglang.org
+we're going to aim for a short 0.12.0 release cycle, focusing on toolchain upgrades (mingw-w64, glibc, llvm), bug fixes, restoring async/await/suspend/resume, and unblocking real world zig projects from migrating to use the package manager/build system
+
+1691458219
+squeek502!~squeek502@user/squeek502
+andrewrk, somewhat strange request, but would it be possible for you to give an example of the type of TOCTOU bug that the `Dir`-based fs API helps to prevent? you mentioned that as a reason for the API design in https://github.com/ziglang/zig/pull/3813 and i'm struggling to come up with a concrete example
+
+1691458754
+andrewrk!~andrewrk@mail.ziglang.org
+squeek502, sure - here is an example: 1. program opens directory handle. 2. the directory is moved to another location on the file system 3. program does an operation using the open file handle
+
+1691458808
+andrewrk!~andrewrk@mail.ziglang.org
+versus: 1. program makes note of file path. 2. directory is moved to another location on the file system. 3. program tries to use the directory file path which is now missing
+
+1691458836
+andrewrk!~andrewrk@mail.ziglang.org
+in the former case the program executes successfully, no problem; in the latter case it receives ENOENT
+
+1691458881
+squeek502!~squeek502@user/squeek502
+andrewrk, makes sense, thanks!
+
+1691458953
+squeek502!~squeek502@user/squeek502
+i was trying something similar but with deletion instead of moving so the behavior wasn't different between the filepath/Dir usages
+
+1691459854
+freshcoffee!~fresh@user/freshcoffee
+C API is shameful. Since getpriority() can return the value -1 upon successful completion, it is necessary to set errno to 0 prior to a call to getpriority().  If getpriority() returns the value -1, then errno can be checked to see if an er‐
+
+1691459857
+freshcoffee!~fresh@user/freshcoffee
+       ror occurred or if the value is a legitimate nice value.
+
+1691462892
+freshcoffee!~fresh@user/freshcoffee
+holy smokes, an overhaul of `c.zig` is more than I anticipated... and I'm just working on freebsd as the trial subject
+
+1691472344
+squeek502!~squeek502@user/squeek502
+andrewrk, hopefully that TOCTOU example was put to good use: https://github.com/ziglang/zig/issues/16736
+
+1691488789
+Amun-Ra!~amun-ra@retro.rocks
+freshcoffee: that's POSIX not C
+
+1691505864
+jacky!~jacky@60.48.255.32
+so
+
+1691508462
+Earnestly!~earnest@user/earnestly
+Very confusing for people when encountering the real divides between C, UNIX and POSIX APIs
+
+1691508505
+Earnestly!~earnest@user/earnestly
+They all sort of get blended together since its the water in which we swim, but it's fairly jarring when encountering the differences in other systems
+
+1691519678
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Hmm trying to create bindings for Wasmtime (as a project to learn Zig, no less), and currently I'm stuck trying to figure out how to inspect a function for its args and result type, and then create a callback function that will be called by Wasmtime, extracting the args and results from their own vector types to pass to the original function, calling it.
+
+1691519854
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Unsure if I'm doing this right but I'm trying to create a function much like I would a generic type, though I'm getting syntax errors, so unsure if this is supported.
+
+1691520000
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Currently looks like this: https://gist.github.com/copygirl/1c5301a6dc861580e0b5db0850ff593d
+
+1691520017
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Error is "expected ',' after initializer".
+
+1691520109
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Might just be that nested functions are not a thing, though then I'm wondering how else I'm going to create a callback that unpacks args/results from WASM to pass to a regular Zig function.
+
+1691520605
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+(Well, the results are supposed to be captured to go back to WASM, but I guess that's more of a detail.)
+
+1691520664
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ooh, maybe if I return a struct that contains the function!
+
+1691520998
+ifreund!2940d10f8b@user/ifreund
+copygirl: you can return a function directly, but you need to write out the return type and use valid syntax for the function being returned
+
+1691521016
+ifreund!2940d10f8b@user/ifreund
+a funcion is not of type `type`, it's `fn () void` or whatever
+
+1691521051
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Right, let me try that.
+
+1691521070
+ifreund!2940d10f8b@user/ifreund
+and functions declarations can only appear within container types, so one must do something like `struct { fn foo() void { ... }.foo`
+
+1691521085
+ifreund!2940d10f8b@user/ifreund
+whoops, dropped a } but you should get the idea
+
+1691521101
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ah okay so I was on the right track.
+
+1691521150
+ifreund!2940d10f8b@user/ifreund
+yeah, returning a struct that contains the function is totally possible as well, I just wanted to point out that functions may also be returned directly :)
+
+1691521360
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Now how to create a tuple at compile time, so I can pass it to @call..?
+
+1691521409
+ifreund!2940d10f8b@user/ifreund
+copygirl: create it from what exactly?
+
+1691521441
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+A function's args.
+
+1691521483
+ifreund!2940d10f8b@user/ifreund
+have you seen std.meta.ArgsTuple()?
+
+1691521558
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Hmm the standard library docs is difficult to use.
+
+1691521566
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Would I just pass in a `func: anytype`?
+
+1691521633
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Or, I guess, @TypeOf(func)
+
+1691521744
+ifreund!2940d10f8b@user/ifreund
+it accepts a function types, so the latter
+
+1691521753
+ifreund!2940d10f8b@user/ifreund
+did you see the examples in the doc comment?
+
+1691521957
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Well, the docs don't link to the source nor include the doc comment. https://ziglang.org/documentation/master/std/#A;std:meta.ArgsTuple
+
+1691521987
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Though I can get to it from an actual function in the same namespace.
+
+1691522132
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Now before I was thinking to initialize a tuple I would initialize it to undefined and then fill each field to its proper value. Is that the proper way to do things?
+
+1691522154
+ifreund!2940d10f8b@user/ifreund
+copygirl: I'd recommmend just reading the source code, the generated docs still have too many bugs/missing information for my taste
+
+1691522201
+ifreund!2940d10f8b@user/ifreund
+yeah, initializing it to undefined and setting the fields in a loop is a common pattern
+
+1691526278
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Looks a bit weird, but works for now: https://gist.github.com/copygirl/77be7d44deeba8a5aa745a40b6cb0f01
+
+1691526664
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I also haven't been able to test it with anything but a void-returning function without args.
+
+1691529062
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+How to run zig tests when the tests require libc?
+
+1691530643
+nektro!~nektro@71-34-89-76.ptld.qwest.net
+zig test foo.zig -lc
+
+1691530653
+nektro!~nektro@71-34-89-76.ptld.qwest.net
+copygirl, 
+
+1691530682
+nektro!~nektro@71-34-89-76.ptld.qwest.net
+or linkLibC() in build.zig
+
+1691533029
+potato!~potato@78-80-113-87.customers.tmcz.cz
+Hello, I've come to ask, is there a way for the emitted header from std.Build.Step.Compile.getEmittedH to be included by another build step? I haven't found a way to do this, nor any examples of it's usage
+
