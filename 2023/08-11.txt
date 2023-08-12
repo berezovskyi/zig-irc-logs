@@ -1,0 +1,472 @@
+1691715882
+GreaseMonkey!greaser@user/greasemonkey
+after some more thought, this abstraction is driving me nuts - i really want it, but the Receiver side is surprisingly difficult to get right especially if one can handle something other than a straight `[]u8`, and yet for the use case of UDP sockets, you need some way of communicating the packet address in both directions
+
+1691740654
+bgiannan!4529@2a01:4f8:141:1272::2
+How can i cast `*[]u8` to `*[8]u8` when i know the slice is 8 items long?
+
+1691740819
+squeek502!~squeek502@user/squeek502
+bgiannan, *[]u8 is a pointer to a slice (which is a pointer type), so it's a pointer to a pointer
+
+1691740832
+squeek502!~squeek502@user/squeek502
+*[8]u8 is a pointer to an array (which is a value type, not a pointer type)
+
+1691740916
+squeek502!~squeek502@user/squeek502
+so those types aren't actually very similar, unless you meant []u8 to *[8]u8
+
+1691740969
+bgiannan!4529@2a01:4f8:141:1272::2
+the question could have been `[]u8` -> `[8]u8` the `*` is irrevelant
+
+1691740987
+bgiannan!4529@2a01:4f8:141:1272::2
+so basically i'd have to create an [8]u8 and fill it with the content of my slice?
+
+1691741090
+squeek502!~squeek502@user/squeek502
+bgiannan, it's very relevant since arrays and slices are very different types in zig
+
+1691741122
+squeek502!~squeek502@user/squeek502
+but if you slice with compile-time known start and end indexes, you will get *[N]u8
+
+1691741147
+squeek502!~squeek502@user/squeek502
+https://zigbin.io/7b11ad
+
+1691741160
+squeek502!~squeek502@user/squeek502
+the compile log output is: @as(type, [256]u8), @as(type, *[256]u8), @as(type, *[8]u8)
+
+1691741226
+squeek502!~squeek502@user/squeek502
+a pointer to an array is like a slice with a comptime known length
+
+1691741263
+bgiannan!4529@2a01:4f8:141:1272::2
+ok i think i got it
+
+1691741271
+bgiannan!4529@2a01:4f8:141:1272::2
+what i'm trying to do btw, is use test {
+
+1691741273
+bgiannan!4529@2a01:4f8:141:1272::2
+    var buf: [256]u8 = undefined;
+
+1691741275
+bgiannan!4529@2a01:4f8:141:1272::2
+    var slice = buf[0..];
+
+1691741277
+bgiannan!4529@2a01:4f8:141:1272::2
+    var comptime_known_portion = slice[0..8];
+
+1691741279
+bgiannan!4529@2a01:4f8:141:1272::2
+    @compileLog(@TypeOf(buf), @TypeOf(slice), @TypeOf(comptime_known_portion));
+
+1691741281
+bgiannan!4529@2a01:4f8:141:1272::2
+}
+
+1691741283
+bgiannan!4529@2a01:4f8:141:1272::2
+well bad paste sorry
+
+1691741306
+bgiannan!4529@2a01:4f8:141:1272::2
+is use std.mem.bytesAsValue were the `bytes` param is a slice
+
+1691741344
+bgiannan!4529@2a01:4f8:141:1272::2
+for something like std.mem.bytesAsValue(i32, ...), the function expects *[4]u8
+
+1691741362
+bgiannan!4529@2a01:4f8:141:1272::2
+so i'd have to pass bytes[0..4]
+
+1691741380
+bgiannan!4529@2a01:4f8:141:1272::2
+with the limit being comptime
+
+1691741392
+squeek502!~squeek502@user/squeek502
+i believe so, yeah
+
+1691741575
+squeek502!~squeek502@user/squeek502
+more directly relevant example: https://zigbin.io/a1e24c
+
+1691741585
+squeek502!~squeek502@user/squeek502
+compile log there is: @as(type, [256]u8), @as(type, []u8), @as(type, *[8]u8)
+
+1691741613
+squeek502!~squeek502@user/squeek502
+(basically the same as before, just forced the `slice` to actually be a slice type)
+
+1691742636
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is there a package for zig for openapi at the moment? note: API _not_ AI, I cannot find one currently -- I can try hack my own if need be
+
+1691742649
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+and also: is the zon grammar literally the grammar for anonymous structs 1:1? i.e. for the treesitter grammar for Zig anonymous structs can said grammar be copy-pasta'd and be a completely correct zon grammar?
+
+1691742684
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I think for the second question it is not exactly right since no actual execution should be happening so it's only literals allowed within zon for the grammar?
+
+1691745390
+GreaseMonkey!greaser@user/greasemonkey
+come to think of it i'm not sure why there doesn't appear to be an obvious implementation of zon in std
+
+1691762526
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Slightly confused right now. Is there any way to mark an entire function as comptime? Such that in theory instead of the function call, only the result is being embedded? I guess the compiler could figure that out from context, but I'm wondering if I can ensure that's what happens and therefore know it's all comptime?
+
+1691763054
+neurocyte!~neurocyte@user/neurocyte
+You could mark all the function's arguments as comptime. That should make it impossible to call with runtime values.
+
+1691763192
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+by default all non-inline functions are comptime if the return type is comptime-only and runtime if the return type is not comptime-only
+
+1691763228
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+you can make a runtime call comptime by calling it in a comptime context (such as `comptime foo()`)
+
+1691763286
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+The only way to ensure that a function is always comptime from within the function is `inline fn foo() void { comptime { ... } }`
+
+1691763361
+gpanders!be60a9b05a@user/gpanders
+would `if (!@inComptime()) { @compileError("comptime only"); }` work?
+
+1691763379
+gpanders!be60a9b05a@user/gpanders
+seems to work in a trivial example, but not sure what edge cases that might miss
+
+1691763409
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+it does exactly what it says it does, only working when called at comptime
+
+1691763429
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+slightly different than forcing comptime when not called at comptime
+
+1691763446
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The return type is usize. I had an issue before where an `if (std.meta.trait.isTuple(T))` statement would not be reduced at comptime and got an error, so I had to add comptime in front of the isTuple call.
+
+1691763486
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+yes, the only way to not require comptime is to use inline functions
+
+1691763512
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I suppose for now I can do `return comptime if (std.meta.trait.isTuple(T)) T.len else if (T != void) 1 else 0;`
+
+1691763542
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+yes, return comptime is allowed, comptime return is not
+
+1691763580
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+although `T.len` doesn't look valid
+
+1691763657
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+If T is a tuple, wouldn't T.len contain the tuples length?
+
+1691763681
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+no, if t is value of a tuple type then t.len is the tuple len
+
+1691763713
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`@typeInfo(T).Struct.fields.len` should work
+
+1691763865
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ah heck. Thank you.
+
+1691768640
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+`std.meta.trait.isTuple(@TypeOf(.{}))` returns false. Isn't .{} essentially an empty tuple? Do I need to manually check if @typeInfo for that type is .Struct and has empty .fields?
+
+1691768922
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`.{}` is an empty struct literal, it is ambiguous whether or not it is a struct or tuple
+
+1691769109
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Would it be sensible for isTuple to return true for such an empty struct?
+
+1691769162
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+something being a tuple is defined by the language, so the question is should the compiler consider it a tuple
+
+1691769271
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+currently the compiler considers `.{}` an anonymous struct but not either a tuple or anonymous struct, so something is clearly wrong there
+
+1691771357
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+How do you get a value of type void? I was trying to use "void" itself, but that's the type.
+
+1691771509
+ifreund!2940d10f8b@user/ifreund
+{}
+
+1691774726
+ifreund!2940d10f8b@user/ifreund
+urgh, I think my workaround for https://github.com/ziglang/zig/issues/16369 doesn't actually fix the race, just make it rarer
+
+1691775204
+ifreund!2940d10f8b@user/ifreund
+well, that issue isn't really the problem as I don't pass a file source as stdin, just bytes
+
+1691775279
+ifreund!2940d10f8b@user/ifreund
+I'm pretty sure the underlying race is the same though, but I'm not 100% sure I've understood it fully yet
+
+1691775429
+ifreund!2940d10f8b@user/ifreund
+const scdoc = b.addSystemCommand(&.{ "/bin/sh", "-c", "scdoc < doc/" ++ page ++ ".1.scd" });
+
+1691775438
+ifreund!2940d10f8b@user/ifreund
+ok, now that's a functional workaround xD
+
+1691775470
+ifreund!2940d10f8b@user/ifreund
+just use /bin/sh to do the stdin handling where std.Build.Step.Run currently fails me
+
+1691775688
+ifreund!2940d10f8b@user/ifreund
+ah damn, that breaks the caching though :/
+
+1691777785
+ifreund!2940d10f8b@user/ifreund
+I've won the workaround game, got the caching working by adding a addFileArg() with the zig build system that gets ignored by /bin/sh
+
+1691778326
+bgiannan!4529@2a01:4f8:141:1272::2
+what's the nuance between packed and extern struct?
+
+1691778534
+nektro!~nektro@71-34-89-76.ptld.qwest.net
+packed is for bit packing and makes the struct backed by an equivalently-sized integer
+
+1691778555
+nektro!~nektro@71-34-89-76.ptld.qwest.net
+extern is for guaranteeing layout and also makes it ABI stable
+
+1691778693
+nektro!~nektro@71-34-89-76.ptld.qwest.net
+regular structs (auto layout) are allowed to be reordered by the compiler in order to optimize for minimal padding, for example
+
+1691778803
+ifreund!2940d10f8b@user/ifreund
+bgiannan: if you need sub-byte alignment you need a packed struct, otherwise an extern struct (perhaps with explicit field alignments) is likely better
+
+1691779675
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+andrewrk: I have no immediate plans to work on the llvm backend if you want to start the upgrade, and in fact, am currently willing to work on any issues it causes
+
+1691779800
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Thanks for all the help by the way. I managed to make some functional bindings for Wasmtime. Wrapping Zig functions into Wasmtime functions, calling functions both ways, ... It's missing a couple of things but it's good to see it working already.
+
+1691782070
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0, great, thanks! I'll be working on the llvm17 branch today
+
+1691784884
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, to be clear it's not really a race, it has to do with the parent blocking on a read() from one file descriptor while the child is blocking on a write() to a different one
+
+1691784918
+andrewrk!~andrewrk@mail.ziglang.org
+just needs some polling to solve the problem
+
+1691786739
+ifreund!2940d10f8b@user/ifreund
+andrewrk: hmm, I was seeing apparently non-deterministic deadlocks while using the `bytes` Step.Run.setStdIn() option with captureStdOut()
+
+1691786765
+ifreund!2940d10f8b@user/ifreund
+The non-determinism made me think that there was a race, maybe I didn't look closely enough though
+
+1691786866
+ifreund!2940d10f8b@user/ifreund
+I haven't been able to reproduce the deadlock with the latest version of my workaround despite trying many times: https://github.com/riverwm/river/blob/ac25a7df9e009185f3934a18df2e3935dbe861b3/build.zig#L245-L249
+
+1691788429
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+I noticed two different functions, allocPrint and allocPrintZ. allocPrintZ produces a null-terminated u8 slice, whereas allocPrint produces a u8 slice that is not null-terminated. My question is, shouldn't their names be reversed? Isn't the null-terminated one more C-like and the other one more Zig-like (so it should be named with the Z?)
+
+1691788504
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Or maybe the reasoning is different than I am thinking?
+
+1691789048
+squeek502!~squeek502@user/squeek502
+martin2020, the Z i believe stands for 'zero' there; it's a very common suffix for functions that return something null-terminated/with a zero sentinel
+
+1691789836
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+squeek502, thanks! Very informative.
+
+1691791140
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, hmm maybe there is more at play here than I thought. thanks for letting me know
+
+1691791616
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+for the record, communication between processes have all the non-determinism of multiple threads
+
+1691792141
+andrewrk!~andrewrk@mail.ziglang.org
+hmm, so clang::ASTUnit::LoadFromCommandLine changed the result from a regular pointer to a std::unique_ptr. I need to figure out how to get a regular pointer out of that
+
+1691792304
+ifreund!2940d10f8b@user/ifreund
+andrewrk: iirc it's just .get()
+
+1691792317
+ifreund!2940d10f8b@user/ifreund
+https://en.cppreference.com/w/cpp/memory/unique_ptr/get
+
+1691792319
+ifreund!2940d10f8b@user/ifreund
+yep
+
+1691792324
+andrewrk!~andrewrk@mail.ziglang.org
+but then won't it get destroyed at the end of scope?
+
+1691792331
+andrewrk!~andrewrk@mail.ziglang.org
+it needs to live across the C ABI
+
+1691792338
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+you can steal it
+
+1691792356
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+.release
+
+1691792387
+andrewrk!~andrewrk@mail.ziglang.org
+ok, and then how to free it?
+
+1691792397
+andrewrk!~andrewrk@mail.ziglang.org
+delete like normal?
+
+1691792425
+ifreund!2940d10f8b@user/ifreund
+yeah, once it's been release it's no longer managed by the unique_ptr
+
+1691792440
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+if it's an unadorned unique_ptr, the default Deleter is delete, yes
+
+1691792471
+ifreund!2940d10f8b@user/ifreund
+it's hard to say 100% what's right without knowing why they made it a unique_ptr though
+
+1691792508
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+it's `unique_ptr<T, Deleter>`, if there's nothing there `delete` is always correct
+
+1691792528
+andrewrk!~andrewrk@mail.ziglang.org
+nice
+
+1691792529
+andrewrk!~andrewrk@mail.ziglang.org
+thanks
+
+1691793051
+andrewrk!~andrewrk@mail.ziglang.org
+oof, I ran tools/update_cpu_features.zig and it crashed my window manager
+
+1691793367
+ifreund!2940d10f8b@user/ifreund
+uh oh, OOM?
+
+1691793416
+andrewrk!~andrewrk@mail.ziglang.org
+yeah it does a lot of arena allocation on many threads 
+
+1691793417
+ifreund!2940d10f8b@user/ifreund
+I hate how bad linux desktop stuff is at handling low memory in practice :/
+
+1691793422
+andrewrk!~andrewrk@mail.ziglang.org
+yeah...
+
+1691793603
+GreaseMonkey!greaser@user/greasemonkey
+andrewrk: i'm forming an idea for something that i think would be really useful to have in std, how should i go about it? (other than actually implementing something to see how well it can work, as i'm doing that now) it's a generic datagram interface, kinda like Reader/Writer but for a provided "message" type and you process one message at a time rather than an arbitrary slice of bytes
+
+1691793659
+andrewrk!~andrewrk@mail.ziglang.org
+GreaseMonkey, tbh it sounds like the kind of thing that definitely does not belong in std
+
+1691793798
+GreaseMonkey!greaser@user/greasemonkey
+i was considering that UDP sockets could benefit from such a thing, and now i'm curious as to how support for UDP sockets would work if they had an abstraction in std itself
+
+1691793803
+GreaseMonkey!greaser@user/greasemonkey
+erm, an interface, bleh
+
+1691793821
+GreaseMonkey!greaser@user/greasemonkey
+words are hard and i still probably have the wrong ones there
+
+1691797890
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0, can I delete Builder.selectConst? it looks unused, and LLVM no longer has `LLVMConstSelect` (see https://discourse.llvm.org/t/rfc-remove-most-constant-expressions/63179) 
+
+1691797968
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+anything removed from llvm can be removed from Builder
+
+1691797992
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not sure how to do that without also removing selectValue, however
+
+1691798050
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+that should also be unused
+
+1691798076
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+Builder.*Value is just a constant expression casted to a Value
+
+1691798126
+andrewrk!~andrewrk@mail.ziglang.org
+yeah it's unused. if it was useful I'm sure it can be resurrected from vcs history
+
+1691798127
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+so if select constant expressions don't exist, then selectValue also shouldn't exist
+
+1691798176
+andrewrk!~andrewrk@mail.ziglang.org
+oh I see, I got selectValue mixed up with WipFunction.select
+
