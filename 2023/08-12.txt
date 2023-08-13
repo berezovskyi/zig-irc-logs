@@ -1,0 +1,452 @@
+1691798675
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+andrewrk, can you delete the comptime block I forgot to delete while you are there
+
+1691798682
+andrewrk!~andrewrk@mail.ziglang.org
+yeah already did
+
+1691798698
+andrewrk!~andrewrk@mail.ziglang.org
+will push the branch shortly
+
+1691798710
+andrewrk!~andrewrk@mail.ziglang.org
+about to find out how badly the behavior tests regressed with 17
+
+1691798767
+andrewrk!~andrewrk@mail.ziglang.org
+we're off to a great start with a crash in translate-c
+
+1691798813
+andrewrk!~andrewrk@mail.ziglang.org
+oooooooh shit this is totally my fault, I forgot to update clang bindings to correspond to zig_clang.h
+
+1691799763
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`real	10m0.763s` I'm prepared
+
+1691801361
+andrewrk!~andrewrk@mail.ziglang.org
+holy shitballs, all behavior tests passed
+
+1691801370
+andrewrk!~andrewrk@mail.ziglang.org
+I think that's the first time in...6 llvm releases?
+
+1691801602
+andrewrk!~andrewrk@mail.ziglang.org
+just need to troubleshoot libc++ and then I'll push
+
+1691801809
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+hmm, when did `start.zig` stack traces regres
+
+1691801971
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+debugger says the same nonsense, so must be an issue with the debug info
+
+1691802107
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+Why do we ever use `as` instead of `as_node`, is it implying that the debug info is unneeded or todo?
+
+1691802246
+andrewrk!~andrewrk@mail.ziglang.org
+yes it was back from when I naively imagined that the source location would be provided in some other way
+
+1691802255
+andrewrk!~andrewrk@mail.ziglang.org
+at this point I think that ZIR instruction should be eliminated
+
+1691802300
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+cool, that makes it easy to know where the problem is
+
+1691802674
+andrewrk!~andrewrk@mail.ziglang.org
+pushed to llvm17
+
+1691802693
+andrewrk!~andrewrk@mail.ziglang.org
+everything is done except tsan and the CI
+
+1691802705
+andrewrk!~andrewrk@mail.ziglang.org
+and regression testing & fixing
+
+1691803579
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+pushed a cleanup commit
+
+1691804876
+andrewrk!~andrewrk@mail.ziglang.org
+cool, I'll stop force-pushing on the branch
+
+1691804890
+andrewrk!~andrewrk@mail.ziglang.org
+working on CI tarballs now
+
+1691811590
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`pub const no_src_node = std.math.maxInt(i32);` oh.. oh no...
+
+1691813005
+andrewrk!~andrewrk@mail.ziglang.org
+that's naughty
+
+1691813190
+andrewrk!~andrewrk@mail.ziglang.org
+busted: https://github.com/ziglang/zig/pull/14736
+
+1691813769
+andrewrk!~andrewrk@mail.ziglang.org
+I don't remember who was asking me about the freebsd tarball for 0.11.0 but it's up now
+
+1691814028
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+jeang3nie: ^
+
+1691814121
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I'm so confused, if I change the layout of zir one random thing breaks
+
+1691814280
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+lib/std/target/x86.zig:3868:21: error: type 'type' not a function
+
+1691814280
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+        .features = featureSet(&[_]Feature{
+
+1691814288
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+types are indeed not functions, I'll give it that much
+
+1691814765
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+which is harder to deserialise and process, JSON or HTML? I'm thinking HTML purely because it's a more complicated grammar compared to JSON no?
+
+1691814805
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm implementing a REST API and I want to lean into HATEOS and respond with HTML payloads instead of JSON ones but this API is designed for use outside of a browser too
+
+1691815416
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0, don't forget that changing astgen means the zir cache is wrong
+
+1691815431
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I've deleted the cache so many times
+
+1691815808
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+fixed it
+
+1691819286
+torque!~tachyon@user/torque
+tsujp, as far as I'm aware html is much more complex to parse into objects than json, since xml doesn't really map directly to things like lists or dictionaries
+
+1691819315
+torque!~tachyon@user/torque
+also xml is hideous in general
+
+1691820317
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: this is what I guessed, apart from bare-JSON I am thinking something like JSON-LD or HAL
+
+1691852819
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I ran into a problem recently when I set an optional pointer value to undefined instead of null.
+
+1691852905
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So when my function returned that I passed the pointer to (as a `*?*Value`), and it didn't set it, the pointer was set to something invalid, but still succeeded the `if (value) |v|` check, obviously crashing the program.
+
+1691852943
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is there any use case where an optional pointer should be initialized to undefined rather than null? Would a compiler error be useful here?
+
+1691853126
+ifreund!2940d10f8b@user/ifreund
+copygirl: assigning undefined to something put it into an explicitly non-initialized state where it could theoretically contain any value. Branching on an undefined value is undefined behavior and it's a tricky one to implement safety checks for
+
+1691853160
+ifreund!2940d10f8b@user/ifreund
+see https://github.com/ziglang/zig/issues/597
+
+1691853165
+ifreund!2940d10f8b@user/ifreund
+and https://github.com/ziglang/zig/issues/63
+
+1691853258
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Well for optional pointers, which are then passed to a function that can modify them, you can't say for sure whether or not the function will set it.
+
+1691853273
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So a compile time check in this case isn't possible.
+
+1691853324
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+And a runtime check might not trip if the pointer is set during testing.
+
+1691853349
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I was wondering whether it should be an error to set it to undefined rather than null, since it *can* be set to null. Why wouldn't you?
+
+1691853380
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Like I said I made this mistake on accident, because I have some non-pointer values initialized by the library function for which I *have* to use undefined.
+
+1691853417
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So I "naturally" did the same for the optional pointer value, but that wasn't right.
+
+1691853481
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Well, just wondering if it was a meaningful thing to check for at compile time and warn the programmer about. I guess when you're working with undefined you have to be sure you're doing the right thing.
+
+1691853805
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Curious if this is valid enough to perhaps create an issue for.
+
+1691856940
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Now how to create a generic Result type ...
+
+1691856981
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+One that can handle multiple possible error types.
+
+1691857688
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I feel like the right thing to do is using a tagged union but no idea how to create my own at comptime.
+
+1691857942
+blueagain!~blueagain@user/blueagain
+I found this not bad for a 100 seconds overview... https://www.youtube.com/watch?v=kxT8-C1vmd4
+
+1691859191
+andrewrk!~andrewrk@mail.ziglang.org
+there are lots of failures running the test suite in the llvm17 branch
+
+1691859303
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0, there are a bunch of llvm target datalayout string mismatches if you run `zig build test -Denable-llvm -fqemu -fwasmtime`
+
+1691863576
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I suppose the thing I'm stuck on is how to to create a set of type and a union for that set.
+
+1691863664
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I can't use tuples, because they're positional and could have duplicates. And even if I use a compile time set, how to I create a type that either is a tagged union or works functionally the same as one.
+
+1691863801
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I suppose I could back my custom type with an array of bytes of the largest size of the types, and cast it back and forth.
+
+1691863858
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is there a compile time specific allocator?
+
+1691863867
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Wait I think that was mentioned.
+
+1691877088
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+What makes more sense, `Result(T, .{ Err1, Err2 })` or `Result(T, ErrorUnion(Err1, Err2))` ? It would produce the same type either way.
+
+1691877577
+torque!~tachyon@user/torque
+no clue what you're doing, but what's insufficient about `ErrorSet!T`?
+
+1691877661
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Can't attach data to the error. Library I'm using just exposes errors as strings.
+
+1691877696
+torque!~tachyon@user/torque
+does it have a limited number of strings it can return?
+
+1691877700
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+No.
+
+1691877778
+torque!~tachyon@user/torque
+the tuple approach is more extensible in the sense that it is more straightforward to provide a variable number of errors
+
+1691877842
+torque!~tachyon@user/torque
+one of the common patterns for providing error context information is having a separate function/method to retrieve the additional info like `getErrorInfo(err: ErrorSet)`
+
+1691877869
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh wait, ErrorUnion takes a slice, so my example isn't actually correct.
+
+1691877913
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I think it would be `Result(T, &.{ Err1, Err2 })` or `Result(T, ErrorUnion(&.{ Err1, Err2 }))`
+
+1691877949
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+torque: Where is that stored, then?
+
+1691877951
+torque!~tachyon@user/torque
+I'd probably make the first one just take the tuple directly
+
+1691877982
+torque!~tachyon@user/torque
+you'd have to store it as a member of a struct used to wrap the API or something
+
+1691878015
+torque!~tachyon@user/torque
+I personally think it would be really nice to be able to have arbitrary types as error types but I understand that there advantages to the simplicity of having them be simple integers
+
+1691878023
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So it's equivalent to the `getLastError` idea I had before, pretty much?
+
+1691878045
+torque!~tachyon@user/torque
+yeah I think so
+
+1691878113
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I found that really annoying to implement, I'll be honest.
+
+1691878129
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So I figured there has to be a better way.
+
+1691878208
+torque!~tachyon@user/torque
+looks like e.g. stdlib json has you pass in a separate diagnostics object by reference as an out parameter if you want context
+
+1691878247
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Apologies, what do you mean?
+
+1691878257
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/std/#A;std:json.Diagnostics
+
+1691878299
+torque!~tachyon@user/torque
+basically another approach where you provide a `json.Diagnostics` object when parsing and if the parser encounters an error, it fills out the object for you
+
+1691878328
+torque!~tachyon@user/torque
+actually I guess it holds a reference to it internally rather than having you pass it in for each call
+
+1691878510
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+That's a possibility.. but it still complicates things.
+
+1691878534
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So the Wasmtime library can either return an error or a trap.
+
+1691878545
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/issues/2647 I really hope this proposal gets accepted eventually 
+
+1691878608
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I feel like the way this is going would be to just have a pointer you pass into the function that is filled out in case of an error. But that's functionally equivalent to just returning it as one of the possible return values from the functions.
+
+1691878626
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It's either the success value, or one of the error values.
+
+1691878652
+torque!~tachyon@user/torque
+well, the advantage is that it lets you use the built in error handling ergonomics like `try` `catch` etc
+
+1691878657
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+That's what the error syntax is for so it must be a sensible way to approach things.
+
+1691878697
+torque!~tachyon@user/torque
+whereas if you return a tagged union where some members may be errors, you have to propagate it manually if appropriate
+
+1691878736
+torque!~tachyon@user/torque
+and you don't get the compiler keeping as careful track of how you're handling the errors
+
+1691878778
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Yeah it's unfortunate but I'll rather work around that then use the other workarounds, I feel.
+
+1691878813
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I can have a result.orPanic() function that gives me the result, or panics. I can even format the error into the panic message if `format` exists on the error type.
+
+1691878826
+torque!~tachyon@user/torque
+yeah I mean ultimately take the approach that makes sense to you and see whether or not you like it
+
+1691879194
+torque!~tachyon@user/torque
+I am somewhat curious how hare implements its error codegen since it allows arbitrary types as errors, but its error system seems otherwise quite similar to zig's (though I much prefer `try` and `catch` to `!` and `?`)
+
+1691879219
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Alternatively I could do `Result` and `ResultMany` for results that may return multiple different types of errors.
+
+1691879450
+torque!~tachyon@user/torque
+my own inclination would be to have a single function but I don't know if you have to handle the single vs multiple cases significantly differently
+
+1691881134
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Can anyone explain why this causes the formatter to fail?
+
+1691881138
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+if (i == self.which) return self.asUnchecked(T); else panic("...");
+
+1691881146
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+error: expected statement, found 'else'
+
+1691881161
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+If I remove the ; after asUnchecked(T) it works.
+
+1691881295
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+your options are `if (cond) ifTrue() else ifFalse();` or `if (cond) { ifTrue(); } else { ifFalse(); }`
+
+1691881332
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ah interesting. Funny how that's the first time I've run into that.
+
+1691881348
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+the former is an expression that produces one of two results, the latter is a statement
+
+1691881369
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+you can't have `;` in the middle of an expression, but you can have them inside blocks
+
+1691881373
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Yeah it makes sense if you think about the whole if statement as an expression.
+
+1691881396
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Where each branch is itself an expression (even if it's of type void).
+
+1691883318
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+andrewrk, pushed
+
+1691883432
+andrewrk!~andrewrk@mail.ziglang.org
+nice. the x86_64-linux CI is hooked up on that branch. I'll hook up the other ones after we make more progress locally
+
