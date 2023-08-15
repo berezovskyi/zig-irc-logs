@@ -1,0 +1,364 @@
+1691976460
+andrewrk!~andrewrk@mail.ziglang.org
+it is ridiculous how much effort it takes to 0-pad a number using std.fmt.format
+
+1691976481
+andrewrk!~andrewrk@mail.ziglang.org
+just tried "{:02}" while staring directly at the docs and getting unexpected output
+
+1691976711
+andrewrk!~andrewrk@mail.ziglang.org
+ok this is just completely broken
+
+1691976724
+andrewrk!~andrewrk@mail.ziglang.org
+print("{d:02}\n", .{6}) // prints " 6"
+
+1691976744
+rockorager!d72cfa7d05@2604:bf00:561:2000::3ff
+came for the help, stay for andrewrk's hatred of std.fmt.format syntax
+
+1691976790
+andrewrk!~andrewrk@mail.ziglang.org
+std.fmt.format needs to get thrown into the garbage can and we need to start over
+
+1691976908
+andrewrk!~andrewrk@mail.ziglang.org
+"Only exception is the fill parameter. If fill is required, one has to specify alignment as well, as otherwise the digits after : is interpreted as width, not fill." this API was designed by a batman villain
+
+1691976972
+cnx!~cnx@tem.loang.net
+why stop there and not making the format string turing complete
+
+1691977129
+GreaseMonkey!greaser@user/greasemonkey
+the easiest way to do that is to replace the format string with a list of functions
+
+1691977165
+rockorager!d72cfa7d05@2604:bf00:561:2000::3ff
+std.fmt.leftpad?
+
+1691977231
+GreaseMonkey!greaser@user/greasemonkey
+actually wonder how much of Python's f-string syntax is worth stealing
+
+1691977315
+cnx!~cnx@tem.loang.net
+it's not possible as a library, is it
+
+1691977325
+GreaseMonkey!greaser@user/greasemonkey
+try writer.print("Hello {planet:s}, you have {messages:d} new message(s)", .{.planet = "world", .messages = 3});
+
+1691977365
+cnx!~cnx@tem.loang.net
+that's python str.format, not f-string
+
+1691977367
+GreaseMonkey!greaser@user/greasemonkey
+of course you'd have to opt for some kind of comptime eval (yecch) if you wanted to actually make it as flexible as Python f-strings
+
+1691977376
+GreaseMonkey!greaser@user/greasemonkey
+huh, good point
+
+1691977428
+GreaseMonkey!greaser@user/greasemonkey
+i also believe it might be % rather than str.format... Python took several attempts at getting formatting "right, no really this time"
+
+1691977446
+GreaseMonkey!greaser@user/greasemonkey
+oh wait, % is %(planet)s not {planet:s}
+
+1691977494
+cnx!~cnx@tem.loang.net
+fyi str.format takes kwargs as well
+
+1691977516
+GreaseMonkey!greaser@user/greasemonkey
+cool, i'm mostly used to the % formatter partly out of old habits but also the logging module uses it
+
+1691977520
+cnx!~cnx@tem.loang.net
+but the point of f-string is interpolation like in sh or perl
+
+1691977579
+GreaseMonkey!greaser@user/greasemonkey
+yeah
+
+1691977649
+cnx!~cnx@tem.loang.net
+not sure how these two implements it but raku (perl 6) basically just make string formatting a separate interleaving language lol
+
+1691978347
+torque!~tachyon@user/torque
+the f-string syntax is basically identical to str.format in python except you pass literal variable names into the format blocks rather than referencing indices in an external object
+
+1691978415
+torque!~tachyon@user/torque
+all of the exciting bits (alignment etc) are pretty much the same
+
+1691978453
+torque!~tachyon@user/torque
+anyway uhhh I think that std.fmt isn't entirely evil but perhaps some common use cases like 0 padding should be made more straightforward to accomplish
+
+1691981847
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Why not use printf format strings? These work fine AFAIK
+
+1691981886
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+printf(1) I mean
+
+1691988034
+jeang3nie!~jeang3nie@cpe-65-185-175-181.neo.res.rr.com
+Just submitted a patch to update the FreeBSD port of Zig to 0.11.0.
+
+1691988040
+jeang3nie!~jeang3nie@cpe-65-185-175-181.neo.res.rr.com
+Got tired of waiting.
+
+1691988630
+cnx!~cnx@tem.loang.net
+tsujp, probably because sometimes it's clearer to have named argument instead of positional, and for the same reason i'm wondering why we can't just have format("{foo}", .{ .foo = .{ .value = "bar", .fill = '0', .width = 2 } }) possible
+
+1691988653
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Can you allocate say 512 MiB on the stack rather than the heap in Zig? I'm less familiar with stack allocators since AFAIK there are usually limits the OS imposes?
+
+1691988759
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+cnx: I think that syntax is incredibly ugly and bloated, look at how long it is for something as simple as that. Perhaps shortform (single character) _variants_ e.g. you can use .w = 2 or .width = 2 but also I don't see why you couldn't use either with a template as you do here
+
+1691989091
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+If a Zig program does a singl say 512 MiB heap allocation at the start of main() it can still be OOM killed in the future right? If so, what's the paradigm for avoiding (read: making it impossible) to be OOM killed? Is it to only use stack-allocated memory?
+
+1691989308
+cnx!~cnx@tem.loang.net
+depending on the system but it seems linux has /proc/$pid/oom_score_adj, but unless it's for research shouldn't the solution be not to trigger OOM in the first place?
+
+1691989411
+cnx!~cnx@tem.loang.net
+re format, I mentioned it to be an optional (possible) format, because {[argument][specifier]:[fill][alignment][width].[precision]} is not immediately obvious to either read or write when it gets more complex (example is not the most convincing one since yes, it's bloated and I'm lazy to type more)
+
+1691991469
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+What am I to make of this error? error: expected type 'result.ResultImpl(.{ void, wasmtime.error.Error })', found 'result.ResultImpl(.{ void, wasmtime.error.Error })'
+
+1691992534
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Might've been caused by other errors, looking into it now.
+
+1691992553
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I guess I can't std.mem.sort a []T?
+
+1691993077
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It's a bit annoying that type parameters need to be marked comptime for generic functions when the function is run at compile time.
+
+1691993594
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I wonder if this error could just be skipped if the function is run at compile time and things just work.
+
+1691993629
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I mean isn't every parameter implicitly comptime during comptime?
+
+1691994056
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Already reported: https://github.com/ziglang/zig/issues/16454
+
+1691994490
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Okay back to the "expected type Same, found Same" error, now.
+
+1691994512
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Maybe you can't use slices for generic type definitions?
+
+1691994562
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+https://gist.github.com/copygirl/47e1416480d2ac28707ffc9e5c675ea1#file-result-zig-L20-L27
+
+1691994579
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Function return type and the "Res" shorthand are apparently not compatible :/
+
+1691996084
+torque!~tachyon@user/torque
+tsujp, https://lwn.net/Articles/317814/ seems to indicate that you can set this via /proc on linux
+
+1691996124
+torque!~tachyon@user/torque
+do other OS's even have an OOM killer?
+
+1692006620
+ifreund!2940d10f8b@user/ifreund
+tsujp: without tweaking system configuration, you can't allocate 512 MiB on the stack in any language
+
+1692006654
+ifreund!2940d10f8b@user/ifreund
+linux has an 8 MiB process stack size by default for example, and other OSes fall in a similar ballpark
+
+1692006734
+ifreund!2940d10f8b@user/ifreund
+also, the idea that stack memory is fundamentally different from heap memory on the OS level is false
+
+1692006841
+ifreund!2940d10f8b@user/ifreund
+copygirl: that's likely due to accepting a slice in Result, changing that to a by-value array should fix it
+
+1692006899
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+How come?
+
+1692006932
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Also, by value? Meaning known size?
+
+1692007120
+ifreund!2940d10f8b@user/ifreund
+copygirl: you can do foo(comptime n: usize, comptime array: [n]u32) for example
+
+1692007148
+ifreund!2940d10f8b@user/ifreund
+as for the why, I'll try to find the issue but it's a quirk/failure of how comptime function memoization works
+
+1692007174
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/issues/7948
+
+1692007238
+ifreund!2940d10f8b@user/ifreund
+you can make the workaround a bit more ergonomic with an anytype wrapper as described here: https://github.com/ziglang/zig/issues/7948#issuecomment-844647462
+
+1692007262
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Okay I think that's doable?
+
+1692007288
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Result is a comptime function that does some work which eventually calls ResultImpl which returns the actual unique type.
+
+1692007306
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So I do know the length.
+
+1692007347
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Yeah that's basically what I'm already doing except at the moment I still pass a slice to ResultImpl. Just gotta replace that.
+
+1692007518
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Thank you
+
+1692007658
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1692014394
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Whelp, my very cursed Result / Union generic types seem to work: https://gist.github.com/copygirl/47e1416480d2ac28707ffc9e5c675ea1
+
+1692014443
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+This would be prettier if I could generate proper tagged union type at compile time and add some member functions to it. (From what I understand that might not be possible with @Type?)
+
+1692017789
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: i see, why do some make the distinction of "allocator free" programs then? If a program has a stack it needs _some_ allocated memory and if the fundamental difference between the stack and the heap is non-existant then why the distinction (by said people)?
+
+1692017999
+daurnimator!~daurnimat@vultr.daurnimator.com
+tsujp: because you get 8MB of stack "for free"
+
+1692018180
+daurnimator!~daurnimat@vultr.daurnimator.com
+though "for free" is really skimming over the details of page faulting causing stack allocations behind the scenes
+
+1692019043
+ifreund!2940d10f8b@user/ifreund
+tsujp: I think "dynamic allocation free" is the real distinction.
+
+1692019066
+ifreund!2940d10f8b@user/ifreund
+having a fixed upper bound on memory usage is quite a valuable property for robustness
+
+1692019161
+ifreund!2940d10f8b@user/ifreund
+see also https://github.com/ziglang/zig/issues/1006
+
+1692019240
+ifreund!2940d10f8b@user/ifreund
+dynamic memory allocation can also be quite slow depending on the allocator used, and reducing unnecessary dynamic allocations/copies is a common way to improve performance
+
+1692035633
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+So now that I proved I could write a Result type, I think I will probably rewrite my code to use errors instead.
+
+1692036693
+safinaskar!~quassel@212.73.77.98
+i'm attempting to report bug to https://github.com/ziglang/zig/issues
+
+1692036705
+safinaskar!~quassel@212.73.77.98
+i get message "Your ability to open an issue in this repository is currently blocked"
+
+1692036716
+safinaskar!~quassel@212.73.77.98
+does this mean that project blocked specially *me*?
+
+1692036730
+safinaskar!~quassel@212.73.77.98
+or simply bug creating is disallowed for all outside people?
+
+1692038644
+andrewrk!~andrewrk@mail.ziglang.org
+safinaskar, what is your github username?
+
+1692038783
+andrewrk!~andrewrk@mail.ziglang.org
+I don't see a mod note next to your ban. Do you promise to be respectful, constructive, and have a positive attitude on the issue tracker?
+
+1692038995
+Earnestly!~earnest@user/earnestly
+Is it normal to lack mod notes?
+
+1692039029
+andrewrk!~andrewrk@mail.ziglang.org
+it's a new github feature as of last month
+
+1692039057
+Earnestly!~earnest@user/earnestly
+Ah
+
+1692039067
+Earnestly!~earnest@user/earnestly
+Then it probably is going to be normal for awhile
+
+1692039249
+safinaskar!~quassel@212.73.77.98
+andrewrk: @safinaskar
+
+1692039258
+safinaskar!~quassel@212.73.77.98
+andrewrk: i promise!
+
+1692039298
+andrewrk!~andrewrk@mail.ziglang.org
+safinaskar, alright you're in :)
+
+1692039306
+safinaskar!~quassel@212.73.77.98
+andrewrk: thanks!!!
+
+1692057580
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is re-slicing always safety checking? Or is that a Debug/ReleaseSafe feature? Is there a function to always safety check? (if applicable)
+
+1692057592
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+safety checked*
+
