@@ -1,0 +1,248 @@
+1692154397
+torque!~tachyon@user/torque
+hmm, how can I cast a `[*]?[*]const u8` (i.e. a C `const char **`) to `[]?[:0]const u8` without allocating? I have a count for the number of list members I can use to get the outer slice `[]?[*]const u8` from `value[0..count]` but I need to run `std.mem.spanTo` on the inner members
+
+1692154632
+torque!~tachyon@user/torque
+I guess it's not possible to do without allocating since the slice is a fat pointer and therefore bigger than a normal pointer
+
+1692162537
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I hear Zig does not currently support computed gotos? Is this correct and what's the status on it? (I ask in-case there's a slim chance I can help)
+
+1692162644
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/issues/8220
+
+1692162853
+torque!~tachyon@user/torque
+probably worth checking if that proposal is still accepted since it hasn't been looked at in a couple of years
+
+1692162862
+torque!~tachyon@user/torque
+at least not in-depth
+
+1692166727
+bgiannan!4529@2a01:4f8:141:1272::2
+somethings weirds is happening recently: when building my projects, zig will shout `FileNotFound` at me. Deleting zig-cache and zig-out solves the issue. Also today I got `FileTooBig`, and removing zig-cache/zig-out solved it also
+
+1692179784
+ZevolveMe!~ZevolveMe@87.246.163.177
+Hey everyone! I'm trying to use the new build.zig.zon with a couple of libraries available on github, but no releases. I tried to have it fetch the `master.zip` but it doesn't seem to understand that. What are some typical workflows currently with github libraries and the package system?
+
+1692181901
+ZevolveMe!~ZevolveMe@87.246.163.177
+I was logged out for some reason and logs aren't working. In case someone answered, I'd appreciate a re-post. :(
+
+1692190876
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+Hi all! I'm trying to fix a zig build, for fun. But I cannot seem to find documentation on this have(...) statement at https://github.com/michaelshmitty/nasm/blob/master/build.zig#L32
+
+1692190926
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+I've been looking all over the documentation, but I cannot find it. 'have' is also a hard term to find in the zig source code for obvious reasons.
+
+1692190962
+ifreund!2940d10f8b@user/ifreund
+michaelshmitty: have is a function defined at the bottom of that file
+
+1692190974
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+omg...
+
+1692190983
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+*facepalm* Thanks!
+
+1692191032
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1692191398
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+ifreund: about that line and function combo, out of curiosity why does this logic work with via a function and not if you put the if statement inline, like e.g.: .ABORT_ON_PANIC = if (optimize == .Debug) 1 else null ? I then get this zig build error: error: value with comptime-only type '?comptime_int' depends on runtime control flow
+
+1692191478
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+Like, I understand what it's saying, I'm just curious as to what Zig considers different here? Does it matter that the logic is wrapped in a function vs. in my attempt not in a function, but inline?
+
+1692191487
+daurnimator!~daurnimat@vultr.daurnimator.com
+michaelshmitty: need to cast to ?c_int
+
+1692191539
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+Right, so it has nothing to do with the fact that it's wrapped in a function, I just inlined it incorrectly (missing the cast)?
+
+1692191544
+daurnimator!~daurnimat@vultr.daurnimator.com
+e.g `.ABORT_ON_PANIC = @as(?c_int, if (optimize == .Debug) 1 else null)`
+
+1692191555
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+Awesome, thanks!
+
+1692191571
+daurnimator!~daurnimat@vultr.daurnimator.com
+michaelshmitty: yes. the function implicitly does a cast to the declared return value type
+
+1692191589
+michaelshmitty!~Michael_S@d54C446AC.access.telenet.be
+Cool, I see it now. Thanks!
+
+1692209904
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+How would I go about releasing a Zig library?
+
+1692210067
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Not in any public repository mind you. I just want to release the source for others to use them in their projects. Gyro seems overkill. Not sure about the folder structure either. Do modules have their own build file? The library will need to link to libc and a system library.
+
+1692210354
+gpanders!be60a9b05a@user/gpanders
+copygirl: if you host it on a code forge like GitHub, sourcehut, Codeberg, etc. there will be a link to download the source of your library. People that want to use it can put that link in their build.zig.zon file (which Zig uses to manage packages)
+
+1692210391
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh, another different build system?
+
+1692210405
+gpanders!be60a9b05a@user/gpanders
+no it's still Zig's build system
+
+1692210407
+gpanders!be60a9b05a@user/gpanders
+via build.zig
+
+1692210436
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ooh .zon is like Zig's JSON.
+
+1692210442
+gpanders!be60a9b05a@user/gpanders
+yea, Zig Object Notation
+
+1692210447
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Where can I read up on this? I don't remember seeing it in the documentation?
+
+1692210451
+gpanders!be60a9b05a@user/gpanders
+it's brand new, just included in the new 0.11 release
+
+1692210472
+gpanders!be60a9b05a@user/gpanders
+the release notes are the only "official" documentation that I know of https://ziglang.org/download/0.11.0/release-notes.html#Package-Management
+
+1692210492
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'll need to look into whether I'm up to date. When I tried getting Zig installed on my laptop it looked like I needed a version of LLVM that I couldn't manage to set up on Arch.
+
+1692210523
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Sticking with 0.11 for now seems like a good idea now that that's officially released.
+
+1692210640
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Hmm "hash" seems very generic.
+
+1692210789
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Thanks for the info <3
+
+1692211916
+michaelshmitty!~Michael_S@user/michaelshmitty
+copygirl: probably because using hash as a generic key leaves the hashing algorithm used open for change, future proof.
+
+1692211958
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Making packages incompatible if they use a previous hash function..?
+
+1692212067
+michaelshmitty!~Michael_S@user/michaelshmitty
+I think most modern hashing algorithms have the hash used as part of the hash. It's embedded in the value iirc.
+
+1692212118
+michaelshmitty!~Michael_S@user/michaelshmitty
+I may be completely off on this though :)
+
+1692217774
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Alright so if I use a hash of another, pre-existing package that happens to already exist on my system, it will just use that, not even checking of the name of the package matches in any way?
+
+1692217803
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I was confused why I got some strange build errors until I noticed it pulled a different package, because I happened to have used the hash from an example I found online.
+
+1692217987
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The error seems to have expected and found mixed around
+
+1692218063
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+"hash mismatch" error, that is.
+
+1692218791
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Actually, this might be intentional, though the working is a bit unclear.
+
+1692218843
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+"expected" is not the value that is expected to be found in the build.zig.zon, but rather what you did provide in there.
+
+1692218872
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+"found" is not the value that was found in the build.zig.zon, but rather the one that was computed, the "actual" value.
+
+1692218899
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I realize just before hitting the "create pull request" button. Hah.
+
+1692220287
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Well, there: https://github.com/ziglang/zig/issues/15191#issuecomment-1681275796
+
+1692221346
+blueagain!~blueagain@user/blueagain
+fwiw, the semantics of 'expected' in testing is commonly known as "the user expected the value to be"
+
+1692221368
+blueagain!~blueagain@user/blueagain
+however I agree with 'actual' instead of 'found', that's more common in my experience
+
+1692222195
+andrewrk!~andrewrk@mail.ziglang.org
+"actual" is ambiguous. "found" is not
+
+1692227350
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+andrewrk: Out of curiosity, how is "found" not ambiguous?
+
+1692227404
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The hash is not found, it's computed. Maybe this is a language barrier?
+
+1692227515
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Maybe in the sense that it's "we've found this value to be xyz but expected it to be 123" but in the abbreviated form I honestly had not thought of that as a possibility.
+
+1692228240
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I've gotten a bunch of help from this IRC channel so I might as well share what I've created: https://git.mcft.net/copygirl/wasmslime
+
+1692229983
+andrewrk!~andrewrk@mail.ziglang.org
+in the case of a compile error, expected/found is unambiguous because "expected" is the correct type and "found" is the the type provided by the source code
+
+1692230039
+andrewrk!~andrewrk@mail.ziglang.org
+in the case of package hash, I see the problem now that I think about it more. "expected" could mean expected based on the .zon file, or it could mean expected based on the hashed files on disk. "found" could mean found in the .zon file, or it could mean found by hashing the files on disk
+
+1692230100
+andrewrk!~andrewrk@mail.ziglang.org
+"actual" suffers from the same ambiguity problems as "expected" and "found"
+
+1692230133
+andrewrk!~andrewrk@mail.ziglang.org
+thanks for sharing wasmslime :)
+
