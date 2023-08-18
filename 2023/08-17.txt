@@ -1,0 +1,148 @@
+1692257635
+ZevolveMe!~ZevolveMe@87.110.176.182
+Hey guys! I'm getting a `no dependency named 'zlib' in 'C:\Projects\zig-fmp4\deps\websocket.zig.client\build.zig.zon'. All packages used in build.zig must be declared in this file.` error, where the `websocket.zig.client` is a dependency, which in turn has a dependency on `zlib`, which is clearly declared in the `build.zig.zon` file, so I'm not
+
+1692257635
+ZevolveMe!~ZevolveMe@87.110.176.182
+sure what the real issue is/why it can't find it.
+
+1692257637
+ZevolveMe!~ZevolveMe@87.110.176.182
+Any pointers?
+
+1692257693
+ZevolveMe!~ZevolveMe@87.110.176.182
+I'm using the release version of 11.0.0
+
+1692259811
+squeek502!~squeek502@user/squeek502
+ZevolveMe, sounds similar to the problem here: https://ziggit.dev/t/transitive-dependency-error/1392/3
+
+1692259825
+squeek502!~squeek502@user/squeek502
+are you declaring zlib in `dependencies` when you create your module?
+
+1692263613
+ZevolveMe!~ZevolveMe@87.110.176.182
+squeek502 Yes, it's in there, but now I'm trying to separately build the dependency and there are problems internal to zig-zlib in the build scripts it seems, something about `LazyPath`, but looking into it
+
+1692263636
+ZevolveMe!~ZevolveMe@87.110.176.182
+(I was hoping that building a project will also fetch and build all sub-dependencies and sub-sub-dependencies etc.
+
+1692263667
+ZevolveMe!~ZevolveMe@87.110.176.182
+Looking at your link, looks very related
+
+1692264829
+squeek502!~squeek502@user/squeek502
+ZevolveMe, it should fetch and build all sub and sub-sub dependencies afaik
+
+1692264935
+ZevolveMe!~ZevolveMe@87.110.176.182
+When launching the build process from the root project, it had the first error of `zlib` not found in the `build.zon.zig` dependencies, but launching the build from the dependency sort of worked, but seems I need to convert some `*const [111:0]u8` to `LazyPath` now.
+
+1692264992
+ZevolveMe!~ZevolveMe@87.110.176.182
+A -> B -> C : When building A, it wasn't fetching C for B, and complaining that B's `build.zon.zig` does not have `zlib` in dependencies. Building B fetches properly and now have some build issues with C itself.
+
+1692265302
+squeek502!~squeek502@user/squeek502
+ZevolveMe, are the build.zig's publicly available?
+
+1692265430
+ZevolveMe!~ZevolveMe@87.110.176.182
+ squeek502 Here is the "B" library: https://github.com/ianic/websocket.zig/blob/main/build.zig which depends on "C": https://github.com/ianic/zig-zlib/blob/main/build.zig
+
+1692265542
+ZevolveMe!~ZevolveMe@87.110.176.182
+For "A" library, currently it's: https://pastebin.mozilla.org/0J9N2JuP but it's my own sh*tcode because I'm just learning and understand how things are pieced together
+
+1692265681
+ZevolveMe!~ZevolveMe@87.110.176.182
+Dropping offline, brb in ~30
+
+1692267916
+cbilz!~cbilz@gateway/tor-sasl/cbilz
+are there any workarounds to https://github.com/ziglang/zig/issues/16652 ? I'm trying to compile GMP to wasm32-freestanding-musl, but malloc and friends always end up as imports
+
+1692267986
+ZevolveMe!~ZevolveMe@87.110.176.182
+squeek502 Any pointers if you got a chance to look over?
+
+1692268036
+ZevolveMe!~ZevolveMe@87.110.176.182
+I'm also trying to evaluate 2 websocket implementations, but it seems they have the same name, but one can be a client, the other a server.
+
+1692270673
+ZevolveMe!~ZevolveMe@87.110.176.182
+When using `LazyPath.relative()` that's relative to the `build.zig` of the library being built, not relative to the root project (from which this library may be being built, as a dependency) right?
+
+1692272856
+ZevolveMe!~ZevolveMe@87.110.176.182
+Is there a plan to support chat logs for this chat?
+
+1692286155
+freshcoffee3!~fresh@user/freshcoffee
+posix, ima give you a hug because you got issues. There is no API to undestructively get the current process umask. You have to set it to some value to get the current value.
+
+1692286500
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+How do I go from package manager pulling in source of a package to using a local one instead, applying its build.zig and such?
+
+1692286570
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I see there's talk about allowing a relative path to be used in the build.zig.zon but I feel like there should be a way to just be like "add this folder as the 'so-and-so' package", right?
+
+1692287739
+gpanders!be60a9b05a@user/gpanders
+copygirl: in build.zig you can use std.Build.anonymousDependency
+
+1692287748
+gpanders!be60a9b05a@user/gpanders
+quoting from release notes: "If you wish to vendor a dependency rather than fetch it from the Internet, you can use the std.Build.anonymousDependency function, which takes as arguments a path to the package's build root, and an @import of its build script."
+
+1692287782
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+What would this look like?
+
+1692287809
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ah nevermind, the section shows it.
+
+1692287823
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+https://ziglang.org/download/0.11.0/release-notes.html#Package-Management (a little further down)
+
+1692291500
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh interesting.
+
+1692291541
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+If you print to stderr (in a test?), then an error will actually be described.
+
+1692296982
+tjpcc!~tjpcc@ctrl-c.club
+I have a C shared library I'm trying to link to, and I can now get it compiled but as soon as I call into any of the shared library's functions it's segfaulting at runtime
+
+1692297016
+tjpcc!~tjpcc@ctrl-c.club
+I got this working on macos and everything is generally the same on linux (I have a .dylib for macos and a .so for linux), but I can't figure out this segfault now
+
+1692297087
+tjpcc!~tjpcc@ctrl-c.club
+`ldd` shows the paths of all the dynamically linked shared objects, and I don't really know what to do next to debug
+
+1692297142
+tjpcc!~tjpcc@ctrl-c.club
+I'm using exe.addIncludePath, addRPath, and addObjectFile
+
+1692297146
+tjpcc!~tjpcc@ctrl-c.club
+in the build.zig
+
+1692310923
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Why is the mask from `@shuffle` required to be comptime?
+
