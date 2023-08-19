@@ -1,0 +1,80 @@
+1692330821
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+`The third argument is a shuffle mask vector constant whose element type is i32. The mask vector elements must be constant integers or poison values.` basically, it has to be comptime in order to lower it to machine code
+
+1692365436
+chmod222!~chmod222@user/chmod222
+Currently attempting to build Zig 0.11 on Haiku and I can't wait until LLVM is made a second class citizen in Zigc
+
+1692365457
+chmod222!~chmod222@user/chmod222
+My VM host is not that strong and it has been compiling LLVM 16 since yesterday
+
+1692367128
+ifreund!2940d10f8b@user/ifreund
+ 
+
+1692387367
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Does Zig/LLVM have optimizations where a for loop might expand into vector operations? I wrote a base16 encoder using vectors then noticed `-OReleaseFast` still has vector operations when I use a naive implementation: https://zig.godbolt.org/z/5bvqPT5aj
+
+1692387697
+ifreund!2940d10f8b@user/ifreund
+gcoakes: yes, llvm can do autovectorization of loops
+
+1692387780
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+Cool. It doesn't look as compact as I would have expected, so maybe there's still benefit to hand rolling the vector operations. I'm not going to focus on that now though.
+
+1692387824
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+It certainly produces a *lot* of code for my simple while loop. I guess that's what `-OReleaseSmall` is for.
+
+1692388017
+ifreund!2940d10f8b@user/ifreund
+indeed :)
+
+1692390213
+gpanders!be60a9b05a@user/gpanders
+gcoakes: your example interested me, I was surprised to see so much code generated for such a small loop. But I found another interesting thing too. I rewrote your loop to use the new range based syntax and found that using '0..' vs '0..len' generates different code
+
+1692390217
+gpanders!be60a9b05a@user/gpanders
+0.. https://zig.godbolt.org/z/45hhGhx45
+
+1692390228
+gpanders!be60a9b05a@user/gpanders
+0..len https://zig.godbolt.org/z/5fd9Y43T3
+
+1692390238
+gpanders!be60a9b05a@user/gpanders
+I'm not sure why, I thought these were supposed to be the same
+
+1692390343
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+gpanders: It's also about have as many instructions with the unbounded range. That's interesting.
+
+1692390350
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+*half
+
+1692390353
+gpanders!be60a9b05a@user/gpanders
+yea
+
+1692390560
+gcoakes!~gcoakes@r74-192-31-108.bcstcmta01.clsttx.tl.dh.suddenlink.net
+I had used the while loop syntax because it let me gracefully degrade into the naive implementation when I uncommented my vector code.
+
+1692391080
+gpanders!be60a9b05a@user/gpanders
+it looks like this might just be a weird godbolt thing, when I compile it with 0.11 on my local machine both versions generate the same ASM
+
+1692391107
+gpanders!be60a9b05a@user/gpanders
+the version on godbolt is "zig trunk", so could be different compiler versions running on different load balanced servers or something
+
+1692393163
+jcmoyer!~jcmoyer@user/jcmoyer
+probably different servers + zig defaulting to -mcpu=native
+
