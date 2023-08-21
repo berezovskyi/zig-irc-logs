@@ -1,0 +1,136 @@
+1692501374
+jeang3nie!~jeang3nie@cpe-65-25-13-9.neo.res.rr.com
+Getting a panic trying to build zls-0.11.0 on FreeBSD
+
+1692501378
+jeang3nie!~jeang3nie@cpe-65-25-13-9.neo.res.rr.com
+https://pastebin.com/T97rnKmZ
+
+1692513934
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+voroskoi: I do it in three steps: Build.dependency (anonymousDependency if not from .zon), addModule, then linkLibrary.
+
+1692513989
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It does apply what's needed from the dependency's build.zig. For example I don't have to specify linkLibC in my own project, though my library needs it.
+
+1692514259
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+https://ziglang.org/download/0.11.0/release-notes.html#Package-Management
+
+1692514293
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+If you scroll down a bit here you can see an example.
+
+1692514322
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'll be perfectly honest, I'm not entirely sure what addModule and linkLibrary does, when you just need one and not the other.
+
+1692514346
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'm gonna assume addModule will made it possible to @import the things you exported from zig.
+
+1692514370
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+will make*
+
+1692514387
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Well, "exported", I suppose it's simply the stuff you marked as pub.
+
+1692520429
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+copygirl: I have tried exactly what You have done, but did not seem to work. I must have made a mistake somewhere. At least I know it should work, so I will keep trying. Thanks!
+
+1692523834
+chmod222!~chmod@user/chmod222
+copygirl: addModule() adds a new module to some other artifact that can be @import()ed and addLibrary adds a new build artifacts for an actual library, like a dynamic .so/.dll or static .a/.lib output
+
+1692523871
+chmod222!~chmod@user/chmod222
+So if you are working purely within Zig and not to produce a library that will be used from C, C++ or other languages with a C ABI, you rarely need addLibrary
+
+1692523951
+chmod222!~chmod@user/chmod222
+"export fn someFunc" just means that the name "someFunc" shows up verbatim in the libraries' symbol list for use from other languages, "pub fn someFunc" just makes it visible to other Zig modules that import it somehow
+
+1692524066
+chmod222!~chmod@user/chmod222
+"pub export fn ..." is also a thing
+
+1692530684
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+chmod222: Thanks, that's what I guessed, but I didn't want to claim that as fact. I come from C# to a large part, so I only recently learned about the difference between static and dynamic linking, even.
+
+1692540802
+mooff!mooff@cyberspace.baby
+dang it, that was accidental
+
+1692540809
+mooff!mooff@cyberspace.baby
+i apologise for that, lol
+
+1692557794
+grayhatter!~grayhatte@user/grayhatter
+is there a reason arraylist actually makes it's allocaton > 4 calls deep? it'd be really nice to have a clue about the source of the memory leak in a file outside of std/lib
+
+1692558481
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, you can configure how many stack frames are collected for memory leaks. but I agree it would be nice if the array list function call graph was a bit less nested
+
+1692558526
+andrewrk!~andrewrk@mail.ziglang.org
+I mean yeah the reason is just writing normal code that doesn't repeat itself because it uses functions properly
+
+1692558957
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: yeah I thought ArrayList's stack was funky, but when I looked at it there wasn't anything obvious to fix. It's not wrong, just inconvient given the default stack trace frame count in GPA
+
+1692559056
+andrewrk!~andrewrk@mail.ziglang.org
+maybe it's worth bumping the default a little
+
+1692559070
+andrewrk!~andrewrk@mail.ziglang.org
+if you're constructing the GPA instance yourself, you can just set the number
+
+1692559535
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: https://github.com/ziglang/zig/pull/16896 PR created, from 8 and 4 -> 10 and 6. I've changed my GPA config as well as my /usr/lib/zig/std... so this is just if you think it's a fine global change. Otherwise feel free to close :)
+
+1692559562
+andrewrk!~andrewrk@mail.ziglang.org
+thanks!
+
+1692566075
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is it possible to define a type as having the same memory layout as another (essentially a type alias, for example of u64) but also define member functions on it? 
+
+1692566993
+ifreund!2940d10f8b@user/ifreund
+copygirl: for u64 specifically you could use a non-exhaustive enum
+
+1692567033
+ifreund!2940d10f8b@user/ifreund
+otherwise I'd probably go with an extern struct with a single field, depends on the context though
+
+1692567087
+ifreund!2940d10f8b@user/ifreund
+not something I've really had a use for outside of enums for DoD stuff tbh
+
+1692568052
+andrewrk!~andrewrk@mail.ziglang.org
+I second the non-exhaustive enum suggestion. we've been doing that in the zig compiler and it's been working out nicely
+
+1692568443
+ifreund!2940d10f8b@user/ifreund
+actually, I lied. I do use the nested extern stuct for binding a C doubly linked list: https://github.com/ifreund/zig-wayland/blob/7f528883e057b282b1cb51db2899f9183b2e5a3b/src/wayland_server_core.zig#L430
+
+1692568467
+ifreund!2940d10f8b@user/ifreund
+having different types for the head of the list and the links gives a bit more type safety over the C version
+
+1692571939
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly, heads up - I'm going to rebase the llvm17 branch because, correct me if I'm wrong, the zig1.wasm update commit from llvm17 branch should be dropped now that master branch just gained an update
+
