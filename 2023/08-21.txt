@@ -1,0 +1,188 @@
+1692577808
+terminalpusher!~terminalp@2a01:586:25af:1:f6f3:fddb:5b30:427c
+so how do I make std.Thread not use pthreads even if I link libc?
+
+1692577891
+terminalpusher!~terminalp@2a01:586:25af:1:f6f3:fddb:5b30:427c
+...and other places in the std where it does things the C way just because I'm linking libc
+
+1692577973
+terminalpusher!~terminalp@2a01:586:25af:1:f6f3:fddb:5b30:427c
+the only reason I linked libc in my program is for glfw/opengl. not because I want to use pthreads or alternative C-like implementations. Shouldn't there be a way to opt out of std changing its implementations based on whether I have libc linked?
+
+1692582636
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+andrewrk: correct
+
+1692598019
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+ifreund: Hmm alright. That'll work for me, thanks.
+
+1692603195
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+When I use @cImport, I don't get auto completion, right? Or am I doing something wrong?
+
+1692603249
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'm not sure yet because I haven't been able to try it out yet, but is there a way to access `#define`s?
+
+1692610032
+Amun-Ra!~amun-ra@retro.rocks
+rather not
+
+1692630957
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is there an easy function to get just the identifier name of a type?
+
+1692631018
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Like `const Position = struct {...}` would just give me "Position"?
+
+1692631102
+gpanders!be60a9b05a@user/gpanders
+copygirl: @typeName
+
+1692631238
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+That gives me the fully qualified name. I just need the last bit. I guess it doesn't come up enough to warrant an std function?
+
+1692631412
+gpanders!be60a9b05a@user/gpanders
+oh, I don't know of a function that does that. If it *did* exist, my guess is it'd be somewhere in std.meta. But writing a DIY version shouldn't be too hard if it's not in there
+
+1692631628
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'll take a look.
+
+1692633595
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Also apparently if I build successfully once, I do get auto completion for C types and such.
+
+1692634101
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Zig complains about me not specifying all of the struct fields of an extern struct comin from C. How do I zero-init a struct?
+
+1692634238
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is there a way to do it with the struct initializer syntax or will I have to make the local a `var` so I can set the fields I want to be non-zero afterwards? 
+
+1692634355
+ifreund!2940d10f8b@user/ifreund
+copygirl: you can use std.mem.zeroInit()
+
+1692634388
+ifreund!2940d10f8b@user/ifreund
+see the test cases for example usage if the doc comment is unclear
+
+1692634876
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh nice!
+
+1692635157
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Now another question. Tuples coerce to arrays and arrays coerce to slices, so why can't I pass `.{ Position, Velocity }` to a function that accepts a `comptime []const type`?
+
+1692635389
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Wait I forgot about variable size arrays, maybe those work.
+
+1692635459
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+No, you do need to specify an array's size.
+
+1692635581
+gpanders!be60a9b05a@user/gpanders
+copygirl: try &.{ Position, Velocity }
+
+1692635654
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+That just takes an address to the anonymous tuple struct.
+
+1692635713
+gpanders!be60a9b05a@user/gpanders
+this works https://paste.sr.ht/~gpanders/d58669bc8a364369b97c04431528f0307c2308b7
+
+1692635717
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Ah wait, I had removed const for testing.
+
+1692635829
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'm a little baffled that tuple doesn't coerce to slice though.
+
+1692635867
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+And I seem to have run into a dependency loop in the C code.
+
+1692636124
+ifreund!2940d10f8b@user/ifreund
+copygirl: a slice is a pointer/reference type. A tuple is a value
+
+1692636148
+ifreund!2940d10f8b@user/ifreund
+(arrays are also values)
+
+1692636200
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh yeah I just checked. Array to slice coercion also uses &, sorry.
+
+1692636218
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1692636278
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Here's the "dependency loop": https://gist.github.com/copygirl/c6bad7b746d7aab5037a0136f5776cff
+
+1692636351
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I wonder if the indirectness is the cause of the issue. Because a struct should be able to contain a function pointer that references itself, right?
+
+1692636462
+ifreund!2940d10f8b@user/ifreund
+Yeah, I don't see why that code should be forbidden
+
+1692636484
+ifreund!2940d10f8b@user/ifreund
+feel free to open an issue, preferably with a minimal a reproducer as possible
+
+1692637152
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Okay so I could not reproduce it. But I fixed another error and the dependency loop one disappeared for now. Maybe it was a weird quirk, maybe it'll be back.
+
+1692642846
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Is there more information to find out about depdency loops? Like, which types are involved in the loop?
+
+1692644824
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Any way to get a function's name?
+
+1692646371
+ifreund!2940d10f8b@user/ifreund
+copygirl: @src() perhaps?
+
+1692646402
+ifreund!2940d10f8b@user/ifreund
+as for the first question, -freference-trace might help
+
+1692646634
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+ifreund: I'd need to get it from inside another function, which the function whose name I want is passed into.
+
+1692646641
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+On second thought I think I won't need it.
+
+1692646805
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Mhh actually it would be nice to have, but I can do without for now.
+
+1692646875
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It's strange that the information is not available, since functions to get exported as symbols, so it's gotta be available.
+
+1692648343
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+gotta be somewhere*, that is
+
