@@ -1,0 +1,300 @@
+1692682527
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Right, so I can't reproduce the dependecy loop error.
+
+1692682587
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I took the generated code, threw it into a file, along with some code that attempts to use the structs / function pointers it has a problem with, but here it compiles fine.
+
+1692685849
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Do I understand correctly that a nested / multidimension array A[X][Y] would be written as [Y][X]A in Zig?
+
+1692686852
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+ype
+
+1692686854
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+yep
+
+1692703672
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Two more questions.
+
+1692703707
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'm trying to build a library around Flecs https://github.com/SanderMertens/flecs
+
+1692703818
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It ships an amalgamated (?) .h and .c of all its code for ease of integrating it with other projects.
+
+1692703862
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+How do I go about building a package that can be used by another project?
+
+1692703915
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I tried addIncludePath + addCSourceFile, but it doesn't get picked up by the project that has my library as a dependency.
+
+1692703957
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+With error "C import failed" - "'flecs.h' file not found".
+
+1692704013
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh and I use @cImport with @cInclude.
+
+1692704129
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+(I'll wait with the second question.)
+
+1692704508
+dnkl!86c6ab4b71@user/dnkl
+I'm writing inline mips assembler. I get nops auto-inserted in all branch delay slots. Can I prevent that? I'd like to fill the delay slots myself.
+
+1692705160
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Oh, to add. It seems it currently works if I run tests in the library itself. Though I currently get dependency loop issues I'm trying to debug. Right now I'm wondering if it's because it's running tests, rather than executable. Hence why I'm trying to use the library from the project that's executable.
+
+1692705702
+ifreund!2940d10f8b@user/ifreund
+copygirl: you probably need an include path relative to the build.zig of your "executable project" rather than the build.zig of your flec bindings
+
+1692705774
+ifreund!2940d10f8b@user/ifreund
+dnkl: hmm, I'm pretty sure zig relies on llvm for that. I'm by no means an export on inline asm though
+
+1692705857
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Shouldn't the paths be relative to the build.zig that references the path?
+
+1692706149
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Other paths are relative to the package's build.zig.
+
+1692706180
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Do addIncludePath and addCSourceFile work differently?
+
+1692706745
+ifreund!2940d10f8b@user/ifreund
+copygirl: afaik the paths are passed directly to the compiler, which is run with the cwd of the root build.zig
+
+1692706777
+ifreund!2940d10f8b@user/ifreund
+you can do something like `fs.path.dirname(@src().file) orelse "."`
+
+1692707080
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+And I need to use .cwd_relative instead of .path?
+
+1692707178
+motiejus!~motiejus@88.223.107.21
+Hi folks. I am trying to upgrade my project to v0.11, and canno get `zig build test` to work as expected. What am I doing wrong here? https://gist.github.com/motiejus/842d618c1ea6fc2530a6727195992e3a
+
+1692707208
+motiejus!~motiejus@88.223.107.21
+(for the record, I did check river, zig-wroots and source of zig itself and cannot find anything obvious missing)
+
+1692707237
+motiejus!~motiejus@88.223.107.21
+specifically, I need https://gist.github.com/motiejus/842d618c1ea6fc2530a6727195992e3a#file-readme-txt-L10 to return non-zero and L9 to give some diagnostics.
+
+1692707470
+dnkl!86c6ab4b71@user/dnkl
+ifreund: thanks, almost guessed as much, but figured it was best to ask here first.
+
+1692707516
+daurnimator!~daurnimat@vultr.daurnimator.com
+dnkl: something in the back of my brain is telling me there's some special assembly directive to tell it what to do with the branch delay slots
+
+1692707557
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+motiejus: What do you expect it to do? You return an error from the test, and it says the test failed with that error. It seems to me like it does exactly what you asked for?
+
+1692707563
+dnkl!86c6ab4b71@user/dnkl
+daurnimator: I hope so too. it's my next research point :)
+
+1692707586
+motiejus!~motiejus@88.223.107.21
+copygirl: it did fail the test with `zig test <...>`, but not with `zig build test`
+
+1692707742
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+motiejus: Did you forget b.addRunArtifact(src_test) maybe?
+
+1692707832
+motiejus!~motiejus@88.223.107.21
+copygirl: Yes! Thanks! :)
+
+1692708090
+ifreund!2940d10f8b@user/ifreund
+copygirl: I don't think .cwd_relative does what you want
+
+1692708122
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+It says .path should not be an absolute path and to use .cwd_relative (with said absolute path).
+
+1692708138
+ifreund!2940d10f8b@user/ifreund
+you just need to provide a path relative to the build root (the directory of the root/parent build.zig) rather than relative to your child build.zig
+
+1692708170
+ifreund!2940d10f8b@user/ifreund
+are you using an absolute path? I thought it was a relative path to a vendored flecs.h
+
+1692708204
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The flecs.h is part of the library. In libs/flecs/, specifically.
+
+1692708227
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+In the executable that has a dependency on the library package, it doesn't find the header file.
+
+1692708284
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Would I have to make it the executable's build.zig's job to reference the library's header?
+
+1692708302
+ifreund!2940d10f8b@user/ifreund
+no, you could use @src() in the library's build.zig like i suggested
+
+1692708361
+ifreund!2940d10f8b@user/ifreund
+specifically, the path you want is (`fs.path.dirname(@src().file) orelse "."`) joined with libs/flecs/
+
+1692708375
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Then ... fs.path.dirname(@src().file) returns a relative path to the root build.zig?
+
+1692708431
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+To be fair I think I did try that.
+
+1692708592
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+lib.addIncludePath(.{ .path = thisDir() ++ "/libs/flecs" });
+
+1692708610
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+thisDir() is return comptime std.fs.path.dirname(@src().file) orelse ".";
+
+1692708621
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Found it from another project.
+
+1692708645
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+And I still get "'flecs.h' file not found".
+
+1692708687
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The line it fails at is this: pub usingnamespace @cImport({ @cInclude("flecs.h"); });
+
+1692708708
+ifreund!2940d10f8b@user/ifreund
+I think you're going to need to give more concrete details about the exact structure of your project then
+
+1692708899
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+One project has an anonymousDependency on another. Dunno if I got that across.
+
+1692710142
+ifreund!2940d10f8b@user/ifreund
+copygirl: I think I've misled you, if you're using the zig package manager then it will change the build root when building your dependency so there should be no need for the @src() trick
+
+1692710197
+ifreund!2940d10f8b@user/ifreund
+I'm used to the old hackier way things work and can't update my projects to use the package manager until it has proper support for integration with the system package manager
+
+1692710420
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Right, no worries.
+
+1692710746
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+The other question I had is how do I not repeat myself with linkLibC etc when building a library / executable and then building tests? Should I just wrap that up in a helper function or is there a recommended way to specify common .. build options?
+
+1692710970
+ifreund!2940d10f8b@user/ifreund
+copygirl: a helper function is the way to go, just like in normal zig functions are an abstraction to allow code reuse :P
+
+1692711052
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+Right, thanks.
+
+1692711097
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I figured maybe it's so common there's something like a "common options" thing. But a function is pretty straight forward.
+
+1692730523
+andrewrk!~andrewrk@mail.ziglang.org
+llvm 17 rc3 was tagged today with 3 known miscompilation regressions
+
+1692745321
+iohzrd!~iohzrd@98.97.33.87
+I recently started a new project for work that uses Buildroot and it got me thinking, a similar framework for compiling linux systems, but written in pure zig instead of pure Makefile. Does this sound like a worthwhile idea to anyone?
+
+1692746482
+jeang3nie!~jeang3nie@cpe-65-25-13-9.neo.res.rr.com
+@iohzrd that's actually crossed my mind. Not sure how flexible it would be without some kind of declarative aspect though.
+
+1692746912
+iohzrd!~iohzrd@98.97.33.87
+I mean, you can write build scripts in zig right? I'm imagining a hierarchy of zig build scripts that in various combinations, define the over all system. just like in buildroot, but using .zig files instead. Probably worth investigating the idea at a minimum right?
+
+1692746945
+iohzrd!~iohzrd@98.97.33.87
+has anyone ever tried compiling the Linux kernel with zig?
+
+1692746970
+iohzrd!~iohzrd@98.97.33.87
+might be a good place to start
+
+1692747263
+andrewrk!~andrewrk@mail.ziglang.org
+iohzrd, you mean like porting the build system over to zig?
+
+1692747281
+iohzrd!~iohzrd@98.97.33.87
+yeah, basically
+
+1692747391
+iohzrd!~iohzrd@98.97.33.87
+also gets me thinking, you'd probably want a utility like make menuconfig for such a task
+
+1692747405
+andrewrk!~andrewrk@mail.ziglang.org
+what does that do?
+
+1692747436
+iohzrd!~iohzrd@98.97.33.87
+it gives you a simple user interface for configuring all the options of a make project
+
+1692747479
+iohzrd!~iohzrd@98.97.33.87
+ncurses i believe
+
+1692747550
+andrewrk!~andrewrk@mail.ziglang.org
+it would be possible to auto-generate that for any zig project since the build.zig script declares the options
+
+1692748726
+iohzrd!~iohzrd@98.97.33.87
+typically, each distro defines a config file that gets used to compiled their kernel.
+
+1692748726
+iohzrd!~iohzrd@98.97.33.87
+e.g. https://gitlab.archlinux.org/archlinux/packaging/packages/linux/-/blob/main/config
+
+1692748727
+iohzrd!~iohzrd@98.97.33.87
+, which make will use to determine what modules/components get compiled as well as compilation flags and such.
+
+1692748774
+iohzrd!~iohzrd@98.97.33.87
+it works but it's so kludgy
+
