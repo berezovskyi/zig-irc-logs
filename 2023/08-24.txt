@@ -1,0 +1,128 @@
+1692848428
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+Is there a recommended way to debug unit tests in zig?
+
+1692848700
+torque!~tachyon@user/torque
+the tests get compiled to an executable that is stored in the local cache directory
+
+1692848708
+torque!~tachyon@user/torque
+you can run it under gdb or lldb
+
+1692848737
+torque!~tachyon@user/torque
+however, never forget old faithful printf debugging 
+
+1692848760
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+oh cool, good to know. thanks, torque
+
+1692848812
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+yes I've been trying the print debugging, but I have not had any luck yet
+
+1692848853
+torque!~tachyon@user/torque
+I believe the default executable is "test", so you can use e.g. `find zig-cache -name 'test'` to find it (there may be multiple copies in the cache tho so it might be easier to delete them first and recompile to make sure you get the right one
+
+1692848870
+torque!~tachyon@user/torque
+you can also add the test executable as a normal install target if you are feeling frisky
+
+1692849287
+torque!~tachyon@user/torque
+speaking of weird bugs, I found out today that you do NOT want to use `fmt.format` on tcp streams unless you want the message to be fragmented across 100 packets
+
+1692850014
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+torque, thanks, I was able to find the test executable per your advice. For setting a breakpoint at a specific test, is each test a function? If so, do you know how those function names are formatted? For example, if I have:
+
+1692850030
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+test "my test" {} 
+
+1692850036
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+in the source code
+
+1692850059
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+what command would I enter in gdb to set a breakpoint at that test?
+
+1692850086
+torque!~tachyon@user/torque
+hmm. each test is a function, but I am not sure how their symbols are named
+
+1692850445
+torque!~tachyon@user/torque
+if you have debug symbols gdb probably should let you put a breakpoint on a source line?
+
+1692850452
+torque!~tachyon@user/torque
+I'll be honest, I am not a gdb expert
+
+1692851288
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+torque, perfect. Specifying the source file and line number did the trick. Thanks again!
+
+1692859722
+mountaingoat!~mountaing@user/mountaingoat
+are package and module interchangeable terms in 0.11.0?
+
+1692861423
+torque!~tachyon@user/torque
+no
+
+1692861436
+torque!~tachyon@user/torque
+a package may be composed of multiple modules
+
+1692861466
+torque!~tachyon@user/torque
+there was a nomenclature change in 0.11 with the introduction of the package manager
+
+1692862549
+mountaingoat!~mountaing@user/mountaingoat
+ok thx torque 
+
+1692886022
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+Hi, I am having trouble figuring out how to call IterableDir.chmod(). I need to pass in a new_mode argument of type File.Mode, which the documentation says is system.mode_t. But I can't figure out what that type is or how to use it. How would I, for example, add execute permission for owner to a directory?
+
+1692886616
+martin2020!~martin202@2601:406:4000:181b:219e:62d2:a0aa:1b43
+Okay, I see octal literals in the language reference, so I guess I can pass in something like 0o744? Or 0o0744? Or either?
+
+1692887436
+dutchie!~dutchie@user/dutchie
+on linux File.Mode is just an integer of some sort so that'll probably work
+
+1692887469
+dutchie!~dutchie@user/dutchie
+system will resolve to something under lib/std/os/ so you can look in there to find what it ends up being based on the platforms you care about
+
+1692907832
+reedm!~reedm@45.37.25.252
+Hi all, I'm relatively new to Zig, so sorry for the simple question. Is there an idiomatic way to read an array from a binary file where the data isn't u8? For instance in a wav file, there is a large chunk of i16 data. Do I read it to a u8 array with Reader.read and then convert/cast in some way?
+
+1692907999
+andrewrk!~andrewrk@mail.ziglang.org
+reedm, you can @ptrCast your buffer to be a u8 buffer before reading into it
+
+1692908014
+andrewrk!~andrewrk@mail.ziglang.org
+you may need to do some endianness swapping
+
+1692908044
+reedm!~reedm@45.37.25.252
+ahh, I'll give that a try. Thanks!
+
+1692908156
+andrewrk!~andrewrk@mail.ziglang.org
+reedm, I can't remember if @ptrCast does slice conversion yet. if not you can use std.mem.sliceAsBytes for now
+
+1692909134
+reedm!~reedm@45.37.25.252
+that worked!
+
