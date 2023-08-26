@@ -1,0 +1,188 @@
+1692922809
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+Hmmm is there a convenient way to selectively import multiple symbols from the same module?
+
+1692922816
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+I know you can write `const Bar = @import("foo.zig").Bar;` and another line for symbol each like `const Arf = @import("foo.zig").Arf;`, etc or you can do `const foo = @import("foo.zig");` and deal with the name shadowing annoyances that come with it.
+
+1692922820
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+But is there any way to use `usingnamespace` with an anonymous struct or some other trick to have a single `@import("")` line but then pull multiple symbols from it into the current module?
+
+1692922914
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+(I saw a couple threads about destructuring assignment that seem to have been closed or otherwise abandoned by their OP for some reason or another, but I think they would fit this use-case quite well.)
+
+1692923197
+andrewrk!~andrewrk@mail.ziglang.org
+suggest to put one line per import. that will be diff friendlier anyway
+
+1692923843
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+hmm ok! I guess that'll take some getting used to, but if that's the standard convention for this I guess I can do it this way.
+
+1692924489
+andrewrk!~andrewrk@mail.ziglang.org
+Overkill, another strategy is to instead import the namespace that owns the multiple ones and then access them with dot notation
+
+1692924584
+andrewrk!~andrewrk@mail.ziglang.org
+this is often pretty handy if you name things carefully; in C you would have multiple symbols that share a common prefix such as `sdl_foo()`, `sdl_bar()`, but in zig you would `const sdl = @import("sdl");` and then `sdl.foo()`, `sdl.bar()` at usage sites
+
+1692924623
+andrewrk!~andrewrk@mail.ziglang.org
+does your use case fit this pattern?
+
+1692936806
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm getting `Err: error.TlsInitializationFailed` on Zig 0.11.0 downloaded from the official binary release tarball zig-macos-aarch64-0.11.0.tar.xz. Occurs when I try and POST to an HTTPS endpoint
+
+1692936902
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Changing the URL to `https://google.com` (with the rest of the logic the same) works fine however, so I assume the ciphersuite the endpoint I'm trying to use is not supported by Zig currently?
+
+1692936920
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Said endpoint is `https://infura.io/`
+
+1692937338
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Hmmm using `curl` I see `SSL connection using TLSv1.2 / ECDHE-RSA-AES128-GCM-SHA256`.... TLSv1.2 lol... I suspect that's why
+
+1692937359
+andrewrk!~andrewrk@mail.ziglang.org
+zig std lib doesn't support TLSv1.2 yet (ever?)
+
+1692937399
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not against implementing it but you can imagine why it's not super high on the priority list
+
+1692937523
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Nah all good, I know the TLS 1.3 bit that's fine. I'll proxy it locally. I'm no expert but I don't think adding TLSv1.2 would be a good idea, isn't it very complex compared to TLSv1.3? Any backwards services can be proxied to get around it while (if) they update their endpoints to 1.3
+
+1692945391
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I don't mean to be rude rushing anyone but the issue I created a bit ago is actually a show-stopper for my project and I can't continue. https://github.com/ziglang/zig/issues/16932
+
+1692945621
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I'm also trying to figure out what's going on. This seems like pretty idiomatic code and should be pretty common, no? If not in Zig code, then in translated C code, at least?
+
+1692945862
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+I can only think of replacing the pointer parameter with anyopaque instead, but then I can't use @cImport, I have to modify the translated code to get rid of the dependency loop.
+
+1692946715
+andrewrk!~andrewrk@mail.ziglang.org
+copygirl, sorry for the trouble. I bumped up the priority and have the issue open in a tab. hoping to get to it tomorrow
+
+1692946750
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+andrewrk: I appreciate that very much.
+
+1692946899
+mountaingoat!~mountaing@user/mountaingoat
+hi all, any tips on how to create an inline slice of a static array in 0.11.0? this worked in 0.10.0 but not 0.11.0 -- https://godbolt.org/z/Tqae3zdeb it seems to have gotten more consty
+
+1692947230
+mountaingoat!~mountaing@user/mountaingoat
+nvm, got it to work by making it []const *u32 in the arg
+
+1692947263
+mountaingoat!~mountaing@user/mountaingoat
+which is fair
+
+1692951428
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: that's quite convoluted. I think you want to accept a []u32 in the function and pass &a or a[0..]
+
+1692954222
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: in my actual use case, i'm passing in pub fn init(..., inputs: []const *ThreadSafeRingBuffer, outputs: []const *ThreadSafeRingBuffer) !Self { to a wrapper to uses those buffers, and there varying number of inputs vs outputs
+
+1692954283
+mountaingoat!~mountaing@user/mountaingoat
+in the tests i was building those slices with inlined static arrays
+
+1692957695
+ifreund!2940d10f8b@user/ifreund
+ok, a slice of pointers still feels like code smell to me but maybe it makes sense given your context
+
+1692959400
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: two different threads can read or write the same ring buffer, so pointer is used to refer to the same one (resending cause not sure if this message went through)
+
+1692964401
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+andrewrk: I do want to mention that after reworking some of my code, the error disappeared from my workspace (thank goodness - I can continue), but obviously I think it should still not occurr in the example code.
+
+1692973739
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Could anyone point me to any resources/tutorials/blog posts regarding getting started with the std.http.Server? I am looking through the std lib documentation site, but I am struggling to put the pieces together for how to use the server.
+
+1692981305
+drakonis!drakonis@user/drakonis
+say, does the build system have any way to bypass the need for hashes when declaring dependencies?
+
+1692983078
+drakonis!drakonis@user/drakonis
+basically a escape hatch
+
+1692983566
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+drakonis: Are you pulling them from the internet?
+
+1692983575
+copygirl!~koppeh@2001:41d0:701:1100::4fb1
+If not, an anonymousDependency might be a better fit.
+
+1692983660
+drakonis!drakonis@user/drakonis
+i mean, that's for vendoring, isnt it?
+
+1692983676
+drakonis!drakonis@user/drakonis
+i want to prefetch the dependencies
+
+1692983811
+drakonis!drakonis@user/drakonis
+rather
+
+1692983823
+drakonis!drakonis@user/drakonis
+what i want is to have builds without network access
+
+1692985006
+ifreund!2940d10f8b@user/ifreund
+drakonis: you may be interested in https://github.com/ziglang/zig/issues/14281
+
+1692985030
+andrewrk!~andrewrk@mail.ziglang.org
+drakonis, there is not an explicit fetch command yet but once you do any build, there will be no more network access after that since all the packages will be dowloaded locally
+
+1692985040
+andrewrk!~andrewrk@mail.ziglang.org
+also related: https://github.com/ziglang/zig/issues/14597 
+
+1692985880
+drakonis!drakonis@user/drakonis
+thank you very much
+
+1692985883
+drakonis!drakonis@user/drakonis
+i'm glad to hear
+
+1692986142
+andrewrk!~andrewrk@mail.ziglang.org
+the issue that ifreund linked also tackles that problem, but it's more for integrating with system package managers rather than for avoiding network access for periods of time
+
+1692986241
+drakonis!drakonis@user/drakonis
+both of them are quite helpful though
+
+1692986972
+drakonis!drakonis@user/drakonis
+well... time to do some learnin'
+
