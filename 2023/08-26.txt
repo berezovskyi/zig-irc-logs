@@ -1,0 +1,64 @@
+1693026936
+mountaingoat!~mountaing@user/mountaingoat
+i have a top-level module, say src/foo.zig, that pulls in various files. those files use const foo = @import("foo") to access other facilities within the same module. what's the best way to test this in 0.11.0? i have test { @import("std").testing.refAllDecls(@This()); } and const tests = b.addTest(.{ .root_source_file = .{ .path = "src/foo.zig" }, .target = target, .optimize = optimize, });
+
+1693026938
+mountaingoat!~mountaing@user/mountaingoat
+tests.addModule("foo", foo_module); in my build.zig. but whenever i run zig build test, i get src/foo.zig:1:1: error: file exists in multiple modules | src/foo.zig:1:1: note: root of module root.foo | src/foo.zig:1:1: note: root of module root
+
+1693026963
+mountaingoat!~mountaing@user/mountaingoat
+is it possible to have tests in a module that can be run from the top-level of the module like this?
+
+1693027008
+mountaingoat!~mountaing@user/mountaingoat
+if not, what's the best way to organize a module with multiple files and subtests that can all be pulled in and tested at once?
+
+1693027104
+mountaingoat!~mountaing@user/mountaingoat
+it seems std is able to do this, but i haven't figured out what the secret is
+
+1693029766
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+i usually import all .zig files in a module to main.zig, so the module is tested
+
+1693029817
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+if i use submodules, then in the main program i add the submodule tests to build.zig
+
+1693029869
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+https://git.sr.ht/~voroskoi/delilah/tree/master/item/build.zig#L107
+
+1693029898
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+mountaingoat: ^^
+
+1693065293
+fsx!d460332aa2@2604:bf00:561:2000::150
+Hi, what is the way of different types in an arraylist and then calling functions on those types? In C I'd just cast to void* and then cast to the specific type again.
+
+1693065307
+fsx!d460332aa2@2604:bf00:561:2000::150
+Unsure what the right way for zig is.
+
+1693066346
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+*anyopaque and @ptrCast is the void* equivalent
+
+1693066364
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+you might also be looking for union if you want them in the list by value
+
+1693066654
+fsx!d460332aa2@2604:bf00:561:2000::150
+Thanks
+
+1693076049
+andrewrk!~andrewrk@mail.ziglang.org
+fsx, you might enjoy this article: https://zig.news/kristoff/easy-interfaces-with-zig-0100-2hc5
+
+1693076222
+andrewrk!~andrewrk@mail.ziglang.org
+in zig you can also cast to `*anyopaque` and back, although if you are careful you should be able to do it in a type-safe manner so that you get a nice stack trace if you try to cast it to the wrong type
+
