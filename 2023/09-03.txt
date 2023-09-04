@@ -1,0 +1,228 @@
+1693708508
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+Might sound like something stupid, but it worked fine in 0.10.1, but no longer does in 0.11.0.
+
+1693708510
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+error: expected type '[]u8', found '?[:0]const u8'
+
+1693708514
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+const home: []u8 = os.getenv("HOME");
+
+1693708548
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+With an arrow to the opening round bracket.
+
+1693708636
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+`const home: []const u8 = os.getenv("HOME");`
+
+1693708758
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+Already tried, same error.
+
+1693709789
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+oh it's optional too
+
+1693710141
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+Changing to `const home = os.getenv("HOME");` now gives me:
+
+1693710144
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+error: expected type '[]const u8', found '?[:0]const u8'
+
+1693710150
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+try os.chdir(home);
+
+1693710901
+torque!~tachyon@user/torque
+you need to unwrap it
+
+1693710962
+torque!~tachyon@user/torque
+const home = os.getenv("HOME") orelse return error.NoHomeHere;
+
+1693710965
+torque!~tachyon@user/torque
+or something like that
+
+1693711317
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+torque: Ah, that worked. Thanks.
+
+1693748933
+copygirl!~koppeh@copy.mcft.net
+Is there an easy way to clone a []const []const u8, or will I have to allocate and @memcpy manually, and use errdefer appropriately?
+
+1693748944
+copygirl!~koppeh@copy.mcft.net
+Deep clone, in this case.
+
+1693749546
+ifreund!2940d10f8b@user/ifreund
+you can use Allocator.dupe() to save a bit of bolierplate but yeah, you need to write the for loop yourself
+
+1693751219
+copygirl!~koppeh@copy.mcft.net
+That only slightly simplifies the code, and doesn't get around the pitfall of misusing or entirely forgetting about errdefer.
+
+1693751263
+copygirl!~koppeh@copy.mcft.net
+It's nice to know about .dupe though, I looked for "clone" and "copy" and auto completion came up short. Should've looked deeper :p
+
+1693752969
+copygirl!~koppeh@copy.mcft.net
+There's a discrepancy between the error examples and style guidelines in the docs.
+
+1693753029
+copygirl!~koppeh@copy.mcft.net
+Error example says `error.OutOfMemory`, but since errors aren't types, the style guidelines would suggest it should be `error.out_of_memory`.
+
+1693766772
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+wouldn't a dupe be a shallow copy?
+
+1693767203
+copygirl!~koppeh@copy.mcft.net
+It would be, hence why it doesn't help me avoid writing a bunch of additional code.
+
+1693767243
+copygirl!~koppeh@copy.mcft.net
+Ran into another problem: zig test Debug native failure
+
+1693767245
+copygirl!~koppeh@copy.mcft.net
+error: the following build command failed with exit code 1
+
+1693767285
+copygirl!~koppeh@copy.mcft.net
+Though it doesn't say anything else, other than the commands invoked. Is this a compiler crash?
+
+1693767288
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+if theres no stack trace its likely a compiler crash
+
+1693767298
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+or a stack overflow
+
+1693767480
+torque!~tachyon@user/torque
+you say "a bunch of additional code", but it should be as simple as duping the outer slice and then looping through it and duping each member. which is 4 lines of code
+
+1693767549
+torque!~tachyon@user/torque
+I suppose if you were invested in writing a fully generic deep object copy it would be a lot more work
+
+1693767643
+copygirl!~koppeh@copy.mcft.net
+I need to use errdefer to ensure allocations are freed if they fail somewhere in the middle.
+
+1693767664
+torque!~tachyon@user/torque
+use an arena allocator. bada bing bada boom
+
+1693767730
+copygirl!~koppeh@copy.mcft.net
+It ... needs to work with any allocator?
+
+1693767795
+torque!~tachyon@user/torque
+any allocator can be wrapped in an arena allocator. though I admit I don't know what happens to memory owned by a short-lived stack-based arena allocator
+
+1693767885
+copygirl!~koppeh@copy.mcft.net
+It looks like the compiler crash was due to me using comptime on an if statement that didn't need one. Even though the if statement would've run at compile time due to the thing I'm checking against itself being a comptime argument.
+
+1693767914
+copygirl!~koppeh@copy.mcft.net
+Well I'm building a type that's supposed to be allocated with any given allocator.
+
+1693767945
+copygirl!~koppeh@copy.mcft.net
+Or well I guess in this case it's a clone function on said type, to which you pass the allocator that you want the struct to be cloned with.
+
+1693767994
+torque!~tachyon@user/torque
+if you look at the arena allocator implementatino it basically just stores a freelist and allocates using the backing allocator. it allocates the memory using the backing allocator
+
+1693768000
+ifreund!2940d10f8b@user/ifreund
+copygirl: https://github.com/riverwm/river/blob/c16628c7f57c51d50f2d10a96c265fb0afaddb02/river/Mapping.zig#L46-L51
+
+1693768010
+ifreund!2940d10f8b@user/ifreund
+kinda annoying, yeah
+
+1693768028
+torque!~tachyon@user/torque
+still may not be appropriate for this scenario but useful in general
+
+1693768117
+ifreund!2940d10f8b@user/ifreund
+I think the correct thing to do is to refactor the data layout to not be a slice of slices
+
+1693768135
+ifreund!2940d10f8b@user/ifreund
+or use an arena, yeah
+
+1693769291
+copygirl!~koppeh@copy.mcft.net
+Hmm.. well it is a slice of slices, though.
+
+1693769353
+copygirl!~koppeh@copy.mcft.net
+It describes an "entity path", sort of like a URI, made up of 1 or more parts, which are the names of the parent entities and then the name of the entity the path represents. It can also be either an absolute or relative path.
+
+1693769367
+copygirl!~koppeh@copy.mcft.net
+Thing is the API I'm wrapping has different ways of representing paths.
+
+1693769377
+copygirl!~koppeh@copy.mcft.net
+In its C API it uses a dot as a seperator.
+
+1693769391
+copygirl!~koppeh@copy.mcft.net
+In the C++ API it's :: instead.
+
+1693769419
+copygirl!~koppeh@copy.mcft.net
+Though I prefer slashes as separators so I get a unix-like path.
+
+1693769486
+copygirl!~koppeh@copy.mcft.net
+But I want some way to represent entity path, manipulate them, and have some helper functions in place that are relevant to dealing with entity paths. (Such as getting an entity path from an entity.)
+
+1693769532
+copygirl!~koppeh@copy.mcft.net
+The API can consume strings directly, but I personally find that a bit rigid.
+
+1693769604
+copygirl!~koppeh@copy.mcft.net
+If you know another approach, or you think what I'm doing is completely out of place, knowing the context, do let me know.
+
+1693772355
+ifreund!2940d10f8b@user/ifreund
+copygirl: I'd stick with a single string using some separator character and use std.mem.split() to iterate the path components if necessary
+
+1693772383
+ifreund!2940d10f8b@user/ifreund
+the memory management is just so much simpler, it's also less total memory used and less heap fragmentation
+
+1693773218
+copygirl!~koppeh@copy.mcft.net
+ifreund: The way I'm doing it right now means I can avoid allocations in some cases.
+
+1693773382
+copygirl!~koppeh@copy.mcft.net
+Because that path doesn't need to own its slices. You can create the outer array on the stack, and populate it from inner string parts of two seperate paths joined together. Then pass it to an API for it to be consumed. No allocations.
+
+1693774930
+copygirl!~koppeh@copy.mcft.net
+Just gonna share it because why not and also I'm proud of my work. It's standalone for now (though not for long): https://gist.github.com/copygirl/44b6edc8071820274c9ae533bc665c50
+
