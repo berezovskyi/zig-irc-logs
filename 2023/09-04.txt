@@ -1,0 +1,200 @@
+1693799909
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+Good afternoon, the std.os.chdir() function doesn't seem to change the current path in the shell, is this intended?
+
+1693800039
+squeek502!~squeek502@user/squeek502
+remiliascarlet, what does chdir do in C?
+
+1693800160
+daurnimator!~daurnimat@vultr.daurnimator.com
+remiliascarlet: why did you expect it to?
+
+1693800272
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+squeek502: Same thing.
+
+1693800290
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+daurnimator: I expect it to do as the name implies: change directory.
+
+1693800309
+daurnimator!~daurnimat@vultr.daurnimator.com
+remiliascarlet: it changes the "current directory" of the process that calls `chdir`
+
+1693800327
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+Oh, I see.
+
+1693800330
+daurnimator!~daurnimat@vultr.daurnimator.com
+it doesn't change the current directory of.... anything else; e.g. the process (shell) that you started it from.
+
+1693800566
+grayhatter!~grayhatte@user/grayhatter
+copygirl: this is cool I might steal some of this, does it have a licence?
+
+1693801279
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+OK, just inspected the coreutils of a number of projects, none of them have their own version of "cd". You always learn something new every day.
+
+1693803015
+nektro!~nektro@75-164-176-254.ptld.qwest.net
+is elanor still around?
+
+1693808100
+copygirl!~koppeh@copy.mcft.net
+grayhatter: Feel free to steal. When I make the library available I might release it under UNLICENSE. (Though at request I could change it to MIT.)
+
+1693825902
+copygirl!~koppeh@copy.mcft.net
+I don't suppose there's some built-in function to get the number of digits from an integer?
+
+1693825924
+copygirl!~koppeh@copy.mcft.net
+Basically I want to calculate the number of bytes it'll take up when I write it to a buffer.
+
+1693826059
+copygirl!~koppeh@copy.mcft.net
+I'm thinking of building my own function since the numbers will tend to be close to 0 rather than the maximum. But I might be doing premature optimization here.
+
+1693828942
+copygirl!~koppeh@copy.mcft.net
+Hmm so a while loop has this special continue syntax, but for loops don't? I wonder if there was a reason for this decision. I mean I can just put it at the end of the loop, but I figured I'd use the syntax. Maybe I shouldn't if I didn't have a good reason?
+
+1693831517
+copygirl!~koppeh@copy.mcft.net
+Can I call free on a slice that has been resliced? Say I allocate []T with size 10, then do slice[0..5], then call free on the resulting slice?
+
+1693831566
+copygirl!~koppeh@copy.mcft.net
+Resliced, keeping the start index the same, that is.
+
+1693831700
+copygirl!~koppeh@copy.mcft.net
+Well, I'll find out in the moment. Though I hope it works with any allocators ... I'm guessing there's allocator implementations that use the slice length when free() is called..?
+
+1693833476
+copygirl!~koppeh@copy.mcft.net
+> Allocation size 288 bytes does not match free size 24.
+
+1693833482
+copygirl!~koppeh@copy.mcft.net
+That's what I thought. Hmm..
+
+1693833811
+copygirl!~koppeh@copy.mcft.net
+I win. I guess smart allocators will be able to shrink an allocated slice that I just allocated without much issue?
+
+1693844848
+copygirl!~koppeh@copy.mcft.net
+Is there a way at comptime to attempt type coercion and do something else if this isn't possible? For example I want to be able to pass strings and ints as an anytype, but a not of things can coerce to a []const u8 such as arrays and a lot of things coerce to a u32, such as comptime_int, u16, u2, .. in theory.
+
+1693844896
+copygirl!~koppeh@copy.mcft.net
+Will I have to manually check the possible types, or could I for example do..
+
+1693845035
+copygirl!~koppeh@copy.mcft.net
+const result = if tryCoerce([]const u8, thing) |s| withString(s) else if tryCoerce(u32, thing) |i| withId(i) else @compileError("...");
+
+1693847368
+ifreund!2940d10f8b@user/ifreund
+copygirl: hmm, `if (@TypeOf([]const u8, thing) == []const u8)` should probably work
+
+1693847426
+ifreund!2940d10f8b@user/ifreund
+I'm not 100% certain that that check for peer type resolution resolves to one of the input types is exactly the same as the "does x coerce to y" predicate though
+
+1693847755
+ifreund!2940d10f8b@user/ifreund
+oops, that code's not correct, @TypeOf() accepts variables not types of course
+
+1693847843
+ifreund!2940d10f8b@user/ifreund
+so it would be something like `const foo: []const u8 = undefined; if (@TypeOf(foo, thing)) ...`
+
+1693847869
+ifreund!2940d10f8b@user/ifreund
+* `if (@TypeOf(foo, thing) == []const u8) ...`
+
+1693852376
+copygirl!~koppeh@copy.mcft.net
+ifreund: Where is that functionality of @TypeOf explained?
+
+1693852450
+ifreund!2940d10f8b@user/ifreund
+copygirl: pretty sure it's mentioned in the language reference
+
+1693852472
+copygirl!~koppeh@copy.mcft.net
+The section is very brief and I can't make sense of it, to be honest: https://ziglang.org/documentation/master/#toc-TypeOf
+
+1693852493
+copygirl!~koppeh@copy.mcft.net
+Apologies, https://ziglang.org/documentation/master/#TypeOf *
+
+1693852501
+ifreund!2940d10f8b@user/ifreund
+it accepts an arbitrary number of arguments and performs peer type resolution on them
+
+1693852548
+ifreund!2940d10f8b@user/ifreund
+hmm, I guess it actually doesn't work for your case since it will be a compile error if peer type resolution fails
+
+1693852563
+copygirl!~koppeh@copy.mcft.net
+Hmm.
+
+1693852590
+ifreund!2940d10f8b@user/ifreund
+i.e. @TypeOf(a, b) = u32 if a has type u8 and b has type u32
+
+1693852644
+ifreund!2940d10f8b@user/ifreund
+I think there's no really good way to do that, I'd just make a massive switch statement on the @typeInfo() or something
+
+1693852664
+ifreund!2940d10f8b@user/ifreund
+that's what e.g. std.mem.sliceTo() and similar functions do
+
+1693853488
+torque!~tachyon@user/torque
+an alternate approach would be to have your function take a tagged union as the argument and expect the caller to set it right
+
+1693853527
+torque!~tachyon@user/torque
+or to have them pass in the type as a comptime argument
+
+1693854389
+copygirl!~koppeh@copy.mcft.net
+Funnily enough that is exactly what I want to avoid.
+
+1693854454
+copygirl!~koppeh@copy.mcft.net
+Here's the (hopefully fixed) function: https://git.mcft.net/copygirl/flecs-zig-ble/src/commit/edadf3e1dfa8e9a41e203b25182bc5abe5719104/src/path.zig#L65
+
+1693854476
+copygirl!~koppeh@copy.mcft.net
+Here is how I expected to use it: https://git.mcft.net/copygirl/flecs-zig-ble/src/commit/edadf3e1dfa8e9a41e203b25182bc5abe5719104/src/path.zig#L387
+
+1693854552
+copygirl!~koppeh@copy.mcft.net
+Previously I had to write `&.{ .{ .id = 100 }, .{ .id = 101 }, .{ .name = "bar" } }`, but yeah that was too wordy for me.
+
+1693854560
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+Is there an html templating library available? I can't find one on awesome-zig repo. I'm not sure where else to look.
+
+1693855688
+ifreund!2940d10f8b@user/ifreund
+fengshaun: not html-specific, but maybe this is useful to you: https://github.com/batiati/mustache-zig
+
+1693855777
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+ifreund, I was happy with a quick search and replace, this is awesome! thanks!
+
+1693855800
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
