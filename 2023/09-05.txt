@@ -1,0 +1,156 @@
+1693900332
+lampilelo!~user@user/lampilelo
+what is the best way to copy a c string of unknown length to new []const u8?
+
+1693902149
+lampilelo!~user@user/lampilelo
+ok, i have this: allocator.dupeZ(u8, std.mem.span(c_ptr))
+
+1693903645
+dutchie!~dutchie@user/dutchie
+just allocator.dupe is enough if you really want []const u8 and not [:0]const u8 (i.e. you don't need null-termination)
+
+1693904190
+lampilelo!~user@user/lampilelo
+yeah, i noticed my answer didn't match up with my question right after i posted it, i actually wanted the null-terminated string though
+
+1693931579
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Hi, when I run my tests, I am getting a segmentation fault in start.zig:463, where it does this: while (c_envp[env_count] != null) : (env_count += 1) {}
+
+1693931635
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Has anyone seen this before? It seem like it is just loading the environment variables, so I am not sure why it would be doing that
+
+1693931648
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+*segfaulting
+
+1693931894
+freshcoffee!~fresh@user/freshcoffee
+hmm doesn't ring a bell, does it reproduce with a simple hello.zig and which os?
+
+1693932073
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+No, it doesn't happen until I try to run functions from a C library in my project (libmicrohttpd). OS is x86_64 GNU/Linux (guix system)
+
+1693934040
+freshcoffee!~fresh@user/freshcoffee
+can you use the system compiler against hello.c and pastie somewhere the output of `cc -o hello hello.c -v -Wl,-v` ?
+
+1693936803
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+I ran that command with zig cc, but I got this error:
+
+1693936805
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+error: unsupported linker arg: -v
+
+1693940475
+freshcoffee!~fresh@user/freshcoffee
+that won't work with `zig cc` . Do you have a system compiler, the point is I need to see how it links things.
+
+1693940548
+freshcoffee!~fresh@user/freshcoffee
+my _suspicion_ is that guix may have different c runtime startup objects than our code currently assumes
+
+1693942285
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Okay, I ran the command with gcc. Here is the output: https://pad.riseup.net/p/verboseHelloC
+
+1693942294
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+thanks, freshcoffee
+
+1693942499
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Here is a read-only version that might be more reliable: https://pad.riseup.net/p/r.2ad5416a775c9e4da75d6de2940d33ae
+
+1693943087
+freshcoffee!~fresh@user/freshcoffee
+looks like the crt files are not the issue:
+
+1693943114
+freshcoffee!~fresh@user/freshcoffee
+zig should be linking these objects: "crt1.o",  "crti.o", "crtbegin.o",  "crtend.o",  "crtn.o"
+
+1693943142
+freshcoffee!~fresh@user/freshcoffee
+and the system compiler is linking the same
+
+1693943193
+freshcoffee!~fresh@user/freshcoffee
+is your zig project specifying any `-target` option?
+
+1693943802
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Not that I know of, let me check
+
+1693943877
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+In build.zig, target is specified like this:
+
+1693943879
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+const target = b.standardTargetOptions(.{});
+
+1693943896
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+The same as the default setup
+
+1693944583
+freshcoffee!~fresh@user/freshcoffee
+are you setting `exe.linkLibC();` ?
+
+1693945292
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Yes
+
+1693945356
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+I tried compiling it on PureOS instead, and that did not work until I added `exe.linkSystemLibrary("gnutls")`, but now it works.
+
+1693945440
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+I tried it again on guix with the new build.zig that links gnutls, but it fails without offering much info, as far as I can tell:
+
+1693945502
+freshcoffee!~fresh@user/freshcoffee
+usually `--verbose-link` helps shed some light. also the `zig build-exe` command that failed, you can cut-paste that and run it manually. it could provide more information on failure.
+
+1693945506
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+ah nevermind, I missed the information that printed out. It is telling me that gnutls is not installed. I will try to install it and check back
+
+1693945680
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+I installed gnutls and now I am getting the same segfault as before, but now I know it isn't happening on PureOS
+
+1693945758
+martin2020!~martin202@c-68-41-109-198.hsd1.mi.comcast.net
+Oddly enough, it tells me that I segfault and that the build command failed, but that 38/38 of my unit tests passed
+
+1693945957
+freshcoffee!~fresh@user/freshcoffee
+shrug I dunno. But I do see lots of weird unstandard paths to things like dynamic linker (and the crt objects) as shown by the system compiler.
+
+1693945990
+freshcoffee!~fresh@user/freshcoffee
+it might be useful to verify with --verbose-link that those are looking good
+
+1693953751
+grayhatter!~grayhatte@user/grayhatter
+is there a way to run a test in gdb?
+
+1693953876
+grayhatter!~grayhatte@user/grayhatter
+nevermind, found the cache file name :)
+
+1693955304
+grayhatter!~grayhatte@user/grayhatter
+has anyone seen anything like this https://gist.github.com/GrayHatter/24aa5f45d04bc1ad3c9eddec57d61430 expectEqualStrings -> expected ls (\x6c) found ls (\xaa) 
+
+1693955327
+grayhatter!~grayhatte@user/grayhatter
+you'll notice the text strings do infact match. but the test thinks they don't?
+
