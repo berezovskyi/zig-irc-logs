@@ -1,0 +1,504 @@
+1693964158
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+grayhatter: Some context is needed. What is "first"? What is "eqlStr()"?
+
+1693964986
+torque!~tachyon@user/torque
+\xaa smells like undefined is lurking around somewhere
+
+1693965041
+grayhatter!~grayhatte@user/grayhatter
+std.testing.expectEqualStrings. first is a []u8 allocated by the testing allocator
+
+1693965121
+grayhatter!~grayhatte@user/grayhatter
+there's an adjencent test that causes a @panic in the allocator, but I'm confused as to how that would cause *this* behavior?
+
+1693965149
+grayhatter!~grayhatte@user/grayhatter
+this isn't the only one like this where it attempts to tell me that ASCII "l" is \xaa
+
+1693965521
+torque!~tachyon@user/torque
+seems like you broke something
+
+1693966226
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+freshcoffee, thanks for your help earlier. I am still figuring out my issue, where zig build segfaults on guix system. I tried the --verbose-link argument, and the crt things you mentioned do not appear to be linked. I copied the output here: https://pad.riseup.net/p/r.f00ce24f16230ca3e330a23145260455 
+
+1693966303
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Any thoughts on how I could try to fix this or further troubleshoot? Thanks!
+
+1693966407
+freshcoffee!~fresh@user/freshcoffee
+hmm I you using a libc.txt ?
+
+1693966412
+freshcoffee!~fresh@user/freshcoffee
+_are_ you
+
+1693966513
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+No, I'm not sure what that is
+
+1693966531
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Is that something that zig build system needs?
+
+1693966535
+freshcoffee!~fresh@user/freshcoffee
+I would try... put that link line into a script file, the command `zig ld.lld` followed by all those args..
+
+1693966591
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Thanks, I'll try it. How do I add the libc.txt?
+
+1693966592
+freshcoffee!~fresh@user/freshcoffee
+and examine that system compiler output we had earlier, look where the crt files are. replace in your zig ld.lld command, the 3 Scrt1.o crti.o and crtn.o files with the ones as shown in system compiler output
+
+1693966608
+freshcoffee!~fresh@user/freshcoffee
+you have 3 here, replace with the 5 . the general order should be something like
+
+1693966672
+freshcoffee!~fresh@user/freshcoffee
+replace Scrt1.o with $HOME/.guix-profile/lib/crt1.o
+
+1693966688
+freshcoffee!~fresh@user/freshcoffee
+replace crti.o with $HOME/.guix-profiel/lib/crti.o
+
+1693966700
+freshcoffee!~fresh@user/freshcoffee
+then add crtbegin.o immediately after crti.o
+
+1693966708
+freshcoffee!~fresh@user/freshcoffee
+add/insert
+
+1693966718
+freshcoffee!~fresh@user/freshcoffee
+then insert crtend.o immediately before crtn.o
+
+1693966732
+freshcoffee!~fresh@user/freshcoffee
+replace crtn.o with $HOME/.guix-profile/lib/crtn.o
+
+1693966734
+freshcoffee!~fresh@user/freshcoffee
+.
+
+1693966747
+freshcoffee!~fresh@user/freshcoffee
+I might have the paths mumbled a bit, but you can get the real ones from your earlier pastie.
+
+1693966816
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Great, I'll try it. Then I just execute that command and hopefully it will run the tests?
+
+1693966818
+freshcoffee!~fresh@user/freshcoffee
+after relinking, note where the -o puts test executable. just try and run it manually.
+
+1693966831
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Do I also have to add libc.txt?
+
+1693966835
+freshcoffee!~fresh@user/freshcoffee
+well you'll be running it from inside the cache.
+
+1693966886
+freshcoffee!~fresh@user/freshcoffee
+no, this is just to hack the ld.lld args and force what we know are sane crt objects. it's the test that was segfaulting right? so if it doesn't segfault after running from inside the cache (relinked manually) then we're on to something.
+
+1693968763
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+freshcoffee, I ran that command with the those crt things replaced like you said, and the linker command executes without any output, so I guess it succeeds. But running the test executable inside zig-cache has the same result: segmentation fault.
+
+1693968781
+freshcoffee!~fresh@user/freshcoffee
+is your project public?
+
+1693968962
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+One moment, I will provide a link
+
+1693969485
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+https://git.sr.ht/~mlampstaff/wf_server
+
+1693969527
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+there is the code. before it will build, the src/C/libmicrohttpd/unpack.sh must be run to unpack libmicrohttpd
+
+1693969534
+freshcoffee!~fresh@user/freshcoffee
+I'll need a few mins... downloaded the guix qemu vm and seeing if I can get it going
+
+1693969630
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+zig version is 0.11.0, and gnutls must be installed (`guix install gnutls`)
+
+1693969672
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Thanks for looking into this. Please let me know if I can assist at all.
+
+1693969920
+freshcoffee!~fresh@user/freshcoffee
+guix pull "packaging objects..." usually slow?
+
+1693969928
+freshcoffee!~fresh@user/freshcoffee
+_indexing_ objectgs
+
+1693969949
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Yes, most things with guix are slower than you would expect with other distrobutions
+
+1693970041
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+That is, upgrading the system and installing new packages. Performance of the system and apps during regular operation is fine
+
+1693970103
+freshcoffee!~fresh@user/freshcoffee
+no probs. it's progressing. I just need to setup my ssh/homedir/zsh and usual set of tools
+
+1693970127
+freshcoffee!~fresh@user/freshcoffee
+the other day I installed chimera-linux. Talk about friction. no sudo. no vim. I dunno what the purpose of that distro is.
+
+1693970154
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+haha, I've never heard of it
+
+1693970193
+freshcoffee!~fresh@user/freshcoffee
+it's quite different in that it uses bsd libc, and clang/llvm libc++ and structures like that. So zig has a difficult time building on it.
+
+1693970227
+freshcoffee!~fresh@user/freshcoffee
+well for system building. for vendored musl things usually just work :)
+
+1693970304
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Sounds kinda like alpine, which I've spent some time in. I guess I am starting to like gcc more and more
+
+1693970308
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+I love guix though, definitely my favorite distro I've tried so far
+
+1693970404
+freshcoffee!~fresh@user/freshcoffee
+"computing derivation..." or some message like that...and the desktop just went black.
+
+1693970406
+freshcoffee!~fresh@user/freshcoffee
+ugh
+
+1693970426
+freshcoffee!~fresh@user/freshcoffee
+oh ha screen saver in vm. unexpected.
+
+1693971896
+freshcoffee!~fresh@user/freshcoffee
+which pkg contains "ldd"
+
+1693973444
+freshcoffee!~fresh@user/freshcoffee
+I'm just getting too much friction to from guix to pursue this. gcc can't even make an executable.
+
+1693973575
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: I have a theoretical issues with `CAllocator` in a library written in zig if `_FORITFY_SOURCE=3` is in use (where `malloc_usable_size` isn't meant to be used). https://github.com/ziglang/zig/blob/d1a14e7b6d90a0f285dead85c72a9ac73dd692bd/lib/std/heap.zig#L46-L50
+
+1693973582
+daurnimator!~daurnimat@vultr.daurnimator.com
+Should I open an issue?
+
+1693973674
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+freshcoffee, thanks for trying. I wonder if the package would be `gcc-toolchain`
+
+1693973685
+freshcoffee!~fresh@user/freshcoffee
+yeah i found ldd
+
+1693973690
+freshcoffee!~fresh@user/freshcoffee
+in that package
+
+1693973714
+freshcoffee!~fresh@user/freshcoffee
+but on running unpack.sh it complains "c compiler cannot build executable"
+
+1693973729
+freshcoffee!~fresh@user/freshcoffee
+so I just tried to gcc -o main main.c, and it fails. can't find a crt1.o file or somesuch.
+
+1693973923
+freshcoffee!~fresh@user/freshcoffee
+there is another option. you could build the deps libmicrohttpd and sqllite3.c with build.zig
+
+1693973952
+freshcoffee!~fresh@user/freshcoffee
+and set everything to use something like `-target native-native-musl` ... bet that would work 
+
+1693974036
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Ah, I wish I could be of more help. The only thing I could think of is that the path might not have guix yet. Something has to be executed or added to .bash_profile like `GUIX_PROFILE="/home/<home_dir>/.config/guix/current"; . "$GUIX_PROFILE/etc/profile";
+
+1693974135
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Okay, I wonder how difficult that would be... that thought occured to me, but I am a bit intimidated to try implementing the build system for them. It seems like at least libmicrohttpd is a complicated project relative to my zig experience
+
+1693974217
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+^^regarding above, `hash guix` has to be run also, after running those commands. I am still new to guix, so I am not exactly sure what that does
+
+1693974221
+freshcoffee!~fresh@user/freshcoffee
+oh another option could be... in the re-linking script... you can swap out `zig ld.lld` for the system linker `ld` (and drop that --error arg because the syntax is different) and try that.
+
+1693974264
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Okay, I'll try that
+
+1693974572
+martin2020!~martin202@2601:406:4000:181b:3542:ed00:97e6:2d3b
+Interesting... I got `src/wf_server/invite_admin/invite_admin.zig:142: undefined reference to `MHD_start_daemon'` and a few other very similar undefined reference errors
+
+1693997526
+copygirl!~koppeh@copy.mcft.net
+Hmm what's a good way to allocate temp data only to throw it out afterwards?
+
+1693997619
+copygirl!~koppeh@copy.mcft.net
+I need to allocate a zero-terminated string from one that might not be. I suppose I could do a check if the string is already zero-terminated, but not sure if I can safely do that without a potential access violation. To avoid an allocation if not necessary..
+
+1693997677
+copygirl!~koppeh@copy.mcft.net
+But I wonder if I should get an arena allocator (thread local, maybe?) allocate some stuff, then throw it out?
+
+1693997699
+copygirl!~koppeh@copy.mcft.net
+Right now I just need to do 1 or maybe 2 strings at a time so I wonder if that's overkill?
+
+1693997799
+braewoods_!~braewoods@user/braewoods
+copygirl, do you have the original's size or length already?
+
+1693997832
+copygirl!~koppeh@copy.mcft.net
+They are u8 slices, so compile-time known.
+
+1693997881
+braewoods_!~braewoods@user/braewoods
+if you already know the length, then what is the problem? If this was C, you would allocate new storage of length + 1, copy it in, and append a null byte.
+
+1693997886
+copygirl!~koppeh@copy.mcft.net
+Should be able to use Allocator.dupeZ to dupe the strings, if I wanna go the non-complicated way. Just wondering what's a good allocation strategy for these super-short-lived allocations.
+
+1693997905
+braewoods_!~braewoods@user/braewoods
+Oh. How large do you expect them to be?
+
+1693997918
+copygirl!~koppeh@copy.mcft.net
+Typically short, but I can't guarantee that.
+
+1693997948
+braewoods_!~braewoods@user/braewoods
+The stack is usually the best option for these kinds of things. But not if you expect to store whole text files for example.
+
+1693997948
+copygirl!~koppeh@copy.mcft.net
+I was thinking an allocator that has a backing buffer that can grow, based on a general allocator.
+
+1693997967
+copygirl!~koppeh@copy.mcft.net
+Yeah there's a stackAlloc function I saw.
+
+1693997992
+braewoods_!~braewoods@user/braewoods
+Typical stacks on modern OS have stacks measured in megabytes. On Linux it's usually 8MB.
+
+1693998025
+copygirl!~koppeh@copy.mcft.net
+Do you know anything about being able to check if a string is already zero-terminated without potentially causing an access violation? (Like, what if a string is just at the border of a page an my +1 read causes a crash? Is that possible?)
+
+1693998045
+braewoods_!~braewoods@user/braewoods
+copygirl, i don't know of a builtin for this in Zig but there's an easy algorithm to check.
+
+1693998074
+braewoods_!~braewoods@user/braewoods
+do a search for the null byte but add a length bound check so it can't go out of bounds.
+
+1693998094
+braewoods_!~braewoods@user/braewoods
+a function like memchr would probably work for this but Zig isn't C.
+
+1693998176
+copygirl!~koppeh@copy.mcft.net
+Length bound check on what?
+
+1693998192
+braewoods_!~braewoods@user/braewoods
+... the input string you're searching?
+
+1693998199
+braewoods_!~braewoods@user/braewoods
+you said you already had the length.
+
+1693998213
+copygirl!~koppeh@copy.mcft.net
+The input string is as long as the string, I *want* to check the next byte that's technically out of bounds of the slice.
+
+1693998265
+braewoods_!~braewoods@user/braewoods
+uh... i doubt there's any way to guarantee that won't be out of bounds since you can't know where any given array slice will end in memory.
+
+1693998330
+braewoods_!~braewoods@user/braewoods
+this is the kind of thing you can only violate without problems if you know more about the allocation block.
+
+1693998338
+copygirl!~koppeh@copy.mcft.net
+Yeah that's the problem. But I guess I'll just clone the input and append a 0 byte, not a huge issue.
+
+1693998392
+braewoods_!~braewoods@user/braewoods
+in C we can only shrink strings in place not enlarge them if we don't know how large the backing buffer actually is.
+
+1693998439
+braewoods_!~braewoods@user/braewoods
+that said, if you don't need a null terminated string, may as well not bother. not all APIs require those.
+
+1693998578
+copygirl!~koppeh@copy.mcft.net
+Unfortunately, Flecs only uses zero-terminated strings.
+
+1693998610
+copygirl!~koppeh@copy.mcft.net
+I'm glad Wasmtime, the other library I use, requires passing a pointer + length when dealing with strings.
+
+1694029806
+CMistress!~mc_@2a02:c7c:884a:c500:42bf:255a:6392:897c
+Hey all -- I know Zig is gaining a package manager which I think is excellent news.  But what do I do in the mean time?  I have an external project which my own project needs.  I've used "git submodule" to include it as deps/zig-cli -- and now I know I'll need to modify build.zig to somehow make deps/zig-cli build (it has it's own build.zig).  How do I do that?  I tried looking through the docs but couldn't see anything obvious.  Any 
+
+1694029806
+CMistress!~mc_@2a02:c7c:884a:c500:42bf:255a:6392:897c
+and all help greatly appreciated.  TIA.
+
+1694031276
+energizer!~energizer@user/energizer
+is it possible to define a function inside a function body? like `fn f() !void { fn g() !void {...}; g(); }`?
+
+1694031901
+Earnestly!~earnest@user/earnestly
+Nested functions, no
+
+1694032251
+gpanders!be60a9b05a@user/gpanders
+energizer: there is a roundabout way to do it. You can define a struct that contains a function, then reference the function through the struct namespace
+
+1694032353
+gpanders!be60a9b05a@user/gpanders
+e.g. https://github.com/ziglang/zig/blob/master/lib/std/sort/block.zig#L106-L113
+
+1694032640
+energizer!~energizer@user/energizer
+ok
+
+1694034378
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+how does one zero-initialize an array?
+
+1694034385
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+std.mem.zeroes?
+
+1694034534
+copygirl!~koppeh@copy.mcft.net
+I believe that one's meant for structs.
+
+1694034543
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+seems like it based on docs
+
+1694034570
+copygirl!~koppeh@copy.mcft.net
+@memset(dest, elem) -- This function sets all the elements of a memory region to elem.
+
+1694034579
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+oh thanks
+
+1694034585
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+always forget about checking builtins
+
+1694034843
+copygirl!~koppeh@copy.mcft.net
+I feel that.
+
+1694034861
+lampilelo!~user@user/lampilelo
+fengshaun: i've seen something like this: var buffer: [128]u8 = [_]u8{0} ** 128;
+
+1694034898
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+lampilelo, that's what I've been doing, I thought maybe there is a better way
+
+1694034959
+lampilelo!~user@user/lampilelo
+it's in the documentation, so i guess it's idiomatic? i'm new to the language, so don't quote me ;)
+
+1694035046
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+thanks! me too!
+
+1694035636
+ifreund!2940d10f8b@user/ifreund
+thaf
+
+1694035665
+ifreund!2940d10f8b@user/ifreund
+that is indeed the idiomatical way to initialize an array
+
+1694035732
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+I think I finally figured out how http/Server.zig works with its state machine. Can finally do a 200 and a 404 return with content appropriately and do routes
+
+1694035770
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+ifreund, perfect, thanks!
+
+1694036263
+CMistress!~mc_@2a02:c7c:884a:c500:42bf:255a:6392:897c
+Is it expected that riverwm doesn't build with zig-0.11.0?
+
+1694036334
+gpanders!be60a9b05a@user/gpanders
+copygirl: AFAIK std.mem.zeroes works for arrays too
+
+1694036382
+gpanders!be60a9b05a@user/gpanders
+e.g. std.mem.zeroes([8]u8)
+
+1694037228
+ifreund!2940d10f8b@user/ifreund
+CMistress: it is expected, the README states that zig 0.10 is required
+
+1694037273
+CMistress!~mc_@2a02:c7c:884a:c500:42bf:255a:6392:897c
+Ah. Thank you.
+
+1694037275
+ifreund!2940d10f8b@user/ifreund
+(there is a next-zig branch that is 0.11 compatible that will likely be rebased and merged into master after I catch up on PRs)
+
