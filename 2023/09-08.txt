@@ -1,0 +1,184 @@
+1694147557
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+how can I get a local copy of the stdlib docs?
+
+1694147585
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+the language doc is just a one-page html I can download, not quite true of stdlib
+
+1694148565
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+nevermind, it's all installed locally already, also -femit-docs
+
+1694155128
+copygirl!~koppeh@copy.mcft.net
+I don't suppose Zig has something along the lines of a "using block" from C#.
+
+1694155194
+copygirl!~koppeh@copy.mcft.net
+In Flecs you can set a "scope" which causes entity functions to operate relative to that scope, rather than the root.
+
+1694155233
+copygirl!~koppeh@copy.mcft.net
+I sort of want to easily be able to set the scope, and then reset it again, at the end.
+
+1694155299
+copygirl!~koppeh@copy.mcft.net
+I think an easy way would be to literally use a block with with set + defer reset at the very beginning, but I'm wondering if there's potentially other ways to do this?
+
+1694155386
+copygirl!~koppeh@copy.mcft.net
+I feel like doing `world.scope(entity, { <do stuff in here> });` would be a nice way to go about it, but first of all I'm not sure if that's possible, nor if it's a good idea.
+
+1694156519
+torque!~tachyon@user/torque
+blocks can't be passed around like that
+
+1694156572
+torque!~tachyon@user/torque
+the "context manager" pattern in zig definitely seems to be `{const state = setupState(); defer state.deinit(); [... state use code goes here]}`
+
+1694156943
+copygirl!~koppeh@copy.mcft.net
+Yeah that makes the most sense.
+
+1694156976
+copygirl!~koppeh@copy.mcft.net
+There's a builtin (@cImport) that takes a block expression, was wondering if it could be used elsewhere as well.
+
+1694157001
+copygirl!~koppeh@copy.mcft.net
+But I see no downside to that pattern, thinking of it.
+
+1694157034
+copygirl!~koppeh@copy.mcft.net
+The only reason why it doesn't work in C# is because it doesn't have defer, so you have to use the using/disposable pattern there if you want to do something like it.
+
+1694157312
+torque!~tachyon@user/torque
+if you really wanted to abuse the language you could set up an iterator-like that produces state on its first call and destroys it on the second call which would give you `while (manageState()) |state| {... do things with state here}` but that definitely makes the intent less clear 
+
+1694157340
+torque!~tachyon@user/torque
+but also that doesn't destruct properly on early exit so lol it's a bad idea
+
+1694157997
+copygirl!~koppeh@copy.mcft.net
+Meanwhile, another issue with the expect functions in std.testing: If the expected value is not an optional, but actual is, it leads to an error due to the types not being convertable.
+
+1694158011
+copygirl!~koppeh@copy.mcft.net
+And the easy way to fix it is to just add .? to the optional.
+
+1694158043
+copygirl!~koppeh@copy.mcft.net
+But really I think the function should parameterize on the "actual" parameter, and have "expected" type coerce.
+
+1694158061
+copygirl!~koppeh@copy.mcft.net
+ACTION voices her opinion here because she is too lazy to create an issue for this.
+
+1694158078
+copygirl!~koppeh@copy.mcft.net
+(Maybe I will some time in the future.)
+
+1694163563
+dutchie!~dutchie@user/dutchie
+copygirl: you can do `try std.testing.expectEqual(@as(?usize, 42), fooBar())`
+
+1694163637
+copygirl!~koppeh@copy.mcft.net
+Yes, and that's too wordy for me so I'd rather just let the test panic.
+
+1694163654
+dutchie!~dutchie@user/dutchie
+another trick I occasionally use is to do `const cases: []const struct { expected: T, input: U } = &.{ .{ ... }, ... };` and loop on them
+
+1694193117
+grayhatter!~grayhatte@user/grayhatter
+copygirl: that issue exists already
+
+1694193179
+grayhatter!~grayhatte@user/grayhatter
+maybe... It actually might be sligtly different :)
+
+1694195988
+grayhatter!~grayhatte@user/grayhatter
+or, actually copygirl have you tried expectEqualDeep?
+
+1694196616
+copygirl!~koppeh@copy.mcft.net
+grayhatter: In the past, but don't you also need @as for that?
+
+1694196655
+grayhatter!~grayhatte@user/grayhatter
+I've always been able to solve that problem by reversing the order of expected and actual
+
+1694196677
+copygirl!~koppeh@copy.mcft.net
+Yeah but that will print the wrong error.
+
+1694196727
+copygirl!~koppeh@copy.mcft.net
+And it icks me that I have switched the order from what is technically correct.
+
+1694196738
+grayhatter!~grayhatte@user/grayhatter
+yes, that's true... 
+
+1694196797
+grayhatter!~grayhatte@user/grayhatter
+for me correct is what works, but also then technically correct would be to use @as, which I assume you also don't wanna do?
+
+1694196822
+copygirl!~koppeh@copy.mcft.net
+I mean, where I need it, I use it.
+
+1694196859
+copygirl!~koppeh@copy.mcft.net
+But for optionals I just throw in a .? after the optional to be able to compare it to the non-optional, which feels better than writing out @as with a whole type name.
+
+1694196922
+copygirl!~koppeh@copy.mcft.net
+I did use it with primitives here: https://git.mcft.net/copygirl/flecs-zig-ble/src/commit/8c897607b56438a57231eedce42cbe1e6480703a/src/path.zig#L397
+
+1694196967
+grayhatter!~grayhatte@user/grayhatter
+also, IIRC an optional takes more space than a non-optional, so if youre expectEqual(42, foo()) where foo() ?42. the test is correct to complain they're invalid and @as(?usize, 42) would be a "mistake" const expected: ?usize = 42; would be what you should be doing (according to the tests)
+
+1694197054
+copygirl!~koppeh@copy.mcft.net
+But if the type was defined but the second parameter and the first one type coerced ... wouldn't that make everything easier?
+
+1694197093
+copygirl!~koppeh@copy.mcft.net
+Wouldn't it be weird if you wrote expectEqual(@as(?u32, 100), someFuncReturningNonOptional()) ?
+
+1694197109
+grayhatter!~grayhatte@user/grayhatter
+yes  https://github.com/ziglang/zig/issues/4437
+
+1694197120
+copygirl!~koppeh@copy.mcft.net
+Like the other, illogical (and incorrect) way around, type coersion works.
+
+1694197255
+copygirl!~koppeh@copy.mcft.net
+@TypeOf(expected, actual) is probably also a good idea, but I'd be fine if expected simply coerced to actual.
+
+1694197279
+grayhatter!~grayhatte@user/grayhatter
+someone should open a pr to revert the @typeOf() requirement as here https://github.com/ziglang/zig/issues/4437#issuecomment-1067142376
+
+1694197315
+grayhatter!~grayhatte@user/grayhatter
+I'm pretty sure if I understand that correctly, either the compiler can enforce type safety, or it can't. And if it can't the @TypeOf check is meaningless
+
+1694197370
+grayhatter!~grayhatte@user/grayhatter
+if the compiler can promote one safely in code, it should be allowed to do so in tests. and if someone needs a test that demands that, they should write the test to demand that.
+
+1694199546
+copygirl!~koppeh@copy.mcft.net
+I dropped my two cents.
+
