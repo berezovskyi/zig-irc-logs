@@ -1,0 +1,148 @@
+1695034330
+copygirl!~koppeh@copy.mcft.net
+Ah heck, I haven't though about this...
+
+1695034373
+copygirl!~koppeh@copy.mcft.net
+So just to explain, it's my dream to make a game engine that allows runtime modding, cooperatively with other people, online.
+
+1695034415
+copygirl!~koppeh@copy.mcft.net
+Part of that is just being able to join some server, get sent the assets and you play a custom game.
+
+1695034488
+copygirl!~koppeh@copy.mcft.net
+I want to try my best to protect a player's server from malicious actors, so the game needs to be able to run untrusted code.
+
+1695034522
+copygirl!~koppeh@copy.mcft.net
+This is where I want to use Wasm, or Wasmtime, specifically. That should be able to sandbox the code well enough.
+
+1695034590
+copygirl!~koppeh@copy.mcft.net
+However I just realized that, wanting to push things into a more open and moddable direction from the get-to, I want to share source code of the scripts that run in the engine. I suppose think scriptable objects for now, but it's a little more powerful than that.
+
+1695034682
+copygirl!~koppeh@copy.mcft.net
+The think I just realized now, however, is that even if running the code is theoretically safe, due to being run in Wasm, that doesn't include compiling the code. Especially with a language like Zig, I'm going to have to sandbox the compilation to avoid arbitrary code execution, whether through explicit means like comptime, or abusing a bug in the compiler.
+
+1695034862
+copygirl!~koppeh@copy.mcft.net
+I also looked into sandboxing the entire game process at the OS level before but finding anything relevant on the internet nowadays is a lost cause.
+
+1695034990
+copygirl!~koppeh@copy.mcft.net
+I don't know if any game / game engine even goes to that length nowadays. Most modding APIs I've seen just require trusting the mod creator. I'd be better off just targeting browser engines at that point.
+
+1695035071
+copygirl!~koppeh@copy.mcft.net
+How feasible is it to run the Zig compiler itself in Wasm, targeting Wasm? I think that might just be the ... most realistic approach?
+
+1695035551
+Earnestly!~earnest@user/earnestly
+ls
+
+1695043951
+copygirl!~koppeh@copy.mcft.net
+If I know what I'm doing, maybe the wall of text from earlier could be summarized as: I need to compile Zig to Wasm in a way that's safe to do with untrusted code. Is it realistic to run the compiler itself in Wasm? Will it need WASI?
+
+1695047293
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+The bootstrap process already runs a wasm build of the compiler
+
+1695050552
+copygirl!~koppeh@copy.mcft.net
+jacobly: Yeah I read about that and it's really cool. From the sound of it, it's a mimimal version that only has what's required to get the rest going?
+
+1695051241
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+just the c backend for size reasons, but there's no reason it couldn't have a different (non-LLVM) backend enabled
+
+1695052090
+copygirl!~koppeh@copy.mcft.net
+Wait, how would I even invoke the compiler programmatically?
+
+1695055669
+Earnestly!~earnest@user/earnestly
+I don't believe it's possible to run untrusted code on any machine and expect it to be safe
+
+1695055945
+copygirl!~koppeh@copy.mcft.net
+Earnestly: Including in a Wasm sandbox? Or what are you responding to / what point are you trying to make?
+
+1695056114
+Earnestly!~earnest@user/earnestly
+Including containers, virtualisation, etc. The only chance you might have is using a total language
+
+1695056158
+Earnestly!~earnest@user/earnestly
+(Or accepting the risk and letting the fun roll)
+
+1695056406
+copygirl!~koppeh@copy.mcft.net
+Yeah nothing brings absolute safety, but I could at least do what I know is possible for me.
+
+1695056557
+copygirl!~koppeh@copy.mcft.net
+I'd also like to do OS-level process isolation but it doesn't seem like there's a ready-to-use solution that I could rely on. I sure as hell won't become a security expert myself. I'm already trying to start a 10-year project, that's already taken me 10 years to get nowhere.
+
+1695061857
+tsmanner!~tsmanner@129.41.87.4
+copygirl have you looked at the containers/bubblewrap library?
+
+1695062047
+copygirl!~koppeh@copy.mcft.net
+tsmanner: Probably expecting too much, but that's Linux only and appears to not be designed at all for my usecase. From a glance it looks like it requires root?
+
+1695062562
+Earnestly!~earnest@user/earnestly
+user namespaces if kernel built for it
+
+1695063525
+tsmanner!~tsmanner@129.41.87.4
+My understanding is that the point of bubblewrap is that you _don't_ need to be root to do it
+
+1695063582
+tsmanner!~tsmanner@129.41.87.4
+Maybe it's a way for admins to give users the ability to create chroot jails, but the thing running bubblewrap is or needs-to-be root
+
+1695063662
+tsmanner!~tsmanner@129.41.87.4
+> The maintainers of this tool believe that it does not, even when used in combination with typical software installed on that distribution, allow privilege escalation. [...] bubblewrap is a tool for constructing sandbox environments. bubblewrap is not a complete, ready-made sandbox with a specific security policy.
+
+1695064103
+tsmanner!~tsmanner@129.41.87.4
+Yeah I don't see anything in the doc here that says it has to be root; in fact, it seems like the reason for bubblewrap to exist is to allow unpriviledged users the ability to create sandboxes for their applications.
+
+1695064367
+tsmanner!~tsmanner@129.41.87.4
+It is available as C source code, that zig-build should be able to fetch, I would expect it to be relatively easy to integrate into your code base, package a zig compiler with your releases, and use bubblewrap as a library to wrap calls to that compiler
+
+1695067256
+copygirl!~koppeh@copy.mcft.net
+Hmm interesting. Not around to thank them for that information.
+
+1695067334
+copygirl!~koppeh@copy.mcft.net
+I guess it's worth a try. I wonder if something similarly simple exists for Windows, then.
+
+1695072171
+EvanCarroll!~ecarroll@99-7-199-108.lightspeed.hstntx.sbcglobal.net
+Anyone want to fix a benchmark? https://github.com/orhun/zig-http-benchmarks/issues/16
+
+1695072201
+EvanCarroll!~ecarroll@99-7-199-108.lightspeed.hstntx.sbcglobal.net
+I'm not sure if Zig can do that either way, looking at the code it's not clear that zig exposes the file descripters for an http reader or writer. Which would make that rust optimization impossible.
+
+1695079681
+noeontheend!6c26d871c9@2604:bf00:561:2000::40d
+I'm trying to use Zig to build/slowly rewrite an existing C codebase that imports a "variables.h" file everywhere. I'm getting lots of "ld.lld: duplicate symbol" errors. Is there a way to work around this?
+
+1695079710
+noeontheend!6c26d871c9@2604:bf00:561:2000::40d
+Here's a minimal example I put together to show the issue: https://git.sr.ht/~reesmichael1/zigc-duplicateerror/tree
+
+1695079990
+noeontheend!6c26d871c9@2604:bf00:561:2000::40d
+(I'll add that I successfully got this program to build many Zig versions ago without doing anything special, but never made much progress on the actual rewrite)
+
