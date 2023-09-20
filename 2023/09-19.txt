@@ -1,0 +1,132 @@
+1695081842
+nektro!~nektro@75-164-190-81.ptld.qwest.net
+building add.c and sub.c means that variables.h is getting compiled in twice
+
+1695081891
+nektro!~nektro@75-164-190-81.ptld.qwest.net
+usually header files included many times will have something along the lines of  `#ifndef VARIABLES_H` and `#define VARIABLES_H 1`
+
+1695081911
+nektro!~nektro@75-164-190-81.ptld.qwest.net
+at the top to prevent that issue
+
+1695097050
+noeontheend!6c26d871c9@2604:bf00:561:2000::40d
+nektro: Understood. Unfortunately, the project is much larger than what's shown here, so editing it by hand like that is intractable. Maybe some sed wizardry can come to the rescue....
+
+1695097424
+torque!~tachyon@user/torque
+note that this is typically called an "include guard" and modern compilers (which should include llvm in zig) also support `#pragma once`. 
+
+1695097452
+torque!~tachyon@user/torque
+however, this is such a common practice that it's surprising your project doesn't have it
+
+1695097519
+torque!~tachyon@user/torque
+you could insert `#pragma once` at the beginning of every header file using a script, but I wouldn't be surprised if that ended up breaking some other weird behavior that somehow depended on multiple imports
+
+1695097767
+torque!~tachyon@user/torque
+I'm actually not sure this would fix this in this case though, since the problem is actually happening when linking
+
+1695097855
+torque!~tachyon@user/torque
+basically the problem is that add.c gets compile to add.o, which has global symbols from variables.h. then sub.c gets compiled to sub.o, which has global symbols from variable.h
+
+1695097878
+torque!~tachyon@user/torque
+then when the linker tries to link add.o and sub.o into a single executable, it finds there is a name conflict
+
+1695097962
+torque!~tachyon@user/torque
+this is a very uncommon use case, since variable declarations in C headers are normally marked either `extern` or `static` (the former meaning "someone else has defined this symbol and you'll find it when you are linking" and the latter meaning "this symbol is private to this file, so don't export it")
+
+1695098003
+torque!~tachyon@user/torque
+there may be some weird compiler flag that causes the linker to not screw up here, but it's hard to say without more context because frankly it sounds like the original project is just completely broken in the first place
+
+1695098948
+noeontheend!6c26d871c9@2604:bf00:561:2000::40d
+Sure, I'm familiar with include guards. It's just interesting that it worked several years ago when I first tried this rewrite (not that I'm blaming Zig in the slightest, the project is clearly borked here). 
+
+1695100730
+torque!~tachyon@user/torque
+well, if you only have one header that is declaring global variables like this, in theory that's the only thing you need to edit. Obviously, understanding how it is intended to work is important to fixing the issue correctly.
+
+1695100836
+torque!~tachyon@user/torque
+a lot of "header only" libraries will change their behavior based on a preprocessor directive (i.e. in exactly one c file you do something like `#define MY_LIBRARY_IMPL` before importing the header)
+
+1695100873
+torque!~tachyon@user/torque
+if there's no macro wizardry happening here, I am pretty confused how it would work (weird compiler flags notwithstanding)
+
+1695100933
+torque!~tachyon@user/torque
+*how it would have ever worked
+
+1695128270
+noeontheend!6c26d871c9@2604:bf00:561:2000::40d
+Duh, thanks for pointing that out. However, I updated both the project and the demo with an include guard, and both still give the duplicate symbol error.
+
+1695136755
+be65da6e451238ff!~be65da6e4@97-122-192-30.hlrn.qwest.net
+Hey all, fairly new to Zig. I want to use https://github.com/natecraddock/ziglua in a project I'm working on, but I'd like to be able to change the cflags (https://github.com/natecraddock/ziglua/blob/main/build.zig#L61). I'm still learning about the build system, but it seems like you should be able to do that by adding a build option. Can you set
+
+1695136755
+be65da6e451238ff!~be65da6e4@97-122-192-30.hlrn.qwest.net
+build options on dependencies in your `build.zig` though?
+
+1695139430
+tsmanner!~tsmanner@pool-96-249-217-176.pghkny.fios.verizon.net
+noeontheend That makes sense to me, the include guards only apply within one translation unit (basically, a .c file).  Different .c files are compiled separately and then linked together after.  My understanding of that source code is that the content of `variables.h` is creating common mutable data that's used inside a bunch of functions.  Without specifying the storage duration and linkage type (e.g. with the keyword
+
+1695139430
+tsmanner!~tsmanner@pool-96-249-217-176.pghkny.fios.verizon.net
+ `static` or `extern`), the default is `extern` for any object at file-scope, which would mean that no memory is actually allocated for it just by including variables.h.  My guess is that gcc and/or clang were solving that for you by guessing that you meant static instead, which makes one 'local' instance of the variable for each translation unit.  My guess is that what you want/need there is extern, which then means 
+
+1695139431
+tsmanner!~tsmanner@pool-96-249-217-176.pghkny.fios.verizon.net
+you need to have a single .c file somewhere that actually defines the variable instance with that name. There's more info here: https://en.cppreference.com/w/c/language/storage_duration
+
+1695139491
+tsmanner!~tsmanner@pool-96-249-217-176.pghkny.fios.verizon.net
+You should be able to just put `extern` in front of the variable in variables.h and then add, for example, `int term1;` to a `variables.c` file you create and add to your compile.
+
+1695143658
+cympol!~cympol@181.192.84.56
+Hello! Is there a function in the stdlib like KiB(n) or MiB(n) for converting bytes to kibibytes or mebibytes, so I don't have to keep implementing them myself?
+
+1695143701
+cympol!~cympol@181.192.84.56
+I couldn't find one so I don't think there is
+
+1695151116
+Amun-Ra!~amun-ra@retro.rocks
+a function that divides by 1024?
+
+1695153192
+motiejus!~motiejus@88.223.107.21
+i just read a *long* backlog of this chan e
+
+1695153205
+motiejus!~motiejus@88.223.107.21
+channel and remembered how awesome this community is. :)
+
+1695153249
+motiejus!~motiejus@88.223.107.21
+hi again the few dolkI am coming back to my zig business soon :)
+
+1695153275
+motiejus!~motiejus@88.223.107.21
+damn phone typing, sorry.
+
+1695153688
+andrewrk!~andrewrk@mail.ziglang.org
+welcome back motiejus!
+
+1695165421
+nektro!~nektro@75-164-190-81.ptld.qwest.net
+wb :)
+
