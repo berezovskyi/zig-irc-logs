@@ -1,0 +1,244 @@
+1695601323
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+So here is a specific question: in TranslateC.zig, the comments for addModule and createModule refer to "the package's module set", and "the current package". What does the "current package" mean in this context?
+
+1695601491
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+I can get these procedures to work,  for example by adding the module to tests with main_tests.addModule("c_imports", c_imports_module); for example, but how does that translate to "current package"?
+
+1695601570
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+Anyway, everyone on irc is quiet tonight, I'll check back tomorrow to see if you all have any pointers. Thanks for reading my comments.
+
+1695601615
+FenderQ!~fenderq@user/fenderq
+hi acarrico I'd help you yet am still too new to Zig
+
+1695601621
+FenderQ!~fenderq@user/fenderq
+hopeful you get your answer
+
+1695601657
+FenderQ!~fenderq@user/fenderq
+happy hacking ;)
+
+1695602181
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+Hey FenderQ --- Thanks!
+
+1695602190
+FenderQ!~fenderq@user/fenderq
+;)
+
+1695602221
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+I understand that this stuff is in flux with active issues etc., haven't seen anything on translation steps though.
+
+1695602273
+torque!~tachyon@user/torque
+I think you have already figured this out, but the zig stdlib source code is the most up-to-date documentation
+
+1695602297
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+torque: Yep. Read the Source Luke :)
+
+1695602298
+torque!~tachyon@user/torque
+I don't think the current build system api is particularly well documented at the moment
+
+1695602324
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+I've been reading, and making progress. Just looking to see if anyone else has stepped in these waters.
+
+1695602375
+torque!~tachyon@user/torque
+my understanding is that a "package" is basically just all of the modules/libraries/etc managed by a single `build.zig`
+
+1695602610
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+Yes, I can see that TranslateC's createModule really just creates a struct, whereas addModule adds it to it's owner. I'm not clear on what its owner actually is though... need to follow more source code I guess.
+
+1695602733
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+I guess in the past I though of build.zig as creating executables, tests, libraries, but not packages. Need to see how packages fit in to the mix.
+
+1695603043
+torque!~tachyon@user/torque
+I am not an expert on the internals, but I would say that build.zig does still create those things. but it also implicitly defines a package on which other projects may depend (primarily through the build.zig.zon dependencies, but probably other ways as well).
+
+1695603127
+torque!~tachyon@user/torque
+i.e. you have `mylibrary` with a build.zig that produces `mylibrary.a` from some source files. Now, someone else can declare a dependency on your `mylibrary` and their build.zig will automatically invoke your `build.zig` 
+
+1695603450
+acarrico!~acarrico@dhcp-68-142-49-163.greenmountainaccess.net
+torque: yes I'm starting to get it. Your build.zig builds up a b.modules. Another package can access that by creating a Dependency, and using d.module("name"). Something like that.
+
+1695603503
+torque!~tachyon@user/torque
+yeah
+
+1695614330
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+It would be nice if Zig's forced linter could be user configured. I indent everything in all languages by 2 spaces, so I really don't like it when Zig forces me to use 4 spaces like a fuhrer.
+
+1695614429
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+I always code by myself, not in a team, so I don't even care what my non-existing "team members" think of it.
+
+1695614442
+andrewrk!~andrewrk@mail.ziglang.org
+zig is designed with an ecosystem in mind
+
+1695614487
+andrewrk!~andrewrk@mail.ziglang.org
+everybody wants a share of the harvest from a rich ecosystem 
+
+1695614487
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+I know, though I don't think forcing a specific format is really part of an ecosystem.
+
+1695614589
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+Forcing "} else {" instead of "}\nelse {" or "}\nelse\n{", that's fine. I didn't like that when I first coded in Go, but I got to love it even for C and C++, but 4 spaces really bloats up on my tiny screen.
+
+1695615606
+torque!~tachyon@user/torque
+I don't think you're actually forced to use zig fmt
+
+1695615688
+torque!~tachyon@user/torque
+there are lots of advantages to having (nearly) universal consistency
+
+1695615823
+torque!~tachyon@user/torque
+though if zig fmt formatted multiline function arguments in any of the (universally completely terrible) ways that clang-format offers for c/c++, my own personal breaking point would be triggered
+
+1695615861
+torque!~tachyon@user/torque
+thank goodness it doesn't
+
+1695641528
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+torque: Zig's auto formatting can be useful sometimes, like when you copy/paste a block of code from within a loop to outside for example, so I'm not completely against it. Just the indenting part is what bothers me.
+
+1695641614
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+This channel is getting "has joined" spammed.
+
+1695644516
+lux0r!~lux0r@65.56.68.34.bc.googleusercontent.com
+if you don't like the fact it uses 4 spaces you can probably solve that problem in your editor by making it display 4 spaces as 2 (even though under the hood it's not changing the file). At least in Vim you'd do using `conceal cchar=x`
+
+1695663967
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+how do I link to win32 apis?
+
+1695664034
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+I can see how to generally declare and use the functions with help from callconv by looking at zigwin32 (https://github.com/marlersoft/zigwin32) sauce
+
+1695664575
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+nevermind, following this to see where it takes me: https://github.com/ziglang/zig/issues/3453
+
+1695670961
+jemius!~imperator@2001:9e8:32f7:300:550f:a363:461:e43f
+I think I suck with Zig's type qualifiers as much as I do in C. const void* const arr[] and so on
+
+1695671109
+ifreund!2940d10f8b@user/ifreund
+at least zig doesn't have any "spiral" rule, its all linear
+
+1695671127
+jemius!~imperator@2001:9e8:32f7:300:550f:a363:461:e43f
+What's a spiral rule?
+
+1695671345
+ifreund!2940d10f8b@user/ifreund
+jemius: how you declare function pointers in C
+
+1695671394
+ifreund!2940d10f8b@user/ifreund
+I guess it applies to arrays as well
+
+1695671438
+ifreund!2940d10f8b@user/ifreund
+related: https://cdecl.org/
+
+1695671570
+jemius!~imperator@2001:9e8:32f7:300:550f:a363:461:e43f
+hm. I just came back here because I saw the list of proposals for C23, so..
+
+1695671578
+jemius!~imperator@2001:9e8:32f7:300:550f:a363:461:e43f
+it's hard for a language to stay minimalistic
+
+1695672328
+Earnestly!~earnest@user/earnestly
+No it's quite simple in this case, DMR also regreted the syntax used
+
+1695672356
+Earnestly!~earnest@user/earnestly
+(The languages that were created/explored at bell labs didn't repeat it)
+
+1695676271
+GreaseMonkey!greaser@user/greasemonkey
+My experience so far with using the Win32 API on Zig has been that it covers *most* of what you might want but there are gaps
+
+1695676292
+GreaseMonkey!greaser@user/greasemonkey
+although i forget what those gaps were, IIRC you do hit them when setting up OpenGL
+
+1695682364
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+GreaseMonkey, thanks. I've never dealt with win32 api, but it's been a nightmare on day 1. I'll just find a cross-platform audio library instead.
+
+1695682379
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+would've been fun to use native apis, but wow is win32 a nightmare!
+
+1695682404
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+was able to get it working with zigwin32, not directly
+
+1695682859
+GreaseMonkey!greaser@user/greasemonkey
+winmm requires a bit of encouragement but once you've got it working it continues to work properly
+
+1695682887
+remiliascarlet!~remiliasc@KD106137200105.ppp-bb.dion.ne.jp
+In principle, anything from Microsoft was designed with it being a nightmare in mind.
+
+1695682891
+GreaseMonkey!greaser@user/greasemonkey
+but you do need to prepare more buffers than you think you'd need
+
+1695682974
+GreaseMonkey!greaser@user/greasemonkey
+ALSA's quirkiness is different: you have to call snd_pcm_recover() any time you get an xrun, and (most notably for playback) you'll also find yourself needing to call snd_pcm_avail_update() because you will want to fill that buffer ASAP
+
+1695682994
+GreaseMonkey!greaser@user/greasemonkey
+but it's easier to use than PulseAudio's API
+
+1695684075
+braewoods__!~braewoods@user/braewoods
+fengshaun, https://xiph.org/ao/
+
+1695684132
+braewoods__!~braewoods@user/braewoods
+though a bit old
+
+1695685361
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+thanks!
+
+1695685386
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+I don't think I've ever done so many pointer gymnastics in my life as I've had to do with media foundation apis
+
+1695685420
+fengshaun!~fengshaun@71-17-154-190.regn.hsdb.sasknet.sk.ca
+braewoods__, thanks, but I need microphone input!
+
