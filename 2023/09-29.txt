@@ -1,0 +1,176 @@
+1695949355
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+andrewrk: Thanks for the reply. exec(2) returns with ENOEXEC (8) and the process delivers a SIGKILL to itself.
+
+1695949411
+andrewrk!~andrewrk@mail.ziglang.org
+rzezeski, ENOEXEC is mapped to error.InvalidExe so that should work already
+
+1695949450
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+andrewrk: okay, so maybe I'm just misinterpreting the test output
+
+1695949451
+andrewrk!~andrewrk@mail.ziglang.org
+I'm a bit confused though because dying with SIGKILL would be observed differently than ENOEXEC from execve()
+
+1695949461
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+I see output recording this error, but perhaps that is meant to happen?
+
+1695949464
+andrewrk!~andrewrk@mail.ziglang.org
+I mean it has to be one or the other
+
+1695949483
+andrewrk!~andrewrk@mail.ziglang.org
+can I see the output?
+
+1695949492
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+I know, and I haven't tracked down this code, but some side of the exec is deciding to give it a SIGKILL
+
+1695949608
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+andrewrk: https://gist.github.com/rzezeski/6c4169e3d7085958cf2404e6e5ddb958
+
+1695949673
+andrewrk!~andrewrk@mail.ziglang.org
+rzezeski, right, so it's as you said it's being terminated with a signal, whereas the zig build system is relying on a meaningful error code instead
+
+1695949747
+andrewrk!~andrewrk@mail.ziglang.org
+that the process delivers a SIGKILL to itself tells me that this is some libc wrapper code doing some nonsense on top of the actual OS syscalls
+
+1695949763
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps there is a lower level libc function we could call, or perhaps the OS would allow us to make syscalls directly
+
+1695949784
+andrewrk!~andrewrk@mail.ziglang.org
+example: https://github.com/ziglang/zig/pull/14866
+
+1695949796
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+Well in illumos libc is the API/ABI
+
+1695949820
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+so much so that you can't statically link libc
+
+1695949825
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+there is no archive
+
+1695949860
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+and I believe that exec sees there's no interpreter and SIGKILLs it for good measure, but I"m guessing there
+
+1695949884
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+I am an illumos contributor but I'm not totally familiar with this part of the stack.
+
+1695950212
+andrewrk!~andrewrk@mail.ziglang.org
+I think it is reasonable for an operating system to support the operation of "run this as an executable and give me an error code if it doesn't work for some reason"
+
+1695950233
+andrewrk!~andrewrk@mail.ziglang.org
+the other operating systems all support this fundamental operation
+
+1695950704
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+andrewrk: okay, I'm working with some other illumos peeps to determine why the system is choosing to deliver a SIGKILL. I'll report back when I have better information.
+
+1695950730
+andrewrk!~andrewrk@mail.ziglang.org
+thanks rzezeski!
+
+1695954816
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+andrewrk: okay, so some more info. The SIGKILL is from the kernel. The problem is we do not like an ELF object with PT_PHDR without a PT_INTERP. Fine, then just deliver an ENOEXEC. The problem is, in the illumos elfexec() (and probably Solaris too), by the time of checking this constraint we've already modified the process and can no longer cleanly deliver the ENOEXEC. Why we wait to check this case until after we've modified the 
+
+1695954816
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+process I don't know, illumos has 50 years of history. It may be reasonable to modify the exec path to first check these constraints before modifying the process, to cleanly deliver the ENOEXEC. But that probably won't be a quick change for me to make, and I'm not sure if this same issue will come up in Solaris (granted I also understand that's hardly a concern for Zig given the smaller user base). Anyways, I do have changes that 
+
+1695954816
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+make zig-0.11.0 and 0.12.0-dev work. I can compile and run my own project as well as tools like ncdu. So perhaps this particular issue is something I can figure out after getting some initial illumos changes up?
+
+1695954999
+andrewrk!~andrewrk@mail.ziglang.org
+rzezeski, thanks for looking into it. yes it would be fine to solve this problem later and get some other changes landed in the meantime
+
+1695955043
+andrewrk!~andrewrk@mail.ziglang.org
+one possible workaround for the near future could be to pinpoint this particular failure mode (elf file + solaris + missing PT_INTERP) preemptively before trying to execute the binary
+
+1695955168
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+I mean, I think your request is reasonable. We should probably check things we know we don't like BEFORE modifying the process. One of the people I spoke with said they may have made this decision to delay the checks as a form of optimization, but that was a guess on his part. There is one person in the community who has deep knowledge of the exec path and I'll talk to them about it when I get a chance.
+
+1695955202
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+But in the meantime I also have changes that actively improve the situation on illumos (and probably solaris too, though at this point they are different platforms), and so it would be nice to get that up.
+
+1695955328
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+I know there is an issue about test filtering problems. My next step was going to try to filter out these tests so that I can more easily see what other tests might be failing. Would that approach work?
+
+1695955418
+andrewrk!~andrewrk@mail.ziglang.org
+it will be important to make running the test suite have exit code 0 if we ever get CI checks going, but for local development, I think you could just run the full test suite and ignore the failures related to this particular issue, yeah?
+
+1695955431
+andrewrk!~andrewrk@mail.ziglang.org
+are you getting the build summary at the end of your failed test suite run?
+
+1695955459
+andrewrk!~andrewrk@mail.ziglang.org
+it should say something like "Build Summary: 3047/3192 steps succeeded; 141 skipped; 1 failed; 55759/58647 tests passed; 2888 skipped (disable with --summary none)"
+
+1695955487
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+Build Summary: 4247/4452 steps succeeded; 125 skipped; 52 failed; 12936/13539 tests passed; 601 skipped; 2 failed (disable with --summary none)
+
+1695955508
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+I ran with `-Denable-llvm -Dskip-release -Dskip-non-native`
+
+1695955526
+andrewrk!~andrewrk@mail.ziglang.org
+right, so my suggestion is to accept for now that some of those failures are expected and start working on the remaining failures
+
+1695955553
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+okay, I can work with that
+
+1695955567
+andrewrk!~andrewrk@mail.ziglang.org
+we can work towards exit code 0 when it's time to add CI coverage
+
+1695955673
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+sounds like a plan, thank you for your time, and thanks to everyone who works on this language, I think it's great!
+
+1695960617
+andrewrk!~andrewrk@mail.ziglang.org
+cheers and happy hacking :)
+
+1695990161
+ikskuh!~xq@v43666.php-friends.de
+henlo
+
+1695990166
+ikskuh!~xq@v43666.php-friends.de
+discord also gone for you?
+
+1695994919
+drakonis!drakonis@user/drakonis
+discord is borked for almost everyone
+
+1695995315
+ikskuh!~xq@v43666.php-friends.de
+ok
+
