@@ -1,0 +1,168 @@
+1696761461
+somercet!~somercet@c-73-144-84-45.hsd1.mi.comcast.net
+Has anyone tried building a GTK3 app in Zig?
+
+1696780651
+grayhatter!~grayhatte@user/grayhatter
+I wanna say thank you to all the language hackers and maintainers... I just wrote a comptime html templating system... Learning and writing zig has made writing code fun again :)
+
+1696780906
+fancycade!be0419707b@2604:bf00:561:2000::3f8
+Sharing my mostly working port of ee (small text editor shipped with FreeBSD) in Zig: https://git.sr.ht/~fancycade/eez
+
+1696780943
+fancycade!be0419707b@2604:bf00:561:2000::3f8
+Fun challeng to learn Zig in more depth. Translating C code to Zig can be tricky but the semantics of Zig make it very natural
+
+1696785532
+grayhatter!~grayhatte@user/grayhatter
+is it possible to generate an array of filenames at compile time?
+
+1696788267
+andrewrk!~andrewrk@mail.ziglang.org
+neat, fancycade! thanks for sharing
+
+1696788812
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+somercet, look up capy-ui
+
+1696788834
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+grayhatter, have u seen nektro/zig-pek btw
+
+1696788996
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, thanks for sponsoring zig :)
+
+1696789017
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: <3
+
+1696789043
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: thanks for creating a language that I enjoy using!
+
+1696790302
+grayhatter!~grayhatte@user/grayhatter
+nektro: this is pretty dope idea/syntax
+
+1696790405
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+thanks :) its not super documented but you can also define custom functions and loop conditions. im using it as the main driver for some server-rendered webappsites im working on
+
+1696794655
+grayhatter!~grayhatte@user/grayhatter
+is it intentional that `fs.Dir.readFile()` has different semantics from `@embedFile()`?
+
+1696795094
+torque!~tachyon@user/torque
+why would you expect them to have the same semantics and/or in what way do they differ that matters to you?
+
+1696795139
+torque!~tachyon@user/torque
+one is for reading files at runtime, the other is for embedding files at compile time, it seems like these are two separate things which could reasonably be expected to have different behaviors
+
+1696795182
+grayhatter!~grayhatte@user/grayhatter
+dir.readFileAlloc(a, "directory//filename.txt", MAXBTYES) works but @embedFile("directory//filename.txt"); returns a not found error
+
+1696795283
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+embedFile is relative to the source file calling it, readFile is relative to cwd()
+
+1696795328
+grayhatter!~grayhatte@user/grayhatter
+it doesn't, I fixed the bug in building filenames, but I was wondering if there was an expectation that they'd have the exact same file name semantics. I'm fine with embedFile being much more strict, but I'd also exect that might be unintentional?
+
+1696795370
+grayhatter!~grayhatte@user/grayhatter
+nektro: readfile relitive to Dir it's called on, doesn't matter which dir
+
+1696795392
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+sorry, yeah
+
+1696795414
+torque!~tachyon@user/torque
+assuming your paths are correct, I'd guess it's maybe a path normalization issue
+
+1696795427
+torque!~tachyon@user/torque
+I'd consider this to be a bug in @embedFile but idk
+
+1696795472
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+if ur saying its only failing because of the double slash, i agree with zig that it should be strict
+
+1696795473
+torque!~tachyon@user/torque
+I'd actually expect the compiler to just forward the @embedFile path to std.fs.readFile or an equivalent function internally
+
+1696795514
+grayhatter!~grayhatte@user/grayhatter
+torque: that's what I was thinking to, I'd assume embedFile would follow the exact same semantics of std.fs (with it's own restrictions) but "path//filename.txt" looks invalid to me, even if linux tollerates it
+
+1696795586
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+comptime is an abstract machine so it has to be more strict than all targets the compiler supports in order to ensure that compilation success isnt determined by what the host is
+
+1696795591
+torque!~tachyon@user/torque
+I believe that multiple slashes are valid in unix
+
+1696795621
+torque!~tachyon@user/torque
+yeah, I suppose that's fair, but I'd argue it violates the principle of least astonishment in common cases
+
+1696795631
+grayhatter!~grayhatte@user/grayhatter
+they are, IIRC // is defined equivilant to /./ which is just /
+
+1696795717
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+consistency beats out avoiding surprise
+
+1696795746
+torque!~tachyon@user/torque
+you can have both
+
+1696795838
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+indeed, i thought about the wording for a bit because they often work hand in hand
+
+1696797224
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+Hmm, is there any way to @embedFile binary files with embedded zeroes directly? I noticed according to the documentation `@embedFile` returns a `*const [N:0]u8` rather than a `*const [N]u8`. For now I hex-escaped my binary file and used comptime magic to unpack stuff, but I was hoping there was a way to avoid that.
+
+1696797300
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+Or since N is known, does this avoid strlen style length in this case, despite having a sentinel value?
+
+1696797404
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+I'm basically wondering if it's safe to get a plain []u8 slice up to .len while it's a sentinel-terminated array rather than sentinel-terminated slice, if there are embedded zeroes in the middle of the array.
+
+1696797991
+andrewrk!~andrewrk@mail.ziglang.org
+Overkill, it's allowed to have zeroes in it. it will also have an extra zero at the end that is not included in the length
+
+1696798009
+andrewrk!~andrewrk@mail.ziglang.org
+same as a string literal with zeroes in it: "example\x00string"
+
+1696798065
+andrewrk!~andrewrk@mail.ziglang.org
+the fact that there is an extra null at the end will not interfere with anything
+
+1696798444
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+Ahh thanks, whoops, that makes sense! I think I was just a bit confused about that detail from looking at details on sentinel-terminated pointers/slices. I guess I was mostly after how to turn that into a regular slice for stuff like @memcpy, and somehow assumed len would stop at the first null, but glad that's not the case. So I can just use arr[0..] and it all works as expected.
+
+1696798513
+andrewrk!~andrewrk@mail.ziglang.org
+that's correct. note that @embedFile works exactly like a string literal, which is to say that it's already a pointer, so [0..] is redundant
+
+1696798574
+Overkill!~overkill9@24-212-253-115.cable.teksavvy.com
+ah okay, good to know
+
