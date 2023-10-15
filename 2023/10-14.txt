@@ -1,0 +1,532 @@
+1697251168
+matthew-levan!~matthew-l@2600:2b00:a908:c600:f131:d89d:beed:3eb2
+Good evening, do I still need to vendor external C libraries that I depend on or can Zig fetch them and make their files available for further use in my build?
+
+1697251364
+andrewrk!~andrewrk@mail.ziglang.org
+matthew-levan, you can fetch them with the build system
+
+1697251410
+andrewrk!~andrewrk@mail.ziglang.org
+here's an example of ffmpeg with the build system replaced by zig: https://github.com/andrewrk/ffmpeg
+
+1697251416
+matthew-levan!~matthew-l@2600:2b00:a908:c600:f131:d89d:beed:3eb2
+Neat, thanks. My project consists of a few libraries within it that are all used to produce a single statically linked binary, plus a bunch of external C libraries which we also statically link.
+
+1697251438
+matthew-levan!~matthew-l@2600:2b00:a908:c600:f131:d89d:beed:3eb2
+Where do the fetched files go after Zig gets em?
+
+1697251441
+andrewrk!~andrewrk@mail.ziglang.org
+this is using the "fork" strategy, however you may also opt to use the "pristine tarball" strategy where you depend on the upstream code and then wrap that with your build script
+
+1697251472
+andrewrk!~andrewrk@mail.ziglang.org
+example of the "pristine tarball" strategy: https://github.com/allyourcodebase/orca
+
+1697251496
+andrewrk!~andrewrk@mail.ziglang.org
+they go into <zig global cache>/p/<package hash>
+
+1697251522
+matthew-levan!~matthew-l@2600:2b00:a908:c600:f131:d89d:beed:3eb2
+Very cool very cool, ok. I saw you streamed the orca stuff a few days ago, maybe I should go watch.
+
+1697251538
+andrewrk!~andrewrk@mail.ziglang.org
+ehh it's a bit long-winded. you can get the info faster by just looking at the results :)
+
+1697251588
+andrewrk!~andrewrk@mail.ziglang.org
+if you get stuck or want a code review feel free to link your build.zig code here
+
+1697251623
+andrewrk!~andrewrk@mail.ziglang.org
+hopefully will get some documentation & guides written soon. at least now there is a reference for build.zig.zon: https://github.com/ziglang/zig/blob/master/doc/build.zig.zon.md
+
+1697251678
+matthew-levan!~matthew-l@2600:2b00:a908:c600:f131:d89d:beed:3eb2
+Good call I'll check this orca work out, thank you.
+
+1697251932
+matthew-levan!~matthew-l@2600:2b00:a908:c600:f131:d89d:beed:3eb2
+Ok here's another quick q: I have a header I want to produce that also simply `#include`s other headers that are in the same directory of my project. I just want to combine all those definitions into one header, if that makes sense. How do I do that in `build.zig`?
+
+1697252047
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think you need any flags for that, if you use quotes in C you can include files in the same directory, like this: #include "foo.h"
+
+1697269230
+LACampbell!~lewis@granite-phrase.bnr.la
+"zig test src/main.zig" give you a little output like "1 tests pass", but "zig build test" (using the default zig init-exe) has no output on success. can that be changed?
+
+1697272815
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can zig build for arm64?
+
+1697273045
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah, that's aarch64?
+
+1697273061
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ACTION has little experience with compiling
+
+1697273362
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/pwiecz/go-fltk/issues/50#issuecomment-1468888765
+
+1697273377
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+CGO_ENABLED=1 GOOS=windows GOARCH=amd64 CXX="zig c++ -target x86_64-windows-gnu" CC="zig cc -target x86_64-windows-gnu" go build
+
+1697273398
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+will try that for aarch64-linux
+
+1697301902
+matthew__!~matthew@ip-50-5-118-215.dynamic.fuse.net
+test
+
+1697301909
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+test 123
+
+1697308156
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+hey if you use inline for is it possiible to build a string at compile time?
+
+1697308194
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+like var s = ""; inline for(some_strings) | string| s = s ++ string ?
+
+1697308845
+torque!~tachyon@user/torque
+did you try it?
+
+1697308894
+torque!~tachyon@user/torque
+fwiw you could probably use `comptime for` there. and `s` would have to be declared `comptime var` since vars by default are runtime
+
+1697309034
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+soupladler, u have to explicitly set the type of s to []const u8 for the concat to work in a loop
+
+1697309076
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+or do 'const s = comptime for' like torque said
+
+1697309120
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+oh u prolly still need the intermediate fix because comptime for isnt reduce
+
+1697309241
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+oh I didn't know that about comptime var
+
+1697309250
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+I did try it and a bunch of variations
+
+1697309256
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+also did not know about comptime for
+
+1697309269
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+(I started the day before yesterday :))
+
+1697309319
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+Andrew's ffmpeg example still uses some vendored libraries as dependencies (like andrewrk/libz, for example)-- is this still necessary or can I build a fetched dependency in the build.zig file where I'm going to use it as a dep?
+
+1697309364
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+For reference: https://github.com/andrewrk/ffmpeg/blob/main/build.zig.zon
+
+1697309380
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+https://github.com/andrewrk/libz/blob/master/build.zig
+
+1697309415
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+BTW, do we have glob pattern matching for files in build.zig[.zon]?
+
+1697309439
+soupladler!~soupladle@ip2504fbf1.dynamic.kabel-deutschland.de
+ok rad that worked thanks guys
+
+1697309863
+andrewrk!~andrewrk@mail.ziglang.org
+matthew-levan, what do you mean it's "vendored"? that usually means the contents are copied into the repository, which is not the case here
+
+1697310339
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+Oh I mean that there's still the requirement of maintaining your own fork of the repo (with added Zig files).
+
+1697310464
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+that was removed recently
+
+1697310626
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+Nice.. that's what I was hoping for. So at this point, I jam all my dependencies' build logic into the same build.zig file that will depend on them, right?
+
+1697310887
+andrewrk!~andrewrk@mail.ziglang.org
+I don't understand what you're asking. what don't you like about the ffmpeg/zlib example?
+
+1697310924
+andrewrk!~andrewrk@mail.ziglang.org
+oh I think I understand the question. you're asking about the "pristine tarball" method
+
+1697311005
+LACampbell!~lewis@granite-phrase.bnr.la
+"zig build test -fsummary" should output "x test passed" according to a github issue, but theflag isn't recognised.
+
+1697311016
+andrewrk!~andrewrk@mail.ziglang.org
+LACampbell, --summary all
+
+1697311064
+LACampbell!~lewis@granite-phrase.bnr.la
+thanks! output is different from "zig test", but seems to have all the pertinent info
+
+1697311101
+andrewrk!~andrewrk@mail.ziglang.org
+it's a multiplexer. it could potentially have run zig test many different times (and at the same time)
+
+1697311114
+andrewrk!~andrewrk@mail.ziglang.org
+depending on your build.zig logic, of course
+
+1697311142
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+Yea I think that's what I'm asking about-- what's this "pristine tarball" method?
+
+1697311147
+LACampbell!~lewis@granite-phrase.bnr.la
+ah yeah, using a very vanilla "zig init-exe" build logic. but I'll keep it
+
+1697311182
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+Also how do I declare/initialize an array of "strings" that have different lengths?
+
+1697311204
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+[_][]const u8{ "a", "bb", "ccc" }
+
+1697311240
+LACampbell!~lewis@granite-phrase.bnr.la
+isn't there some technique where you'd have one big u8 array, and then you store an array of lens separately where you slice into it
+
+1697311259
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+ty nektro
+
+1697311304
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+LACampbell, thats another way yeah, its a tradeoff between space and time
+
+1697311371
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and ergonomics in this specific case, but u could have a comptime function that generates your way if u really wanted
+
+1697311507
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+I'll be back later, but if anyone has a link to an explanation of the "pristine tarball" method andrewrk mentioned, I'd be grateful. Cya!
+
+1697311550
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+its the thing u described of depending on upstream tarballs directly without a fork, but u have to include the build.zig compilation logic in your own
+
+1697311581
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and treating a dependency as only a bag-of-files
+
+1697311761
+torque!~tachyon@user/torque
+matthew-levan, this was linked in here yesterday I think: https://github.com/allyourcodebase/orca
+
+1697311788
+torque!~tachyon@user/torque
+you can see in `build.zig.zon` that it depends on git+https://github.com/kristoff-it/orca.git#c8fc485587a839b8f7e6531c873c6c31f7062a36 which is a clean C codebase source tree with no zig in it
+
+1697311836
+torque!~tachyon@user/torque
+but as mentioned previously I believe that this is a pretty new feature that requires a recent 0.12.0-dev version of zig
+
+1697311954
+andrewrk!~andrewrk@mail.ziglang.org
+matthew-levan, I made you a nice example: https://github.com/allyourcodebase/zlib
+
+1697312025
+torque!~tachyon@user/torque
+andrewrk is the allyourcodebase org intended to be a place for centralizing ports of other projects to the zig packaging ecosystem or is it just a playground
+
+1697312085
+andrewrk!~andrewrk@mail.ziglang.org
+it's intended to be one such hub for a zig packaging ecosystem, yes
+
+1697312128
+andrewrk!~andrewrk@mail.ziglang.org
+Loris was talking about the idea of creating some kind of website to track packages that would include other repositories as well
+
+1697312158
+torque!~tachyon@user/torque
+I think there's a benefit to having an organization with a pool of people who could keep things up to date with upstream releases
+
+1697312172
+andrewrk!~andrewrk@mail.ziglang.org
+I think the idea of the allyourcodbase org is that it's a known set of contributors who have a reasonable amount of trust in the ecosystem
+
+1697312211
+andrewrk!~andrewrk@mail.ziglang.org
+but it's not limited to zig core team members
+
+1697312214
+torque!~tachyon@user/torque
+I have a few C libraries I've written wrappers for that I'm maintaining but just tracking upstream in its own right can be a lot of work
+
+1697312236
+torque!~tachyon@user/torque
+being able to load balance that I think is good in general
+
+1697312243
+andrewrk!~andrewrk@mail.ziglang.org
+yeah sharing the labor costs is the goal
+
+1697312260
+torque!~tachyon@user/torque
+yeah that makes sense, cool
+
+1697312285
+andrewrk!~andrewrk@mail.ziglang.org
+hopefully we can make the build system useful enough that upstream maintainers start considering it too :)
+
+1697312376
+torque!~tachyon@user/torque
+I'm not a build system power user but it has been straightforward enough to port a few cmake/meson build systems to it
+
+1697312445
+andrewrk!~andrewrk@mail.ziglang.org
+so I think if you can demonstrate basic competence and goodwill then you are welcome to join the allyourcodebase org
+
+1697312476
+andrewrk!~andrewrk@mail.ziglang.org
+s/you/anyone/ s/you/they/
+
+1697312497
+torque!~tachyon@user/torque
+indeed
+
+1697312617
+Earnestly!~earnest@user/earnestly
+torque: Can you demonstrate an example of the most complicated meson port?
+
+1697312690
+torque!~tachyon@user/torque
+I wouldn't consider anything I've ported to be particularly complex from the standpoint of having much build system logic
+
+1697312702
+torque!~tachyon@user/torque
+it's mostly just digging around for the actual source files
+
+1697312747
+torque!~tachyon@user/torque
+and all the correct defines
+
+1697312759
+Earnestly!~earnest@user/earnestly
+Hm, meson's complexity I suppose is mostly in trying to help support of multiple platforms and it would be interesting to see if build.zig could replace all of these contenders
+
+1697312760
+torque!~tachyon@user/torque
+libressl-portable is probably the most complex one I did and even that was fairly straightforward (that was also based on cmake, not meson)
+
+1697312765
+Earnestly!~earnest@user/earnestly
+Or if that's even appropriate
+
+1697312821
+torque!~tachyon@user/torque
+I don't think my ports have been particularly elegant since they've been a (successful) means to an end but if you're interested https://github.com/epicyclic-dev/LibreSSL-portable/blob/zig-build/build.zig
+
+1697312853
+Earnestly!~earnest@user/earnestly
+Do you think build.zig would be appropriate for non-C/C++ sources?
+
+1697312920
+torque!~tachyon@user/torque
+hmm, I haven't really touched the parts of the toolchain that use custom compilation commands
+
+1697312935
+torque!~tachyon@user/torque
+so I don't have a particularly informed opinion there
+
+1697312955
+Earnestly!~earnest@user/earnestly
+The walker is a little interesting, the cached TODO might be worth considering with custom compilation commands in general 
+
+1697313071
+torque!~tachyon@user/torque
+yeah libressl also has some hand-rolled ASM for some platforms that that doesn't build at the moment
+
+1697313099
+Earnestly!~earnest@user/earnestly
+If build.zig is to be more general purpose, like cmake/meson, the interaction with external commands might be worth smoothing over
+
+1697313106
+torque!~tachyon@user/torque
+the pain there is mostly just getting the correct platform+arch combination
+
+1697313123
+torque!~tachyon@user/torque
+which is simple but repetitive work
+
+1697313211
+Earnestly!~earnest@user/earnestly
+These sorts of efforts can highlight the areas which need attention though, so that's nice
+
+1697313225
+Earnestly!~earnest@user/earnestly
+Let the design follow actual usage
+
+1697313378
+andrewrk!~andrewrk@mail.ziglang.org
+build.zig API has a pretty good external command API already
+
+1697313598
+Earnestly!~earnest@user/earnestly
+addSystemCommand?
+
+1697313665
+andrewrk!~andrewrk@mail.ziglang.org
+that's the one
+
+1697313700
+andrewrk!~andrewrk@mail.ziglang.org
+it supports the concept of input files, output files, and even dep files if the command creates one
+
+1697313727
+torque!~tachyon@user/torque
+yeah I'd say the main barrier to entry is the lack of documentation. Normally reading the source code is fine but there is a lot of under the hood logic in the build system you don't need to worry about as a user
+
+1697313750
+andrewrk!~andrewrk@mail.ziglang.org
+agreed. one of my goals for this release cycle is to write some build system guides
+
+1697313772
+torque!~tachyon@user/torque
+I'd say this has primarily kept me sticking with the APIs I know rather than trying to find better ones for specific use cases I have
+
+1697313797
+torque!~tachyon@user/torque
+yeah, there's a lot of functionality to cover there and trying to write documentation for a system under development also generally sucks
+
+1697313814
+andrewrk!~andrewrk@mail.ziglang.org
+writing build system docs is in theory one of the most delegatable tasks, but it seems like nobody else is going to do it, soooo ok I'll do it
+
+1697313827
+Earnestly!~earnest@user/earnestly
+Hm, is there documentation coving an overview of concepts such as how the Step idea works?
+
+1697313856
+Earnestly!~earnest@user/earnestly
+https://ziglearn.org/chapter-3/ has some
+
+1697313883
+andrewrk!~andrewrk@mail.ziglang.org
+there are quite a few good examples in the wild
+
+1697313885
+torque!~tachyon@user/torque
+I'd offer to help except my job at the moment is mostly writing docs so I'm pretty burned out on documentation
+
+1697313895
+andrewrk!~andrewrk@mail.ziglang.org
+that is very understandable
+
+1697313948
+torque!~tachyon@user/torque
+writing documentation can be fun but it almost always falls into the "second 90%" of the 90-90 rule for me, so yeah I do not tend to complain about missing/incomplete documentation
+
+1697323321
+LACampbell!~lewis@granite-phrase.bnr.la
+say you make a collection with an iterator, but the iterator needs to allocate memory (think traversing a binary search tree without modifying it). What would be a Ziguana like interface for this? A function "iterator" that takes an allocator, and then you call deinit on the iterator?
+
+1697323853
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+fn next(self: *Iter) !?T
+
+1697323903
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i think std.fs.Dir.Iterator and std.process.ArgsIterator do this
+
+1697324001
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+* std.fs.IterableDir.Iterator
+
+1697324006
+shachaf!~shachaf@user/shachaf
+If the tree is balanced it seems much nicer to upper-bound the depth and pick a static size.
+
+1697324127
+LACampbell!~lewis@granite-phrase.bnr.la
+nektro: right so you do "var it = tree.iterator(my_allocator); defer it.deinit(my_allocator)" ?
+
+1697324139
+LACampbell!~lewis@granite-phrase.bnr.la
+nektro: struggling to right a naiive binary search tree in zig, will consider balancing later :)
+
+1697324165
+LACampbell!~lewis@granite-phrase.bnr.la
+* shachaf 
+
+1697324174
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+yep
+
+1697324426
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+Awesome thanks for the example andrewrk and thoughts torque.
+
+1697324487
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+I am befuddled, however, at why Zig keeps telling me: "no dependency named 'gmp' in 'build.zig.zon'"! I'm using zig version 0.12.0-dev.903+7aa85691b.
+
+1697324528
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+https://github.com/urbit/vere/blob/941792fc33292bc2eebfc1e85e0d40cedb10734a/build.zig#L7
+
+1697324859
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+it should be complaining about all the hashes being missing/wrong, no?
+
+1697324887
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+oh, u spelled dependencies wrong
+
+1697325529
+torque!~tachyon@user/torque
+<LACampbell> nektro: right so you do "var it = tree.iterator(my_allocator); defer it.deinit(my_allocator)" ?
+
+1697325546
+torque!~tachyon@user/torque
+presumably your iterator objet would store the allocator so you could just do `it.deinit()`
+
+1697325602
+torque!~tachyon@user/torque
+don't know much about iterating a binary tree but if you need to accumulate allocations over the life of the allocator, you may want to wrap with an arena allocator to make freeing everything at the end trivial
+
+1697325657
+torque!~tachyon@user/torque
+s/life of the allocator/life of the iterator/
+
+1697327841
+matthew-levan!~matthew@ip-50-5-118-215.dynamic.fuse.net
+lol nektro ty
+
