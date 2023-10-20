@@ -1,0 +1,572 @@
+1697675671
+LACampbell!~lewis@granite-phrase.bnr.la
+andrewrk: guess it never occured to me use global variables because I assumed you could not seed RNG at compile time. will try
+
+1697675797
+andrewrk!~andrewrk@mail.ziglang.org
+I don't really understand your question or what problem you are trying to solve
+
+1697675917
+LACampbell!~lewis@granite-phrase.bnr.la
+sure. I'm trying to a poormans version of property based testing. so i need multiple tests to use an instance of an RNG with the same seed
+
+1697675937
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+LACampbell, if u want the tests to be deterministic folks ususally seed with zero
+
+1697675954
+LACampbell!~lewis@granite-phrase.bnr.la
+but then it's the same tests each time you run them
+
+1697675967
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+precisely
+
+1697675978
+LACampbell!~lewis@granite-phrase.bnr.la
+precisely what you don't want with PBT :)
+
+1697676148
+missionz3r0!~missionz3@gateway/vpn/pia/missionz3r0
+I'm a bit out of the loop here, but could you run the tests twice in a row with a different seed on each run?
+
+1697676263
+LACampbell!~lewis@granite-phrase.bnr.la
+missionz3r0: yeah that's what I'm trying to do! different seed on each tun, but I want to share that seed between the tests.
+
+1697676306
+LACampbell!~lewis@granite-phrase.bnr.la
+I'm not sure it's possible I tried to initialise a global with a random seed but you can't do RNG stuff at runtime (unable to evaluate comptime expression).
+
+1697676364
+LACampbell!~lewis@granite-phrase.bnr.la
+so these kinds of dests would probably have to be done outside of zigs testing framework, unless there's some trick to container tests whereby they can share global state not initialised at comptime 
+
+1697676411
+missionz3r0!~missionz3@gateway/vpn/pia/missionz3r0
+LACampbell So it's a comptime RNG? Seems a bit off, but wonder if you could compile it twice. Passing a different seed in through CLI when you compile
+
+1697676492
+LACampbell!~lewis@granite-phrase.bnr.la
+can tests even read a val passed through the CLI? that'd have to be done in main, right?
+
+1697676538
+missionz3r0!~missionz3@gateway/vpn/pia/missionz3r0
+I'm not sure. Kinda spitballing as I'm a relative newcomer around here.
+
+1697676574
+LACampbell!~lewis@granite-phrase.bnr.la
+no problem. it occurs to me that the intersection between people who do systems programming and people who do property based testing is basically empty
+
+1697676623
+LACampbell!~lewis@granite-phrase.bnr.la
+might trawl the issue tracker for "setup" methods as I guess it's a similar problem
+
+1697676660
+missionz3r0!~missionz3@gateway/vpn/pia/missionz3r0
+Heh. I'm still struggling with the idea of having RNG inside a test case. I usually try to remove every bit of RNG possible.
+
+1697676682
+andrewrk!~andrewrk@mail.ziglang.org
+LACampbell, this is a similar issue: https://github.com/ziglang/zig/issues/14940
+
+1697676705
+andrewrk!~andrewrk@mail.ziglang.org
+I think it might be nice to make it expose the seed to the test runner, and that way you will be able to repeat a failed test run with the same --seed CLI arg
+
+1697676797
+LACampbell!~lewis@granite-phrase.bnr.la
+missionz3r0: so the idea is that there is one seed per test run. every test runs with that same seed. but when you re-run your tests, that's a different seed. the rationale being is that you get to explore the state base of the inputs you test against, by describing them rather than specifying specific values.
+
+1697676824
+LACampbell!~lewis@granite-phrase.bnr.la
+andrewrk: that would be awesome! checking out issue
+
+1697676948
+missionz3r0!~missionz3@gateway/vpn/pia/missionz3r0
+Ah, I see how that'd be useful. My worry would be around describing the values in an insufficient fashion. But, that'd be an issue with tests in general.
+
+1697677013
+torque!~tachyon@user/torque
+you may want to look at how the stdlib rng tests are structured
+
+1697677026
+torque!~tachyon@user/torque
+if there any reason you can't put all of your checks into a single `test` block?
+
+1697677082
+torque!~tachyon@user/torque
+zig's builtin unit testing is not really designed around parameterized tests at all
+
+1697677086
+LACampbell!~lewis@granite-phrase.bnr.la
+torque: hmm. never really occured to me. obviosuly you lose the whole "x/y tests passed' reporting, but still might be a good trade off
+
+1697677094
+torque!~tachyon@user/torque
+that's just a number
+
+1697677183
+LACampbell!~lewis@granite-phrase.bnr.la
+well,it would als stop all subsequent tests on the first failure. but that's probably a decent solution. 
+
+1697677626
+torque!~tachyon@user/torque
+your test will stop as soon as it encounters an error too
+
+1697677647
+torque!~tachyon@user/torque
+unless you specifically write it in a way to not do that
+
+1697677672
+LACampbell!~lewis@granite-phrase.bnr.la
+sorry what you're saying is - put all your asserts in one test block, right? as in test "All my tests" { .. } ?
+
+1697677679
+torque!~tachyon@user/torque
+yeah, pretty much
+
+1697677693
+torque!~tachyon@user/torque
+I think the only real value of using multiple tests is if you need to skip some of them in certain environments
+
+1697677707
+torque!~tachyon@user/torque
+which is probably not the case here
+
+1697677800
+torque!~tachyon@user/torque
+oh, I see, I read your comment backwards
+
+1697677838
+torque!~tachyon@user/torque
+if you want to steamroll failures, yeah, you can do `assert() catch { whatever }` though I agree the ergonomics are worse
+
+1697677964
+torque!~tachyon@user/torque
+I think it would be nice if zig tests could be parameterized (I've mostly written unit tests for pytest, which lets you really go crazy with that stuff) but I don't know how popular that opinion is
+
+1697678147
+torque!~tachyon@user/torque
+as was mentioned earlier you could use global state for sharing data between tests, but that seems nasty and potentially not forward-compatible with possible future features like test parallelization
+
+1697678423
+LACampbell!~lewis@granite-phrase.bnr.la
+torque: I'm not great at zig, can global state be initialised with non-comptime computations?
+
+1697678510
+torque!~tachyon@user/torque
+`const Container = struct { var myglobal: type = undefined };` at the file level and then in a function somewhere `Container.myglobal = runtime_data;` should work
+
+1697678598
+torque!~tachyon@user/torque
+if there are sane defaults for your global value you could use that instead of `undefined`. I don't know how you're initializing your RNG but if it just takes a numeric seed you should be able to use that in the source
+
+1697678624
+torque!~tachyon@user/torque
+I mean if you can supply a default literal (e.g. 0)
+
+1697678640
+torque!~tachyon@user/torque
+or, I suppose, otherwise comptime-known number
+
+1697678656
+LACampbell!~lewis@granite-phrase.bnr.la
+torque: so how you define and call a function in such a way that it will get executed before tests run?
+
+1697678676
+torque!~tachyon@user/torque
+call it at the top of your test block
+
+1697678693
+torque!~tachyon@user/torque
+or at the top of every test block, if appropriate
+
+1697678744
+LACampbell!~lewis@granite-phrase.bnr.la
+that's really ugly. but it would work
+
+1697678766
+LACampbell!~lewis@granite-phrase.bnr.la
+probably need to git gud like the tigerbeetle team and just go straight to deterministic simulation testing, without any of this property based testing halfway house stuff
+
+1697678828
+torque!~tachyon@user/torque
+the iconoclastic option is to simply not write tests
+
+1697678865
+LACampbell!~lewis@granite-phrase.bnr.la
+LOL not an option
+
+1697681951
+grayhatter!~grayhatte@user/grayhatter
+LACampbell: I think you're confusing unit test (what zig provides) with intergration tests (zig doesn't really provide) 
+
+1697682050
+grayhatter!~grayhatte@user/grayhatter
+random is just another way to say non-deterministic, which isn't what tests are supposed to do... unit tests prove your code is correct for each "defined test case" 
+
+1697682081
+grayhatter!~grayhatte@user/grayhatter
+if you want to test with randomness, that's closer to fuzzing
+
+1697682249
+grayhatter!~grayhatte@user/grayhatter
+follow up, if you really wanna do it anyways, write multiple tests when seed(0) so you can be sure your functions are correct, then another much larger test which can init some random seed, and prove that everything downstream behaves correctly when they're given random data as well... i.e. the pattern for libraries is to accept an allocator, have you api accept a std.random object/struct that you can
+
+1697682251
+grayhatter!~grayhatte@user/grayhatter
+generate however you want in the specific test preamble (with multiple set seeds, or perhaps the current date with a time of 00:00:00)
+
+1697683101
+andrewrk!~andrewrk@mail.ziglang.org
+can anyone explain the purpose of pkg-config to me?
+
+1697683232
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: my best guess, it abstracts the "correct" install directory for packages/libs/etc. Some distros want them in /lib, some in /usr/lib, others in /usr/local/lib pkg-config is a binary that'll read config files for build scripts
+
+1697683264
+andrewrk!~andrewrk@mail.ziglang.org
+the application could just look in both /usr/lib and /lib 
+
+1697683343
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: yes... but something being easy has never stopped anyone from over engineering something before has it?
+
+1697683517
+grayhatter!~grayhatte@user/grayhatter
+IIRC I think it's solved some issues for a project when compilling dynamic vs static? There were a few libs that were angry if you used the wrong flavor of cc flags 
+
+1697683820
+torque!~tachyon@user/torque
+i bet the meson guys could explain it since meson uses pkg-config very heavily
+
+1697683853
+torque!~tachyon@user/torque
+I had to write some manual pkg-conf files when trying to compile some meson stuff a while back since that's basically exclusively how it finds libraries
+
+1697683877
+torque!~tachyon@user/torque
+anyway I would say that it describes how to include headers and link libraries for a given project
+
+1697683959
+torque!~tachyon@user/torque
+this can be useful if you need some weird defines or something going along with your headers (there was a while where e.g. luajit on x86_64 macos needed a couple of weird linker flags (`-pagezero_size` iirc) in order to link properly
+
+1697684062
+grayhatter!~grayhatte@user/grayhatter
+it's helped me be lazy when I was x-compiling for arm64 and armhf
+
+1697684086
+LACampbell!~lewis@granite-phrase.bnr.la
+grayhatter: https://en.wikipedia.org/wiki/Software_testing#Property_testing . The so called distinction between unit and integration test is orthogonal to this, ie in rust property based tests used the standard rust testing mechanism
+
+1697684093
+torque!~tachyon@user/torque
+it makes sense to me to allow a library to provide a configuration file describing how to include and link it, and I think that's exactly the use case that pkgconfig tries to fill
+
+1697684102
+andrewrk!~andrewrk@mail.ziglang.org
+ok let's say you're looking for libjpeg. I could just look for /usr/lib/libjpeg.so etc, or, I could use pkg-config. how does pkg-config improve my situation?
+
+1697684132
+torque!~tachyon@user/torque
+if for whatever reason your libjpeg needs to have additional flags to link properly, the pkgconfig command would also provide those
+
+1697684150
+torque!~tachyon@user/torque
+for e.g. static libraries it could also list all of the other static libraries needed to link correctly
+
+1697684173
+andrewrk!~andrewrk@mail.ziglang.org
+ok static library dependencies is a good example
+
+1697684182
+andrewrk!~andrewrk@mail.ziglang.org
+that's basically metadata that is missing from the static libraries themselves
+
+1697684196
+andrewrk!~andrewrk@mail.ziglang.org
+what's an example of flags to link properly?
+
+1697684201
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+how do you find the include path? I've been adding a lot of system paths with `addIncludePath` lately
+
+1697684220
+torque!~tachyon@user/torque
+I mentioned that luajit needed `-pagezero_size` on macos for a while in order to not immediately segfault whatever it was linked to
+
+1697684223
+grayhatter!~grayhatte@user/grayhatter
+LACampbell: I stand by previous assertion, this is better covered by proper fuzz testing... but then that's likely just me being more comfortable with it generally :)
+
+1697684227
+torque!~tachyon@user/torque
+don't know how common that is, though
+
+1697684255
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly, there are only a couple system include paths, idk why you would need to add another one
+
+1697684294
+LACampbell!~lewis@granite-phrase.bnr.la
+grayhatter: tbpf I am not precisely sure what fuzz testing is. it could be that it's property based testing, and just two different tech communities arrived at roughly the same idea but came up with different names (happens all the time)
+
+1697684296
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+sometimes it is `/usr/include`, sometimes `/usr/include/<package>`, sometimes `/usr/include/lib<package>`, but I'm sure you could blame the C code for doing it wrong
+
+1697684402
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+for the really bad ones it's `/usr/lib/<package>/include`, although I guess that's more findable
+
+1697684437
+adriweb!sid124041@uxbridge.irccloud.com
+don't forget all the /usr/local variants 👀
+
+1697684461
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+random example: $ pkg-config --cflags minizip \ -I/usr/include/minizip
+
+1697684517
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I think this use case is just missing a Build function to "add this suffix to each standard include path"
+
+1697684738
+freshcoffee!~fresh@user/freshcoffee
+I think of pkg-config as a generic llvm-config for various libs or sets of libs
+
+1697685707
+andrewrk!~andrewrk@mail.ziglang.org
+well-behaved libraries don't need pkg-config
+
+1697685756
+andrewrk!~andrewrk@mail.ziglang.org
+llvm is not a well-behaved library
+
+1697685955
+andrewrk!~andrewrk@mail.ziglang.org
+anyway I'm wondering whether we should remove pkg-config integration in the zig build system
+
+1697685990
+andrewrk!~andrewrk@mail.ziglang.org
+problem being, you linkSystemLibrary("jpeg") and it could be named a bunch of different stuff on different systems. but pkg-config doesn't really help because it's also named differently in pkg-config on different systems
+
+1697685999
+andrewrk!~andrewrk@mail.ziglang.org
+so we might as well just guess the actual library path
+
+1697686103
+andrewrk!~andrewrk@mail.ziglang.org
+for example, look at this janky logic: https://github.com/ziglang/zig/pull/13941
+
+1697686247
+torque!~tachyon@user/torque
+kind of seems like throwing the baby out with the bathwater unless the goal is to replace everything with the zig build system
+
+1697686274
+torque!~tachyon@user/torque
+like, c/c++ library management is janky in general
+
+1697686306
+torque!~tachyon@user/torque
+so either you tolerate some jank and cover the majority of system configurations, or you say no to jank and things stop working
+
+1697686326
+torque!~tachyon@user/torque
+honestly not sure which one ends up with a lesser burden, seems kind of like a conservation of misery problem
+
+1697686611
+torque!~tachyon@user/torque
+arguably this is a general system pitfall, though. In theory zig libraries exposing a c-abi api boundary distributed as dynamic libraries would suffer the exact same problem
+
+1697686619
+andrewrk!~andrewrk@mail.ziglang.org
+I'm just trying to figure out, where is the baby
+
+1697686623
+andrewrk!~andrewrk@mail.ziglang.org
+because all I see is bathwater
+
+1697686675
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not against pkg-config integration. I mean I'm the one who coded it up originally. but I should be able to explain what benefit it is bringing
+
+1697686686
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not sure anyone will notice if I delete it from zig build
+
+1697686691
+daurnimator!~daurnimat@vultr.daurnimator.com
+I agree: it's the same conclusion we came to in the lua community a decade ago: pkg-config had all its own problems in regards to naming that it was meant to solve
+
+1697686697
+torque!~tachyon@user/torque
+I don't have a good answer because one of the draws to zig for me is easily-produced statically linked everything built from source and dynamic linking can go to heck
+
+1697686718
+andrewrk!~andrewrk@mail.ziglang.org
+oh hi daurnimator 
+
+1697686734
+andrewrk!~andrewrk@mail.ziglang.org
+I was just thinking that I agree with you now about converting all the posix constants to nonexhaustive enums
+
+1697686738
+daurnimator!~daurnimat@vultr.daurnimator.com
+The possible exception is things with deeper depedency trees; and swapping between dynamic and static builds. But very few projects set up their pkg-config files correctly for both
+
+1697686777
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: which constants in particular are you thinking of?
+
+1697686777
+andrewrk!~andrewrk@mail.ziglang.org
+zig also tries to make the user choose explicitly dynamic vs static
+
+1697686793
+andrewrk!~andrewrk@mail.ziglang.org
+I've been tearing through the pull requests today
+
+1697686803
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+pkg-config is for when things arent in /usr/lib
+
+1697686816
+andrewrk!~andrewrk@mail.ziglang.org
+the one that made me think of it is this one: https://github.com/ziglang/zig/pull/14868
+
+1697686835
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+eg nix and wifily both use it heavily
+
+1697686853
+torque!~tachyon@user/torque
+I mean the fair point is that pkg-config has the exact problem that the files can be named anything and stored anywhere
+
+1697686877
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk:the problem I'm thinking about that pkg-config solves, is that you might have a dependency X that has to have one of 2 different dependencies of it's own (say ffmpeg vs gstreamer; because it needs to decode a video or something). The pkg-config for X will say what libs you *then* need to link against for a static build, that would then recursively include the dependencies for e.g. gstreamer.
+
+1697686881
+torque!~tachyon@user/torque
+so you ultimately have to force the user to specify exactly what they need or fall back to a heuristic based approach that will fail once someone starts doing something bonkers
+
+1697686901
+andrewrk!~andrewrk@mail.ziglang.org
+daurnimator, yeah so far the only benefit that anyone has been able to convince me of is giving you the dependencies of static libraries
+
+1697686920
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose we may need that for https://github.com/ziglang/zig/issues/14281
+
+1697686923
+daurnimator!~daurnimat@vultr.daurnimator.com
+The pkg-config for X can solve that problem because when done correctly, the pkg-config file for X is actually a template expanded as part of the X build system
+
+1697686943
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+it also allows for query mechanism as opposed to just polluting CFLAGS and LDFLAGS
+
+1697686952
+daurnimator!~daurnimat@vultr.daurnimator.com
+The thing is.... very few complex dependencied libraries do their pkgconfig correctly
+
+1697686961
+daurnimator!~daurnimat@vultr.daurnimator.com
+So.... it's of very questionable benefit
+
+1697686981
+daurnimator!~daurnimat@vultr.daurnimator.com
+The only other reason I've run into for pkg-config is that it's stupidly the only mechanism really supported by meson
+
+1697687018
+torque!~tachyon@user/torque
+also other build tools like waf handle pkgconfig completely incorrectly (it throws away any flag it doesn't about from the pkgconfig file which basically boils down to only supporting `-l` and `-L`)
+
+1697687053
+torque!~tachyon@user/torque
+or at least it did a couple of years ago. fortunately I have not had to use waf in a long time
+
+1697687061
+daurnimator!~daurnimat@vultr.daurnimator.com
+torque: is it just using `pkg-config --libs`? because that's totally valid
+
+1697687076
+torque!~tachyon@user/torque
+disagree
+
+1697687096
+torque!~tachyon@user/torque
+if I put additional linker flags needed for a library in a pkg-config file the build system should respect them and pass them directly through to the compiler/linker
+
+1697687106
+andrewrk!~andrewrk@mail.ziglang.org
+ok I can explain why we need pkg-config integration
+
+1697687120
+daurnimator!~daurnimat@vultr.daurnimator.com
+torque: 100% of the time I've seen people put extra flags in there they add some e.g. gcc specific flag that's only needed on some old version
+
+1697687133
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+so far in my exp as a system package maintainer cmake > meson > autotools
+
+1697687138
+torque!~tachyon@user/torque
+I'm talking about this from a user perspective not a distribution perspective
+
+1697687144
+andrewrk!~andrewrk@mail.ziglang.org
+when you use zig build in system mode (#14281), the build.zig script will use foo.linkSystemLibrary("bar")
+
+1697687169
+torque!~tachyon@user/torque
+I know what my system needs and stuff that ignores that is actively user-hostile
+
+1697687171
+andrewrk!~andrewrk@mail.ziglang.org
+in this case the system, for example Debian, may provide "bar" as a static library, and that is how it must be linked for that package to be accepted 
+
+1697687192
+andrewrk!~andrewrk@mail.ziglang.org
+pkg-config then would provide the *other* static libraries that must be dragged in in order to successfully link "bar" on that system
+
+1697687258
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: yep. in theory I agree that's why we need it. But in practice it turns out very few systems/libraries set up pkg-config correctly. So you rarely if ever get to actually have that use case working
+
+1697687266
+torque!~tachyon@user/torque
+cmake is unfortunately completely disgusting because, much like the c preprocessor, it's all absurd string manipulation under the hood
+
+1697687292
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+oh yeah i wouldnt wish being a writer of cmake files on anyone
+
+1697699618
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+Can you do something like SomeStruct.new().do_something().deinit()? I keep on getting the problem that 'Self' is coerced to *const
+
+1697700267
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+temporaries returned from functions are not mutable unless you store them in a `var`
+
+1697716465
+john220!~john220@147.235.215.139
+does anyone have an issue with time to `zig build`. if I run `time zig build` with simple hello project is takes at least 1.5seconds. I am on version '0.12.0-dev.934+a241cf90d' but had the same issue with '0.11'
+
+1697740271
+andrewrk!~andrewrk@mail.ziglang.org
+john220, yes, it is the primary focus of most of the development team currently
+
+1697740293
+andrewrk!~andrewrk@mail.ziglang.org
+have a look at https://github.com/ziglang/zig/projects/6 for an overview
+
+1697747612
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+john220, its being worked on but what are you comparing to to to qualify it as an issue
+
