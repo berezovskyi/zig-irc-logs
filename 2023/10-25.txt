@@ -1,0 +1,268 @@
+1698205183
+motiejus!~motiejus@88.223.107.21
+andrewrk: I didn't, thanks for the pointer, will look today.
+
+1698205819
+motiejus!~motiejus@88.223.107.21
+wow, if this gets landed before 0.12, users won't need to do the "scary" glibc header upgrade (scary in my mind at least, due to unknown unknowns)
+
+1698206052
+andrewrk!~andrewrk@mail.ziglang.org
+agreed!
+
+1698206869
+andrewrk!~andrewrk@mail.ziglang.org
+motiejus, one more piece of the puzzle is that verification tool that marler is working on: https://github.com/marler8997/chana/
+
+1698235576
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+is there any way to check if two slices overlap?
+
+1698236413
+ifreund!2940d10f8b@user/ifreund
+soupladler: (a.ptr <= b.ptr + b.len) and (b.ptr <= a.ptr + a.len)
+
+1698236426
+ifreund!2940d10f8b@user/ifreund
+if I didn't screw up my logic at least :)
+
+1698236905
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I assume the issue is a lack of pointer comparisons in zig, you can use `@intFromPtr` for now
+
+1698236934
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+Ok, nice, thanks!
+
+1698237126
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+is this wrong?: fn split_channels(comptime N: comptime_int, channels: [N][]u8, img: []const u8) !void. channels.len comes out as 921600 when I look at it in gdb
+
+1698237130
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+(after it crashed
+
+1698237134
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+)
+
+1698238037
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+ok sorry I am stupid, I freed the memory without noticing
+
+1698238045
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+by putting defer in a for loop
+
+1698244234
+frmdstryr!~jrm@172.58.204.152
+In the ast for while / while cont there is a "then" expr but I see nothing in comments or docs on it?
+
+1698244274
+frmdstryr!~jrm@172.58.204.152
+oh nvm ha
+
+1698254668
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+I am trying to build github.com/andrewrk/SDL for iOS, and I get many errors: fatal error: 'AvailabilityMacros.h' file not found. I have Xcode and developer tools installed, so I am not sure what is going wrong. 
+
+1698254869
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+Someone online said that I should set "zig build --sysroot" option to be path to iPhoneSimulator SDK, but I am not having luck with that. Someone having a similar problem with C says that I should add a "-I" flag to the build, specifying everything in the sdk/usr/include, but how can I add an equivalent of -I to my build.zig? Thanks for any help!
+
+1698255357
+freshcoffee!~fresh@user/freshcoffee
+martin2020: try using a libc.txt file:
+
+1698255371
+freshcoffee!~fresh@user/freshcoffee
+1. zig libc > libc.txt
+
+1698255393
+freshcoffee!~fresh@user/freshcoffee
+2. edit libc.txt two include paths to your xcode install. mine for example is:
+
+1698255403
+freshcoffee!~fresh@user/freshcoffee
+`/Applications/Xcode-beta.app/Contents/Developer/Platforms/MacOSX.platform/Developer/SDKs/MacOSX14.0.sdk/usr/include`
+
+1698255430
+freshcoffee!~fresh@user/freshcoffee
+3. then `zig build-exe foo.zig --libc libc.txt -target ....
+
+1698255453
+freshcoffee!~fresh@user/freshcoffee
+zig will infer the lib path from the include path of libc.txt
+
+1698255841
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+Thanks! If I want to build for ios-simulator, for example, should my include_dir in libc.txt still be MacOSX14.0.sdk? Or should it be an iOS SDK?
+
+1698255843
+freshcoffee!~fresh@user/freshcoffee
+oops I pasted the wrong include I use:
+
+1698255845
+freshcoffee!~fresh@user/freshcoffee
+`/Applications/Xcode-14.3.1.app/Contents/Developer/Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS.sdk/usr/include`
+
+1698255923
+freshcoffee!~fresh@user/freshcoffee
+for simulator something like this may work:
+
+1698255926
+freshcoffee!~fresh@user/freshcoffee
+`/Applications/Xcode-14.3.1.app/Contents/Developer/Platforms/iPhoneSimulator.platform/Developer/SDKs/iPhoneSimulator.sdk/usr/include`
+
+1698256175
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+Can I use those options for zig build also?
+
+1698256245
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+Now I am getting: "error: SDL for Mac OS X only supports deploying on 10.7 and above"
+
+1698256284
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+But I am trying to build for the simulator, not MacOS, so I think maybe it isn't using the flag correctly?
+
+1698256304
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+(*I* am not using the flag correctly, haha)
+
+1698256671
+andrewrk!~andrewrk@mail.ziglang.org
+martin2020, I never tested that SDL package for iOS,  so it's not surprising that it doesn't work as-is
+
+1698256785
+freshcoffee!~fresh@user/freshcoffee
+hmm which target are you specifying?
+
+1698256812
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+andrewrk, thanks for letting me know
+
+1698256857
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+freshcoffee, I think my issue there was I only edited one of the include directories. After I made the same change to my sys_include_dir, I got new errors :)
+
+1698256893
+freshcoffee!~fresh@user/freshcoffee
+I have to run now but here's what seemed to work for a hello-world for simulator;
+
+1698256900
+freshcoffee!~fresh@user/freshcoffee
+`zig build -Dtarget=x86_64-ios-simulator --libc libc.txt2`
+
+1698256902
+andrewrk!~andrewrk@mail.ziglang.org
+you should only need to pass -Dtarget for it to work. if anything else is needed, it should be a modification to the package itself
+
+1698257017
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+Now it is complaining a lot about int types: "error: unknown type name 'size_t'"
+
+1698257041
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+unknown type name 'int8_t', that sort of thing
+
+1698257130
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+I guess it all is part of "error: C import failed"
+
+1698264986
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+I backpedaled on adding SDL to try getting something simpler to work, but now Zig is acting a bit funny. The zig version command runs fine in my build script in Xcode, but zig env fails. And when I try to run zig build, I get an error that zig installation cannot be found. I tried setting $ZIG_LIB_DIR, but nothing seems to work to get "zig env" to work. Does this sound familiar to anyone?
+
+1698265215
+martin2020!~martin@2601:406:4000:181b:4557:119f:2a68:4953
+I'm not sure why "zig version" would work, but "zig env" fails
+
+1698265358
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+That means it's missing its `lib` dir
+
+1698265377
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+hey, can you use @intFromFloat() to cast to u8?
+
+1698265386
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+or like, smaller-than-u32 in general?
+
+1698265392
+andrewrk!~andrewrk@mail.ziglang.org
+soupladler, sure, why not?
+
+1698265402
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+it's crashing on my friends macbook
+
+1698265413
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+and I couldn't see any tests using small integers
+
+1698265439
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+when I looked at  the code for intFromFloat
+
+1698265489
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+I wouldn't worry about it too much I think it's some kind of memory bug
+
+1698265497
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+just wanted to sanity check
+
+1698265513
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+(memory bug in my code, I mean)
+
+1698265514
+andrewrk!~andrewrk@mail.ziglang.org
+if you can crash the compiler with a small code snippet, please file a bug report
+
+1698265530
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+Ok, I'll go try
+
+1698265531
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+:)
+
+1698265682
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+Oh - it's not crashing the compiler, by the way. It's just the program, and it crashes with an erroneous error.
+
+1698267680
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+ok, must apologize, the error was actually totally right and I was totally wrong
+
+1698267700
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+I was dividing zero by zero
+
+1698267710
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+(I think)
+
+1698271625
+ifreund!2940d10f8b@user/ifreund
+It's pretty cool that the new @max()/@min() semantics allow this https://0x0.st/Hyzk.txt
+
+1698271643
+ifreund!2940d10f8b@user/ifreund
+no @intCast() needed :)
+
+1698271692
+ifreund!2940d10f8b@user/ifreund
+using math.clamp() doesn't work though, one needs to write the min(max()) expression directly
+
+1698272447
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, perhaps if math.clamp was inline
+
+1698272520
+ifreund!2940d10f8b@user/ifreund
+hmm, I thought that the return type depending on the value of the parameters would be problematic but I didn't try it
+
