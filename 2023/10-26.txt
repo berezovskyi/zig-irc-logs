@@ -1,0 +1,304 @@
+1698284605
+frmdstryr!~jrm@172.56.28.179
+In zig's ast parser I noticed some data fields are set to undefined. Is there reason for this vs setting to 0?
+
+1698284653
+frmdstryr!~jrm@172.56.28.179
+It makes any checks for if (data.lhs !=0) also undefined..
+
+1698284904
+andrewrk!~andrewrk@mail.ziglang.org
+yes, you're not supposed to read the fields that are undefined
+
+1698284919
+andrewrk!~andrewrk@mail.ziglang.org
+in the next iteration of that API it will become an untagged union
+
+1698284948
+andrewrk!~andrewrk@mail.ziglang.org
+we learned some type safety tricks after making that API
+
+1698285391
+frmdstryr!~jrm@172.56.28.179
+Is there some downside of just setting them to 0?
+
+1698285483
+frmdstryr!~jrm@172.56.28.179
+Seems safer than relying on everyones code to be perfet  altough an assert that it's in the valid range will probably catch it either way
+
+1698288544
+andrewrk!~andrewrk@mail.ziglang.org
+yeah the downside is you're not supposed to read that field, and if it's set to 0 then it leads to users reading that field
+
+1698288585
+andrewrk!~andrewrk@mail.ziglang.org
+but the point is moot, the untagged union approach is better than both status quo and that suggestion
+
+1698290459
+grayhatter!~grayhatte@user/grayhatter
+does zig have functions to read network byte order into a u32? (other than for u8, by u8?)
+
+1698290726
+andrewrk!~andrewrk@mail.ziglang.org
+check out std.mem
+
+1698290745
+andrewrk!~andrewrk@mail.ziglang.org
+lots of useful utilities in there
+
+1698290873
+grayhatter!~grayhatte@user/grayhatter
+read and then swap/convert? I guess that's all I needed :)
+
+1698290966
+andrewrk!~andrewrk@mail.ziglang.org
+I think you want readIntBig
+
+1698291073
+grayhatter!~grayhatte@user/grayhatter
+oh... is it a bug that that's listed as a value/type in autodoc and not as a function?
+
+1698291156
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1698291161
+grayhatter!~grayhatte@user/grayhatter
+also, thanks andrewrk <3
+
+1698297615
+grayhatter!~grayhatte@user/grayhatter
+why is unspecified int rollover safety checked UB, but bitshifting isn't?
+
+1698297695
+grayhatter!~grayhatte@user/grayhatter
+or that question, but asked more correctly, if int rollover is safety checked panic, is it a bug that @as(u8, 0xff) << 1 doesn't panic?
+
+1698297721
+torque!~tachyon@user/torque
+that's well-defined behavior though?
+
+1698297775
+torque!~tachyon@user/torque
+I can see how it would be a gotcha in some situations
+
+1698297846
+grayhatter!~grayhatte@user/grayhatter
+var size: usize = u8{0xff} << 4 | (u8{0xff} & 0x1111);
+
+1698297863
+grayhatter!~grayhatte@user/grayhatter
+assert(size > 0xff); // panics
+
+1698297938
+grayhatter!~grayhatte@user/grayhatter
+the u8 arrays here in my bug are buf[1] and buf[0], which I expected to be "promoted" or compile error, or panic
+
+1698297985
+grayhatter!~grayhatte@user/grayhatter
+@as(u16, buf[1]) gives me the behavior I needed, but I expected that to be enforced, 'differently' I guess?
+
+1698298004
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps you are interested in @shlExact or @shrExact
+
+1698298045
+grayhatter!~grayhatte@user/grayhatter
+@as is shorter, and thus what I'd rather type :D
+
+1698298144
+torque!~tachyon@user/torque
+your & is kind of goofy since it's a u16
+
+1698298181
+torque!~tachyon@user/torque
+*the size of a u16
+
+1698298493
+grayhatter!~grayhatte@user/grayhatter
+torque: all my code is goofy, but my example above should have read 0b1111 or 15
+
+1698302587
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+grayhatter, yeah i was also bit by that recently in my jpeg decoder. i wish the builtin was for lossy instead and the builtin was checked
+
+1698302614
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+*and the operator was checked
+
+1698305337
+treeface!~treeface@202.7.239.35
+Hello. Anyone hear of CHERI? They have the whole of FreeBSD running in purecap, with Way
+
+1698305346
+treeface!~treeface@202.7.239.35
+land and KDE on top, likewise.
+
+1698305374
+treeface!~treeface@202.7.239.35
+That's pretty impressive. Does Zig have any plans to target CHERI in the future?
+
+1698314264
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+if you have a tagged union and all the fields implement some function 'rawWhatever', is there a better way to call that than switch(self) { else => |inner| inner.rawWhatever() }?
+
+1698314929
+ifreund!2940d10f8b@user/ifreund
+soupladler: inline else
+
+1698314965
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+yeah, sorry
+
+1698314991
+ifreund!2940d10f8b@user/ifreund
+no need to apologize! this is a support channel :)
+
+1698315052
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+ah, I'm still in the bootcamp phase of zig, so my psyche is pretty shattered,
+
+1698323031
+ekaitz!~Ekaitz@94.73.32.196
+hi people! at Guix we added a zig-build-system to allow zig packages to be added to the package-manager/distribution you are more than welcome to give it a try and give us some feedback
+
+1698323066
+ekaitz!~Ekaitz@94.73.32.196
+(i need to add cross-compilation support for it yet, but i have a wip for that)
+
+1698323106
+ekaitz!~Ekaitz@94.73.32.196
+https://guix.gnu.org/ <-- if you want to try it
+
+1698330568
+lf94!~lf94@user/lf94
+awesome to hear ekaitz !
+
+1698330625
+lf94!~lf94@user/lf94
+Guix is definitely one of those systems I'm waiting to mature more before switching, but it's on my horizon
+
+1698330717
+ekaitz!~Ekaitz@94.73.32.196
+lf94: i've been using guix since... 2019 i think... full time
+
+1698330725
+ekaitz!~Ekaitz@94.73.32.196
+it's more than ok for mostly everything
+
+1698330733
+ekaitz!~Ekaitz@94.73.32.196
+it has improved a lot in the recent years too
+
+1698330742
+lf94!~lf94@user/lf94
+Nice to hear :) I think I started looking at it around then
+
+1698330758
+ekaitz!~Ekaitz@94.73.32.196
+it has its inconveniences, probably more than other distros, but it's pretty usable
+
+1698330771
+ekaitz!~Ekaitz@94.73.32.196
+in any case, you can also use the package manager alone
+
+1698330790
+ekaitz!~Ekaitz@94.73.32.196
+no need to use the whole distribution, and you'll still get the benefits of the zig-build-system
+
+1698330790
+lf94!~lf94@user/lf94
+I'll probably install it on this mini PC, since laptops require a lot more "every day" support
+
+1698330802
+ekaitz!~Ekaitz@94.73.32.196
+you can `apt install guix`
+
+1698330821
+lf94!~lf94@user/lf94
+I'm aware x)
+
+1698330890
+ekaitz!~Ekaitz@94.73.32.196
+:)
+
+1698343114
+andrewrk!~andrewrk@mail.ziglang.org
+hi ekaitz!
+
+1698343120
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: hi
+
+1698343130
+andrewrk!~andrewrk@mail.ziglang.org
+I want to point you to this issue: https://github.com/ziglang/zig/issues/14281
+
+1698343150
+andrewrk!~andrewrk@mail.ziglang.org
+the plan is to get this resolved by zig 0.12.0 release
+
+1698343208
+andrewrk!~andrewrk@mail.ziglang.org
+until then, zig packages might try to use the network to download dependencies and build them directly instead of getting the dependencies from the system
+
+1698343220
+andrewrk!~andrewrk@mail.ziglang.org
+just wanted to make sure you knew there is a plan to make zig build system play nicely with guix :)
+
+1698343225
+ekaitz!~Ekaitz@94.73.32.196
+in the guix package we have the option to choose the build mode
+
+1698343246
+ekaitz!~Ekaitz@94.73.32.196
+but yeah that's also a problem
+
+1698343272
+ekaitz!~Ekaitz@94.73.32.196
+to get it right: you mean that `zig build` may download stuff from the internet?
+
+1698343287
+andrewrk!~andrewrk@mail.ziglang.org
+yes that is currently the case
+
+1698343299
+ekaitz!~Ekaitz@94.73.32.196
+well many project do the same with cmake
+
+1698343331
+ekaitz!~Ekaitz@94.73.32.196
+but yeah it's great to see you have us in mind :)
+
+1698343336
+ekaitz!~Ekaitz@94.73.32.196
+thank you 
+
+1698343393
+andrewrk!~andrewrk@mail.ziglang.org
+please subscribe to that issue if you can, and when it is marked as resolved, give it a try and make sure the solution is satisfactory
+
+1698343470
+ekaitz!~Ekaitz@94.73.32.196
+done :)
+
+1698353022
+frmdstryr!~jrm@172.58.207.49
+Does zig have any meta fn or something to get the list of builtin fn names?
+
+1698353215
+lf94!~lf94@user/lf94
+why do you need that
+
+1698353307
+frmdstryr!~jrm@172.58.207.49
+Writing a zig plugin for kdevelop
+
+1698354861
+ifreund!2940d10f8b@user/ifreund
+frmdstryr: how about the compiler source code? https://github.com/ziglang/zig/blob/a9e66ed730e17833a3f2701294c01f0b16d206e4/src/BuiltinFn.zig#L159
+
+1698355210
+frmdstryr!~jrm@172.58.207.49
+ifreund: That should work, thanks!
+
