@@ -1,0 +1,144 @@
+1698367438
+krowemoh_!~nivethan@142.188.63.63
+hello, I've set up build.zig to build my C project but do I still use a Makefile to create users, directories and do the actual installation? I could move it into a shell script and execute that from build.zig or maybe there is a better way.
+
+1698367910
+andrewrk!~andrewrk@mail.ziglang.org
+krowemoh_, you want to create a user account as part of a software installation process?
+
+1698367958
+andrewrk!~andrewrk@mail.ziglang.org
+anyway, the intention is that you use addSystemCommand to run any external commands that you need to do as part of the installation process, such as mkuser or whatnot
+
+1698367973
+andrewrk!~andrewrk@mail.ziglang.org
+but I think you probably should leave that to the system package
+
+1698367999
+krowemoh_!~nivethan@142.188.63.63
+yup, it could be I'm going about this the wrong way in general. The application creates a directory of some basic set up and creates a user to use as well.
+
+1698368109
+krowemoh_!~nivethan@142.188.63.63
+largely everyone using this application is going to be building from source, I'll take a look at addSystemCommand as that sounds right
+
+1698374305
+torque!~tachyon@user/torque
+creating users from a build script seems like a very odd thing to do since you probably need elevated privileges to do so
+
+1698374316
+torque!~tachyon@user/torque
+I really don't understand the use case here
+
+1698381042
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+ekaitz: do you plan to upgrade zig to .11 in guix or that is a no-go because of the wasm binary?
+
+1698381072
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+or guix can complile the wasm too, I guess
+
+1698381288
+andrewrk!~andrewrk@mail.ziglang.org
+whether guix could compile the wasm isn't relevant. the C code that zig provides to compile the wasm is perfectly fine 
+
+1698381307
+andrewrk!~andrewrk@mail.ziglang.org
+the problem is that the wasm blob is not source and is therefore tricky to audit
+
+1698396159
+ekaitz!~Ekaitz@94.73.32.196
+voroskoi  andrewrk  i didn't package zig itself, I just added the mechanism to use it as a system to write packages
+
+1698396164
+ekaitz!~Ekaitz@94.73.32.196
+but we can take a look on that
+
+1698396186
+ekaitz!~Ekaitz@94.73.32.196
+the person who packaged zig itself is one of the guix maintainers
+
+1698398504
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+andrewrk: guix has quite strict policy, so the wasm blob is a no-go there, but compiling the wasm blob before building zig with that should be fine imho
+
+1698398607
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+ekaitz: i see, but zig-0.11 is the latest release, and zig is moving fast, there are hardly any package that uses 0.10  
+
+1698398658
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+but i will try to use Your work to build latest river release
+
+1698398913
+ekaitz!~Ekaitz@94.73.32.196
+great! yeah, zig moves fast and sadly there's not enough people in guix to move fast
+
+1698398947
+ekaitz!~Ekaitz@94.73.32.196
+if this happens to work well, we'll catch up
+
+1698399907
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+ekaitz: i just started using guix, i hope it works out because i quite like it
+
+1698399936
+ekaitz!~Ekaitz@94.73.32.196
+it's a great piece of software
+
+1698400117
+ekaitz!~Ekaitz@94.73.32.196
+more elegant than nix if you ask me
+
+1698400842
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+ekaitz: yes, I have tried nix too, but i had to create a swap partition because searching gets OOM kill with 8GB ram and the old packages and flakes together is just hacky
+
+1698400984
+ekaitz!~Ekaitz@94.73.32.196
+one of my goals is to make some zig people to guix too
+
+1698401009
+ekaitz!~Ekaitz@94.73.32.196
+providing a powerful package manager
+
+1698401024
+ekaitz!~Ekaitz@94.73.32.196
+and also triggering that good taste zig people have
+
+1698401038
+ekaitz!~Ekaitz@94.73.32.196
+i think the same good taste appears in guix too, but in a different way
+
+1698417235
+frmdstryr!~jrm@172.58.207.49
+Is the assign_destructure ast node used at all? 
+
+1698434353
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+yeah for `const x, const y = .{ 0, 1 };`
+
+1698442955
+frmdstryr!~jrm@172.58.204.125
+nektro: When I try that it does two var decls? https://zig.godbolt.org/z/9bjscGb4P
+
+1698443712
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+huh
+
+1698444719
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+how about `x, y = .{ 0, 1 };`
+
+1698444824
+frmdstryr!~jrm@172.58.204.125
+Nope https://zig.godbolt.org/z/51n494Gxn
+
+1698445150
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+frmdstryr, oh, `assign_destructure` is only for imperative destructures
+
+1698445464
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+if you check the errors, you'll see that your sources are invalid and so you are only printing a partial ast
+
