@@ -1,0 +1,252 @@
+1698632138
+grayhatter!~grayhatte@user/grayhatter
+is there an issue about something similar to python's with syntax?
+
+1698633198
+squeek502!~squeek502@user/squeek502
+grayhatter, https://github.com/ziglang/zig/issues/8019 seems close
+
+1698645103
+torque!~tachyon@user/torque
+with is really just { var whatever; defer whatever.deinit(); do some logic here }
+
+1698645131
+torque!~tachyon@user/torque
+which seems fine with the current language features
+
+1698645191
+grayhatter!~grayhatte@user/grayhatter
+What I had in mind was basically just syntatic sugar for  `with (something()) |thing| { defer thing.close();  ... }`
+
+1698645285
+torque!~tachyon@user/torque
+that's not even really sugar since you have the explicit deinit call
+
+1698645294
+torque!~tachyon@user/torque
+it's just moving your init call outside of the block for some reason
+
+1698645301
+grayhatter!~grayhatte@user/grayhatter
+the pattern I'm hitting a lot is `with (somthing()) |thing| { try a_lot_of_try_calls() } else |error| { code_that_runs_if_anything_errors() }`
+
+1698645368
+grayhatter!~grayhatte@user/grayhatter
+torque: the idea would be the defer thing.close() would be enforced by the compiler, so you couldn't call with (struct_without_close_fn) nor could you forget to call it
+
+1698645423
+grayhatter!~grayhatte@user/grayhatter
+sometimes I need to write have if (thing) |t| { defer t.close() } and sometimes I save t somewhere, and don't call t.close() having with would make the behavior more explicit IMO
+
+1698645435
+torque!~tachyon@user/torque
+but a lot of structs use a function called deinit or whatever you want. I realze you could enforce a "with interface" but that seems way too opinionated
+
+1698645442
+grayhatter!~grayhatte@user/grayhatter
+harder to forget something, easier to comment on during review, but...
+
+1698645449
+torque!~tachyon@user/torque
+like that's the language interfering with userspace
+
+1698645520
+grayhatter!~grayhatte@user/grayhatter
+the language already interfers with userspace... that's kinda the point and one of the nice things about zig, it makes it easy to write code, and hard/annoying to miss things
+
+1698645527
+torque!~tachyon@user/torque
+I mean zig lets you blow your own foot off in a lot of ways if you feel like it, forgetting to deinit something hasn't really been a problem in my experience
+
+1698645541
+torque!~tachyon@user/torque
+the language doesn't really interfere with userspace much actually
+
+1698645552
+torque!~tachyon@user/torque
+curious what you would say does?
+
+1698645557
+grayhatter!~grayhatte@user/grayhatter
+torque: neither has `if (some_int)` or `if (nullable) `
+
+1698645600
+grayhatter!~grayhatte@user/grayhatter
+but zig has userspace opinions that make it harder to write bugs by asserting ` 0 != false `
+
+1698645602
+torque!~tachyon@user/torque
+that's just strict typing. nullability is tightly coupled to the language's type system so I wouldn't consider that to be "userspace"
+
+1698645622
+grayhatter!~grayhatte@user/grayhatter
+`pub fn format(...)` 
+
+1698645629
+torque!~tachyon@user/torque
+that's userspace
+
+1698645635
+torque!~tachyon@user/torque
+the format stuff is all in the stdlib
+
+1698645643
+torque!~tachyon@user/torque
+the compiler doesn't dictate that at all
+
+1698645684
+grayhatter!~grayhatte@user/grayhatter
+`@compileError("cannot format error union without a specifier (i.e. {!} or {any})")`
+
+1698645700
+torque!~tachyon@user/torque
+the format stuff is all in the stdlib
+
+1698645716
+torque!~tachyon@user/torque
+you could easily write an alternative format implementation that didn't have that restriction
+
+1698645720
+torque!~tachyon@user/torque
+with 0 changes to the compiler
+
+1698645744
+squeek502!~squeek502@user/squeek502
+btw for that 'code_that_runs_if_anything_errors' example, i usually use a function for that; all the try calls go in a function and then you can just use `catch { code_that_runs_if_anything_errors() }`
+
+1698645760
+grayhatter!~grayhatte@user/grayhatter
+squeek502: that's what I am doing :/
+
+1698645788
+grayhatter!~grayhatte@user/grayhatter
+func(...) { funcCore(...) catch {}; } and all that :/
+
+1698645825
+squeek502!~squeek502@user/squeek502
+yeah it always feels a bit weird using a function but it's not too bad
+
+1698646033
+grayhatter!~grayhatte@user/grayhatter
+would be amazing if you could catch inside a named block
+
+1698646054
+grayhatter!~grayhatte@user/grayhatter
+or I guess I mean catch outside one;
+
+1698646217
+grayhatter!~grayhatte@user/grayhatter
+torque: interesting semantics for how you define userspace vs language/compiler... do you just defined it what the compiler does vs what it doesnt?
+
+1698646536
+torque!~tachyon@user/torque
+language vs userspace is language when a certain behavior is required by the compiler to compile valid code and userspace when a library (such as stdlib) is enforcing that behavior
+
+1698646568
+torque!~tachyon@user/torque
+there are very few things in the language that force you to follow specific naming conventions in your code (I don't know of any off the top of my head)
+
+1698646589
+grayhatter!~grayhatte@user/grayhatter
+right, required by the compiler... why isn't `if (0)` allowed? 
+
+1698646602
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+if requires a bool
+
+1698646602
+torque!~tachyon@user/torque
+that's strict typing
+
+1698646618
+torque!~tachyon@user/torque
+why can't you assign 1 to a variable declared as a struct?
+
+1698646619
+grayhatter!~grayhatte@user/grayhatter
+but the compiler is going to emit the same instruction isn't it?
+
+1698646641
+torque!~tachyon@user/torque
+it's all just numbers underneath, dude
+
+1698646675
+grayhatter!~grayhatte@user/grayhatter
+that observation is not lost on me
+
+1698646686
+grayhatter!~grayhatte@user/grayhatter
+given that's the point I'm making
+
+1698646745
+grayhatter!~grayhatte@user/grayhatter
+`if (thing()) |_| {}` is invalid if thing is defined `fn thing() !type {}` because you need the `else |_| {}` even if it's empty like that
+
+1698646758
+grayhatter!~grayhatte@user/grayhatter
+strict typing I know
+
+1698646784
+grayhatter!~grayhatte@user/grayhatter
+but then what's the argument that with can't exist because it's having a userspace opinion
+
+1698646799
+torque!~tachyon@user/torque
+that's because zig forces you to handle errors, even if you're just doing `catch {}`
+
+1698646806
+torque!~tachyon@user/torque
+you're not allowed to implicitly ignore any error
+
+1698646828
+grayhatter!~grayhatte@user/grayhatter
+how to handle errors is a userspace decision, is it not?
+
+1698646845
+grayhatter!~grayhatte@user/grayhatter
+that's the compiler having an opinion to say "this bad habit is disallowed"
+
+1698646876
+torque!~tachyon@user/torque
+that's a language design decision (and for the record I think it's a good one) which is more of an art than a science
+
+1698646884
+grayhatter!~grayhatte@user/grayhatter
+I agree, completely
+
+1698646916
+squeek502!~squeek502@user/squeek502
+grayhatter, here's the most relevant proposal for the 'code_that_runs_if_anything_errors' stuff: https://github.com/ziglang/zig/issues/5610
+
+1698646928
+squeek502!~squeek502@user/squeek502
+there's also this one that got closed: https://github.com/ziglang/zig/issues/5421
+
+1698646956
+grayhatter!~grayhatte@user/grayhatter
+and the decision might be that `with` is nice for python, but not nice for zig... in which case, cool, but the idea is interesting to me, if it comes with a reason deeper than, "the language doesnt' have userspace opinions"
+
+1698646989
+grayhatter!~grayhatte@user/grayhatter
+which... that's fine if that is the reason... but it's boring to me so *shrug*
+
+1698647018
+torque!~tachyon@user/torque
+my point was that your proposed implementation of "the language requires your struct to have a method taking no arguments that is named `close`" is at odds with the rest of the language design
+
+1698647100
+torque!~tachyon@user/torque
+defer doesn't have an opinion, it just takes a block/expression. as soon as you start to dig into how the user must define their object in order to comply with a keyword, you're leaking language design into userspace
+
+1698647106
+grayhatter!~grayhatte@user/grayhatter
+close() was only an example because I was working with fd's the past few days, I didn't really have an opinion on what it should be named
+
+1698647161
+torque!~tachyon@user/torque
+the point is that no name should be enforced. a lot of deinit functions also take arguments, like the allocator to use to free memory or similar
+
+1698647167
+torque!~tachyon@user/torque
+no name/signature
+
