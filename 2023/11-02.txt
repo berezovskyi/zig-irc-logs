@@ -1,0 +1,124 @@
+1698919738
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+when You got command terminated undexpectedly without any backtrace how do you trace it down given that std.debug.print() also does not print anything?
+
+1698919778
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+is there a function which actually gets printed and not hidden by the compiler?
+
+1698919819
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+it only prints my debug messages when the function runs fine, but prints nothing on failure :-(
+
+1698919985
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+what command?
+
+1698920008
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+zig build
+
+1698920040
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+add `--verbose` and see what is the last subcommand that runs
+
+1698920119
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+zig test Debug native: error: the following command terminated unexpectedly: /home/voroskoi/.zig-linux-x86_64-0.11.0/zig test /home/voroskoi/code/zig-clap/clap.zig --cache-dir /home/voroskoi/code/zig-clap/zig-cache --global-cache-dir /home/voroskoi/.cache/zig --name test --listen=-
+
+1698920153
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+usually the only way to break runtime stack traces is a stack overflow
+
+1698920207
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+you can run that exact command in a debugger to get a stack trace, just drop the `--listen=-` part
+
+1698920225
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+ok, i will try it
+
+1698920242
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+or add `-femit-bin=test-executable` and debug that
+
+1698920308
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+depending on whether it is a compiler crash or runtime crash
+
+1698920739
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+my zig version (.11) does not have -femit-bin option
+
+1698920781
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I mean the printed `zig test` command, still without `--listen=-`
+
+1698920804
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+it also prints the binary directly to debug, but you didn't provide that output
+
+1698921626
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+i see, ok i was able to start it in gdb and got the error, but no stack strace because a forked process exits
+
+1698921637
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+need to figure out how to inspect that
+
+1698921797
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+that's `gdb --args zig test ...`?, then probably a runtime crash, so try `zig test ... -femit-bin=test-executable && gdb --args test-executable`
+
+1698921831
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+err, `zig test ... --test-no-exec -femit-bin=test-executable && gdb --args test-executable`
+
+1698922059
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+this is what i did and got: https://zigbin.io/e21b75
+
+1698922072
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+i have no idea if i am doing it right or not
+
+1698922180
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+well that's a compiler crash
+
+1698922570
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+nice :-)
+
+1698922627
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+I will push this state of the repository and open a bug report
+
+1698922674
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+before that I try with latest master too
+
+1698923056
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+master does not crash and gives a proper error message, yay!
+
+1698923072
+voroskoi!924a802ee9@2604:bf00:561:2000::15c
+jacobly: thanks for Your help!
+
+1698923076
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+nop
+
+1698923078
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+*np
+
+1698928019
+leon-p!1b22ab9492@user/leon-p
+was about to ask about something similar, thanks for the answer I guess :]
+
+1698943042
+coreopen!~coreopen@141.148.12.72
+Bd
+
