@@ -1,0 +1,108 @@
+1699046026
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Hey, so I'm trying to port some C code to Zig, but I'm getting stuck on statics
+
+1699046083
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Here's the C code (compiles fine with gcc, clang, and zig) (x86 target, not x86_64):
+
+1699046094
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+typedef unsigned int u32;
+
+1699046094
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+u32 func(void) { return 1; }
+
+1699046094
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+static const u32 test1[] = {1, 2, (u32)func};
+
+1699046134
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I tried a few different things to match this in Zig, but everything results in compiler errors
+
+1699046141
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+For example
+
+1699046155
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+fn func() callconv(.C) u32 { return 1; }
+
+1699046156
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+export const test1 = [_]u32 {1, 2, @intFromPtr(&func)};
+
+1699046177
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+("error: unable to evaluate comptime expression (note: operation is runtime due to this operand)")
+
+1699046193
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Removing the & produces a different error ("error: expected pointer, found 'fn() callconv(.C) u32'")
+
+1699046241
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I tried doing it with a struct, but that actually produced an error about invalid LLVM IR (seems like a compiler bug maybe?)
+
+1699046261
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Any tips or suggestions? Thanks!
+
+1699051407
+andrewrk!~andrewrk@mail.ziglang.org
+RoadrunnerWMC, static in C is a global var or const in zig
+
+1699051455
+andrewrk!~andrewrk@mail.ziglang.org
+ah I see, you are trying to export an array of integers
+
+1699051504
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Yeah exactly, an array of integers but also including function pointers
+
+1699051539
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+`export const test1 = [_]u32 {1, 2, 3};` compiles fine, I just don't know how to add a pointer in there like you can do in C
+
+1699051590
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I did also try making it an array of unions between u32 and the function pointer type, but that didn't work either
+
+1699051942
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+...well I tried it again, and now it works :P
+
+1699051999
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I was experimenting for like an hour last night with different things, but I guess I never landed on exactly the right syntax
+
+1699052029
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Sorry to bother you
+
+1699052092
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I do have another question: is there a function for substring replacement? I found a Unicode string library that has it, but nothing built-in (I only need it to work for ASCII strings)
+
+1699052136
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Like the equivalent of `'test1 test2'.replace('test', 'example')` in Python (-> 'example1 example2')
+
+1699052198
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+oh also, should I open a GitHub issue about the LLVM error?
+
+1699052275
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+LLVM Emit Object... LLVM ERROR: Unsupported expression in static initializer: or (i128 shl (i128 zext (i64 ptrtoint (ptr @test.func to i64) to i128), i128 64), i128 8589934593)
+
+1699052455
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+never mind, there's already one open for it
+
+1699055723
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+The C code I'm porting also uses __COUNTER__ to generate unique identifiers. I found https://github.com/ziglang/zig/issues/648 which proposes an equivalent for Zig. It's closed as completed and tagged with the 0.4.0 milestone, but I can't find any builtins for this in the current version. Is there one I'm missing, or a way to write a function that does roughly the same thing?
+
