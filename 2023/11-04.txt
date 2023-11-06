@@ -1,0 +1,364 @@
+1699057315
+torque!~tachyon@user/torque
+I think that was closed as a won't add, since that proposal never had the 'accepted' label added to it
+
+1699057383
+torque!~tachyon@user/torque
+in general, there's probably a better way to accomplish this in zig. Why do you need unique identifiers? is this to avoid name collision due to a repeatedly invoked macro?
+
+1699057501
+torque!~tachyon@user/torque
+with regards to your earlier question about storing pointers in an array of ints, there is the @intFromPtr builtin, but that returns a usize, not a u32 (on 32 bit platforms, usize should be 32 bits though, I believe)
+
+1699057564
+torque!~tachyon@user/torque
+that seems like an odd data structure to me, but I would probably use a tagged union there personally
+
+1699057637
+torque!~tachyon@user/torque
+in general, zig doesn't make it trivial to write really weirdly platform-dependent code (like assuming your function pointers are 32-bits wide) and if you're making the effort to port code, I'd suggest considering taking some time to update the data structures in a way that's more portable, unless you have a specific reason not to do this
+
+1699058457
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+"Why do you need unique identifiers? is this to avoid name collision due to a repeatedly invoked macro?" Yes
+
+1699058625
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+"unless you have a specific reason not to do this" I'm all for portability in general, but the context is actually Wii game modding, so it really wouldn't be useful in this case
+
+1699058659
+torque!~tachyon@user/torque
+shoulda said ppc then
+
+1699058674
+torque!~tachyon@user/torque
+or was the wii an x86 chip?
+
+1699058709
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+It is ppc, but I switched my target to x86 when making a minimum reproducible example to ask about here
+
+1699058749
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+in hindsight I guess that was unnecessary, but I was trying to simplify as much as possible since I wasn't sure why it wasn't working
+
+1699058756
+torque!~tachyon@user/torque
+yeah fair enough
+
+1699058813
+torque!~tachyon@user/torque
+example code for the __COUNTER__ issue would probably help with suggestions, but since zig doesn't have macros you don't really have the same issue
+
+1699058955
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I can link the actual header I'm trying to port if you'd like, but basically it defines a bunch of macros that, when invoked, add metadata for the linker to a custom section
+
+1699059039
+torque!~tachyon@user/torque
+I'd be curious to see it but that's definitely out of my realm of expertise
+
+1699059042
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I know it's an extremely weird setup, but I'm really curious how well Zig would be able to handle it
+
+1699059087
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+https://github.com/Treeki/Kamek/blob/master/k_stdlib/base/hooks.h
+
+1699059169
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+"but that's definitely out of my realm of expertise" That's fine, I appreciate your trying to help regardless :)
+
+1699059237
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I can give an example of how this works, since that header is not the easiest thing to read (and probably doesn't make sense without understanding the context)
+
+1699059333
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Say you (as the author of a Wii game mod) want to modify the value at address 0x12345678 to, for example, 999
+
+1699059377
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Your .c file will have the line "kmWrite32(0x12345678, 999)" and nothing else other than some #includes
+
+1699059480
+torque!~tachyon@user/torque
+so there's another piece of software that yanks all the definitions out of the .kamek link section at runtime?
+
+1699059493
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+That expands to something like `__declspec (section ".kamek") static const u32 _kHook0[5] = {3, 1, 2, 0x12345678, 999};`
+
+1699059499
+torque!~tachyon@user/torque
+or I guess that gets compiled into your mod
+
+1699059559
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+There's a custom linker that reads the .kamek section and converts it to metadata included in the output file (custom format)
+
+1699059570
+torque!~tachyon@user/torque
+ah
+
+1699059575
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+And then the loader at runtime follows those instructions
+
+1699059643
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+The loader could conceivably just load the object file directly, I guess. I think it's designed this way to keep the loader as small and simple as possible (ELF is more complex than we really need here)
+
+1699059646
+torque!~tachyon@user/torque
+I realize __COUNTER__ will increment with the macro invocations but does the link section preserve order independent of the symbol name?
+
+1699059660
+torque!~tachyon@user/torque
+I mean you can easily have a compile time counter with a comptime var
+
+1699059685
+torque!~tachyon@user/torque
+I'm not sure you can use that to create decl names though...
+
+1699059701
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I don't think the order of the symbols in .kamek matters, it'll vary depending on the order in which the object files are linked anyway
+
+1699059763
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+"I'm not sure you can use that to create decl names though..." I actually did get this working apart from the counter
+
+1699059778
+torque!~tachyon@user/torque
+oh, there's @export
+
+1699059800
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Yeah
+
+1699059820
+torque!~tachyon@user/torque
+that still requires a local name rather than a string, though
+
+1699059845
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Not for the exported name
+
+1699059865
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+@export(thing, .{.name = "nameThatAppearsInTheObjectFile" })
+
+1699059990
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I wrote a function that creates a const array and then exports it with a name that's an int appended to a constant string
+
+1699060005
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+and it works if I hard-code the int value
+
+1699060026
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+just not sure how to make it a variable that gets incremented...
+
+1699060048
+torque!~tachyon@user/torque
+yeah, like @export(thing, .{.name = "name" ++ std.fmt.comptimePrint("{d}", .{0})}) or such?
+
+1699060143
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+That's a much cleaner solution than what I came up with, but yeah same effect
+
+1699060213
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+std.fmt is mostly undocumented, so I had a hard time picking the right function :P
+
+1699060249
+torque!~tachyon@user/torque
+I have mostly learned it by clever application of searching for `fn` followed by a string I am hoping exists
+
+1699060292
+torque!~tachyon@user/torque
+I guess `std.fmt.comptimePrint("name{d}", .{0})` would be even cleaner but uhh
+
+1699060337
+torque!~tachyon@user/torque
+I don't know the ins and outs of @export, but you should be able to declare `comptime var counter = 0` and then increment it after each @export
+
+1699060466
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I think I've got the @export part finished, it's really just the counter I'm currently unsure of
+
+1699060487
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+If I put that declaration inside the function, it gets reset every time you call it (which makes sense)
+
+1699060500
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+If I put it outside, it's a syntax error
+
+1699060582
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+If I try it with braces (`comptime { var counter = 0; }`) I get both unused-variable and undeclared-identifier errors
+
+1699060702
+torque!~tachyon@user/torque
+yeah, because it goes out of scope. interesting that `comptime var` isn't allowed at container scope. I wonder if this is an oversight or intentional
+
+1699060755
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I also tried putting the function within the comptime block, but that gives a hard-to-understand syntax error
+
+1699060815
+torque!~tachyon@user/torque
+you can't define a function in a block. however, you could call your function from the block, and pass in the counter
+
+1699060981
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I can, but then the counter's only in scope in that single comptime block
+
+1699061048
+torque!~tachyon@user/torque
+yeah. I don't know if there is a way to have a global comptime var, interestingly
+
+1699061087
+torque!~tachyon@user/torque
+may be able to close over it weirdly.... let's see
+
+1699061553
+torque!~tachyon@user/torque
+doesn't look like it works, unfortunately
+
+1699061601
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+hm, I see...
+
+1699061627
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Well, I guess I could work around it by creating unique identifiers from the arguments to the macros
+
+1699061639
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+There's never a situation where you'd want to call the same macro more than once with the same arguments
+
+1699061698
+torque!~tachyon@user/torque
+there may be a way to do it, but I find it interesting that `comptime var` doesn't work at container scope. there's probably a ticket for this that explains it
+
+1699061731
+torque!~tachyon@user/torque
+yeah, that seems like a reasonable approach
+
+1699063530
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Thanks again! (sflr)
+
+1699063626
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+By the way, I think this other question I asked got buried, so I'll repost it:
+
+1699063632
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Is there a function for substring replacement? I found a Unicode string library that has it, but nothing built-in (I only need it to work for ASCII strings)
+
+1699071963
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Hm, "creating unique identifiers from the function arguments" falls short in cases when the only guaranteed-unique argument is a function pointer (which can't be cast to int at compile time)
+
+1699077588
+torque!~tachyon@user/torque
+hmm
+
+1699077849
+torque!~tachyon@user/torque
+there's std.mem.replace, which should work fine for ascii
+
+1699084767
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+That worked, thanks! I now have a simple "intelToAtt()" function I can wrap my asm() strings in :)
+
+1699120763
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+hey, if you have a c library that relies on some (probably) harmless undefined behaviour, how do you stop it from crashing when compiled through zig cc? Can I put like some annotation in build.zig? 
+
+1699121175
+torque!~tachyon@user/torque
+add "-fno-sanitize=undefined" to your cflags
+
+1699121199
+grayhatter!~grayhatte@user/grayhatter
+torque: is there a way do to that inline?
+
+1699121229
+grayhatter!~grayhatte@user/grayhatter
+i.e. just for that function? so the rest of the UB can still be sanitized? (depending on the behvaior soupladler needs)
+
+1699121251
+torque!~tachyon@user/torque
+it can be set for specific source files with `lib.addCSourceFiles(&source_files, &cflags);`
+
+1699121254
+grayhatter!~grayhatte@user/grayhatter
+and now I've actually read the original question
+
+1699121271
+grayhatter!~grayhatte@user/grayhatter
+it's safe to ignore me, I don't understand how to read :<
+
+1699121300
+grayhatter!~grayhatte@user/grayhatter
+I thought it was being used in a zig project/call, not just compiled by zig :)
+
+1699121370
+torque!~tachyon@user/torque
+the other option is to only compile ReleaseFast, which doesn't add the ubsan flags I believe
+
+1699121394
+torque!~tachyon@user/torque
+if it's a """"battle hardened"""" c library, that should be fine, right
+
+1699121539
+grayhatter!~grayhatte@user/grayhatter
+torque: "battle hardened"
+
+1699121555
+grayhatter!~grayhatte@user/grayhatter
+*stb_*_lib has entered the chat*
+
+1699121644
+grayhatter!~grayhatte@user/grayhatter
+I mean... generally if something is using UB knowingly it's always correct for the specific valid inputs it was written for :P
+
+1699122208
+torque!~tachyon@user/torque
+I think it's more likely that it happens to be correct for the intersection of compilers and platforms it is tested for
+
+1699122213
+torque!~tachyon@user/torque
+since that's kind of how UB works
+
+1699122284
+torque!~tachyon@user/torque
+frankly I would much prefer a UBsan that issued compile errors (I realize this may be impractical for some codebases since indeed it is possible that UB is only triggered by certain inputs and the list of all possible UB might be extremely long)
+
+1699122296
+torque!~tachyon@user/torque
+but man trapping at runtime sucks
+
+1699122441
+torque!~tachyon@user/torque
+(I realize you can run ubsan without trapping and it will instead spew error messages to stderr, but that is its own type of suck)
+
+1699123365
+soupladler!~soupladle@ip2504fbe1.dynamic.kabel-deutschland.de
+Tbh I keep on finding really obvious UB, like people using uninitialized values. 
+
+1699124141
+torque!~tachyon@user/torque
+the main one I ran across was a left shift of a signed integer (which is only UB for negative number I guess) in a prng
+
+1699124167
+torque!~tachyon@user/torque
+though it happened about 50% of the time so it wasn't exactly hard to catch it
+
