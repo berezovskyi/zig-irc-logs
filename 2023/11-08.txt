@@ -1,0 +1,144 @@
+1699407183
+andrewrk!~andrewrk@mail.ziglang.org
+copygirl, I've compiled zig to wasm32-freestanding before in a branch. it requires a bit of patching mainly due to dependency on a file system
+
+1699407206
+andrewrk!~andrewrk@mail.ziglang.org
+zig already compiles to wasm32-wasi- it's how zig is built from source
+
+1699425312
+copygirl!~koppeh@copy.mcft.net
+RoadrunnerWMC: Lua is a horrible language to write in. I'm currently modding Minetest. Also it looks like if you want speed, and thus a JIT compiler, it will require additional sandboxing for security again.
+
+1699425428
+copygirl!~koppeh@copy.mcft.net
+I think WASM is a good compromise between having some language choice (even if it turns out Zig will be the only suitable one - at least it's a good one), speed and security. 
+
+1699425449
+copygirl!~koppeh@copy.mcft.net
+Wasmtime is written in Rust and security is a goal.
+
+1699425631
+copygirl!~koppeh@copy.mcft.net
+andrewrk: Yeah I did hear about this, which is why I thought Zig was the closest to having its compiler run in WASM, though I'm not sure how difficult it is for a user of the language to reproduce what you've done.
+
+1699425656
+copygirl!~koppeh@copy.mcft.net
+I assume my use-case is not a goal of the language.
+
+1699425718
+copygirl!~koppeh@copy.mcft.net
+(And I'm not sure if it's the right way to go about it - it would limit me to Zig.)
+
+1699426073
+andrewrk!~andrewrk@mail.ziglang.org
+well I do think we want to make a client-side web playground on ziglang.org
+
+1699426096
+copygirl!~koppeh@copy.mcft.net
+Ooh
+
+1699426180
+torque!~tachyon@user/torque
+since people are around and this came up the other day and I'm curious: is there a way to make a global comptime variable?
+
+1699426201
+torque!~tachyon@user/torque
+the standard invocations seem to result in compile errors
+
+1699426369
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+copygirl: (RE Lua) Heh, fair enough
+
+1699426833
+andrewrk!~andrewrk@mail.ziglang.org
+torque, it's intentionally impossible to mutate global state at compile time
+
+1699426864
+andrewrk!~andrewrk@mail.ziglang.org
+this allows order-independent top-level declarations, which is important for a lot of reasons
+
+1699427102
+torque!~tachyon@user/torque
+I figured there was a technical reason for it
+
+1699427105
+torque!~tachyon@user/torque
+makes sense
+
+1699427206
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Is there a way to mimic C's __COUNTER__, then? If not, do you think one will ever be added?
+
+1699427259
+andrewrk!~andrewrk@mail.ziglang.org
+no, it's fundamentally problematic. but perhaps you might be interested in `@returnAddress()`
+
+1699427263
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+(doesn't have to actually count, just get unique values per invocation -- which might be an important distinction because the former is hard to parallelize but the latter potentially easier)
+
+1699427334
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+hm maybe, but the code I'm thinking of runs entirely at compile-time, so I'm not sure what that builtin would even do in that case
+
+1699427439
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I tried using function arguments to disambiguate instead, but then I ran into the problem that sometimes these arguments were pointers, and `@intFromPtr()` doesn't seem to work at compile time
+
+1699427493
+andrewrk!~andrewrk@mail.ziglang.org
+calling a noinline function which uses @returnAddress() would give you a runtime-known, pointer-sized integer which is unique per callsite
+
+1699427578
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Runtime-known... based on my experiences so far, I think that means "not compile-time-known", so it probably wouldn't work in my case...
+
+1699427639
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+I'll give it a try and see what happens
+
+1699427789
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Seems to evaluate to "0" every time in my case :P
+
+1699428496
+doseijin!~doseijin@user/doseijin
+by the way, about the wasm talk, this exists https://github.com/zigtools/playground not sure how up to date it is though
+
+1699428902
+copygirl!~koppeh@copy.mcft.net
+Oh this is neat.
+
+1699428936
+copygirl!~koppeh@copy.mcft.net
+Be the way andrewrk, where is this branch you were talking about?
+
+1699449687
+ekaitz!~Ekaitz@94.73.32.196
+hi all! this is probably a stupid question to make but why does zig parser calculate the line number instead of carrying it in the location of the tokens it reads?
+
+1699449825
+ekaitz!~Ekaitz@94.73.32.196
+also i saw the tokens have a loc field that has the start and the end but later the end is ignored in the parser?
+
+1699449993
+ekaitz!~Ekaitz@94.73.32.196
+(also the codebase is pretty easy to follow <3)
+
+1699459856
+torque!~tachyon@user/torque
+if the line number doesn't need to be calculated often (e.g. only in the case of errors) then it reduces memory usage and doesn't have a particularly large performance impact to calculate it on-demand
+
+1699459873
+torque!~tachyon@user/torque
+but I also don't really know what you're talking about so at best I'm providing a hypothetical possible justification
+
+1699464414
+AlxFG!~AlxFG@user/AlxFG
+ /quit
+
+1699475465
+ekaitz!~Ekaitz@94.73.32.196
+torque: sounds like a good reason
+
