@@ -1,0 +1,256 @@
+1699680629
+grayhatter!~grayhatte@user/grayhatter
+any reason zig build -p /usr wouldn't work but still return 0?
+
+1699680945
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+not sure why it would return 0 but it would likely fail unless you prefix it with sudo/doas
+
+1699681002
+grayhatter!~grayhatte@user/grayhatter
+nektro: yeah, when I prefix doas, nothing happens, when I don't I get permission errors (as expected)
+
+1699681064
+grayhatter!~grayhatte@user/grayhatter
+ok, my shell was broken, using zsh it returns 2 without other messages
+
+1699681400
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Is there a way for imported files to export symbols? I'm trying to move some `export fn`s from main.zig to a new file to improve organization, but the functions seem to stop being exported when I do that
+
+1699681633
+grayhatter!~grayhatte@user/grayhatter
+does `export name = @import("file.zig").name;` not work?
+
+1699681832
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+hm, no
+
+1699681881
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+`export const name = @import("file.zig").name;` produces a symbol-collision error even though the other file doesn't successfully export the name
+
+1699681920
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+If I make file.zig not attempt to export (i.e. just `pub`), it still fails without giving a good explanation why
+
+1699681956
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+It says `note: extern function must specify calling convention`, so I guess I could do that, but I didn't need to specify a calling convention when the function was in main.zig, so that seems weird
+
+1699682090
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+OK, yeah, adding `callconv(.C)` to the function declaration and using `export const name = @import("file.zig").name;` works, I guess
+
+1699682122
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Though the symbol-collision error makes me think that my original attempt was *supposed* to work...
+
+1699682218
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+oh https://github.com/ziglang/zig/issues/10174
+
+1699682274
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+That solution looks very weird, but it does work
+
+1699708025
+sudw1n!~pratik@user/sudw1n
+what's the difference in doing `anyerror!void` vs just `!void`?
+
+1699710056
+sudw1n!~pratik@user/sudw1n
+can someone help me with this: https://zig.godbolt.org/z/orr7r8K4x? There are comments explaining what I'm trying to do, but it's basically related to `build.zig`.
+
+1699713040
+jcmoyer!~jcmoyer@user/jcmoyer
+sudw1n: one solution would be to make `b`, `exe`, and `s` fields of your makeFnStep struct and use @fieldParentPtr to access them from makeFnStep.make
+
+1699717547
+arya_elfren!8e828d9895@2604:bf00:561:2000::125a
+sudw1n: https://ziglang.org/documentation/master/#The-Global-Error-Set
+
+1699717587
+arya_elfren!8e828d9895@2604:bf00:561:2000::125a
+basically `anyerror` is all possible errors in your program, whereas the infered error set is a minimal errorset for that function
+
+1699719287
+torque!~tachyon@user/torque
+you can access b already through `step.owner` in your function.
+
+1699731758
+ekaitz!~Ekaitz@94.73.32.196
+hi! i tracked down my guix zig-build-system issue to pkg config
+
+1699731781
+ekaitz!~Ekaitz@94.73.32.196
+if pkg-config is used zig tries to use the static version of a library
+
+1699731804
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: how is this supposed to work in nix, for example?
+
+1699731834
+ekaitz!~Ekaitz@94.73.32.196
+i need the build system to be able to load dynamic libraries when needed
+
+1699737278
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+Probably an easy question: how do you initialize an allocated union? Allocating it is easy, but I can't figure out how to set its variant/value afterward
+
+1699737385
+RoadrunnerWMC!~Roadrunne@46.101.129.38
+never mind, got it
+
+1699738890
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, are you the one writing the build.zig logic or are you trying to package an existing project for guix?
+
+1699738920
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: existing package
+
+1699738926
+ekaitz!~Ekaitz@94.73.32.196
+a simple one, btw
+
+1699738932
+ekaitz!~Ekaitz@94.73.32.196
+mepo
+
+1699738946
+andrewrk!~andrewrk@mail.ziglang.org
+can I see the build script?
+
+1699739020
+ekaitz!~Ekaitz@94.73.32.196
+let me search
+
+1699739065
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk:  https://git.sr.ht/~mil/mepo/tree/master/item/build.zig
+
+1699739099
+ekaitz!~Ekaitz@94.73.32.196
+step.linkSystemLibrary("SDL2"); <-- this finds .a when I have pkg-config around, but .so when I don't
+
+1699739133
+ekaitz!~Ekaitz@94.73.32.196
+when it finds the .a, as SDL has tons of transitive deps, it fails with undefined symbol
+
+1699739164
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: i have a smaller reproducer using your zig-sdl2 test project
+
+1699739190
+andrewrk!~andrewrk@mail.ziglang.org
+would you mind filing an issue for this? I think that some work needs to be done in the build system to make this better. I'm thinking when the system mode is enabled (https://github.com/ziglang/zig/issues/14281), linkSystemLibrary will prefer dynamic linking
+
+1699739241
+ekaitz!~Ekaitz@94.73.32.196
+also, we are using an old zig version
+
+1699739253
+ekaitz!~Ekaitz@94.73.32.196
+0.10.something i think
+
+1699739278
+ekaitz!~Ekaitz@94.73.32.196
+but sure, I'll open an issue (i have already one at guix, so we can coordinate)
+
+1699739338
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: there's also another problem with guix, if I remove the pkg-config from the mix, then our rpath check step fails
+
+1699739343
+ekaitz!~Ekaitz@94.73.32.196
+so neither of the options work
+
+1699739405
+andrewrk!~andrewrk@mail.ziglang.org
+mm I see. I'm sorry but 0.10.x is no longer supported
+
+1699739429
+andrewrk!~andrewrk@mail.ziglang.org
+until 1.x the support lifetime for each version will be a bit short
+
+1699739444
+ekaitz!~Ekaitz@94.73.32.196
+that's understandable
+
+1699739465
+ekaitz!~Ekaitz@94.73.32.196
+if I move to 0.11 will it improve?
+
+1699739580
+ekaitz!~Ekaitz@94.73.32.196
+i can try package newer zig and see how it goes
+
+1699739757
+ekaitz!~Ekaitz@94.73.32.196
+(ok doing it right now...!)
+
+1699739919
+ekaitz!~Ekaitz@94.73.32.196
+we don't have llvm 16 yet in guix, this is going to get pretty long...
+
+1699740563
+andrewrk!~andrewrk@mail.ziglang.org
+we're already linking against llvm 17 in zig master branch
+
+1699741104
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: we don't have enough people to package llvm... it's a really complex package so...
+
+1699741121
+ekaitz!~Ekaitz@94.73.32.196
+i'll try to push it a little but i'm also pretty busy with the bootstrapping work... ugh
+
+1699741193
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, you might be interested to see this: https://github.com/ziglang/zig/pull/17892
+
+1699741218
+andrewrk!~andrewrk@mail.ziglang.org
+it's not something that you should try to use now but in the future zig will offer a way to build from source that depends only on system C compiler and does not depend on LLVM
+
+1699741289
+ekaitz!~Ekaitz@94.73.32.196
+that's pretty cool
+
+1699741297
+ekaitz!~Ekaitz@94.73.32.196
+but it's going to continue to be the zig backend?
+
+1699741328
+ekaitz!~Ekaitz@94.73.32.196
+for cross compilation we still need it anyway...
+
+1699741652
+grayhatter!~grayhatte@user/grayhatter
+has anyone seen an image process library, or ideally a graph generation library in written zig?
+
+1699742810
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, perhaps https://github.com/zigimg/zigimg/ ?
+
+1699743153
+andrewrk!~andrewrk@mail.ziglang.org
+new build system documentation just launched: https://ziglang.org/learn/build-system/
+
+1699743190
+andrewrk!~andrewrk@mail.ziglang.org
+Package Management and Wrangling Third-Party Software Dependencies sections coming later
+
+1699743530
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, this method builds a zig compiler with an x86 backend and a C backend, but not an LLVM backend. I was thinking there might be a nice way to do this: use this build from source method since it has no llvm dependency, and then take advantage of the C backend to build the zig project (i.e. mepo) using guix's system C toolchain
+
+1699743563
+andrewrk!~andrewrk@mail.ziglang.org
+the only thing stopping you from doing this is a few more weeks of bug fixes. I think it may be a good option with the release of zig 0.12.0
+
+1699743620
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: yeah it is actually a very good option
+
