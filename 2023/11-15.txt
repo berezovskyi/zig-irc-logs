@@ -1,0 +1,148 @@
+1700035698
+copygirl!~koppeh@copy.mcft.net
+When two Zig structs are defined with the same layout, is there a way to cast one to the other?
+
+1700035709
+copygirl!~koppeh@copy.mcft.net
+@bitCast informs me "struct does not have a guaranteed in-memory layout"
+
+1700035730
+copygirl!~koppeh@copy.mcft.net
+Are there cases where one struct would get laid out in memory differently than another?
+
+1700035952
+copygirl!~koppeh@copy.mcft.net
+And is there an alternative to constructing the target struct field-by-field or marking them both extern?
+
+1700036501
+fmohamed!~fmohamed@vpn-93.cscs.ch
+Hi, I started using zig last year, and like it very much. I just came across something that surprised me. Normally, thinking about it, I find a good reason for it but not in this case
+
+1700036512
+fmohamed!~fmohamed@vpn-93.cscs.ch
+why is "bla".ptr a [*]const u8 and not a [*:0]const u8 ? see https://gist.github.com/fawzi/172e4ceb9d4daf9ef26a5eeb875c226e
+
+1700040646
+copygirl!~koppeh@copy.mcft.net
+How would I go about getting the functions declared under a struct?
+
+1700040941
+copygirl!~koppeh@copy.mcft.net
+Oh, @field can be used to look up functions, too?
+
+1700041666
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+copygirl, if u want @bitCast to work on a struct it must be declared 'extern' and yes @field works to lookup decls
+
+1700041794
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+fmohamed, seems like an oversight. i would personally expect it to also be '*const [3:0]u8'. you're welcome to open an issue if that reproduces on master
+
+1700041944
+copygirl!~koppeh@copy.mcft.net
+Now then how would I go about checking if a declaration is public?
+
+1700042055
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+@hasDecl
+
+1700042218
+copygirl!~koppeh@copy.mcft.net
+It says that would return true for decls that share a scope?
+
+1700042295
+fmohamed!~fmohamed@vpn-93.cscs.ch
+nektro ok I will check, but I realized that what I was doing was is a bit stupid because *const [3:0]u8 casts to [*:0] const u8, so there is no point in putting a .ptr
+
+1700042348
+copygirl!~koppeh@copy.mcft.net
+Though to be fair it already looks like it's skipping non-public decls without me even needing to check.
+
+1700042387
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+it means there's no way to differentiate a decl actually not existing and it being private
+
+1700042399
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and if its pub then it'll return true
+
+1700042420
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+pub or in scope, the same rules as doing Foo.bar
+
+1700042581
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+fmohamed, yeah it should be exactly the same as not doing .ptr for string literals, iirc it was added as a convenience to simplify certain cases of generic code
+
+1700042930
+fmohamed!~fmohamed@vpn-93.cscs.ch
+nektro, I guess treating slices and static arrays in the same way, do dynamic and compile time known array can be treated in the same way
+
+1700043044
+fmohamed!~fmohamed@vpn-93.cscs.ch
+nektro, which is why coming from dynamic slices (that need the .ptr), I added it also there
+
+1700045422
+fmohamed!~fmohamed@vpn-93.cscs.ch
+nektro, https://github.com/ziglang/zig/issues/18007
+
+1700045546
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+nice
+
+1700045720
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+in the expected section, i think you should change the second comparison to strLiteral
+
+1700045740
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+sliceSentinel is correct in the actual section and doesnt need to be changed imo
+
+1700046873
+fmohamed!~fmohamed@vpn-93.cscs.ch
+yep was a typo, fixed it now
+
+1700085962
+sskras!sid542048@id-542048.tinside.irccloud.com
+heya, I followed https://github.com/ziglang/zig/pull/17892
+
+1700086023
+sskras!sid542048@id-542048.tinside.irccloud.com
+I have freshly built zig2. What's next?
+
+1700086036
+sskras!sid542048@id-542048.tinside.irccloud.com
+server-5aef8ee:~/src/github.com/ziglang/zig$ ./zig2 version
+
+1700086036
+sskras!sid542048@id-542048.tinside.irccloud.com
+thread 204246 panic: only a few subcommands are supported in a zig2.c build
+
+1700086036
+sskras!sid542048@id-542048.tinside.irccloud.com
+Unable to dump stack trace: debug info stripped
+
+1700086036
+sskras!sid542048@id-542048.tinside.irccloud.com
+Aborted
+
+1700086057
+sskras!sid542048@id-542048.tinside.irccloud.com
+How could I build my hello.zig ?
+
+1700086997
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+sskras, use ./stage3/bin/zig
+
+1700087132
+sskras!sid542048@id-542048.tinside.irccloud.com
+thanks. I think there is no such folder here.
+
+1700087164
+sskras!sid542048@id-542048.tinside.irccloud.com
+https://www.irccloud.com/pastebin/qdgeCEMQ/bootstrap-build.txt
+
+1700087240
+sskras!sid542048@id-542048.tinside.irccloud.com
+(added long listing of the dir)
+
