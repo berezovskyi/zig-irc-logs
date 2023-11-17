@@ -1,0 +1,344 @@
+1700107559
+torque!~tachyon@user/torque
+you probably want to follow https://github.com/ziglang/zig/wiki/Building-Zig-From-Source#option-b-use-a-pre-built-zig-binary but without the parts that link llvm
+
+1700108262
+copygirl!~koppeh@copy.mcft.net
+Is there a convention for what to name the struct type that contains static variables local to a function?
+
+1700108298
+copygirl!~koppeh@copy.mcft.net
+The example calls it "S" and I wonder if that's supposed to carry any weight. https://ziglang.org/documentation/master/#toc-Static-Local-Variables
+
+1700108905
+torque!~tachyon@user/torque
+I'd name it something relevant to its use/purpose, the same you do with any other namespace
+
+1700109709
+copygirl!~koppeh@copy.mcft.net
+Okay this might be a bit of an odd question and I might not quite know what I'm doing.
+
+1700109834
+copygirl!~koppeh@copy.mcft.net
+I'm compiling Zig to Wasm for game scripting purposes, and exported functions from what I understand don't support error returns. (At least for calling convention 'C', but it doesn't look like there's a more appropriate one anyway.)
+
+1700109900
+copygirl!~koppeh@copy.mcft.net
+So the approach I was thinking of was to wrap the function, and in case of an error, call a trap() function or similar.
+
+1700109957
+copygirl!~koppeh@copy.mcft.net
+For simplicity's sake however, I obviously don't want to write out that wrapper function manually in each script.
+
+1700110023
+torque!~tachyon@user/torque
+yeah, C abi has no concept of a zig error union
+
+1700110044
+copygirl!~koppeh@copy.mcft.net
+So I was curious whether I could define the `main() !void` function in the script, but an `entry() void` function that wraps the main function in another script, either imported or just .. somehow added to the compilation in another fashion.
+
+1700110050
+copygirl!~koppeh@copy.mcft.net
+But how to achieve this I don't know.
+
+1700110092
+torque!~tachyon@user/torque
+you can theoretically wrap it with a thunk that does what you're looking for at compile time
+
+1700110092
+copygirl!~koppeh@copy.mcft.net
+I don't suppose there's ways to export/import Zig functions which are just .. meant to be implemented in another part of the compilation unit?
+
+1700110141
+torque!~tachyon@user/torque
+it's not a direct example, but https://github.com/epicyclic-dev/nats.zig/blob/master/src/subscription.zig#L186 is an example of wrapping a zig callback with a C callback
+
+1700110164
+torque!~tachyon@user/torque
+so that a C library can call a zig callback that doesn't use the c calling convention
+
+1700110248
+copygirl!~koppeh@copy.mcft.net
+The issue is more about hiding the implementation of the wrapper from the script the user would write.
+
+1700110258
+torque!~tachyon@user/torque
+that doesn't handle errors but you could see in the thunk where you could use catch + trap (or convert the error into a c-friendly type)
+
+1700110347
+torque!~tachyon@user/torque
+perhaps I haven't really understood the issue. but my suggestion would be that you write the helper that the user would wrap their entrypoint function with, which automatically produces the appropriate c-abi function you can call
+
+1700110404
+torque!~tachyon@user/torque
+like `const entry_point = wrapMain(userMainFunction);`
+
+1700110434
+torque!~tachyon@user/torque
+where `userMainFunction` is a normal zig function, and `wrapMain` returns a c callconv wrapper around it
+
+1700110505
+copygirl!~koppeh@copy.mcft.net
+Well, that would have to be explicitly written in the script, right?
+
+1700110541
+torque!~tachyon@user/torque
+yeah
+
+1700110564
+torque!~tachyon@user/torque
+it's possible you could try to do something more automagical the way that the compiler wraps `main`, but that would still require your code to be compiled into the module.
+
+1700110567
+copygirl!~koppeh@copy.mcft.net
+But there is a solution forming in my head that involves writing a zig file that imports the script which defines the true entry point, and it analyzes the script, such as looking for a main function.
+
+1700110657
+copygirl!~koppeh@copy.mcft.net
+The script would not define any exports, only pub functions.
+
+1700110688
+torque!~tachyon@user/torque
+if the scripts are source code as opposed to precompiled blobs I suppose that's possible
+
+1700110715
+copygirl!~koppeh@copy.mcft.net
+Indeed.
+
+1700110780
+copygirl!~koppeh@copy.mcft.net
+I wonder if I'll be looking at how I could invoke the Zig compiler programmatically rather than having it operate on files.
+
+1700110836
+torque!~tachyon@user/torque
+std.ChildProcess :p
+
+1700110878
+torque!~tachyon@user/torque
+I think having a compiler API has come up in the past... probably more feasible now that the compiler is written in zig instead of C++. but I think it's a non-goal
+
+1700110899
+copygirl!~koppeh@copy.mcft.net
+That's what I'm doing, but I'll be having to have the files present somewhere, right?
+
+1700110990
+torque!~tachyon@user/torque
+if you're trying to do source analysis tasks, you'll probably need more access to the compiler guts than the CLI gives you
+
+1700111120
+copygirl!~koppeh@copy.mcft.net
+The ultimate goal is to run the Zig compiler in a sandbox, perhaps even in WebAssembly itself. I suppose at that point it's trivial to give it the files it's supposed to have access to.
+
+1700111156
+copygirl!~koppeh@copy.mcft.net
+But it'd be nice if the compiler could be invoked programmatically without it needing access to a file system.
+
+1700120272
+sskras!sid542048@id-542048.tinside.irccloud.com
+torque: Thanks. I shrunk that command down to `./zig2 build -p stage3 --zig-lib-dir lib`
+
+1700120387
+sskras!sid542048@id-542048.tinside.irccloud.com
+It started the build, but it failed:
+
+1700120397
+sskras!sid542048@id-542048.tinside.irccloud.com
+https://www.irccloud.com/pastebin/8WD6EXUo/
+
+1700120776
+sskras!sid542048@id-542048.tinside.irccloud.com
+Looks like all 4 errors are TODOs. Is that expected? I am recording this using asciinema now, so everyone with browser could see it.
+
+1700120932
+torque!~tachyon@user/torque
+I'd guess you need to disable docgen based on that paste.
+
+1700120951
+torque!~tachyon@user/torque
+but it doesn't seem to show the actual errors so I'm just guessing
+
+1700121400
+sskras!sid542048@id-542048.tinside.irccloud.com
+Here we go: https://asciinema.org/a/621215
+
+1700121898
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+sskras, add -Denable-llvm -Dno-langref -Dno-autodocs -Dno-lib
+
+1700122015
+torque!~tachyon@user/torque
+they're building without llvm I believe but agreed on the -Dno-langref and -Dno-autodocs
+
+1700122326
+sskras!sid542048@id-542048.tinside.irccloud.com
+True, I will try to omit -Denable-llvm
+
+1700123627
+sskras!sid542048@id-542048.tinside.irccloud.com
+Here we go: https://asciinema.org/a/621219
+
+1700123655
+sskras!sid542048@id-542048.tinside.irccloud.com
+The first error disappeared (expected)
+
+1700123682
+sskras!sid542048@id-542048.tinside.irccloud.com
+But the triple 'TODO implement genBinOp for xor @Vector(32, u8)' remains inside the lib/std/crypto/tls/Client.zig
+
+1700123714
+sskras!sid542048@id-542048.tinside.irccloud.com
+Should I file an issue for that?
+
+1700165809
+ekaitz!~Ekaitz@94.73.32.196
+hi people i'm finally packaging zig 11 and 12  for guix
+
+1700165824
+ekaitz!~Ekaitz@94.73.32.196
+i'm running into a very interesting issue
+
+1700165834
+ekaitz!~Ekaitz@94.73.32.196
+zig-0.11 doesn't find any shared library
+
+1700165852
+ekaitz!~Ekaitz@94.73.32.196
+and i strace-d over it and it only searches in glibc's path
+
+1700165870
+ekaitz!~Ekaitz@94.73.32.196
+looks like lib/std/zig/system/NativePaths.zig is not working?
+
+1700165884
+ekaitz!~Ekaitz@94.73.32.196
+it should be using the LIBRARY_PATH
+
+1700165948
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: zig-0.10 built correctly just with the standard cmake steps
+
+1700165965
+ekaitz!~Ekaitz@94.73.32.196
+anything big happened since then to break the build-system?
+
+1700166257
+ekaitz!~Ekaitz@94.73.32.196
+can it be that somehow it's adding the same entry over and over again in the self.addLibDir(dir)?
+
+1700166319
+trnry!~nate@c-67-161-253-223.hsd1.ut.comcast.net
+Oh thank you for tackling this. I just barely tried to build 0.11 on Guix yesterday and ran into that
+
+1700166477
+ekaitz!~Ekaitz@94.73.32.196
+trnry: now I need some help :)
+
+1700166617
+ekaitz!~Ekaitz@94.73.32.196
+the NativePaths.zig didn't change since 0.10.1... hmmmmm
+
+1700166681
+ekaitz!~Ekaitz@94.73.32.196
+the error must come form somewhere like this because if I set the libs to static they are found...
+
+1700166894
+trnry!~nate@c-67-161-253-223.hsd1.ut.comcast.net
+I'm not particularly familiar with how Zig builds, is that file how the rpath is being set?
+
+1700167121
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+ekaitz: have you looked at the nixpkg for zig?
+
+1700167133
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+re cmake-flags
+
+1700167209
+ekaitz!~Ekaitz@94.73.32.196
+waleee: nope, that was going to do right now
+
+1700167216
+ekaitz!~Ekaitz@94.73.32.196
+do you have a link at hand?
+
+1700167218
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/compilers/zig/0.11.nix#L19
+
+1700167248
+ekaitz!~Ekaitz@94.73.32.196
+that's pretty much what we do O_O
+
+1700167304
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+including the static llvm?
+
+1700167335
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+I recall something about it being a big no-no in guix
+
+1700167363
+ekaitz!~Ekaitz@94.73.32.196
+in guix we don't do static for these kind of things
+
+1700167371
+ekaitz!~Ekaitz@94.73.32.196
+i tried using the static one and it does find it
+
+1700167374
+ekaitz!~Ekaitz@94.73.32.196
+and it works better
+
+1700167377
+ekaitz!~Ekaitz@94.73.32.196
+but if tails in libz
+
+1700167413
+ekaitz!~Ekaitz@94.73.32.196
+so it's the library path not being correctly searched or something...
+
+1700167476
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+debugging this is a beyond my level of understanding but I thought I would just check if you had read prior art :)
+
+1700167487
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+s/a//1
+
+1700167495
+ekaitz!~Ekaitz@94.73.32.196
+yeah, it was very good advice actually
+
+1700167496
+ekaitz!~Ekaitz@94.73.32.196
+thank you
+
+1700167508
+ekaitz!~Ekaitz@94.73.32.196
+sometimes copying nix is the right thing
+
+1700167540
+ekaitz!~Ekaitz@94.73.32.196
+the problem might come from the rpath too
+
+1700167563
+ekaitz!~Ekaitz@94.73.32.196
+and in the nix package there's a cmake flag for it, so i'll try copy it
+
+1700167603
+ekaitz!~Ekaitz@94.73.32.196
+(in nix, the libz they use is still shared so it should fail anyway, but looks it isn't failing)
+
+1700168581
+ekaitz!~Ekaitz@94.73.32.196
+nope, still nothing ugh
+
+1700169444
+trnry!~nate@c-67-161-253-223.hsd1.ut.comcast.net
+I believe I have ran into a miscompilation in Zig 0.11 when targetting rv32. It's basically emitting a jump to itself for some reason, causing the processor to get stuck there forever. Tweaking the code very slightly makes it work again. What would be the right steps for me to take to narrow down what's causing that?
+
+1700171334
+trnry!~nate@c-67-161-253-223.hsd1.ut.comcast.net
+I reviewed the LLVM IR for it, and while I have only the barest LLVM knowledge, it appears that a volatile pointer of mine is not being respected and is only being loaded a single time, and then that register is tested repeatedly, rather that loading it each time I want to test that memory address
+
