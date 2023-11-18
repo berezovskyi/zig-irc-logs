@@ -1,0 +1,204 @@
+1700219280
+sudw1n!~sudw1n@user/sudw1n
+hey guys, what other chat platforms are there for Zig? is there like an official one on Matrix? Discord?
+
+1700219547
+Pistahh!~Pistahh@user/pistahh
+sudw1n: https://github.com/ziglang/zig/wiki/Community
+
+1700230509
+bratishkaerik!fd46852e72@user/BratishkaErik
+ekaitz: given yours regressed from 0.10.x I guess it's this https://github.com/ziglang/zig/pull/17671
+
+1700230661
+bratishkaerik!fd46852e72@user/BratishkaErik
+between 0.10 and 0.11 there was removal of std.Builtin.Version in favor of std.SemanticVersion, unfortunately it wasn't exact replacement -> some pure renamings were incorrect
+
+1700230678
+bratishkaerik!fd46852e72@user/BratishkaErik
+https://github.com/ziglang/zig/pull/13998
+
+1700241218
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: hmmm i have to digest it a litte but thank you very much for pointing that out!
+
+1700241367
+bratishkaerik!fd46852e72@user/BratishkaErik
+ekaitz: if you want prepared backported patch you can check this version of gentoo patch https://github.com/BratishkaErik/gentoo/blob/57e5adb0ad9099f9305b3531553f03aec03e4c73/dev-lang/zig-bin/files/zig-0.11.0-first-try-getconf.patch
+
+1700241436
+bratishkaerik!fd46852e72@user/BratishkaErik
+you can ignore lines 60 to 92 if you want to stay on upstream logic, fix for just parsing are only three lines with "parseWithOptionalPatchField" strings.
+
+1700241454
+ekaitz!~Ekaitz@94.73.32.196
+let me try this
+
+1700241525
+bratishkaerik!fd46852e72@user/BratishkaErik
+it has copy-pasted std.zig.CrossTarget.parse to avoid making it public, but this might be more appropriate for you (patch would be even shorter).
+
+1700241626
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: what surprises me the most is that nix doesn't need any of this so it might be any other weird difference we have with nix
+
+1700241674
+ekaitz!~Ekaitz@94.73.32.196
+i'll try the patch raw first and then maybe touch it a little
+
+1700246193
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: i tried te patch and it produces some errors when running the binary but something changed
+
+1700252102
+bratishkaerik!fd46852e72@user/BratishkaErik
+ekaitz: what's the output of zig env and zig build-exe --show-builtin before and after patch, do you mean that outputs changed here or in other place?
+
+1700252276
+bratishkaerik!fd46852e72@user/BratishkaErik
+or is it "falling back to default ABI and dynamic linker."? then you'd need to adjust hardcoded path /usr/bin/env to what's suitable for your system (like how nixos patches it to ${coreutils}/bin/env IIRC), together these changes should fix it completely
+
+1700252823
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: zig is built properly but it doesn't find any dynamic library other than libc
+
+1700252862
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: we change the /usr/bin/env with a small patch, too
+
+1700254284
+bratishkaerik!fd46852e72@user/BratishkaErik
+ekaitz: might it be https://github.com/ziglang/zig/issues/17177 ? it also regressed between 0.10 and 0.11
+
+1700254366
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: it might! i'll dig further on it later
+
+1700254380
+ekaitz!~Ekaitz@94.73.32.196
+look: http://paste.debian.net/1298391/
+
+1700254382
+ekaitz!~Ekaitz@94.73.32.196
+that's what I have
+
+1700254393
+ekaitz!~Ekaitz@94.73.32.196
+they are built with the very same script
+
+1700254405
+trnry!~nate@c-67-161-253-223.hsd1.ut.comcast.net
+ekaitz: You may have already noticed this, but I just checked and there is no runpath set when I build 0.11 but it is correctly set on 0.10
+
+1700254430
+ekaitz!~Ekaitz@94.73.32.196
+yeah
+
+1700254447
+ekaitz!~Ekaitz@94.73.32.196
+in nix they even have a cmake flag to disable it
+
+1700254451
+ekaitz!~Ekaitz@94.73.32.196
+idk...
+
+1700254463
+ekaitz!~Ekaitz@94.73.32.196
+alsoo i want to let you know that it might be a guix problem i didn't find yet
+
+1700255343
+bratishkaerik!fd46852e72@user/BratishkaErik
+as a potential fix see https://github.com/ziglang/zig/pull/17917, although (seems like) there were no feedback from core team yet?
+
+1700255391
+bratishkaerik!fd46852e72@user/BratishkaErik
+ekaitz: for a potential fix see https://github.com/ziglang/zig/pull/17917, althought (seems like) there were no feedback from core team yet?
+
+1700255420
+bratishkaerik!fd46852e72@user/BratishkaErik
+oh sorry for double ping, I'm stupid I thought message was not delivered
+
+1700255473
+ekaitz!~Ekaitz@94.73.32.196
+don't worry, in fact thanks because i missed your previous message
+
+1700255520
+ekaitz!~Ekaitz@94.73.32.196
+bratishkaerik: what it's bothering me a little is that it was working in zig-0.10 
+
+1700255521
+bratishkaerik!fd46852e72@user/BratishkaErik
+ah so it really was not delivered
+
+1700255559
+bratishkaerik!fd46852e72@user/BratishkaErik
+because PR that fixed it before 0.10 was reverted between 0.10 and 0.11
+
+1700255573
+ekaitz!~Ekaitz@94.73.32.196
+oh damn
+
+1700255585
+bratishkaerik!fd46852e72@user/BratishkaErik
+so it's actually modified reverse of reverse of fix
+
+1700255612
+bratishkaerik!fd46852e72@user/BratishkaErik
+*revert
+
+1700255625
+ekaitz!~Ekaitz@94.73.32.196
+and why does it work in nix... ?
+
+1700255712
+ekaitz!~Ekaitz@94.73.32.196
+i have to give this a proper look (now i'm fixing something else...)
+
+1700255915
+bratishkaerik!fd46852e72@user/BratishkaErik
+zig detects only NIX_LDFLAGS etc. envvars so it considers guix as just another os with no special need for rpathes
+
+1700255930
+bratishkaerik!fd46852e72@user/BratishkaErik
+at least that's how i understand it all
+
+1700255944
+bratishkaerik!fd46852e72@user/BratishkaErik
+from the 0.11 view ofc
+
+1700255976
+ekaitz!~Ekaitz@94.73.32.196
+oh
+
+1700256035
+ekaitz!~Ekaitz@94.73.32.196
+it has some specific nix support!
+
+1700256041
+ekaitz!~Ekaitz@94.73.32.196
+i wasn't watching that!
+
+1700256053
+ekaitz!~Ekaitz@94.73.32.196
+okay so I need to patch this file
+
+1700256099
+ekaitz!~Ekaitz@94.73.32.196
+okay now i'm switching tasks again
+
+1700257386
+ekaitz!~Ekaitz@94.73.32.196
+patches directly don't apply... i need to be more clever about it
+
+1700261153
+ekaitz!~Ekaitz@94.73.32.196
+BratishkaErik: hey! i think i got something working!
+
+1700262328
+ekaitz!~Ekaitz@94.73.32.196
+BratishkaErik: so i just reverted the commit that introduced the regression and boom! there it goes!
+
+1700262347
+ekaitz!~Ekaitz@94.73.32.196
+so thank you very much for finding this!
+
