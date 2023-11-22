@@ -1,0 +1,648 @@
+1700578245
+copygirl!~koppeh@copy.mcft.net
+I'm doing some scripting shenanigans right now, and am thinking of creating a sort of "entry" file which is the one that will actually be the target of compilation, which simply @imports the script file I intend to compile that sits in the same folder.
+
+1700578315
+copygirl!~koppeh@copy.mcft.net
+I currently don't see a way I can change which the target script to @import is, because that function appears to only support string literals. (At least I get an error saying so.)
+
+1700578371
+copygirl!~koppeh@copy.mcft.net
+Is there a way I can select which file to import at compile time somehow, or am I going to have to rewrite that file each time to edit the @import line?
+
+1700579162
+ifreund!2940d10f8b@user/ifreund
+copygirl: I mean, you can do `if (foo) @import("foo.zig") else @import("bar.zig")` but there's intentionally no way to pass anything other than a string literal to @import()
+
+1700579200
+ifreund!2940d10f8b@user/ifreund
+if you need more flexibility than that your next step is generating zig code I guess
+
+1700579366
+copygirl!~koppeh@copy.mcft.net
+ifreund: Alright, not much I can do about that, then. Strange for Zig to be so flexible in many regards, but then running into such a restriction.
+
+1700579487
+ifreund!2940d10f8b@user/ifreund
+copygirl: fwiw you can see the reasoning here: https://github.com/ziglang/zig/issues/2206
+
+1700579495
+ifreund!2940d10f8b@user/ifreund
+also here https://github.com/ziglang/zig/issues/8516
+
+1700595789
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+is there a way to turn off struct reordering but still be able to include other structs?
+
+1700595913
+ifreund!2940d10f8b@user/ifreund
+bknyc: you can include extern struct as fields of an extern struct
+
+1700595949
+ifreund!2940d10f8b@user/ifreund
+there is no way to have fields without a well-defined memory layout in a struct that requires a well-defined memory layout
+
+1700595958
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+hrm why now?
+
+1700595960
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+not?
+
+1700595969
+ifreund!2940d10f8b@user/ifreund
+it make no sense?
+
+1700595998
+ifreund!2940d10f8b@user/ifreund
+the memory layout of a struct is defined by the memory layout of its fields
+
+1700596018
+ifreund!2940d10f8b@user/ifreund
+if the fields of a struct do not have a well defined layout, the struct itself cannot have one
+
+1700596086
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+i have two uses cases currently: 1. I have a struct with two mutexs that each protect a value, then the rest of the struct has anohter data structure (and a few other fields).  I need to ttwo locking primitive on their own cash line wtih the data they proect.
+
+1700596145
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+2. I have a struct is laid out in little endian order so they they can bitcast to an int for llow quick comparions.
+
+1700596184
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+it is a data obect that needs to be days, months, years.
+
+1700596263
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+part of the struct needs a specific sttructure but the other part does not essentially
+
+1700596288
+ifreund!2940d10f8b@user/ifreund
+then make it 2 separate structs?
+
+1700596303
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+they go togethere
+
+1700596325
+ifreund!2940d10f8b@user/ifreund
+make the one with a well-defined layout a field of the other?
+
+1700596329
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+they mutexes and data are part ofthe workload involving the other data
+
+1700596352
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+but how do i then include one in the other so they are passed arond together?
+
+1700596391
+ifreund!2940d10f8b@user/ifreund
+a plain `struct` type can include `extern struct` or `packed struct` fields
+
+1700596404
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+but those can still be reordered
+
+1700596438
+ifreund!2940d10f8b@user/ifreund
+yes, for the part where you want a well-defined memory layout you cannot use a plain `struct`
+
+1700596439
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+those mutex cache lines should be first the
+
+1700596443
+ifreund!2940d10f8b@user/ifreund
+but "make the one with a well-defined layout a field of the other" is fine
+
+1700596459
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+you don't seem to understand the problem...
+
+1700596467
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+let me see if i can say it another way
+
+1700596503
+ifreund!2940d10f8b@user/ifreund
+are you saying that your mutex does not have a well-defined layout?
+
+1700596526
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+its just a atomic that gets cas'ed
+
+1700596544
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+but it needs to be first and second for cacne line control
+
+1700596563
+ifreund!2940d10f8b@user/ifreund
+ok, so put that part in an extern struct
+
+1700596570
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+oh
+
+1700596573
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+ok
+
+1700596611
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+then how do i make sure the enclosing struct { cacheline a, cacheline b, datastruct c} is in that order?
+
+1700596648
+ifreund!2940d10f8b@user/ifreund
+does the order really matter there?
+
+1700596651
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+yhes
+
+1700596673
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+datasttuct c can be large and I don't want it pulled into the L!
+
+1700596679
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+L1 if I dont need it
+
+1700596748
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+cacheline a  and b are chosed specifically since they are on the same prefetch 128 bytes
+
+1700596792
+ifreund!2940d10f8b@user/ifreund
+so what's wrong with `struct { cachelines: extern struct { a: A, b: B }, data: Data }` ?
+
+1700596822
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+data can be moved more cachelines as far as i know
+
+1700596829
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+moved before
+
+1700596837
+ifreund!2940d10f8b@user/ifreund
+why is that a problem?
+
+1700596874
+ifreund!2940d10f8b@user/ifreund
+if you want total control over the memory layout you can have that, but then you need to define the layout precisely for Data as well
+
+1700596877
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+because I don't want it to suck in any part of it and would require poadditg it out tio 128byte
+
+1700596959
+ifreund!2940d10f8b@user/ifreund
+maybe there's a misunderstanding here about how CPU caches work?
+
+1700596964
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+in geneal you want your shit in the front of the stuct you can just bounce past stuff when doing a things,
+
+1700596980
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+i can assure you not on my end.
+
+1700597073
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+Data is slightly opaque, some other data i references is a length. So I just want to go past tthan link when traversing. these licks are counters and pointers.
+
+1700597221
+ifreund!2940d10f8b@user/ifreund
+hmm, you could probably hack it like this: `extern struct { a: A, b: B, c: [@sizeOf(Data)]u8 }`
+
+1700597245
+ifreund!2940d10f8b@user/ifreund
+gotta set the field alignment for c as well
+
+1700597265
+ifreund!2940d10f8b@user/ifreund
+and then you can @ptrCast() to read data
+
+1700597523
+ifreund!2940d10f8b@user/ifreund
+It does seem a bit silly that Zig restricts extern struct in this way now that I think about it a bit more tbh
+
+1700597563
+ifreund!2940d10f8b@user/ifreund
+I think this is due to the fact that they were originally intended to be used only for C ABI FFI purposes
+
+1700598449
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+sry was busy. I'm not fully s and that still doesn't prevent a and b swapping
+
+1700598819
+ifreund!2940d10f8b@user/ifreund
+bknyc: extern struct have well defined field ordering
+
+1700598896
+ifreund!2940d10f8b@user/ifreund
+it's the same memory layout as structs in C, fields in the order listed in the source code with padding as necessary due to alignment
+
+1700600273
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+the only problem with extern is that they don't play well with others.
+
+1700600317
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+field reordering is to anti-zig I'm amazed it is done. It should at least be opted into with something like an auto keyword
+
+1700600335
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+auto struct { ... } and reorder and repadd to your hearts content.
+
+1700600370
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+zig's view of "performance" for structs is extremely naieve,
+
+1700600477
+Earnestly!~earnest@user/earnestly
+Because it prioritises space? What nuance does this lack?
+
+1700600547
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+minimal space isnt' the only cosideration
+
+1700600564
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+some data shiuld be together on the same cache line for exaple
+
+1700600601
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+or not on the same cache line too.
+
+1700600607
+andrewrk!~andrewrk@mail.ziglang.org
+bknyc, are you jnordwick?
+
+1700600632
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+or in protool deisng you put the stuff to jump over the rest of the packet first.
+
+1700600633
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+yes'
+
+1700600648
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+i reddi datetime stuf
+
+1700600665
+bknyc!~bknyc@ool-44c196c7.dyn.optonline.net
+redid
+
+1700603043
+gog!~ada@user/gog
+hihi
+
+1700603192
+andrewrk!~andrewrk@mail.ziglang.org
+hi
+
+1700603921
+gog!~ada@user/gog
+i've been teaching myself zig
+
+1700603923
+gog!~ada@user/gog
+i think i like it
+
+1700603970
+andrewrk!~andrewrk@mail.ziglang.org
+working on any project in particular?
+
+1700603997
+gog!~ada@user/gog
+nah just making an overly-elaborate fizzbuzz to try and grok all the semantics
+
+1700604010
+gog!~ada@user/gog
+huge fan of defer and errdefer
+
+1700604051
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: i have a package done for guix but it fails on mach-o
+
+1700604056
+ekaitz!~Ekaitz@94.73.32.196
+the tests I mean
+
+1700604077
+ekaitz!~Ekaitz@94.73.32.196
+also, i had to revert a commit that fiddles with search paths
+
+1700604085
+ekaitz!~Ekaitz@94.73.32.196
+i think it's still broken in zig
+
+1700604097
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, if you wouldn't mind filing a nice bug report, we can bring kubkon into the discussion
+
+1700604104
+ekaitz!~Ekaitz@94.73.32.196
+sure
+
+1700604132
+ekaitz!~Ekaitz@94.73.32.196
+6fd7c2993044b2f6f43af1c640c11be22eca426c.
+
+1700604136
+ekaitz!~Ekaitz@94.73.32.196
+that's the commit btw
+
+1700604197
+andrewrk!~andrewrk@mail.ziglang.org
+ah yes I think I reverted this recently actually
+
+1700604208
+ekaitz!~Ekaitz@94.73.32.196
+good!
+
+1700604225
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, yes I reverted it in ae2cd5fe263e9d8ddd5719b4795f9cd39b5c0324
+
+1700604256
+ekaitz!~Ekaitz@94.73.32.196
+that is great! thank you
+
+1700604298
+ekaitz!~Ekaitz@94.73.32.196
+the mach-o errors i'll send you an issue, maybe i'm misconfiguring something
+
+1700604398
+ekaitz!~Ekaitz@94.73.32.196
+i also need to find a way around the wasm thingie, because we bootstrap from source... but that's for later :)
+
+1700604399
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, I can't remember where we left off on this discussion, but I think you might get quite far with bootstrap.c (added recently) and then having your guix zig package *not* link against LLVM, and then using the C backend to package up zig projects into guix
+
+1700604423
+andrewrk!~andrewrk@mail.ziglang.org
+do you have any example zig projects you are trying to package?
+
+1700604429
+ekaitz!~Ekaitz@94.73.32.196
+well, we have llvm now, so that might help
+
+1700604441
+ekaitz!~Ekaitz@94.73.32.196
+at the moment I want to have zig itself packaged
+
+1700604467
+andrewrk!~andrewrk@mail.ziglang.org
+ah, you have LLVM 17.0.x?
+
+1700604473
+ekaitz!~Ekaitz@94.73.32.196
+yes
+
+1700604481
+ekaitz!~Ekaitz@94.73.32.196
+now i'm packaging zig-0.11
+
+1700604484
+andrewrk!~andrewrk@mail.ziglang.org
+oh, nice
+
+1700604487
+ekaitz!~Ekaitz@94.73.32.196
+which depends on 0.16
+
+1700604491
+ekaitz!~Ekaitz@94.73.32.196
+16**
+
+1700604516
+ekaitz!~Ekaitz@94.73.32.196
+and 0.11.0 is the one where the mach-o tests don't pass
+
+1700604534
+ekaitz!~Ekaitz@94.73.32.196
+(all the rest of them do)
+
+1700604544
+andrewrk!~andrewrk@mail.ziglang.org
+I see. In that case I'm afraid we do not want a bug report unless it can be reproduced with the tip of master branch
+
+1700604562
+andrewrk!~andrewrk@mail.ziglang.org
+the next zig release is coming soon. I'm focusing on only the blocking issues now
+
+1700604580
+ekaitz!~Ekaitz@94.73.32.196
+hm
+
+1700604604
+ekaitz!~Ekaitz@94.73.32.196
+when is soon?
+
+1700604607
+ekaitz!~Ekaitz@94.73.32.196
+:)
+
+1700604630
+andrewrk!~andrewrk@mail.ziglang.org
+in this case, it's not based on a schedule, but based on these issues: https://github.com/ziglang/zig/milestone/23
+
+1700604680
+ekaitz!~Ekaitz@94.73.32.196
+they are not a lot... 
+
+1700604687
+ekaitz!~Ekaitz@94.73.32.196
+I wish I could help
+
+1700604979
+ekaitz!~Ekaitz@94.73.32.196
+well i can actually help! i can package zig-master and see how it goes
+
+1700604998
+andrewrk!~andrewrk@mail.ziglang.org
+that would indeed be helpful :)
+
+1700605325
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: i'll keep you posted, it's running now
+
+1700605333
+andrewrk!~andrewrk@mail.ziglang.org
+ok
+
+1700605339
+ifreund!2940d10f8b@user/ifreund
+0.12 getting closer is exiciting, I'm looking forward to that lovely x86_64 backend :)
+
+1700605355
+andrewrk!~andrewrk@mail.ziglang.org
+me too! although I don't think it will be on by default by then
+
+1700605409
+ifreund!2940d10f8b@user/ifreund
+well, if it can build the compiler and pass tests I think there's a decent chance it can produce a working river binary xD
+
+1700605429
+ifreund!2940d10f8b@user/ifreund
+if not I'll just have to report issues and be patient a little longer
+
+1700605463
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: I can also help moving out of llvm... i have some riscv knowledge
+
+1700605483
+ekaitz!~Ekaitz@94.73.32.196
+do you plan to make more backends? or are you sticking with amd64 for the moment?
+
+1700605490
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, feel free to open a river-specific issue for the x86 backend - I suspect jacobly might consider prioritizing it
+
+1700605530
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, yes, zig's philosophy on backends is: the more the merrier. for example https://github.com/ziglang/zig/issues/6502
+
+1700605586
+ifreund!2940d10f8b@user/ifreund
+that's worth a shot, I believe he is river user himself even. I'll just have to do the work of getting a zig master compatible branch going
+
+1700605753
+ekaitz!~Ekaitz@94.73.32.196
+moxie backend incoming ehehehe
+
+1700606312
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, another idea I wanted to run by you: distros that have trouble with the LLVM dependency of zig could instead package a non-llvm zig using bootstrap.c (check it out if you haven't already) which does not have the llvm backend available but does have the C backend available, which can be used to build an application using the C backend and then optimized with the system toolchain
+
+1700606327
+andrewrk!~andrewrk@mail.ziglang.org
+in other words, the same workflow that other compile-to-C languages rely on such as Nim is available to Zig as well
+
+1700606335
+andrewrk!~andrewrk@mail.ziglang.org
+as far as packaging applications
+
+1700606380
+andrewrk!~andrewrk@mail.ziglang.org
+bootstrap.c is neat in that it makes building zig rely on *only* a system C compiler & linker, and nothing else - not even a shell script
+
+1700606433
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig#building-from-source-without-llvm
+
+1700607706
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+distros would likely have a bigger issue with the wasm blob than llvm, not to say it should be removed atm
+
+1700608004
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+my wish with the blob is that the compiler wouldnt use new features until the next release so that bootstrap chain would need less jumps
+
+1700608634
+ekaitz!~Ekaitz@94.73.32.196
+nektro: in guix we will have issues with that blob, we avoid them in our distro... we are free software distribution
+
+1700609278
+andrewrk!~andrewrk@mail.ziglang.org
+I hope a third party will step up and provide a zig interpreter dedicated to solving this bootstrap problem. upstream, the tradeoff of having a binary blob is worth it
+
+1700609550
+ifreund!2940d10f8b@user/ifreund
+andrewrk: hmm, that is quite a neat idea. Does the zig build system expose a way to set the -ofmt as part of the standardTargetOptions()?
+
+1700609570
+ifreund!2940d10f8b@user/ifreund
+if not distros would probably have to patch pretty much every build.zig to use that approach
+
+1700609622
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, it does not currently. I can think of a few ways to make the puzzle pieces fit together and I'm not sure which way is best
+
+1700609737
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+wouldnt need the c backend once the native backend is capable
+
+1700609759
+ifreund!2940d10f8b@user/ifreund
+many distros target more than x86_64
+
+1700609766
+ekaitz!~Ekaitz@94.73.32.196
+andrewrk: same problems with mach-o
+
+1700609767
+ifreund!2940d10f8b@user/ifreund
+and optimizations are nice
+
+1700609779
+ekaitz!~Ekaitz@94.73.32.196
+i'll open a bug report
+
+1700609781
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz, ok in that case a bug report will be productive :)
+
+1700609811
+andrewrk!~andrewrk@mail.ziglang.org
+nektro, the main purpose of this idea is to bring zig to distributions that have old or nonexistent llvm
+
+1700609911
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I'd also like to find time to push things forward or at least figure out exactly what is necessary to get river using the package manager
+
+1700609933
+andrewrk!~andrewrk@mail.ziglang.org
+ah yes. I think the ball is in my court currently and it is https://github.com/ziglang/zig/issues/14281
+
+1700609963
+ifreund!2940d10f8b@user/ifreund
+yes, I remember this
+
+1700609990
+ifreund!2940d10f8b@user/ifreund
+My current priority is to finish up this river release cycle since it's been way too long since the last release
+
+1700610022
+ifreund!2940d10f8b@user/ifreund
+but depending on where I'm at after that is done I may take a look at implementing that myself
+
+1700610069
+ifreund!2940d10f8b@user/ifreund
+I probably shouldn't promise much though, I've been spending much more time practicing bass than programming recently
+
+1700610211
+ifreund!2940d10f8b@user/ifreund
+andrewrk: back to the C backend for distro packaging idea: Its also potentially quite nice for distros that do have a reasonably up to date LLVM but don't want to deal with updating zig in lockstep with LLVM
+
+1700610228
+ifreund!2940d10f8b@user/ifreund
+which I think accurately describes many distros
+
+1700610278
+ifreund!2940d10f8b@user/ifreund
+no distro wants to maintain multiple LLVM versions if they can help it
+
+1700610318
+ifreund!2940d10f8b@user/ifreund
+anyhow, off to bed for me o7
+
+1700610355
+andrewrk!~andrewrk@mail.ziglang.org
+good night!
+
+1700610369
+andrewrk!~andrewrk@mail.ziglang.org
+may you dream of sick riffs and dirty beats
+
+1700610395
+Earnestly!~earnest@user/earnestly
+But will it slap
+
