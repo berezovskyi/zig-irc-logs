@@ -1,0 +1,708 @@
+1700900177
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+Hi there! Can somebody point me to information about (strict) aliasing rules in zig? Are there any restrictions at reinterpreting memory (at runtime)?
+
+1700901052
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+no, and there are many builtins and std functions to assist in doing so when needed
+
+1700901758
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+Thank you, that's great. Is there some documentation that says that there are no such restrictions. C and C++ standards do have many restrictions in this respect (strict aliasing, type punning). There, there are many spots in or close to undefined behavior land that require arcane workarounds. Is zig free from those footguns?
+
+1700906467
+torque!~tachyon@user/torque
+I mean you can definitely write bad code, though in general the language mostly makes it a bit more obvious
+
+1700906503
+torque!~tachyon@user/torque
+there's nothing stopping you from using @intFromPtr and @ptrFromInt to arbitrarily reinterpret memory
+
+1700906567
+torque!~tachyon@user/torque
+there are a few design flaws related to pointer aliasing at the moment that, as I understand, are planned to be addressed before 1.0
+
+1700906586
+torque!~tachyon@user/torque
+you may be interested in watching this talk https://www.youtube.com/watch?v=dEIsJPpCZYg
+
+1700906784
+torque!~tachyon@user/torque
+(fwiw there are a number of other casting builtins that are much better to use in most scenarios than the ones I listed above)
+
+1700917208
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+@torque: Thank you. I just watched the video. Great talk! It seems to be more about aliasing by accident than aliasing on purpose. Fixing the shown issues, however, might lead to introducing some kind of more restrictive aliasing rules and thus affect my use case. Here is a toy example of my use case: https://godbolt.org/z/YcP8qP6Ed
+
+1700917208
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+Such an approach is certainly illegal in C++ and probably also in C. I wonder whether this just seems or is actually guaranteed to work in Zig (under the assumption that [_]LineSegment has the same memory representation as an array of f64).
+
+1700937064
+grayhatter!~grayhatte@user/grayhatter
+ would https://github.com/ziglang/zig/issues/8396 (DateTime) need to come with a full implementation? or would a partial, totally incomplete version be accepted into lib/std? I have an implementation that I'm now using in 3 repos, and it's wholely incomplete, and I'm SURE some of it's implementation would be controversial, but a good amount of it, I think, is banal and useful. And I know it would be
+
+1700937065
+grayhatter!~grayhatte@user/grayhatter
+useful to me. So I'm wondering if an incomplete version DateTime would be accepted, given the code/implementation it self isn't objectionable?
+
+1700940396
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i dont think it makes sense for that to be in std, i agree with xq's comment
+
+1700944043
+grayhatter!~grayhatte@user/grayhatter
+you don't think something both humans and developers interact with constantly belongs in std?
+
+1700944126
+grayhatter!~grayhatte@user/grayhatter
+(I don't know what xq means in this context)
+
+1700944503
+grayhatter!~grayhatte@user/grayhatter
+given that std contains an http server, client, compression, and crypto apis, what's the line for what should be available std, vs what shouldn't?
+
+1700945216
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+@grayhatter: It seems as if nektro refers to https://github.com/ziglang/zig/issues/8396#issuecomment-810962491 ('xq' seems to be an alias for 'MasterQ32', see https://github.com/MasterQ32)
+
+1700945322
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+the bar for being in std is having apis that are gonna be robust and adaptable for the next 50+ years
+
+1700945338
+grayhatter!~grayhatte@user/grayhatter
+stranger8472: thanks :) that's what I thought originally, but I stopped at the username popup, and didn't read his profile readme
+
+1700945357
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+from my pov
+
+1700945375
+grayhatter!~grayhatte@user/grayhatter
+nektro: you think we're gonna stop using/needing dates and times in the next 50 years?
+
+1700945576
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i think date+time is a concept with enough specificity and edge cases that trying to make something that could sit near unchanged for that time would be very difficult
+
+1700945661
+grayhatter!~grayhatte@user/grayhatter
+I get why API stability is important, but why is the ABI sitting near unchanged important?
+
+1700945715
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+because the surface area of what counts as a breaking change is far greater in zig than other languages
+
+1700945740
+grayhatter!~grayhatte@user/grayhatter
+I also disagree it would be very difficult. Covering all possible edge cases wouldn't be trivial, but because it would take time investment to get it right, is not a reason not to do it
+
+1700945759
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i think it would make more sense to have a 'blessed' time library either in the ecosystem or managed by zsf in a separate ziglang/time package post-1.0
+
+1700945782
+grayhatter!~grayhatte@user/grayhatter
+nektro: I don't understand what you mean by surface area of a breaking change?
+
+1700945877
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+https://go.dev/doc/go1compat has the line "It is intended that programs written to the Go 1 specification will continue to compile and run correctly, unchanged, over the lifetime of that specification. [sans security-related fixes, etc etc]"
+
+1700945922
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+if zig is to one day pick up this kind of guarantee, its much harder because the amount of things that can potentially cause a compile error downstream
+
+1700945930
+grayhatter!~grayhatte@user/grayhatter
+> Binary compatibility for compiled packages is not guaranteed between releases. 
+
+1700945952
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+*note this is a good thing, i love how many compile errors zig has
+
+1700946018
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i have not been referring to binary compatibility at all in my messages
+
+1700946076
+grayhatter!~grayhatte@user/grayhatter
+nektro: then I have no idea what you could mean by breaking changes
+
+1700946213
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+like in enums, zig (under the terms of that promise, they're obviously willing to use thier own language) wouldn't be able to add a new tag because a downstream project might be switching on it
+
+1700946236
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and so adding that tag would produce a compile error when using the new version of zig that has the extra tag
+
+1700946367
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+50 years of backwards compatibility for a module in the standard library of a language that seems to be quite a bit away from 1.0?
+
+1700946372
+grayhatter!~grayhatte@user/grayhatter
+isn't that solveable by making any hypothetical public enum in stdlib non-exaustive?
+
+1700946405
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+no
+
+1700946474
+grayhatter!~grayhatte@user/grayhatter
+why not?
+
+1700946549
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+because u can do _ => instead of else => to still make new tags an error
+
+1700946710
+grayhatter!~grayhatte@user/grayhatter
+I disagree that because something written for one version might not work with another version is a convincing reason to exclude something from stdlib, but even if I did agree, unless datetime has a public enum, it's not really a convincing reason to exclude it from stdlib
+
+1700946764
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+it would have many enums, and that was just one example of a feature
+
+1700946783
+grayhatter!~grayhatte@user/grayhatter
+datetime would have many many enums?
+
+1700946802
+grayhatter!~grayhatte@user/grayhatter
+mine has none
+
+1700946852
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+does your support timezones?
+
+1700946857
+grayhatter!~grayhatte@user/grayhatter
+yes
+
+1700946866
+grayhatter!~grayhatte@user/grayhatter
+minimally, but yes
+
+1700946890
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i presume you're identifying them with a string then?
+
+1700946940
+grayhatter!~grayhatte@user/grayhatter
+my implementation doesn't support ISO 8601, but it does support a tz offset
+
+1700946959
+grayhatter!~grayhatte@user/grayhatter
+nektro: there is a function for that yes
+
+1700947018
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i dont have the article ive had off hand, but im pretty sure i've read that representing timezones as only an offset from utc has inaccuracies
+
+1700947060
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+happy to be wrong on that if anyone has docs otherwis
+
+1700947141
+grayhatter!~grayhatte@user/grayhatter
+if anyone has docs saying something doesn't exist?
+
+1700947225
+grayhatter!~grayhatte@user/grayhatter
+but I'm not using nor support named offsets; which might be the origin that idea comes from. I only implemented support for absolute offsets from unix epoch. Mostly because that's all I needed, but also because that's all I can prove to be correct.
+
+1700947424
+grayhatter!~grayhatte@user/grayhatter
+again, I'm not suggesting adding a universally complete datetime that supports every possible use and API, and format. Only a minimal set that does just enough so that I don't have to A) copy `datetime.zig` between all my repos when I make a change/improvment in one of them, or B) connect to the internet just to compile code 
+
+1700947524
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i dont think needing a dependency is something that should necessarily be avoided. the point of having a package manager is to promote code reuse
+
+1700947534
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and connecting to the internet is only required once
+
+1700947671
+grayhatter!~grayhatte@user/grayhatter
+oh, well if it's only required once, then obviously it's fine :<
+
+1700947841
+grayhatter!~grayhatte@user/grayhatter
+I try very hard to avoid complexity as much as I can as a rule. Connecting to the internet, downloading a 3rd party library, just to find out if a unix timestamp is a monday or a tuesday, feels wrong.
+
+1700947949
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+some complexity is unavoidable, that's the cost of robustness. but if it ends up in std that's ultimately up to zig
+
+1700948026
+grayhatter!~grayhatte@user/grayhatter
+Right now none of my zig projects depend on the internet, a 3rd party lib, any package repo/service. This is a good thing, not something to be avoided
+
+1700948108
+grayhatter!~grayhatte@user/grayhatter
+I might agree that *some* complexity is unavoidable, but it's absolutely not the cost of robustness! In fact complexity leads to more fragile systems, not less
+
+1700950482
+torque!~tachyon@user/torque
+I agree there should be a datetime module in std, personally
+
+1700950508
+torque!~tachyon@user/torque
+I wrote my own RFC3339 parser for a project
+
+1700950526
+DerTeufel!~DerTeufel@89-67-69-223.dynamic.chello.pl
+datetime modules usually get big and messy
+
+1700950540
+torque!~tachyon@user/torque
+it depends on what the surface area you're supporting is
+
+1700950566
+torque!~tachyon@user/torque
+imo an rfc3339 reading+writing module is pretty straighforward because there's a small surface there
+
+1700950610
+torque!~tachyon@user/torque
+iso8601 is kind of gross because of how many different weird subsets there are
+
+1700950637
+torque!~tachyon@user/torque
+<nektro> the bar for being in std is having apis that are gonna be robust and adaptable for the next 50+ years
+
+1700950644
+torque!~tachyon@user/torque
+this seems like a wildly impractical stance
+
+1700950660
+torque!~tachyon@user/torque
+I don't think operating systems will look the same in 50 years from now
+
+1700950683
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+sure they will
+
+1700950729
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+theyve only changed so much in that past 50 years because that's when they were invented
+
+1700950747
+torque!~tachyon@user/torque
+lol
+
+1700950912
+Earnestly!~earnest@user/earnestly
+To be fair, operating systems have essentially not changed since the 80s. The general trajectory was smalltalk but really everything has been in stasis since that all collapsed
+
+1700950955
+Earnestly!~earnest@user/earnestly
+(cf "mother of all demos")
+
+1700951236
+torque!~tachyon@user/torque
+from that standpoint, rfc3339 will still exist in 50 years
+
+1700951272
+torque!~tachyon@user/torque
+it may be obsolete, but that's also true of a lot of other APIs from 50 years ago
+
+1700951328
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+If operating systems (which provide date time service) have not changed since the 80s everything about date time should be settled by now. Where is the problem in specifying a good and complete date time API then?
+
+1700951408
+grayhatter!~grayhatte@user/grayhatter
+stranger8472: have you ever impelemented any datetime code yourself before?
+
+1700951474
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+I haven't but I know it is complex. But the arguments exchanged are contradictory.
+
+1700951552
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+50 years of stability: https://github.com/ziglang/zig/commit/3fc6fc68129219a026ae3d7dff82513758e33a21
+
+1700951564
+grayhatter!~grayhatte@user/grayhatter
+the objections (that I actually think are reasonable) are less in if it should be done, it's how to make sure it's done correctly given everything using the gregorian calendar is just an exception to an exception
+
+1700951616
+Earnestly!~earnest@user/earnestly
+rfc3339 is a nice subset of iso8601, and not iso which is nice too
+
+1700951640
+Earnestly!~earnest@user/earnestly
+(And really the only reasonable and useful subset of iso8601)
+
+1700951650
+grayhatter!~grayhatte@user/grayhatter
+I completely agree with you, and would likely willingly say the exact same thing you did. I'm just pointing out, datetime that does everything someone may want is annoying to write because it's hard to prove
+
+1700951660
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+If there are such (unnecessary) breaking changes actually happening the bar for the addition of *any* date time module is raised far to much.
+
+1700951691
+Earnestly!~earnest@user/earnestly
+stranger8472: Prior to 1.0 all bets are off, which is why so many projects remain below 1.0: https://0ver.org/
+
+1700951743
+grayhatter!~grayhatte@user/grayhatter
+Earnestly: the last time I looked at rfc 3339 I thought even it went too far, and only wanted a subset of it myself (re-reading now) are you saying 3339 should be the upper, or lower bound for datetime.zig?
+
+1700951779
+Earnestly!~earnest@user/earnestly
+grayhatter: It's just a format, a datetime library seems ... "orthogonal" to the format
+
+1700951822
+Earnestly!~earnest@user/earnestly
+A datetime library deals with time objects like seconds, months, years, handling leapseconds, years, julian/gregorian, etc., etc.
+
+1700951882
+grayhatter!~grayhatte@user/grayhatter
+a library would have to do that, yes, but using RFC 3339 as the standard for the API is what I was asking?
+
+1700951926
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+Earnestly: exactly, <nektro> the bar for being in std is having apis that are gonna be robust and adaptable for the next 50+ years
+
+1700951973
+Earnestly!~earnest@user/earnestly
+grayhatter: Hm, what role would it play in the API?
+
+1700951996
+Earnestly!~earnest@user/earnestly
+A textual format for pretty printing or as internal representation?
+
+1700952066
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+grayhatter: Do you have some code to show? I think that everybody around has some diffuse picture about what a 'date time library' is or should be.
+
+1700952077
+Earnestly!~earnest@user/earnestly
+Perhaps I am misunderstanding but with a datetime api the format, be it rfc3339 (with or without the T) or any other format you want sort of comes for free, or as a consequence
+
+1700952079
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i use https://github.com/nektro/zig-time atm but it needs improvement if i want it to cover more
+
+1700952090
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+taking inspiration from https://github.com/tc39/proposal-temporal is prolly a good step
+
+1700952117
+Earnestly!~earnest@user/earnestly
+nektro: I've always been a bit sad TAI never got much love
+
+1700952123
+Earnestly!~earnest@user/earnestly
+(no leapsecond issues)
+
+1700952125
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/GrayHatter/srctree/blob/main/src/datetime.zig
+
+1700952179
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+tai is nice
+
+1700952218
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+do os' offer it or do u have to query ntp or something like that
+
+1700952227
+grayhatter!~grayhatte@user/grayhatter
+there's a lot of additional code in here that I don't think belongs in stdlib, (because I'm not in the mood to deal with internationalization :D ) but this is what I've had to implement my self a few times 
+
+1700952279
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i imagine the internal clocks in most chips are not atomic
+
+1700952294
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+at least in consumer hardware
+
+1700952300
+torque!~tachyon@user/torque
+<Earnestly> A datetime library deals with time objects like seconds, months, years, handling leapseconds, years, julian/gregorian, etc., etc.
+
+1700952304
+torque!~tachyon@user/torque
+i disagree with this
+
+1700952319
+torque!~tachyon@user/torque
+feature coverage does not have to be perfect in order to be useful
+
+1700952322
+Earnestly!~earnest@user/earnestly
+nektro: No doubt accurate tai would come from an atomic clock, so likely only accessibly via ntp or so realistically
+
+1700952343
+torque!~tachyon@user/torque
+this is already how the stdlib works
+
+1700952344
+grayhatter!~grayhatte@user/grayhatter
+atomic is overloaded when talking about datetime, having an atomic clock != cpu clock != atomic time != monotomic time
+
+1700952370
+Earnestly!~earnest@user/earnestly
+torque: Are these areas were the stdlib is useful but incomplete not seeking to fill in the gaps eventually?
+
+1700952410
+torque!~tachyon@user/torque
+I don't know because I don't know what the plan for the stdlib is
+
+1700952424
+Earnestly!~earnest@user/earnestly
+nektro: I'm only really aware of djb's libtai
+
+1700952445
+Earnestly!~earnest@user/earnestly
+torque: Fair enough
+
+1700952452
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+link? im not familiar with a djb
+
+1700952457
+Earnestly!~earnest@user/earnestly
+nektro: https://cr.yp.to/libtai.html
+
+1700952466
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+grayhatter: There seems to be at least some overlap with https://github.com/ziglang/zig/blob/master/lib/std/time/epoch.zig
+
+1700952480
+grayhatter!~grayhatte@user/grayhatter
+nektro: he wrote your crypto
+
+1700952595
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+So std already contains some subset of date time stuff. Why not incrementally improve it?
+
+1700952631
+grayhatter!~grayhatte@user/grayhatter
+stranger8472: a lot yes, not all of it
+
+1700952689
+grayhatter!~grayhatte@user/grayhatter
+stranger8472: because date is distinct from time, and this discussion where people don't think stdlib should touch dates makes me not want to invest the time just to have the hive mind shit on it so it dies
+
+1700952799
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+how is date distinct from time?
+
+1700952842
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+that's why i make packages on my own user, and std is welcome to take them at some point if zig chooses
+
+1700952872
+grayhatter!~grayhatte@user/grayhatter
+time doesn't depend on a calendar 
+
+1700952901
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+time depends on a calendar too
+
+1700952907
+grayhatter!~grayhatte@user/grayhatter
+calendars are messy time is easy 
+
+1700952917
+grayhatter!~grayhatte@user/grayhatter
+no, only if you make it depend on a calendar
+
+1700952923
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+nothing in time is easy, that's the whole point of this conversation
+
+1700952933
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+grayhatter: this seems to be a general problem in all programming language communities; I have seen much frustration about this in the D community: so many talented people, so much waste of time :-(
+
+1700952944
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+the definition of a "second" depends on a calendar
+
+1700952957
+grayhatter!~grayhatte@user/grayhatter
+time is easy, 60 seconds in 1 min, 60 min in 1 hour, 24 hours in 1 day
+
+1700952964
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+not on mars
+
+1700952977
+Earnestly!~earnest@user/earnestly
+It's all relatively anyway
+
+1700952981
+DerTeufel!~DerTeufel@89-67-69-223.dynamic.chello.pl
+not on earth actually too
+
+1700952992
+Earnestly!~earnest@user/earnestly
+spacetime lib
+
+1700953043
+grayhatter!~grayhatte@user/grayhatter
+nektro: fair point, I'll stop before hours > days
+
+1700953049
+Earnestly!~earnest@user/earnestly
+Useful for conducting experiments requiring exact initiation timing between two computers at the bottom and top of a skyscraper
+
+1700953050
+stranger8472!~stranger8@p200300c0d7271f001a5e0ffffeb07016.dip0.t-ipconnect.de
+That's all too specific. We need to consider the multiverse. :-P
+
+1700953060
+grayhatter!~grayhatte@user/grayhatter
+because a day is inherently based on a calendar and not needed to track time
+
+1700953137
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+so in your package 2023-11-25 is 472,464 hours since epoch?
+
+1700953157
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and no other info unless provided a calendar?
+
+1700953176
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+*no larger blocks
+
+1700953183
+grayhatter!~grayhatte@user/grayhatter
+I don't have a package, I have a file, and I don't really wanna try to calculate that in my head
+
+1700953243
+grayhatter!~grayhatte@user/grayhatter
+but if I understand what you're asking, I follow the linux/posix definition and ignore leap seconds when translating time (unix epoch) into a date
+
+1700953311
+grayhatter!~grayhatte@user/grayhatter
+> but how will you represent leap seconds? I don't need to, tracking and representing everything, in every format someone might want isn't my goal, and leap seconds aren't important to me
+
+1700953371
+grayhatter!~grayhatte@user/grayhatter
+leap seconds collapse nicely into nothing if you ignore them 
+
+1700953390
+Earnestly!~earnest@user/earnestly
+> units -t "$(dateconv -i %F -f %s 2023-11-25)"s hours # 472464
+
+1700953491
+torque!~tachyon@user/torque
+you cant predict leap seconds in the future. theyre fundamentally unsound which is why they'll be removed probably for something even worse in the future
+
+1700953542
+Earnestly!~earnest@user/earnestly
+Wasn't there a recent intervention about removing leap seconds going forward from utc?
+
+1700953552
+torque!~tachyon@user/torque
+anyway there are lots of weird historical timezones that can't be represented exactly. but that's not a good reason to not cover the most common cases
+
+1700953567
+torque!~tachyon@user/torque
+yes, there is a plan to remove them, as I understand it
+
+1700953576
+torque!~tachyon@user/torque
+or a plan to plan to remove them, or something
+
+1700953683
+Earnestly!~earnest@user/earnestly
+There appears to be a lot of dithering about it, can kicking and the usual fare: > On 18 November 2022, the General Conference on Weights and Measures (CGPM) resolved to eliminate leap seconds by or before 2035.
+
+1700953707
+Earnestly!~earnest@user/earnestly
+leapseconds are defined by how UTC and UT1 differ, the solution seems to be "just use tai"
+
+1700953723
+Earnestly!~earnest@user/earnestly
+> Instead of inserting a leap second at the end of the day, Google servers implement a "leap smear", extending seconds slightly over a 24-hour period centered on the leap second
+
+1700953880
+grayhatter!~grayhatte@user/grayhatter
+lol, how is that different from just ignoring it?
+
+1700953897
+Earnestly!~earnest@user/earnestly
+> Cloudflare was affected by a leap second software bug. Its DNS resolver implementation incorrectly calculated a negative number when subtracting two timestamps 
+
+1700953899
+Earnestly!~earnest@user/earnestly
+Fun
+
+1700953959
+Earnestly!~earnest@user/earnestly
+grayhatter: I'd also probably just ignore it, many of the issues seem to relate to basically having to deal with %T formats like 01:59:60 and such nonsense
+
+1700954001
+grayhatter!~grayhatte@user/grayhatter
+TAI is such a strange idea... let's permenently bind our definition of [thing] onto something that's known to be inacurate (seconds in a day)
+
+1700954003
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+what if we instead figured out how to slow the earth's rotation just enough that a day really is 24 hrs? /s
+
+1700954054
+torque!~tachyon@user/torque
+unix timestamps just ignore leap seconds
+
+1700954090
+Earnestly!~earnest@user/earnestly
+grayhatter: UT1 is an alternative or GPS time
+
+1700954118
+grayhatter!~grayhatte@user/grayhatter
+torque: I said that already 
+
+1700954136
+Earnestly!~earnest@user/earnestly
+Ignoring them seems fairly reasonable
+
+1700954139
+torque!~tachyon@user/torque
+ah, good
+
+1700954589
+grayhatter!~grayhatte@user/grayhatter
+yeah, the more I think about it, the more I agree with posix, just ignore leap seconds, it causes a problem from the context of a specific day, but if I care about the number of seconds/events within a single day... I don't think I'd want to use unix epoch, I'd want to use monotomic nano time... hmmm
+
+1700954842
+companion_cube!~simon@user/companion-cube
+what's TAI?
+
+1700954891
+grayhatter!~grayhatte@user/grayhatter
+this is all I know about it https://en.wikipedia.org/wiki/International_Atomic_Time
+
+1700955186
+grayhatter!~grayhatte@user/grayhatter
+my take is TAI tries to solve the problem that "we're better at measuring seconds than the earth is", and everything else goes with the definition that "we're just a representation of a moment"
+
+1700955313
+companion_cube!~simon@user/companion-cube
+hmm ok so it counts actual seconds, that's cool
+
+1700955323
+companion_cube!~simon@user/companion-cube
+but now it means that days don't start at 00:00, doesn't it?
+
+1700955794
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+it means the true noon/midnight doesnt happen at a multiple of 86400 yes
+
+1700955918
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and leap days happen because a year isnt a pefect multiple of 365
+
