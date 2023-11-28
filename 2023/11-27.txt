@@ -1,0 +1,144 @@
+1701051731
+torque!~tachyon@user/torque
+not a maintainer but I recall some discussion about a TLS 1.2 implementation being out of scope. Not sure if it was in here or on a ticket. Having an already-written high-quality library ready to merge might change that stance, though?
+
+1701051946
+companion_cube!~simon@user/companion-cube
+pragmatically, why rewrite crypto rather than use openssl?
+
+1701052363
+torque!~tachyon@user/torque
+the zig std shouldn't have non-os dependencies
+
+1701052365
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+because the belief is that we can write better implementations in zig
+
+1701052389
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+and then back it up by doing so
+
+1701052420
+torque!~tachyon@user/torque
+that's idealistic rather than pragmatic
+
+1701052428
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+better here meaning faster, safer, easier to maintain, etc
+
+1701052440
+grayhatter!~grayhatte@user/grayhatter
+having read a few ssl implementations... it's pretty pragmatic as well
+
+1701052473
+torque!~tachyon@user/torque
+I mean I'm willing to believe most existing implementations are a mess due to having a lot of legacy baggage attached to them
+
+1701052484
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+https://tls13.xargs.org/ is a great site if u havent seen it
+
+1701052533
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+i got pretty far into writing a tls 1.3 impl of my own but only got stumped because zig std didn't have rsa yet
+
+1701052654
+torque!~tachyon@user/torque
+anyway the choice of wrapping vs rewriting depends a lot on your end goal. I've wrapped a number of C libraries because rewriting them in zig would have a) surely been buggier in short-to-mid term, b) had fewer features, and c) taken significantly longer to do
+
+1701052704
+torque!~tachyon@user/torque
+plus upstream is actually maintained so the only maintenance burden on a wrapper is just keeping up with any API changes that occur (especially if you only track upstream releases)
+
+1701052735
+torque!~tachyon@user/torque
+which for stable libraries is quite minimal
+
+1701108628
+andrewrk!~andrewrk@mail.ziglang.org
+regarding TLS 1.2, I think the move is to only support 1.3 for now, and then make a decision when zig is nearing 1.0. by then maybe 1.2 won't matter anymore
+
+1701111392
+lf94!~lf94@user/lf94
+Why not just leave TLS to some lib
+
+1701111415
+lf94!~lf94@user/lf94
+My favorite thing about Zig is being able to use battle tested or other libs for specific platforms
+
+1701111425
+lf94!~lf94@user/lf94
+With ease
+
+1701111546
+companion_cube!~simon@user/companion-cube
+nektro: but crypto should really be written by experts, idk 
+
+1701111557
+companion_cube!~simon@user/companion-cube
+and you have to audit it carefully for a while
+
+1701111634
+lf94!~lf94@user/lf94
+A big part of me wanting to use Zig is targetting embedded or obsolete game consoles - it's better to use vendor provided libs than anything
+
+1701111753
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+companion_cube, zig's std.crypto *was* written by an expert
+
+1701112031
+Earnestly!~earnest@user/earnestly
+(openssl doesn't exactly have the best track record in that respect, it's probably an unavoidable problem even in small degrees)
+
+1701113681
+lf94!~lf94@user/lf94
+yeah but 2 experts is better than 1
+
+1701113683
+lf94!~lf94@user/lf94
+B)
+
+1701113685
+lf94!~lf94@user/lf94
+ACTION runs
+
+1701122497
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: have you heard of FIPS?
+
+1701122507
+grayhatter!~grayhatte@user/grayhatter
+tls 1.2 isn't going away anytime soon
+
+1701122559
+ifreund!2940d10f8b@user/ifreund
+why, does FIPS mandate 1.2 or something?
+
+1701122688
+grayhatter!~grayhatte@user/grayhatter
+FIPS doesn't like *any* changes, the last one I read was TLS 1.2 which means for something to be FIPS compliant, it can't have something other than TLS1.2?
+
+1701122774
+grayhatter!~grayhatte@user/grayhatter
+I haven't needed to read or catch up on FIPS in a few years now so I have no idea where TLS1.3 sits within what's allowed by FIPS. (Will dig in and find an answer soon) but a good rule of thumb is 10years for FIPS, which means 2038
+
+1701122867
+grayhatter!~grayhatte@user/grayhatter
+2038 is when you'll see something that's both FIPS complant, and includes TLS1.3 so I don't suspect you'll be able to get away from TLS1.2 for a few more years
+
+1701124152
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+the fips docs don't mention tls by name at all, but you have to be using underlying cipher suites/modules that are approved/certified by nist
+
+1701124217
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+which the zsf could look into once 1.0 arrives/approaches
+
+1701124259
+grayhatter!~grayhatte@user/grayhatter
+ahh yes, I've forgotten how much I hate FIPS... :(
+
+1701124431
+grayhatter!~grayhatte@user/grayhatter
+nektro: yeah the cipher set for FIPS "doesn't overlap well" with the set for tls1.3 lol
+
