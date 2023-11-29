@@ -1,0 +1,172 @@
+1701159781
+sudw1n!~sudw1n@user/sudw1n
+can someone help me understand why this is hitting unreachable code: https://zig.godbolt.org/z/KGs13rnM3?
+
+1701160029
+grayhatter!~grayhatte@user/grayhatter
+do you want the answer, or help understanding the bug?
+
+1701160068
+sudw1n!~sudw1n@user/sudw1n
+well, either one is fine. but if it's a compiler bug, I don't intend to dig into it.
+
+1701160083
+grayhatter!~grayhatte@user/grayhatter
+it's not a compiler bug
+
+1701160099
+grayhatter!~grayhatte@user/grayhatter
+the answer is in the top few lines of the stack trace
+
+1701160104
+sudw1n!~sudw1n@user/sudw1n
+okay so could you help me understand what I'm doing wrong?
+
+1701160163
+grayhatter!~grayhatte@user/grayhatter
+yes, StringHashMap is very sensitve to the values you give it and what it's expecting
+
+1701160233
+grayhatter!~grayhatte@user/grayhatter
+I *think* there's a function you can call that will duplicate the keys/values you give to it using the allocator you gave it
+
+1701160252
+grayhatter!~grayhatte@user/grayhatter
+which seems to be the behavior you're expecting?
+
+1701160334
+grayhatter!~grayhatte@user/grayhatter
+on line 34, do you expect the value at key_ptr to be valid?
+
+1701160405
+sudw1n!~sudw1n@user/sudw1n
+well I'm trying to iterate over the values I `put()` so I guess yeah. The docs for `put()` mention something about "clobbering" so I guess this is happening because I don't understand what it means and chose to overlook it?
+
+1701160449
+sudw1n!~sudw1n@user/sudw1n
+iterate over the "entries", I should say.
+
+1701160561
+grayhatter!~grayhatte@user/grayhatter
+on line 27, you're giving the hashmap a pointer, but you still own that pointer
+
+1701160593
+grayhatter!~grayhatte@user/grayhatter
+the hash map doesn't try to copy the data at the pointer, it assumes that pointer will be valid for as long as the hash map lives
+
+1701160660
+grayhatter!~grayhatte@user/grayhatter
+but if this assertion didn't catch this, &k stops being valid after the while ends, but the hash map still has that pointer
+
+1701160715
+sudw1n!~sudw1n@user/sudw1n
+okay that makes sense
+
+1701160818
+sudw1n!~sudw1n@user/sudw1n
+I guess this is where you referring to the "duplicate keys/values" stuff comes?
+
+1701160873
+grayhatter!~grayhatte@user/grayhatter
+yeah, you need to give hashmap a copy of the string that can "outlive" the hashmap... but I don't see it
+
+1701160927
+sudw1n!~sudw1n@user/sudw1n
+Zig strings confuse me
+
+1701160992
+sudw1n!~sudw1n@user/sudw1n
+I would normally assume `String` -> `ArrayList(u8)` but that's supposedly not the case here
+
+1701161007
+grayhatter!~grayhatte@user/grayhatter
+zig doesn't have string of any kind, it has blocks of memory
+
+1701161023
+grayhatter!~grayhatte@user/grayhatter
+ https://zig.godbolt.org/z/z3rrcn735
+
+1701161068
+grayhatter!~grayhatte@user/grayhatter
+err, that's not true, it does have c strings, which I guess counts
+
+1701161138
+grayhatter!~grayhatte@user/grayhatter
+arraylist(u8) can behave like a blob of memory holding a string, but what it really is is just a bunch of really nice helpers for dynamically resizing that block of memory as you add/remove stuff from it
+
+1701161200
+grayhatter!~grayhatte@user/grayhatter
+for what it's worth, I made this exact same mistake with StringHashMap myself... it does seem like it would make a copy the string for you
+
+1701161249
+grayhatter!~grayhatte@user/grayhatter
+sudw1n: are you coming to zig from a higher level language? 
+
+1701161263
+sudw1n!~sudw1n@user/sudw1n
+well, Rust
+
+1701161305
+sudw1n!~sudw1n@user/sudw1n
+that's why I am making the "`String` -> `ArrayList(u8)`" analogies
+
+1701161412
+sudw1n!~sudw1n@user/sudw1n
+I once asked heard the only language that's truly low-level is assembly so I guess yeah
+
+1701161453
+grayhatter!~grayhatte@user/grayhatter
+I think that's close enough? ...zig trys really hard not to do anything with memory for you, it actually tries really hard not to do anything for you... like in your example, zig only needs K to exist until after line 28, then it's allowed to forget about K and reuse that memory. 
+
+1701161454
+sudw1n!~sudw1n@user/sudw1n
+this can get philosophical real quick, you know
+
+1701161524
+grayhatter!~grayhatte@user/grayhatter
+sudw1n: lol, yeah I actually like the idea that asm is low level, and everything else is a high level lang, or even a scripting language :D
+
+1701161547
+sudw1n!~sudw1n@user/sudw1n
+yeah, how zig does it makes perfect sense
+
+1701161575
+sudw1n!~sudw1n@user/sudw1n
+nevertheless, thanks for your time! :)
+
+1701161600
+grayhatter!~grayhatte@user/grayhatter
+cheers mate, and good luck :)
+
+1701199444
+n0ot!~n0ot@159.223.191.225
+Hello.
+
+1701199461
+n0ot!~n0ot@159.223.191.225
+Must array sentinal values always be zero?
+
+1701199582
+n0ot!~n0ot@159.223.191.225
+I set a constant to [3:76]u8{ 10, 20, 30 };, then cast it (via @as, @ptrCast, and @alignCast) to a [4]u8 and printed it. Got { 10, 20,  30, 0 };
+
+1701200626
+jcmoyer!~jcmoyer@user/jcmoyer
+should probably use a @bitCast for that but it produces weird results on my machine too {10,20,30,116}, maybe a compiler bug
+
+1701200738
+jcmoyer!~jcmoyer@user/jcmoyer
+https://godbolt.org/z/MMWd4eGT3
+
+1701201593
+n0ot!~n0ot@159.223.191.225
+I ran your code locally, and got 10, 20, 30, 0.
+
+1701201649
+n0ot!~n0ot@159.223.191.225
+@bitCast(a) is far easier than @as(*const [4]u8, @ptrCast(@alignCast(&a))).*. LOL
+
+1701201667
+n0ot!~n0ot@159.223.191.225
+Just picked Zig up a few days ago.
+
