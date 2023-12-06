@@ -1,0 +1,328 @@
+1701749376
+grayhatter!~grayhatte@user/grayhatter
+it's *really* annoying that I can't depend on the std lib documentation 
+
+1701749454
+grayhatter!~grayhatte@user/grayhatter
+I'm glad that zig is making changes to the stdlib that I like, but I can't ask all the people who I'm trying to write code with to use the bleeding edge master just compile my code. I think the most I can get away with is asking them to be on tagged version. But that means neither of us can use the stdlib when functions are removed
+
+1701749522
+grayhatter!~grayhatte@user/grayhatter
+I'm not gonna stop using zig, but if this was any other language, I'd be done and go back to something else (this is the 3rd time I've tried to look up docs for a function that's been removed)
+
+1701749626
+torque!~tachyon@user/torque
+I personally don't think it makes sense to track master at the scale of something that you're collaborating with multiple people on
+
+1701749683
+torque!~tachyon@user/torque
+I've stuck with 0.11.0 for my main project and I think that was a good choice (there have been a couple of times I've been sad I can't use tuple destructuring, but it's way easier than trying to hit a moving target)
+
+1701749696
+grayhatter!~grayhatte@user/grayhatter
+oh, v0.11.0 exists for stdlib now <3 https://ziglang.org/documentation/0.11.0/std/ nevermind... this wasn't true the last time it happened to me 
+
+1701749705
+torque!~tachyon@user/torque
+if 0.12 comes out before I need to feature freeze this, I'll migrate all at once
+
+1701749730
+torque!~tachyon@user/torque
+I don't really like the web documentation tbh. I just keep a copy of stdlib open in my editor
+
+1701749804
+torque!~tachyon@user/torque
+also, reading the stdlib source code is a good way to learn clever ways to use the language, so it's two birds, one stone there
+
+1701749871
+grayhatter!~grayhatte@user/grayhatter
+torque: I often don't know what function I want, and like that I can scan without needing to fold code
+
+1701749906
+torque!~tachyon@user/torque
+I've had very good luck with just guessing function names and searching
+
+1701749937
+torque!~tachyon@user/torque
+but also searching for "pub fn" and "pub const" is a very quick way to find all of the useful stuff in a file
+
+1701752073
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+asking the chat is another good route "hey does anyone know a function that does X ?"
+
+1701752239
+grayhatter!~grayhatte@user/grayhatter
+if I couldn't find what I wanted 100% agreed, but having good stdlib docs is critical to 2nd only to having a good stdlib
+
+1701752257
+grayhatter!~grayhatte@user/grayhatter
+s/to/and
+
+1701755208
+cp-!~cp-@2405:6584:8e80:400::1
+Hi, everyone, I was wondering are there functions to convert 128bits int to IPv6 and vice versa ? 
+
+1701755245
+cp-!~cp-@2405:6584:8e80:400::1
+I do not want to reinvent the wheel if it exists already
+
+1701755276
+cp-!~cp-@2405:6584:8e80:400::1
+especially if these functions are also prefix aware
+
+1701755309
+cp-!~cp-@2405:6584:8e80:400::1
+I briefly looked around in the zig doc but I did not find anything relevant.
+
+1701755338
+cp-!~cp-@2405:6584:8e80:400::1
+Any help is welcome
+
+1701756371
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+if u have an ipv6 extern struct u can @bitCast
+
+1701759137
+torque!~tachyon@user/torque
+you want a string representation of the ipv6 address?
+
+1701759368
+torque!~tachyon@user/torque
+there's the `format` method on the std.net.Ip6Address address object, though that also includes a port
+
+1701759387
+torque!~tachyon@user/torque
+there may be some other method in there, or you could extract the logic in that function into a standalone function
+
+1701759597
+torque!~tachyon@user/torque
+otherwise yeah if you're just trying to get it into a structure you can just `@bitCast` it to `[16]u8` for the `initIp6` function or similar (assuming you don't need to do worry about the endianness)
+
+1701760349
+cp-!~cp-@2405:6584:8e80:400::1
+torque: yes I want to convert 128bits to string representation of IPv6 address and vice versa
+
+1701760390
+cp-!~cp-@2405:6584:8e80:400::1
+also I want to do arithmetic with the IPv6 addresses or prefixes (2 differents things as calculations are concerned) 
+
+1701760446
+torque!~tachyon@user/torque
+you may be better off developing a couple of functions for your specific use case but you can take a look at std.net.Ip6Address
+
+1701760454
+cp-!~cp-@2405:6584:8e80:400::1
+I also want to have functions to implode or explode ipv6 text representation in order to canonize them prior to calculations or comparison etc...
+
+1701760491
+cp-!~cp-@2405:6584:8e80:400::1
+torque: yes I will attempt to do so as a learning exercice for zig as I am new to the language
+
+1701768578
+Sh4d1!uid259210@id-259210.uxbridge.irccloud.com
+Hello! I was wondering if it's possible on the dev version of Zig to return a slice of structs while having multiple return clauses with static length array of these structs ? Right now I'm having this `error: expected type '[]day5.Interval', found '*const [1]day5.Interval'`
+
+1701768875
+ifreund!2940d10f8b@user/ifreund
+Sh4d1: the problem there is that your array is const but is required to be mutable by the function return type
+
+1701769347
+Sh4d1!uid259210@id-259210.uxbridge.irccloud.com
+ifreund: aaah yes okay I feel stupid now, thanks! Howver, there is no way to oneline this? I'm forced to decalre a var and then use it with & right? 
+
+1701769386
+ifreund!2940d10f8b@user/ifreund
+Sh4d1: returning a pointer to a local variable of a function is not ok
+
+1701769396
+ifreund!2940d10f8b@user/ifreund
+that memory is invalid as soon as the function returns
+
+1701769409
+ifreund!2940d10f8b@user/ifreund
+you need to allocate memory if you want it to outlast the function scope
+
+1701769539
+Sh4d1!uid259210@id-259210.uxbridge.irccloud.com
+ifreund: okay, so there is no way to return a small slice (between 0 and 3 elements), of a basic struct (2 ints), without allocating memory? 
+
+1701769592
+ifreund!2940d10f8b@user/ifreund
+Sh4d1: in general, if the size of the memory is not compile-time known you need to dynamically allocate
+
+1701769625
+ifreund!2940d10f8b@user/ifreund
+if you know a fixed upper bound on the size you can always return e.g. an array of length 4 by value
+
+1701769633
+ifreund!2940d10f8b@user/ifreund
+(and not always use the full array)
+
+1701769647
+Sh4d1!uid259210@id-259210.uxbridge.irccloud.com
+ifreund: okay, so the way to do it with a known max size, would be an array of N optional to the struct ? 
+
+1701769680
+ifreund!2940d10f8b@user/ifreund
+that would be one way of doing it, but it wouldn't be terribly idiomatic IMO
+
+1701769734
+Sh4d1!uid259210@id-259210.uxbridge.irccloud.com
+I agree, though the only other way is to return the size of the used elements as well ? 
+
+1701769758
+dutchie!~dutchie@user/dutchie
+you could have the caller pass in a pointer to array, then return the slice you wrote to
+
+1701769840
+Sh4d1!uid259210@id-259210.uxbridge.irccloud.com
+dutchie: indeed, thanks! 
+
+1701771139
+Teiolass!~Teiolass@host-79-41-5-171.retail.telecomitalia.it
+Hello everyone. This morning I was using Zig to build a python library using the python C APIs. I have this big problem that i cannot use the std thread implementation. The first problem is that the os.linux.tls.tls_image struct is not filled during in the program entry point, and then my guess is that all threadlocal variables call a function that
+
+1701771139
+Teiolass!~Teiolass@host-79-41-5-171.retail.telecomitalia.it
+seem to not be present in the library. Even filling the struct by hand and avoiding threadlocal variables (which also means avoiding mutexes) the threads are not spawned. Am I missing something in the compilation process?
+
+1701772024
+ifreund!2940d10f8b@user/ifreund
+Teiolass: you need to link libc I believe
+
+1701772069
+ifreund!2940d10f8b@user/ifreund
+if Zig controls the main function it can run it's own startup code to set up TLS and whatnot before calling main()
+
+1701772095
+ifreund!2940d10f8b@user/ifreund
+this is not the case if you are building zig code to be dynamically linked into another program though
+
+1701772125
+ifreund!2940d10f8b@user/ifreund
+in that case libc is responsible for settingh things like TLS up so you probably need to tell zig that libc is available and should be used
+
+1701776594
+TauIs2Pi!~tauis2pi@user/tauis2pi
+can `zig build` options persist from one build to the next? I'd like to not have to repeat the install prefix/optimizations/custom options every time (temporarily, that is without changing my build.zig's defaults)
+
+1701776604
+TauIs2Pi!~tauis2pi@user/tauis2pi
+like `meson configure`
+
+1701776777
+Teiolass!~Teiolass@host-79-41-5-171.retail.telecomitalia.it
+ifreund: I am pretty skeptical about this solution, but I am not an expert (by far) on how tls work. However I see no reason why linking against libc shoudl fill some structures defined in zig's std. I'll try anyway, thanks for your answer ; )
+
+1701777232
+ifreund!2940d10f8b@user/ifreund
+Teiolass: if libc is linked then libc's pthreads will be used instead of the native zig implementation: https://github.com/ziglang/zig/blob/72568c131dcfc9303de0a809e02290c7ac464663/lib/std/Thread.zig#L21
+
+1701777305
+ifreund!2940d10f8b@user/ifreund
+the native zig implementation only works if the zig standard libraries startup code is run: https://github.com/ziglang/zig/blob/72568c131dcfc9303de0a809e02290c7ac464663/lib/std/start.zig#L415
+
+1701785744
+Teiolass!~Teiolass@host-79-41-5-171.retail.telecomitalia.it
+Oh thank you very much! I lost that line in the if branches
+
+1701787229
+ifreund!2940d10f8b@user/ifreund
+no problem! this stuff can be quite tricky to wrap one's head around as nearly everything just links libc all the time xD
+
+1701794810
+trnry!~nate@c-67-169-255-59.hsd1.ut.comcast.net
+buffer 29
+
+1701801727
+doelie!~tom@37.184.209.69
+hi. quick question about https://ziglang.org/documentation/0.11.0/#toc-Static-Local-Variables
+
+1701801758
+doelie!~tom@37.184.209.69
+how is this "const" while the value is allowed to change?
+
+1701803065
+blueagain!~blue@user/blueagain
+doelie: like in c, const can have two meanings, see `const` in this table: https://ziglang.org/documentation/0.11.0/#Keyword-Reference
+
+1701803640
+ekaitz!~Ekaitz@94.73.32.196
+hi! I'm working on a project written in zig 0.10.1... (I have no way to push versions up yet) I have a problem when cross-compiling for windows: GetLastError(10093): Either the application has not called WSAStartup, or WSAStartup failed
+
+1701803668
+ekaitz!~Ekaitz@94.73.32.196
+does anyone have a way to fix this easily? I have no f-ing idea about windows...
+
+1701803801
+ekaitz!~Ekaitz@94.73.32.196
+there's a related issue... https://github.com/ziglang/zig/issues/8943
+
+1701803809
+ekaitz!~Ekaitz@94.73.32.196
+that looks like it's still open
+
+1701803844
+ekaitz!~Ekaitz@94.73.32.196
+my code i explodes in tcpConnectToHost
+
+1701804023
+ekaitz!~Ekaitz@94.73.32.196
+i think**
+
+1701814727
+doelie!~tom@d54c261ba.access.telenet.be
+something i don't understand about zig comptime: the step to macros (generating syntax instead of just types) seems quite small. i think (haven't tried) it's probably possible to write a compiler from some dsl with syntax defined as tagged unions using something resembling tagless final style. (did someone do this?). but why not expose the syntax tree directly to allow procedural macros? or did i miss 
+
+1701814733
+doelie!~tom@d54c261ba.access.telenet.be
+something obvious?
+
+1701814774
+ifreund!2940d10f8b@user/ifreund
+has a procedural macro ever been readable?
+
+1701814816
+ifreund!2940d10f8b@user/ifreund
+Zig very intentionall eschews source code/ast based metaprogramming
+
+1701815091
+doelie!~tom@d54c261ba.access.telenet.be
+i understand the objections from code design / readability pov. most code probably best avoids it. i don't really disagree with that. it just feels really odd to have a hard line at making it possible. hence my question if there's any signs already of people abusing the existing comptime to do it anyway?
+
+1701815119
+doelie!~tom@d54c261ba.access.telenet.be
+just curious
+
+1701815224
+doelie!~tom@d54c261ba.access.telenet.be
+i mean: allowing general computation at compile time basically includes writing an interpreter/compiler embedded in comptime functions. there doesn't really seem to be a way to stop that.
+
+1701815297
+doelie!~tom@d54c261ba.access.telenet.be
+just started looking into zig today. i like it thus far. nice, simple, clean. looking forward to using it
+
+1701816777
+ekaitz!~Ekaitz@94.73.32.196
+I moved from 0.10.1 to 0.11.0 and it doesn't find my windows libs when cross compiling
+
+1701816901
+ekaitz!~Ekaitz@94.73.32.196
+instead of searching at libX.dll searches  X.dll
+
+1701816909
+ekaitz!~Ekaitz@94.73.32.196
+if i rename the lib to X.dll doesn't find it
+
+1701817276
+ekaitz!~Ekaitz@94.73.32.196
+now i managed to find them but missing symbols??
+
+1701817278
+ekaitz!~Ekaitz@94.73.32.196
+:S
+
+1701818248
+ekaitz!~Ekaitz@94.73.32.196
+allow-shlib-undefined is giving me headaches now
+
