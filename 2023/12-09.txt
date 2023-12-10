@@ -1,0 +1,260 @@
+1702084475
+martin2020!~user@2601:406:4000:181b:3155:6e1e:da8f:d757
+Hi, what is the recommended way to do typedef in Zig? I suppose a function returning a type would be a straightforward way to have named types. Is that a good/Ziggy solution?
+
+1702084765
+andrewrk!~andrewrk@mail.ziglang.org
+const A = B;
+
+1702084768
+martin2020!~user@2601:406:4000:181b:3155:6e1e:da8f:d757
+Nevermind, I remembered that types can be assigned to const, so I guess it's as simple as that. I was overthinking it
+
+1702084791
+martin2020!~user@2601:406:4000:181b:3155:6e1e:da8f:d757
+andrewrk, thanks! I just remembered that right before you answered haha
+
+1702084803
+andrewrk!~andrewrk@mail.ziglang.org
+if the types are integers and you want the types to not coerce accidentally into each other, you can use a non-exhaustive enum
+
+1702085085
+freshcoffee!~fresh@user/freshcoffee
+got some new metal: config+build+install llvm in 13:47.46 on linux
+
+1702085206
+andrewrk!~andrewrk@mail.ziglang.org
+wow
+
+1702085278
+freshcoffee!~fresh@user/freshcoffee
+AMD 7900x (12 core). stock. and a boatload of 192GB RAM. consumer parts, cheap Asrock mobo. I jhust lit it up an hour ago.
+
+1702085847
+freshcoffee!~fresh@user/freshcoffee
+cmake+build zig release: 8:22.02
+
+1702085864
+freshcoffee!~fresh@user/freshcoffee
+zig build -Dno-lib -Denable-llvm: 1:02.19
+
+1702085892
+freshcoffee!~fresh@user/freshcoffee
+I'm happy :)
+
+1702087763
+nektro!~nektro@71-34-68-44.ptld.qwest.net
+very nice :3
+
+1702095142
+torque!~tachyon@user/torque
+I'm not convinced you have enough ram
+
+1702095582
+torque!~tachyon@user/torque
+<andrewrk> in my opinion it is strictly better to have different types for different sets of fields <-- I think there are a number of cases where code expression would be clearer by grafting fields onto a struct rather than nesting a struct
+
+1702095607
+torque!~tachyon@user/torque
+it's hard to come up with a good example on the fly, so all I have is a contrived one: https://zig.godbolt.org/z/9oqq6aqoz
+
+1702095736
+torque!~tachyon@user/torque
+as the first instance shows, it's certainly possible to make parameterized "flat" structs in zig, it's just quite repetitive in the copy-paste sense, since as far as I know there isn't any other way to omit a struct field, without defining the entire struct a second time
+
+1702095908
+torque!~tachyon@user/torque
+the second option is definitely preferable from a maintainability standpoint if the common field subset is likely to change, but it has some rough edges. You end up with a purely nested struct in the case where the specialized fields generalize to zero, and in the case where there are transitive common fields you end up with a deeply nested object which adds a lot of line noise to field access
+
+1702096087
+torque!~tachyon@user/torque
+my hypothetical third case is indeed syntactic sugar, but I think it's very complementary to `usingnamespace` which I find to be really useful for mixing methods onto different objects (one of the key use cases there being de/serialization code). Of course `usingnamespace` is itself syntactic sugar.
+
+1702096225
+torque!~tachyon@user/torque
+in my mind it solves a similar set of problems to some of the proposals I've seen suggesting things plan9-c-style unnamed struct in structs but in a fashion that's closer to how some of zig's existing semantics work
+
+1702096963
+torque!~tachyon@user/torque
+I'd be interested in opening a proposal with some more in-depth review of various use cases/justifications, but if it's a dismiss out of hand suggestion, I can respect the soft proposal moratorium
+
+1702112084
+ifreund!2940d10f8b@user/ifreund
+torque: https://github.com/ziglang/zig/issues/985
+
+1702112228
+ifreund!2940d10f8b@user/ifreund
+Like I said, essentially this feature has already been discussed in depth and rejected
+
+1702146727
+grayhatter!~grayhatte@user/grayhatter
+I'm on glibc linux (arch), trying to compile for musl libc (alpine) and `exe.linkLibC()` predictably, non-functional, is there a simple way to get a completely static binary that will run on both systems?
+
+1702147926
+torque!~tachyon@user/torque
+ifreund, thanks for the link. having quickly skimmed the rejection reasons in that issue, I think some of them apply to my suggestion and some of them don't. I'll read through it in more detail later, but initial reading suggests that that's more about implementing c features in zig (though I'll grant you there's certainly functional overlap)
+
+1702147958
+torque!~tachyon@user/torque
+grayhatter, a linux executable statically linked to musl should run on a glibc-based distribution, is my understanding
+
+1702148003
+torque!~tachyon@user/torque
+are you building with something like `-Dtarget=x86_64-linux-musl`?
+
+1702148119
+grayhatter!~grayhatte@user/grayhatter
+torque: I was not, previously I didn't need to link against libc, so `zig build` would give me a binary that would "just work" on both arch and alpine, but now I need libcurl (zig's TLS support is still very incomplete) so attempting to link libc gives me a binary that would only run on arch, and not on the "remote" alpine system. I suspected I'd need a different target so I'll try that now
+
+1702155742
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+Hi, I thought I remembered seeing a pattern for acquiring a pointer to self inside an init function, but now I can't remember. A pointer to my local variable instance that I return cannot be used, right? Because it is in memory that will be cleared from the stack after the function returns?
+
+1702155964
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+Or should I allocating my struct on the heap if I want to store a pointer to it in its init function? 
+
+1702156070
+grayhatter!~grayhatte@user/grayhatter
+martin2020: you shouldn't want a struct to store a pointer to itself... that's a great way to make mistakes... but, if you're gonna anyways you likely want to use memory you manage yourself e.g. allocator.create()... why do you want to do that?
+
+1702156129
+tdback!~td@user/tdback
+Hey everyone! I'm quite new to the zig language, but I've found myself wanting to learn more about it. Thought I'd pop in and say hi
+
+1702156420
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+grayhatter, thanks. I am making a gui, and I have a struct, ElementMap that is a two-dimensional grid of *PageElement that corresponds to the pixel-grid of the page texture, so that when I get a click, I know which element is clicked
+
+1702156481
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+tdback, hi!
+
+1702156578
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+So, when I initialize a PageElement, it would be convenient to initialize the page's ElementMap to all be pointers to itself 
+
+1702156590
+grayhatter!~grayhatte@user/grayhatter
+martin2020: that doesn't explain why you'd want a self ref pointer though
+
+1702156646
+grayhatter!~grayhatte@user/grayhatter
+OH
+
+1702156815
+grayhatter!~grayhatte@user/grayhatter
+it sounds' like you're over allocating memory. if the len of ElementMap = [0][0], there's no need to make another function call as you traverse down the map to a target element.
+
+1702156906
+grayhatter!~grayhatte@user/grayhatter
+if you want to over alloc memory for perf reasons, you can store a capacity and still set len = 0; 
+
+1702156930
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+I think ElementMap should never have len of [0][0]. The element would be invisible
+
+1702156946
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+Unless I am misunderstanding you
+
+1702156981
+grayhatter!~grayhatte@user/grayhatter
+I'm sure we're both speaking missing too much of the context of the other. 
+
+1702157280
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+I suppose so. Thanks for trying!
+
+1702157321
+grayhatter!~grayhatte@user/grayhatter
+martin2020: I get the sense you either need to optimize more, or less. you have some element that might or might not have child elements right? but it has a defined shape. Why does the shape need to have a pointer for each pixel, ever if that pixel is a no-op. If each pixel isn't a no-op why would you want to set the pixel's pointer to it's parent, instead of the pixel's onClick function? if the pixel
+
+1702157323
+grayhatter!~grayhatte@user/grayhatter
+maybe doesn't have an onClick function, why is the parent element trying to call it blindly instead of checking if it exists? (I.e. I think the pattern you're describing as a understand it, is a great way to write an unintentional cyclic call graph)
+
+1702157655
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+grayhatter, I don't know if this makes it better or worse, but I have another corresponding data structure, ClickMap, that is a grid of optional function pointers (null or functions: ?ClickFunc). This grid is equal in size to the ElementMap. ClickFunc takes as an argument a *PageElement. 
+
+1702157706
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+So, as I think you are suggesting, I am checking for null on the ClickMap, and if there is a valid ClickFunc, I am passing it the *PageElement from ElementMap
+
+1702157729
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+So the values of ElementMap should not be null, but the values of ClickMap can be null
+
+1702157860
+grayhatter!~grayhatte@user/grayhatter
+then why don't you set then to null in the init()?
+
+1702158087
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+Yes, that would be a workable solution, but somewhat inconvenient, as I would have a partially initialized struct, and I would need to call another member function to assign pointers to self. Currently, my algorithm is: initialize a PageElement's ElementMap to be full of pointers to that PageElement. Then, if I add a child element to a space in the map (x, y, w, h), I set the corresponding pointers in ElementMap to be pointers to the
+
+1702158088
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+child element.
+
+1702158186
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+grayhatter, Someone in the matrix chat suggested using `pub fn init(self: *Self) void {`, which would be a slick way of initializing it on the heap.
+
+1702158276
+grayhatter!~grayhatte@user/grayhatter
+that wouldn't be on the heap (unless you add more code)
+
+1702158367
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+I mean calling that function with a pointer from something like: `var map_ptr = allocator.create(ElementMap);`
+
+1702158373
+grayhatter!~grayhatte@user/grayhatter
+pub fn init(a: Allocator) !void { var self = try a.create(Self); return self; } would also work... something that's working quite well for me... but I stand by my original assertion that building your tree this way is an anti-pattern
+
+1702158412
+grayhatter!~grayhatte@user/grayhatter
+err, the return type there would have to be !*Self not !void
+
+1702158442
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+What is Self, in that case?
+
+1702158449
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+(uppercase)
+
+1702158460
+grayhatter!~grayhatte@user/grayhatter
+whatever you want it to be? you're using Self in your init()
+
+1702158533
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+Haha yes, I see.
+
+1702158721
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+grayhatter, thanks very much for your help. I will give what you shared a try and also try to think about how to improve my overall design
+
+1702158808
+grayhatter!~grayhatte@user/grayhatter
+martin2020: try to consider how you can reduce how much memory you need to alloc, and I think you'll come out with a much better design
+
+1702158812
+grayhatter!~grayhatte@user/grayhatter
+martin2020: foss code?
+
+1702158835
+grayhatter!~grayhatte@user/grayhatter
+i.e. do you have a public repo for it yet?
+
+1702160166
+martin2020!~user@2603:3015:9ea:8100:c025:c3ec:d949:411d
+grayhatter, it will be copyleft code, but it's still in early development. Can I message you directly about it if you're interested?
+
+1702161060
+grayhatter!~grayhatte@user/grayhatter
+yeah, man, that's alwys fine :) 
+
