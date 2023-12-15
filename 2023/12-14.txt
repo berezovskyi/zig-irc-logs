@@ -1,0 +1,128 @@
+1702512276
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+I could see an x86 implementation being the same or separate, up to whoever implements it.
+
+1702517331
+andrewrk!~andrewrk@mail.ziglang.org
+ah that makes sense
+
+1702519067
+LACampbell!~lewis@granite-phrase.bnr.la
+how do I get a file descriptor from std.os.linux.open?
+
+1702519242
+LACampbell!~lewis@granite-phrase.bnr.la
+my understanding is the usize it returns is an errorcode you pass into getErrno
+
+1702519442
+torque!~tachyon@user/torque
+looking at the openAt code, it does `.SUCCESS => return @as(fd_t, @intCast(rc)),`
+
+1702519455
+torque!~tachyon@user/torque
+where RC is the result of the syscall
+
+1702519676
+torque!~tachyon@user/torque
+that's switching on the result of system.getErrno(rc), which returns errno if rc == -1
+
+1702519700
+torque!~tachyon@user/torque
+I would guess the `open` syscall works the same way. return -1 and look at errno if the call failed. otherwise the result is the file descriptor
+
+1702519819
+torque!~tachyon@user/torque
+unless you have a compelling reason to use linux syscalls directly I think it would make more sense to use `std.os.open` instead of `std.os.linux.open`, since the former does the unwrapping logic for you
+
+1702519852
+torque!~tachyon@user/torque
+(or even use the higher level abstractions in `std.fs`)
+
+1702519962
+LACampbell!~lewis@granite-phrase.bnr.la
+I'm playing around with direct IO thanks to the subversive influence of a certain zig db dev who shall not be named :) but it *seems* to be working with a few casts
+
+1702520058
+LACampbell!~lewis@granite-phrase.bnr.la
+though actually I'll see if std.os.open can take O.DIRECT
+
+1702520729
+LACampbell!~lewis@granite-phrase.bnr.la
+torque: thanks for the std.os tip, that works much more nicely, and can still pass in OS specific flags
+
+1702546303
+RelayChat!~RelayChat@user/RelayChat
+where can i see zig bindings for win32 api calls?
+
+1702546326
+RelayChat!~RelayChat@user/RelayChat
+like what's the function that i have to call that will in turn call CreateFileA?
+
+1702547396
+ifreund!2940d10f8b@user/ifreund
+RelayChat: the zig std makes ntdll calls directly for that instead of going through win32 I believe
+
+1702547407
+ifreund!2940d10f8b@user/ifreund
+see std.os.windows.OpenFile
+
+1702547844
+RelayChat!~RelayChat@user/RelayChat
+ifreund: hmm thanks
+
+1702547856
+RelayChat!~RelayChat@user/RelayChat
+so OpenFile will directly call NtCreateFile?
+
+1702547941
+ifreund!2940d10f8b@user/ifreund
+that's what the source code says
+
+1702549057
+RelayChat!~RelayChat@user/RelayChat
+okay, thanks
+
+1702563929
+Martijn_jm!~mpottelb@85.148.115.103
+Hi my name is Martijn. I am new to both zig and IRC. Does anybody know where I could discuss langauge proposals (seeing that the zig github currently does not accept them?)
+
+1702564776
+ifreund!2940d10f8b@user/ifreund
+Martijn_jm: this is a fine place to talk about anything zig related
+
+1702565081
+Martijn_jm!~mpottelb@85.148.115.103
+Does one just throw such things in the group? Writing one line at a time (as seems to be required) may clutter things alot it seems to me.
+
+1702566092
+Martijn_jm!~mpottelb@85.148.115.103
+ifreund: doing ziglings exercise 063_labels, I see that labels can clutter the code. I would propose that for loops automatically generate labels for the start of the loop. For every match expression of the for loop, a label will be generated that is not accessible as ´:label´, but instead like ´@next(match_expression)´
+
+1702566392
+Martijn_jm!~mpottelb@85.148.115.103
+ifreund: example: for (recipe) |ingredient| { if(no_need_to_handle(ingredient)) continue @next(ingredient); handle(ingredient);}
+
+1702567326
+ifreund!2940d10f8b@user/ifreund
+Martijn_jm: to be quite honest, drive-by proposals like this are exactly the reason for the honeypot issue template
+
+1702567400
+ifreund!2940d10f8b@user/ifreund
+I'd suggest using zig for a while in real world projects to get a complete and nuanced view on it before proposing changes
+
+1702568677
+dutchie!~dutchie@user/dutchie
+ACTION counts 48 instances of labelled loops in std, including 13 times in parser_test.zig
+
+1702568697
+dutchie!~dutchie@user/dutchie
+so 35 "real" uses
+
+1702570553
+ifreund!2940d10f8b@user/ifreund
+35 uses in thousands of lines of code isn't exactly the strongest argument for increasing language complexity
+
+1702573287
+dutchie!~dutchie@user/dutchie
+indeed
+
