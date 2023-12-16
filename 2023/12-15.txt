@@ -1,0 +1,76 @@
+1702608151
+companion_cube!~simon@user/companion-cube
+https://ziglang.org/download/0.11.0/release-notes.html#Ignore-SIGPIPE-by-Default ahaha I missed that, fuck yeah
+
+1702608158
+companion_cube!~simon@user/companion-cube
+sigpipe is the worst
+
+1702609913
+tsujp!d2a86a1667@sourcehut/user/tsujp
+I'm implementing a stack-based virtual machine where each opcode has an associated 'weight' to its execution. I'm thinking of modelling this as an enum of opcodes to structs where each struct has that weight and other descriptions, does this seem appropriate?
+
+1702610305
+companion_cube!~simon@user/companion-cube
+s/enum/array right?
+
+1702611807
+tsujp!d2a86a1667@sourcehut/user/tsujp
+Well opcodes are enumerated values since they're instructions so it wouldn't be an array, the `ADD` opcode may be 0x01, `SUB` as 0x02 etc.
+
+1702612031
+companion_cube!~simon@user/companion-cube
+I mean an array where slot 0x01 has the struct for ADD, slot 0x02 for SUB, etc
+
+1702612044
+companion_cube!~simon@user/companion-cube
+so that you go from opcode to struct with a mere array lookup
+
+1702612407
+tsujp!d2a86a1667@sourcehut/user/tsujp
+Ah I forgot to mention the opcodes are not contiguous but sparse (not my choice) so MUL is not 0x03 but 0x05 (there are no 0x03 and 0x04 opcodes)
+
+1702612777
+tsujp!d2a86a1667@sourcehut/user/tsujp
+Oh derp if the opcodes are not contiguous then an enum won't work if I want opcode -> struct ... hashmap I suppose?
+
+1702612934
+companion_cube!~simon@user/companion-cube
+or fill the array slots with dummy structs
+
+1702612946
+companion_cube!~simon@user/companion-cube
+it's only 256 slots
+
+1702614391
+tsujp!d2a86a1667@sourcehut/user/tsujp
+Is that efficient?
+
+1702614427
+companion_cube!~simon@user/companion-cube
+an array lookup is very efficient, yes
+
+1702614434
+tsujp!d2a86a1667@sourcehut/user/tsujp
+I guess this can be done at comptime too since opcodes won't change and the struct that's mapped to each opcode is basically: { the_function_to_run, description, instruction_cost }
+
+1702614466
+tsujp!d2a86a1667@sourcehut/user/tsujp
+true, cheaper than hashing an integer then looking up a value
+
+1702614490
+companion_cube!~simon@user/companion-cube
+ideally the array should be a comptime constant indeed
+
+1702616894
+tsujp!d2a86a1667@sourcehut/user/tsujp
+hmm I just remembered a thing: Zig does not currently have computed gotos right? Meaning if you had a very long switch statement with a lot of cases it's not actually fast at runtime; and there's nothing that can be done about that until it's added into the compiler?
+
+1702618458
+torque!~tachyon@user/torque
+I believe if the optimizer can figure it out, that's what matters. you just can't explicitly add computed gotos to force the optimizer to figure it out
+
+1702618525
+torque!~tachyon@user/torque
+I guess you're aware of this proposal: https://github.com/ziglang/zig/issues/8220
+
