@@ -1,0 +1,924 @@
+1703330522
+Vocelia!~vocelia@user/Vocelia
+Hello, I am trying to open a file but I get across a problem. Code: const file = std.fs.cwd().openFile("file.txt", std.fs.File.OpenFlags{ true, true, .Shared }); Error: error: type 'fs.file.File.OpenFlags' does not support array initialization syntax. According to the docs, the second argument must be an OpenFlags struct, can someone tell me what am I doing wrong?
+
+1703330636
+ekaitz!~Ekaitz@94.73.32.196
+Vocelia: you are missing the field names in the struct
+
+1703330662
+ekaitz!~Ekaitz@94.73.32.196
+OpenFlags{.x=Whatever, .y=Whatever_else}
+
+1703330714
+Vocelia!~vocelia@user/Vocelia
+Oh...with a dot, I have previously tried it with the field names but it didn't work out. I see, so struct and enum members are accessed or listed with a dot prior to their name
+
+1703330737
+ekaitz!~Ekaitz@94.73.32.196
+yes
+
+1703330771
+ekaitz!~Ekaitz@94.73.32.196
+https://ziglang.org/documentation/master/#struct see 18
+
+1703330997
+Vocelia!~vocelia@user/Vocelia
+src/main.zig:4:43: error: no field named 'read' in struct 'fs.file.File.OpenFlags'
+
+1703330997
+Vocelia!~vocelia@user/Vocelia
+    const flags = std.fs.File.OpenFlags{ .read = true, .write = true, .lock = .Shared };
+
+1703331001
+Vocelia!~vocelia@user/Vocelia
+This is weird
+
+1703331237
+slowjo!~slowjo@sourcehut/user/slowjo
+https://ziglang.org/documentation/master/std/#A;std:fs.File.OpenFlags
+
+1703331250
+slowjo!~slowjo@sourcehut/user/slowjo
+you're probably looking for .mode ?
+
+1703331314
+Vocelia!~vocelia@user/Vocelia
+yeah, I actually checked the source code instead of the docs, it appears .read is not a valid member. Maybe it is a change through versions. Thanks!
+
+1703331359
+Vocelia!~vocelia@user/Vocelia
+https://ziglang.org/documentation/0.6.0/std/#std;fs.File.OpenFlags
+
+1703331368
+Vocelia!~vocelia@user/Vocelia
+Yeah, I was reading this, which is version 0.6.0
+
+1703354722
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+how do i use a c file in zig?
+
+1703354738
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+it seems everything i find is just out of date enough to no longer work
+
+1703356126
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i specifically mean a .c file, not .h
+
+1703365854
+torque!~tachyon@user/torque
+what are you trying to do with the C source? compile it?
+
+1703365979
+torque!~tachyon@user/torque
+there are a few different things you could be trying to do, it's hard to give a good answer without understanding what you actually want to achieve
+
+1703366126
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+no, i can compile it by itself just fine
+
+1703366148
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but i want to call it from zig instead
+
+1703366176
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+this is the file in question: https://gitlab.freedesktop.org/pipewire/pipewire/-/blob/master/src/examples/audio-capture.c
+
+1703366233
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+assuming i'm starting a hello-world project with zig, what do I need to do to start working with that c code from inside a zig file?
+
+1703366384
+torque!~tachyon@user/torque
+well, you could rewrite it in zig. that example is using the pipewire library to do all the heavy lifting so in theory conversion would be fairly straightforward (`zig translate-c` may be able to help with this)
+
+1703366444
+torque!~tachyon@user/torque
+the other option would be to adapt it so that you can call its "main" function from your zig main
+
+1703366490
+torque!~tachyon@user/torque
+depends on what you're trying to do. It looks like its main blocks for the duration of the program so you would have to work around that if you want your program to do other things
+
+1703366545
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+well i was trying to call that file's main from the zig main
+
+1703366551
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but i couldn't get it to work
+
+1703366622
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so i would like it very much if you could help me wrap my head around that works
+
+1703366661
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i thought i was starting with something really simple and sane, but i'm obviously missing something
+
+1703366678
+torque!~tachyon@user/torque
+if you just want audio capture in zig, you could also look at https://github.com/hexops/mach-sysaudio
+
+1703366720
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+huh
+
+1703366722
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+cool
+
+1703366748
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+the whole reason i'm looking into zig is because i need to do something with pipewire, and don't want to write c
+
+1703366768
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'll definitely look into that link, so thank you
+
+1703366775
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but i need pipewire for video as well
+
+1703366784
+torque!~tachyon@user/torque
+ah
+
+1703366796
+torque!~tachyon@user/torque
+I'm not sure I'd say that trying to do interop with a fairly complex C library is simple, but zig's C interop is pretty good
+
+1703366797
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so i would still like to figure out this basic use case
+
+1703366815
+torque!~tachyon@user/torque
+do you have a repository with your current prototype that doesn't work?
+
+1703366827
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i thought that was zig's whole use case?
+
+1703366844
+torque!~tachyon@user/torque
+zig is its own language and you can do a whole lot in pure zig
+
+1703366849
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+like, i thought zig's whole thing was c interop
+
+1703366855
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+like a better c
+
+1703366874
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm coming from d, where there is literally a "mode", if you will, called betterC
+
+1703366886
+torque!~tachyon@user/torque
+having good C interop makes it easy to reuse existing C libraries, but I would not say that zig's purpose is C interop
+
+1703366887
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but it's more just like worseD
+
+1703366891
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+lol
+
+1703366921
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i don't like working with C because building things is more work than actually writing things
+
+1703366937
+torque!~tachyon@user/torque
+depends on what you mean by "better C". For most people, I think, that means a language with many of C's design sensibilities but with less of the footguns. specifically something that you would use instead of C when possible
+
+1703366938
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i don't have a repo
+
+1703366953
+torque!~tachyon@user/torque
+having good C interop is more of a means to an end than an end in itself
+
+1703366963
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+my current project is literally a zig hello-world with that c file dropped into the src file
+
+1703366987
+torque!~tachyon@user/torque
+well, that's not going to work because zig and C have different syntax
+
+1703367014
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+sorry, i mean that c file dropped into the src folder
+
+1703367036
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so in the src folder, there is main.zig, and main.c
+
+1703367077
+torque!~tachyon@user/torque
+that seems fine
+
+1703367081
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i can compile main.c with zig cc
+
+1703367100
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but what i can't figure out is how to call main.c's main from within main.zig
+
+1703367183
+torque!~tachyon@user/torque
+I don't know if having two main functions will cause a symbol collision. It might, so I'd start by renaming the main function in `main.c` something else. For example rename it `c_main` or whatever as a starting point
+
+1703367210
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+done
+
+1703367251
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+they have different signatures, though
+
+1703367262
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+wait, can you not overload functions in c?
+
+1703367264
+torque!~tachyon@user/torque
+the zig file needs to know how to call the `c_main` function, so you either need to write a (very short) header that declares the `c_main` function prototype that you can `@cInclude` in the zig source. Alternatively, in this case, since the C interface is a single function you could directly define this in zig
+
+1703367265
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i always forget
+
+1703367273
+torque!~tachyon@user/torque
+C does not let you overload functions
+
+1703367285
+torque!~tachyon@user/torque
+(neither does zig, though zig does have namespaces)
+
+1703367324
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+okay, so i can't use the .c file directly
+
+1703367327
+torque!~tachyon@user/torque
+(well, you could argue that comptime-parameterized/anytype functions are overloaded but that is a semantics debate)
+
+1703367329
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i can only use .h files?
+
+1703367396
+torque!~tachyon@user/torque
+in the C world, you have a separation of interface and implementation. The interface (.h) files typically define data structures and function prototypes (aka function signatures). The implementation files define the function bodies, i.e. what the functions do
+
+1703367414
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+right
+
+1703367418
+torque!~tachyon@user/torque
+the interfaces tell other pieces of code how to actually call the functions (i.e. how to set up the stack and registers so that the arguments get passed correctly)
+
+1703367429
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i understand
+
+1703367457
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i guess the way zig sells itself led me to believe that you could mix and match c and zig code fairly freely
+
+1703367466
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+maybe that's still relatively true
+
+1703367492
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+anyway, is there any quick and dirty way to generate a header for this file?
+
+1703367496
+torque!~tachyon@user/torque
+so technically you could embed that interface information directly in your .zig file (something like `extern fn c_main(argc: c_int, argv: [*c]const u8) callconv(.C) int`)
+
+1703367500
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i hate writing headers lol
+
+1703367527
+torque!~tachyon@user/torque
+er, the return type should be `c_int`. Also my syntax might be slightly off
+
+1703367543
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+what does that do, though, actually?
+
+1703367560
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i mean, where would i put that and what exactly would it accomplish?
+
+1703367569
+torque!~tachyon@user/torque
+that would be put somewhere in main.zig
+
+1703367587
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+in what scope?
+
+1703367607
+torque!~tachyon@user/torque
+it would be fine in the root scope
+
+1703367609
+torque!~tachyon@user/torque
+what that does is tell it "there's a function called `c_main` and here's how it gets called and this is what it returns"
+
+1703367651
+torque!~tachyon@user/torque
+so that in your zig `main` function, when you call `_ = c_main(0, &.{})` the compiler can generate the correct code
+
+1703367669
+torque!~tachyon@user/torque
+basically that's the same information that would be included in the header, if you had one
+
+1703367738
+torque!~tachyon@user/torque
+this is probably not how you would do it with an actual production piece of software but I suppose your initial goal is to put some pieces together and learn rather than trying to make something heavily structured
+
+1703367902
+torque!~tachyon@user/torque
+I don't really know anything about pipewire the library but for a more standard approach you would probably want to use pipewire library functions directly rather than calling into C code that uses the pipewire library
+
+1703367927
+torque!~tachyon@user/torque
+https://github.com/psnszsn/zig-pipewire/blob/main/src/pipewire.zig may be helpful to look at, I have no idea how complete it is, though
+
+1703368120
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+yes, of course
+
+1703368132
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm literally just trying to get things working
+
+1703368139
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+this is just a sanity check
+
+1703368144
+torque!~tachyon@user/torque
+yep
+
+1703368160
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+error: type 'u8' does not support array initialization syntax
+
+1703368243
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but when i add `const arr = &.{};` and then call `_ = c_main(0, arr);` the error becomes `pointer type child '@TypeOf(.{})' cannot cast into pointer type child 'u8'`\
+
+1703368331
+torque!~tachyon@user/torque
+I got the call signature wrong, it should be something like `argv: [*c][*c]const u8`
+
+1703368348
+torque!~tachyon@user/torque
+since it's an array of strings, not an array of u8
+
+1703368397
+torque!~tachyon@user/torque
+also I guess you can't initialize many-pointers with `&.{}` directly, that's my bad
+
+1703368429
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+how do i do that?
+
+1703368488
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/9Eboe1xjj
+
+1703368539
+torque!~tachyon@user/torque
+technically you'd probably want to actually get argv from the zig std library and pass in the real argv but faking it is slightly easier
+
+1703368648
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+`undefined symbol: c_main`
+
+1703368667
+torque!~tachyon@user/torque
+good, that's a linker error
+
+1703368723
+torque!~tachyon@user/torque
+in your `build.zig` you probably need to add `exe.addCSourceFiles(&.{"main.c"});`
+
+1703368809
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+`error: expected type 'Build.Step.Compile.AddCSourceFilesOptions', found pointer`
+
+1703368852
+torque!~tachyon@user/torque
+ah, I suspect this API changed a bit in zig master, I'm still mostly using 0.11
+
+1703368895
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+lolol
+
+1703368935
+torque!~tachyon@user/torque
+looks like it should be `exe.addCSourceFiles(.{.files = &.{"main.c"}})`
+
+1703368942
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+okay, i want to get this working for sheer curiosity's sake, but i'm pretty much decided that zig is not the language for me
+
+1703368944
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+at least not yet
+
+1703368988
+torque!~tachyon@user/torque
+well, I think as a starting point for the language, you would probably be better off starting with something pure zig to get a feel for things
+
+1703369002
+torque!~tachyon@user/torque
+the C interop is good but I personally would consider it to be a more advanced use case
+
+1703369030
+torque!~tachyon@user/torque
+especailly if you are not already quite comfortable with C and C toolchains
+
+1703369054
+torque!~tachyon@user/torque
+(though zig replaces the mess of C toolchains nicely, having that knowledge is still useful for understanding how to set things up)
+
+1703369151
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm talking mostly about the constantly changing language, actually
+
+1703369176
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm not actually all that stupid, but there's no way i could have figured this out on my own
+
+1703369200
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+not least because every link i click into to try and learn for myself has things written a different way
+
+1703369204
+torque!~tachyon@user/torque
+at this point most of the changes are in standard library APIs rather than the language itself
+
+1703369219
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm not sure how you did it, but i'm obviously not hardcore enough
+
+1703369221
+ThinkT510!~auronanda@sortix/contributor/ThinkT510
+neato, the serenityos javascript expert is making a javascript engine in zig: https://codeberg.org/kiesel-js/kiesel
+
+1703369231
+torque!~tachyon@user/torque
+everyone learns differently but I just read the sourcecode of what I'm using
+
+1703369239
+torque!~tachyon@user/torque
+can't get wrong information that way
+
+1703369256
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i guess, once you know where to look
+
+1703369286
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+by the way, how to i tell zig where to look for system headers in the build.zig file?
+
+1703369299
+torque!~tachyon@user/torque
+unfortunately, I've been writing software for a long time and I think figuring out where to look is something you pick up after a lot of hours of trying to find things
+
+1703369340
+torque!~tachyon@user/torque
+yeah, there's an `exe.addIncludePath` function
+
+1703369342
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i tried `exe.addIncludePath("/path/to/place");` but i get `error: expected type 'Build.LazyPath', found '*const [12:0]u8'`
+
+1703369389
+torque!~tachyon@user/torque
+it takes a structure type so you have to call it like `exe.addIncludePath(.{ .path = "/path/to/place" });
+
+1703369416
+torque!~tachyon@user/torque
+since there are different ways you can add includes besides a literal filesystem path
+
+1703369424
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/std/#A;std:Build.FileSource
+
+1703369518
+torque!~tachyon@user/torque
+s/structure/tagged union/
+
+1703369578
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+okay, interesting
+
+1703369589
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+looks like we're getting close
+
+1703369602
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+how do i link against a library?
+
+1703369614
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+like, the equivalent of an l flag, i guess?
+
+1703369682
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+whatever the equivalent of -lpipewire-0.3 on the command line would be?
+
+1703369711
+torque!~tachyon@user/torque
+`exe.linkSystemLibrary("pipewire-0.3")` will probably work
+
+1703369861
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+hey, it works
+
+1703369864
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+neat
+
+1703369873
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+thank you for your help
+
+1703369931
+torque!~tachyon@user/torque
+no problem
+
+1703370059
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+now i'm trying to take it to the next step and call a function of my own definition
+
+1703370117
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i defined a very simp0le function in main.c: void balls() { printf("balls"); }
+
+1703370150
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+at the top of main.zig, i have `extern fn balls() callconv(.C) void;`
+
+1703370174
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+then in the main function of main.zig: `_ = balls();`
+
+1703370216
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i don't get any errors, but i don't get "balls" in my output
+
+1703370300
+torque!~tachyon@user/torque
+since the function returns `void`, you don't need the `_ =`. That was used for the `c_main` function to discard its int return result (which you normally probably would check rather than discarding), however this does not explain why you don't see output
+
+1703370341
+torque!~tachyon@user/torque
+are you still calling `c_main` in your zig main, and are you calling it before your print function?
+
+1703370348
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+yeah, that was my intiution, but i figured i'd start by changing as little as possible
+
+1703370367
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm no longer calling `c_main` at all
+
+1703370375
+torque!~tachyon@user/torque
+ok
+
+1703370437
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but the call to `balls` is where the call to `c_main` used to be
+
+1703370468
+torque!~tachyon@user/torque
+you may need to add `exe.linkLibC()` to your build.zig. However, I'd expect there to be a linker error if it weren't already doing this
+
+1703370480
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i've already done that
+
+1703370494
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+had to do that for the previous example to work
+
+1703370730
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+oh
+
+1703370737
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i had to flush the output
+
+1703370739
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+lol
+
+1703370750
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+that one's on me
+
+1703370854
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so what is the primary draw of zig to someone like you?
+
+1703370902
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+rust looks like robot vomit
+
+1703370926
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+c++ *is* robot vomit
+
+1703370941
+torque!~tachyon@user/torque
+lol
+
+1703370975
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+d is cool, but the (lack of mature) tooling gets tiresome
+
+1703371023
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so why zig?
+
+1703371040
+torque!~tachyon@user/torque
+for me, a certain aspect of it is the language design philosophy. In general I think zig is a much more digestible language than rust and C++ (as you've alluded to)
+
+1703371064
+torque!~tachyon@user/torque
+and even though there are some features I wish it had in general if it added features willy nilly I don't think I'd like it as much
+
+1703371087
+torque!~tachyon@user/torque
+frankly the feature that originally caught my attention in zig was its error handling syntax
+
+1703371130
+torque!~tachyon@user/torque
+I've written a fair amount of C and would even go as far as saying I generally like C, but having spent the last 6 months writing zig, it would be hard to go back to C
+
+1703371193
+torque!~tachyon@user/torque
+one of the reasons I picked it up for a more serious project is the cross-compilation support. At work I have to target windows for some things but I develop primarily on linux or mac machines. Being able to do `zig build -Dtarget=x86_64-windows` and get a working windows executable kicks major ass
+
+1703371219
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+llvm ftw
+
+1703371260
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+as someone who generally appreciates oo, will i hate zig?
+
+1703371291
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+zig has no oo, right? like at all?
+
+1703371304
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+not even member functions?
+
+1703371309
+torque!~tachyon@user/torque
+hmm, dunno. I appreciate OO in the sense that I tend to model things in my brain as objects with methods (I typically write C this way also and have also used python a lot)
+
+1703371316
+torque!~tachyon@user/torque
+zig has "methods" on structs
+
+1703371333
+torque!~tachyon@user/torque
+which aren't OO in the sense that you don't have inheritance or formal protocols
+
+1703371349
+torque!~tachyon@user/torque
+but for the style I write I find it to be very nice syntactic sugar
+
+1703371365
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+what about interfaces?
+
+1703371437
+torque!~tachyon@user/torque
+there's no formal language construct for interfaces. compile-time code can check if a struct has a specific function and try to call it (for example the std library JSON deserialization code lets you define custom deserialization methods on structs/unions/enums/etc)
+
+1703371475
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so would that be zig's general answer for the dry principle?
+
+1703371498
+torque!~tachyon@user/torque
+the other way to define interfaces is the std.mem.Allocator approach which essentially is a type-erased object with a vtable
+
+1703371568
+torque!~tachyon@user/torque
+so every allocator is capable of wrapping itself into a `std.mem.Allocator` object, which then pretty much looks like a normal struct with an opaque context object
+
+1703371596
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'll have to look into that
+
+1703371608
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+that's not something i understand just reading your sentence
+
+1703371622
+torque!~tachyon@user/torque
+to be fair, I didn't explain it very well
+
+1703371644
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+it's mostly a jargon issue, probably
+
+1703371661
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+probably
+
+1703371672
+torque!~tachyon@user/torque
+most likely
+
+1703371683
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so there's some capacity for metaprogramming, it seems
+
+1703371701
+torque!~tachyon@user/torque
+I don't think zig tries to have a one size fits all approach to DRY. The language is flexible enough generally that you can write code in such a way to stay dry
+
+1703371707
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+and it also seems that zig's dry more or less depends on it?
+
+1703371725
+torque!~tachyon@user/torque
+the compile-time functionality is quite capable, and yes, I think that's a reasonable statement
+
+1703371749
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+doesn't that make things difficult to debug?
+
+1703371765
+torque!~tachyon@user/torque
+one of the main comptime features is that you can do a lot of type reflection, and it's also how you implement generic functions
+
+1703371814
+torque!~tachyon@user/torque
+in my experience, very little. The language doesn't really encourage abusing comptime, though one of my first projects ended up being very comptime-heavy, I had very few issues with it
+
+1703371839
+torque!~tachyon@user/torque
+I think it helps that the surface area of the language is itself reasonably sized so there aren't that many ways that things can go sideways
+
+1703371877
+torque!~tachyon@user/torque
+since the metaprogramming language is basically the same as the language itself, it's also (imo) a lot more intuitive than C++ templates or like AST-manipulating macros
+
+1703371924
+torque!~tachyon@user/torque
+I've found myself interleaving compile time code into runtime code quite naturally and I've found it to be quite intuitive
+
+1703371957
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+in the abstract, what would the zig approach be to the scenario wherein a have 100 object definitions with a lot of shared behavior, but with small differences here and there
+
+1703372059
+torque!~tachyon@user/torque
+that's not a question I think I could come up with a good answer to without a more concrete example. it depends on what the shared behavior is, but in many cases you could probably write a couple of functions that could manipulate all of your objects appropriately
+
+1703372082
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i know it's trendy to hate oo these days, but at least for me it's a perfect paradigm for a pretty broad range of use cases
+
+1703372109
+torque!~tachyon@user/torque
+a struct can contain a field that is another struct, so complex object hierarchies can be produced using composition rather than inheritance
+
+1703372160
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i know that at at least some level, the response has to be "change the way you structure your data", but those changes usually don't feel nearly as elegant to me
+
+1703372228
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+okay, i could probably reason my way about getting that to work
+
+1703372229
+torque!~tachyon@user/torque
+I haven't done anything involving heavy object composition in C but I have in zig and if appropriate I would certainly use that pattern again. I think it worked very nicely in C
+
+1703372240
+torque!~tachyon@user/torque
+er, I haven't done it in zig but I have in C
+
+1703372273
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+especially if methods are a thing
+
+1703372286
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but it doesn't feel as natural as inheritance
+
+1703372315
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+now, don't get me wrong, i do *not* advocate for the c++ way of doing *anything*
+
+1703372339
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+when i talk about oo, i'm not talking about c++
+
+1703372394
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but is there any talk of and/or plans for more oo principles being put into zig?
+
+1703372473
+torque!~tachyon@user/torque
+I tend to think of it in terms of the external interface, like "what function calls does the user need to make to accomplish this goal"
+
+1703372501
+torque!~tachyon@user/torque
+generally OO hides a bit more of the plumbing from you, but I don't think having to write a bit of plumbing manually is a bad thing
+
+1703372526
+torque!~tachyon@user/torque
+magic is often undesirable because one of the problems with magic is you can't explain how it works
+
+1703372604
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+generally speaking, i'm into that
+
+1703372693
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but i don't see where that principle is mutually exclusive to inheritance
+
+1703372732
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i like the idea of a small, explicit language
+
+1703372821
+torque!~tachyon@user/torque
+I don't think it's mutually exclusive either. But I think there are diminishing returns in the design space for adding features to the language
+
+1703372876
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+that's true, it's just a matter of where we decide to draw the line
+
+1703372892
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+after all, we're not writing assembly
+
+1703372928
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+anyway, i understand you've most likely nothing to do with those kinds of decisions
+
+1703372940
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+just trying to put my finger on the pulse of this project
+
+1703372940
+torque!~tachyon@user/torque
+yeah, I'm not part of the core team or anything, just a user
+
+1703372961
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+you have been very helpful and patient, and i thank you very much
+
+1703372975
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm sure i'll be back to bother you again before too long
+
+1703373008
+torque!~tachyon@user/torque
+no problem. I enjoy talking about it
+
+1703373041
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+until next time
+
+1703373047
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+take care of yourself
+
