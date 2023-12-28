@@ -1,0 +1,260 @@
+1703706771
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Hi, I tried compiling a Hello World program with zig, and the wall-clock time is reported as nearly 5s for this operation. Is this normal?
+
+1703706834
+artagnon!sid7560@id-7560.lymington.irccloud.com
+For ReleaseFast mode, the time is nearly 15s.
+
+1703707056
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Additionally, I'm unable to dump ZIR.
+
+1703707056
+artagnon!sid7560@id-7560.lymington.irccloud.com
+$ zig dump-zir hello.zig
+
+1703707056
+artagnon!sid7560@id-7560.lymington.irccloud.com
+thread 9653274 panic: integer overflow
+
+1703707056
+artagnon!sid7560@id-7560.lymington.irccloud.com
+/Users/artagnon/src/zig/src/Module.zig:2962:48: 0x10911c3ac in loadZirCacheBody (zig)
+
+1703707057
+artagnon!sid7560@id-7560.lymington.irccloud.com
+            .iov_len = header.instructions_len * 8,
+
+1703709687
+andrewrk!~andrewrk@mail.ziglang.org
+artagnon, normal for the first run. on subsequent compilations, the time is expected to be reduced thanks to the global cache.
+
+1703709720
+andrewrk!~andrewrk@mail.ziglang.org
+with -fno-llvm -fno-lld, I measure 230ms for hello world
+
+1703709731
+andrewrk!~andrewrk@mail.ziglang.org
+incremental compilation will factor into this as well when it is finished
+
+1703709745
+andrewrk!~andrewrk@mail.ziglang.org
+also you appear to be using a debug build of the compiler which will be significantly slower than a release build
+
+1703709813
+andrewrk!~andrewrk@mail.ziglang.org
+currently, when you compile hello world, you are also compiling the parts of standard library being used by hello world, including debug info parsing and stack trace printing which is useful for panics (as you can see in your output above)
+
+1703709993
+artagnon!sid7560@id-7560.lymington.irccloud.com
+What does -fno-llvm do?
+
+1703710062
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Yeah, I'm intentionally using a debug build, because I wanted to investigate the compiler.
+
+1703710151
+andrewrk!~andrewrk@mail.ziglang.org
+it makes the compiler not use the llvm backend for machine code generation
+
+1703710157
+andrewrk!~andrewrk@mail.ziglang.org
+llvm is slow
+
+1703710162
+artagnon!sid7560@id-7560.lymington.irccloud.com
+As I understand, there are two primary backends for zig: c via translate-c/aro, and llvm. What would it use then?
+
+1703710206
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Would it translate it to C and use aro to compile the C code?
+
+1703710217
+andrewrk!~andrewrk@mail.ziglang.org
+aro is a C frontend only
+
+1703710225
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Oh.
+
+1703710277
+andrewrk!~andrewrk@mail.ziglang.org
+zig is capable of lowering to C source code as well as x86_64 machine code directly. other backends are work-in-progress. the x86_64 backend is also not quite complete
+
+1703710289
+artagnon!sid7560@id-7560.lymington.irccloud.com
+So, zig depends on aro purely for the translate-c functionality.
+
+1703710312
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/17645
+
+1703710322
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Oh, I didn't see this in codegen/.
+
+1703710362
+andrewrk!~andrewrk@mail.ziglang.org
+zig depends on aro for nothing, really. it was added recently as an upcoming replacement for using clang to compile C source files and translate-c
+
+1703710369
+andrewrk!~andrewrk@mail.ziglang.org
+it's disabled by default
+
+1703710426
+artagnon!sid7560@id-7560.lymington.irccloud.com
+I see.
+
+1703710464
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Ah, it's under src/arch.
+
+1703710509
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Can I see some ZIR? I want to understand what the issue with LLVM is: Clang zips along just fine.
+
+1703710522
+andrewrk!~andrewrk@mail.ziglang.org
+zig ast-check -t foo.zig
+
+1703710600
+andrewrk!~andrewrk@mail.ziglang.org
+clang isn't compiling libc along with hello world
+
+1703710624
+andrewrk!~andrewrk@mail.ziglang.org
+it's not really an apples to apples comparison
+
+1703710642
+artagnon!sid7560@id-7560.lymington.irccloud.com
+So why is zig? Shouldn't a pre-compiled libc already exist in zig's build?
+
+1703710668
+andrewrk!~andrewrk@mail.ziglang.org
+no because zig supports providing libc for a huge matrix of target combinations that clang can only dream of
+
+1703710682
+andrewrk!~andrewrk@mail.ziglang.org
+so it is compiled lazily and cached
+
+1703710729
+andrewrk!~andrewrk@mail.ziglang.org
+here's the performance roadmap: https://github.com/ziglang/zig/projects/6
+
+1703710757
+andrewrk!~andrewrk@mail.ziglang.org
+the two most important things are the first two columns: ditching llvm and incremental compilation. when those are done, zig will be the fastest programming environment in existence
+
+1703710778
+artagnon!sid7560@id-7560.lymington.irccloud.com
+I see, so if you want to cross-compile, you don't need to cross-compile the libc separately; it'll be compiled as part of the application.
+
+1703710795
+andrewrk!~andrewrk@mail.ziglang.org
+well, if you're targeting linux or windows, libc is not actually needed at all
+
+1703710849
+andrewrk!~andrewrk@mail.ziglang.org
+the default panic handler is a bit heavyweight and is currently rebuilt along with every compilation 
+
+1703710870
+andrewrk!~andrewrk@mail.ziglang.org
+gotta have stack trace printing tho
+
+1703710871
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Okay, let me ask a more naive question: why does zig need a libc at all?
+
+1703710876
+andrewrk!~andrewrk@mail.ziglang.org
+it doesn't
+
+1703710885
+andrewrk!~andrewrk@mail.ziglang.org
+it's off by default
+
+1703710907
+andrewrk!~andrewrk@mail.ziglang.org
+but a lot of other people's code depends on libc and so if you want to use their code you need a libc
+
+1703710979
+andrewrk!~andrewrk@mail.ziglang.org
+also libc is required on some OS targets because that's the only stable syscall ABI
+
+1703711027
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Okay, I'm confused now. Why is the hello-world program compilation with LLVM slow currently, if zig's not compiling libc?
+
+1703711103
+andrewrk!~andrewrk@mail.ziglang.org
+don't take this the wrong way, but please review this conversation and you will find the answer in there 2x
+
+1703711180
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Right, my bad.
+
+1703711186
+andrewrk!~andrewrk@mail.ziglang.org
+in summary: llvm is compiling a lot of IR from the zig standard library with every compilation. clang hello world is compiling only a tiny amount of LLVM IR because it uses lbc
+
+1703711188
+andrewrk!~andrewrk@mail.ziglang.org
+*libc
+
+1703711240
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Right, makes sense. Zig implemented its own stdlib.
+
+1703711288
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Can I additionally see some MIR for my target?
+
+1703711652
+andrewrk!~andrewrk@mail.ziglang.org
+--debug-log <scope>
+
+1703711667
+andrewrk!~andrewrk@mail.ziglang.org
+you can see the possible scopes by grepping for std.log.scoped
+
+1703711841
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Cool! Thanks for your help :) I'll continue investigating.
+
+1703711925
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Btw, what is this "Semantic Analysis" step before zig codegens?
+
+1703712024
+artagnon!sid7560@id-7560.lymington.irccloud.com
+It's not present in ReleaseFast. I suppose it's checking for ub, and similar errors?
+
+1703712074
+artagnon!sid7560@id-7560.lymington.irccloud.com
+I clock 290ms in ReleaseFast with my Debug build of zig with llvm/lld disabled.
+
+1703712168
+artagnon!sid7560@id-7560.lymington.irccloud.com
+Oh, also: isn't there the issue of having to re-implement (parts of) the LLVM optimization pipeline in zig?
+
+1703717869
+andrewrk!~andrewrk@mail.ziglang.org
+artagnon, semantic analysis is type checking, compile-time expression evaluation, and similar kinds of abstract interpretation
+
+1703717897
+andrewrk!~andrewrk@mail.ziglang.org
+anything llvm can do, zig can (eventually) do better
+
+1703720685
+holst!~holst@holst.farscape.se
+I am trying to use std.http.protocol.HeadersParser, but I only have 30 minutes of XP with zig. How do I consume a Connection, via read(connection, ...)?
+
+1703720700
+holst!~holst@holst.farscape.se
+/usr/lib/zig/std/http/protocol.zig:529:33: error: no field or member function named 'fill' in 'net.StreamServer.Connection'
+
+1703721059
+andrewrk!~andrewrk@mail.ziglang.org
+holst, perhaps looking at a simple working example would be helpful. I don't have one handy, does anyone else here have one?
+
