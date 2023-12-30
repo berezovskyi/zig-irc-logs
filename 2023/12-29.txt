@@ -1,0 +1,440 @@
+1703843124
+dy!sid3438@user/dy
+What is the best way to go about globbing in a build.zig, should that be needed?
+
+1703854012
+drbeco!~beco@user/beco
+hi there
+
+1703877876
+andrewrk!~andrewrk@mail.ziglang.org
+hi drbeco
+
+1703877904
+andrewrk!~andrewrk@mail.ziglang.org
+dy, I'll think about adding globbing but for the time being the strategy is to explicitly list every file
+
+1703877910
+andrewrk!~andrewrk@mail.ziglang.org
+it's not as bad as you might think
+
+1703877926
+dy!sid3438@user/dy
+Yup, that's what I did. Works fine.
+
+1703877970
+Earnestly!~earnest@user/earnestly
+It also avoids the problem of unstable inputs wrt reproducible builds, workarounds glob + sort. Not so nice
+
+1703877980
+Earnestly!~earnest@user/earnestly
+workaround is*
+
+1703878066
+dy!sid3438@user/dy
+I did also run into some confusion with Build.addModule/createModule and Step.addModule/addAnonymousModule but I think that's just me.
+
+1703878085
+dy!sid3438@user/dy
+I ended up just condensing the dependency and all of its transitive deps into one build (which is for my case probably fine for now).
+
+1703878093
+dy!sid3438@user/dy
+Seems to work fine: https://gist.github.com/DylanLukes/cf64e15880438d4b96a97e2dfe18553f
+
+1703878142
+dy!sid3438@user/dy
+There is one very odd thing I noticed though. I have to set `bgfx.defineCMacro("BGFX_CONFIG_RENDERER_VULKAN", "0");` for other reasons, but _absent setting any c macros at all I get a very odd -wint-in-bool-context error out of a macro.
+
+1703878182
+dy!sid3438@user/dy
+https://gist.github.com/DylanLukes/33e02059a720567c1c9bdfb6e661bcfc
+
+1703878204
+dy!sid3438@user/dy
+At some point I'll try to minimize it. Not sure why that would appear and then once there's a single preprocessor define, vanish.
+
+1703878215
+dy!sid3438@user/dy
+(It's not even directly related to that macro, it's just used somewhat nearby)
+
+1703878285
+dy!sid3438@user/dy
+Had enough fun figuring stuff out now though, can revisit once there's actually something useful translated over from the C codebase...
+
+1703878594
+andrewrk!~andrewrk@mail.ziglang.org
+dy, `zig reduce` isn't done yet but a few more enhancements and it should be a nice tool to help minimize a problem like this
+
+1703878617
+dy!sid3438@user/dy
+`zig reduce`? 
+
+1703878621
+andrewrk!~andrewrk@mail.ziglang.org
+actually if it's C code you can just use already existing C reduce tools
+
+1703878651
+dy!sid3438@user/dy
+It is, but the issue is via CPP macro-expansion.
+
+1703878674
+andrewrk!~andrewrk@mail.ziglang.org
+C reduce: https://github.com/csmith-project/creduce
+
+1703878681
+dy!sid3438@user/dy
+Does seem odd to me as I've compiled this code on multiple platforms with various clangs and gccs and never had such an issue, even with pretty aggressive warnings and -Werror enabled.
+
+1703878690
+andrewrk!~andrewrk@mail.ziglang.org
+there is also `zig reduce` but it's not quite feature complete yet
+
+1703878740
+dy!sid3438@user/dy
+Also, is there a more ergonomic way to do path concatenation than `b.pathJoin` 😅?
+
+1703878763
+dy!sid3438@user/dy
+I also found myself wishing there was some sort of compile-time append-only structure for building up e.g. lists of paths dynamically.
+
+1703878774
+dy!sid3438@user/dy
+Maybe a little project for me to undertake.
+
+1703878781
+andrewrk!~andrewrk@mail.ziglang.org
+one strategy is to open the directory instead and then do operations on the open directory handle
+
+1703878790
+dy!sid3438@user/dy
+(DoublyLinkedList was awkward, ArrayList works but still a lot of cruft)
+
+1703878801
+andrewrk!~andrewrk@mail.ziglang.org
+you can use ++ to concatenate arrays if the lengths are compile-time known
+
+1703878822
+dy!sid3438@user/dy
+Which type of arrays? Maybe I was just typing things wrong.
+
+1703878890
+dy!sid3438@user/dy
+(Apologies, I just started learning in earnest last night so I'm still not sure where to look for things in the standard library.)
+
+1703878932
+dy!sid3438@user/dy
+(Ran through ziglings but `std` is quite large. I've mostly just been poking around large/old projects to look for usage hints.)
+
+1703878945
+andrewrk!~andrewrk@mail.ziglang.org
+yeah looking at examples is the fastest way to learn for me too
+
+1703878963
+andrewrk!~andrewrk@mail.ziglang.org
+I think it's worth reading the language reference: https://ziglang.org/documentation/master/
+
+1703878975
+dy!sid3438@user/dy
+By arrays do you mean something I can initialize with tuple-syntax?
+
+1703878976
+andrewrk!~andrewrk@mail.ziglang.org
+at least the table of contents so you know what to come back for
+
+1703878991
+dy!sid3438@user/dy
+And, in that case is there an explicit type annotation I need or should the compiler infer something append-friendly?
+
+1703879073
+dy!sid3438@user/dy
+I was trying something like:
+
+1703879076
+dy!sid3438@user/dy
+var include_paths = .{ "foo/bar", "foo/baz" };
+
+1703879076
+dy!sid3438@user/dy
+include_paths = include_paths ++ .{"foo/quux"};
+
+1703879115
+dy!sid3438@user/dy
+`error: expected type 'struct{comptime *const [7:0]u8 = "foo/bar", comptime *const [7:0]u8 = "foo/baz"}', found 'struct{comptime *const [7:0]u8 = "foo/bar", comptime *const [7:0]u8 = "foo/baz", comptime *const [8:0]u8 = "foo/quux"}'`
+
+1703879141
+dy!sid3438@user/dy
+Probably using tuples is not right :p.
+
+1703879220
+dy!sid3438@user/dy
+I also tried `var include_paths = [_]*const [:0]u8{ "foo/bar", "foo/baz" };`
+
+1703879242
+dy!sid3438@user/dy
+But then I get `error: expected type '*const [:0]u8', found '*const [7:0]u8'`.
+
+1703879254
+dy!sid3438@user/dy
+(so close, yet so far)
+
+1703879455
+torque!~tachyon@user/torque
+a slice is already a pointer, so your type declaration has too many layers of pointer
+
+1703879469
+andrewrk!~andrewrk@mail.ziglang.org
+why are you trying to do so much array manipulation? can't you just call foo.addIncludePath() multiple times?
+
+1703879505
+dy!sid3438@user/dy
+I can, but I had a use for wanting that list of include paths for other purposes than addIncludePath.
+
+1703879514
+torque!~tachyon@user/torque
+`var include_paths = [_][:0]const u8{ "foo/bar", "foo/baz" };` would be the correct type there
+
+1703879543
+andrewrk!~andrewrk@mail.ziglang.org
+or perhaps std.ArrayList([]const u8)
+
+1703879559
+torque!~tachyon@user/torque
+the type of a string literal is a pointer to an array, which can be coerced into a slice
+
+1703879581
+dy!sid3438@user/dy
+String literal is `*const[:0]u8` yes?
+
+1703879594
+dy!sid3438@user/dy
+And can coerce to `[]const u8`.
+
+1703879623
+dy!sid3438@user/dy
+(er, `*const [n:0]u8` for comptime n` rather)
+
+1703879639
+torque!~tachyon@user/torque
+`*const [:0]u8` is a pointer to a constant 0-terminated slice of mutable u8
+
+1703879670
+torque!~tachyon@user/torque
+`*const [n:0]u8` is a pointer to a constant 0-terminated array of length n
+
+1703879690
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/master/#String-Literals-and-Unicode-Code-Point-Literals
+
+1703879718
+dy!sid3438@user/dy
+Alright, looks like using `[_][:0]const u8` works fine so long as I do const SSA.
+
+1703879736
+dy!sid3438@user/dy
+Just can't change the type of a var with a fixed length by `arr = arr ++ ...`.
+
+1703879801
+dy!sid3438@user/dy
+`const incl_paths_1 = ...`, `const incl_paths_2 = incl_paths_1 ++ ...` works fine with [_][:0]const u8. It's not ideal but it'll do.
+
+1703879826
+torque!~tachyon@user/torque
+that's because the length of the array is part of its type
+
+1703879831
+dy!sid3438@user/dy
+Yup. 
+
+1703879860
+torque!~tachyon@user/torque
+the ++ concatenation operator works on comptime-known slices as well
+
+1703879884
+dy!sid3438@user/dy
+In this case, not necessarily comptime known since the appends could depend on the platform.
+
+1703879892
+torque!~tachyon@user/torque
+however, as was pointed out earlier at that point you may want to use std.ArrayList
+
+1703879904
+dy!sid3438@user/dy
+Yeah, that's what I ended up trying and that worked.
+
+1703879909
+torque!~tachyon@user/torque
+target platform should be comptime-known
+
+1703879937
+torque!~tachyon@user/torque
+(in fact it has to be)
+
+1703880029
+dy!sid3438@user/dy
+From `const target = b.standardTargetOptions(.{});`?
+
+1703880055
+dy!sid3438@user/dy
+I don't believe I can make that comptime. 
+
+1703880086
+dy!sid3438@user/dy
+(`const target = comptime b.standardTargetOptions(.{});` does not evalute.)
+
+1703880129
+dy!sid3438@user/dy
+I don't see why it would be comptime known anyways, since there's an exposed flag. 
+
+1703880155
+dy!sid3438@user/dy
+(This is in a build.zig :p)
+
+1703880185
+torque!~tachyon@user/torque
+ah right
+
+1703880199
+torque!~tachyon@user/torque
+it's comptime known to the main program but indeed runtime known to the build system
+
+1703880210
+dy!sid3438@user/dy
+Yes.
+
+1703880416
+dy!sid3438@user/dy
+Is there any way to get around the length being a part of the type and allow appends on a var using sentinel-termination?
+
+1703880427
+dy!sid3438@user/dy
+(that way the actual length isn't part of the type at any given point in the program)
+
+1703880495
+dy!sid3438@user/dy
+Probably not, considering how that would have to work (or not work rather) without heap allocs.
+
+1703880882
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/master/#Sentinel-Terminated-Pointers
+
+1703880889
+dy!sid3438@user/dy
+Yeah, I have it open :).
+
+1703880911
+andrewrk!~andrewrk@mail.ziglang.org
+sounds like a match for what you are asking, no?
+
+1703880934
+dy!sid3438@user/dy
+Yeah but it looks like sentinel-terminated many-item pointers don't work with array initialization.
+
+1703880937
+dy!sid3438@user/dy
+Cant incant this bad juju:
+
+1703880941
+dy!sid3438@user/dy
+`const include_paths = [*:null]?[]const u8 { ... };`
+
+1703880957
+torque!~tachyon@user/torque
+`var expandable: [][:0]const u8 = &.{"abc", "def"}`
+
+1703881003
+andrewrk!~andrewrk@mail.ziglang.org
+aren't you using the build system? you don't need sentinel terminated pointers for that. the build system uses []const u8 everywhere
+
+1703881015
+dy!sid3438@user/dy
+Ah hmm, I hadn't considered putting the type on the left and using a reference.
+
+1703881055
+dy!sid3438@user/dy
+andrewrk: I wanted to sentinel terminate the array _of strings_ itself, so that I can add strings to it. The exact type of the contents isn't so important, could be ints.
+
+1703881070
+andrewrk!~andrewrk@mail.ziglang.org
+if you have a list of something and you want to add to it, you want std.ArrayList for sure
+
+1703881090
+dy!sid3438@user/dy
+Yeah, that's what I figured, just playing around as a learning exercise mostly.
+
+1703881115
+torque!~tachyon@user/torque
+you don't need sentinel termination to know the length
+
+1703881123
+andrewrk!~andrewrk@mail.ziglang.org
+I see. well the types are fully composeable. just add more stuff to the left
+
+1703881125
+dy!sid3438@user/dy
+Right, but I want to erase the length from the type.
+
+1703881138
+torque!~tachyon@user/torque
+a slice has a known length that is not part of the type
+
+1703881139
+dy!sid3438@user/dy
+Otherwise it could depending on different code paths have a different length in the type.
+
+1703881146
+torque!~tachyon@user/torque
+hence a slice can be resized without changing its type
+
+1703881163
+torque!~tachyon@user/torque
+a slice is essentially a fat pointer that contains both a pointer to some data and a length
+
+1703881191
+dy!sid3438@user/dy
+ think there's some subtlety to whether there's a type annotation + initialization with &.{} versus no type annot and using array initialization I'm yet to grok.
+
+1703881215
+dy!sid3438@user/dy
+The `expandable` you posted above does not appear to work for me. 
+
+1703881225
+torque!~tachyon@user/torque
+yeah, I missed a const
+
+1703881256
+dy!sid3438@user/dy
+`var expandable: []const []const u8 = &.{ "abc", "def" };`
+
+1703881256
+dy!sid3438@user/dy
+`expandable = expandable ++ &.{ "ghi", "jkl" };`
+
+1703881266
+dy!sid3438@user/dy
+unable to resolve comptime value, slice value being concatenated must be comptime-known
+
+1703881315
+dy!sid3438@user/dy
+(Should just use ArrayList, but curious on the limits here.)
+
+1703881335
+andrewrk!~andrewrk@mail.ziglang.org
+++ requires compile-time known length
+
+1703881339
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/Mo1KdGo31
+
+1703881391
+torque!~tachyon@user/torque
+yeah, as you can see, this only works in a comptime context
+
+1703881451
+dy!sid3438@user/dy
+Yup, I see.
+
+1703881469
+dy!sid3438@user/dy
+~the more you know~ 🌈 ⭐
+
