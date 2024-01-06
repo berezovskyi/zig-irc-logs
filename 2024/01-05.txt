@@ -1,0 +1,136 @@
+1704414585
+andrewrk!~andrewrk@mail.ziglang.org
+motiejus, ping! #17702 is merged
+
+1704429987
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm trying to understand how/where Tigerbeetle does its single memory allocation at startup (assuming that is still the case), as I see various allocators and inits around the codebase; does anyone know?
+
+1704430149
+motiejus!~motiejus@88.223.107.21
+🥳
+
+1704431710
+ifreund!2940d10f8b@user/ifreund
+tsujp: no memory is allocated once the main loop is entered
+
+1704431761
+ifreund!2940d10f8b@user/ifreund
+those init() functions you see that allocate memory are called only during startup
+
+1704442240
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: ah gotcha, thank you!
+
+1704442278
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Small x-post (unintentional), but it relates directly to Zig as the implementation language of choice
+
+1704442322
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm writing a stack-based bytecode virtual machine (first time) and my idea is to have a single long-running process (the vm interpreter) which can be fed bytecode to execute. What would be the best interface to feed that input? It feels like using `io_uring` would be a good idea since it's interface agnostic? It could be bound to a file, or a socket etc.
+
+1704442352
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Long-term (if my project is good) it may be useful to be embedded within other codebases (used as a library) so I am not sure how to structure this without shooting myself in the foot
+
+1704442362
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I don't care about Windows support
+
+1704448103
+jdanek!~jdanek@dnk.mamutnet.net
+tsujp, maybe, give it a C-API and hide the IPC mechanism? and then decide whether you want to expose to its clients that the IPC is async; other than that the precise choice of particular ICP should not matter, I think?
+
+1704448191
+jdanek!~jdanek@dnk.mamutnet.net
+to be honest, I don't much see a point of doing IPC. Is it to be something like a chrome sandbox? To have the scripts running in a sandbox? https://chromium.googlesource.com/chromium/src/+/b4730a0c2773d8f6728946013eb812c6d3975bec/docs/design/sandbox.md
+
+1704453220
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+jdanek: well each program you feed the VM will have it's own context, so its not a sandbox for security reasons but rather a "different context per program" approach.
+
+1704453283
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I was thinking on main process startup some large amount of memory is allocated (for arguments sake let's say 1 GiB) ala Tigerbeetle and that would (for arguments sake) allow you to run 256 programs in parallel after which unless you've enabled dynamic memory allocation they enter a queue of programs to execute (because no more memory to accomodate >256 is enabled)
+
+1704453336
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Anyway let's say you're just running 2 programs called A and B, the fact that program A has pushed values 5 and 4 onto it's stack and added them to yield 9 should not affect program B which may be pushing 420 and 69 to yield 489
+
+1704453349
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Hence the "different context each"
+
+1704453477
+jdanek!~jdanek@dnk.mamutnet.net
+tsujp, in that case, why not run the vm directly in each process and avoid any IPC? Is it that you want to share the preallocated memory between all VM instances (and having single vm process gives you that automatically)?
+
+1704454345
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+jdanek: that was my thinking, mostly for speed of startup
+
+1704464957
+jdanek!~jdanek@dnk.mamutnet.net
+tsujp, that reminds me of Android's zygote. They have prewarmed VM process around and when they want to start new android app, they fork the zygote to start faster and share memory (with copy-on-write that the os provides) https://developer.android.com/topic/performance/memory-overview#SharingRAM
+
+1704468825
+dch!sid1310@couchdb/committer/dch
+any ideas on zig 0.12.0 might be release?
+
+1704468905
+dch!sid1310@couchdb/committer/dch
+the last issue tagged 0.12.0 was merged, so I'm wondering when that might be planned, if its not too early
+
+1704469168
+jdanek!~jdanek@dnk.mamutnet.net
+I see 60 open 0.12 issues still, at https://github.com/ziglang/zig/milestone/23
+
+1704482016
+andrewrk!~andrewrk@mail.ziglang.org
+working on it
+
+1704497539
+martin2020!~user@2601:406:4000:181b:82c1:5319:887:b483
+Hi, is there smart/efficient way to get a readonly file pointer to a file included with @embed()? 
+
+1704497612
+martin2020!~user@2601:406:4000:181b:82c1:5319:887:b483
+The C API I am using takes a file pointer, but I would like to embed the file
+
+1704497707
+martin2020!~user@2601:406:4000:181b:82c1:5319:887:b483
+I was able to do this in pure C by using xxd to convert the file into a C header file, then using fmemopen to get a FILE*, but I am thinking maybe there is a more Zig way to do it?
+
+1704497857
+ifreund!2940d10f8b@user/ifreund
+martin2020: you can pass the pointer and length of the memory returned by @embedFile() to fmemopen()
+
+1704497937
+ifreund!2940d10f8b@user/ifreund
+the FILE type is a libc thing, so you need to use libc to create it and work with it
+
+1704498039
+martin2020!~user@2601:406:4000:181b:82c1:5319:887:b483
+Thanks, ifreund. I think that's probably at least as good as what I was doing in C. Do you think it makes sense to do it that way?
+
+1704498064
+martin2020!~user@2601:406:4000:181b:82c1:5319:887:b483
+I guess answering that probably requires more context, but thanks anyway :)
+
+1704498231
+ifreund!2940d10f8b@user/ifreund
+I'd say that using @embedFile() is nicer than converting the file to a C header with xdd
+
+1704498264
+TheBlueWizard!~TheBlueWi@pool-173-66-223-114.washdc.fios.verizon.net
+I suppose some of you are testing zig by rewriting some app (originally in C) to see how it is working out....am I right?
+
+1704498361
+ifreund!2940d10f8b@user/ifreund
+I just started the new project I wanted to work on in Zig to see how it worked out. 3+ years later it's still going strong
+
+1704498388
+ifreund!2940d10f8b@user/ifreund
+I was going to do it in C but thought I might as well give Zig a chance first
+
