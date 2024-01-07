@@ -1,0 +1,180 @@
+1704537984
+not_reserved!~not_reser@185.153.177.184
+starting to learn zig. what's the way that you all deal with unused argument errors in partially written functions, that you want to compile and test anyway
+
+1704538071
+phaleth!~phaleth@user/phaleth
+try assigning it to underscore
+
+1704538172
+not_reserved!~not_reser@185.153.177.184
+ah, yes, thanks
+
+1704548091
+a51!a51@gateway/vpn/protonvpn/a51
+error: Your Zig version v0.10.1 does not meet the
+
+1704548093
+a51!a51@gateway/vpn/protonvpn/a51
+minimum build requirement
+
+1704577018
+sskras!sid542048@id-542048.tinside.irccloud.com
+Hey folks. I tried bootstrapping Zig without LLVM again. This time it fails with different error:
+
+1704577020
+sskras!sid542048@id-542048.tinside.irccloud.com
+lib/std/crypto/tlcsprng.zig:82:13: error: cannot assign to constant
+
+1704577038
+sskras!sid542048@id-542048.tinside.irccloud.com
+            wipe_mem = os.mmap(
+
+1704577038
+sskras!sid542048@id-542048.tinside.irccloud.com
+            ^~~~~~~~
+
+1704577058
+sskras!sid542048@id-542048.tinside.irccloud.com
+Is that know thing, or should I file new issue?
+
+1704577293
+andrewrk!~andrewrk@mail.ziglang.org
+sskras, hmm we have the x86_64-linux CI script ensuring that this process completes successfully. can you share more about your environment?
+
+1704577339
+andrewrk!~andrewrk@mail.ziglang.org
+here's what gets tested with every commit: https://github.com/ziglang/zig/blob/42389cb9c58cfe71db055142eb7b8cc15193ddf9/ci/x86_64-linux-debug.sh#L25-L27
+
+1704577345
+sskras!sid542048@id-542048.tinside.irccloud.com
+It's all the same Ubuntu as mentioned in my older issue: https://github.com/ziglang/zig/issues/18050
+
+1704577368
+sskras!sid542048@id-542048.tinside.irccloud.com
+I could only add that it runs in a OpenVZ container. I hoped that shouldn't have any impact.
+
+1704577451
+andrewrk!~andrewrk@mail.ziglang.org
+which commit did you last try this with?
+
+1704577547
+sskras!sid542048@id-542048.tinside.irccloud.com
+It's 42389cb9c (I think newest ATM(
+
+1704577569
+andrewrk!~andrewrk@mail.ziglang.org
+yeah that's brand spanking new
+
+1704577597
+andrewrk!~andrewrk@mail.ziglang.org
+hmm maybe I can try to reproduce your results in a docker container. so it's ubuntu 20.04 yeah?
+
+1704577610
+sskras!sid542048@id-542048.tinside.irccloud.com
+2 months ago it failed with a very different message, so I am not sure if it's worth adding a new issue.
+
+1704577622
+andrewrk!~andrewrk@mail.ziglang.org
+we can continue to use this #18050, no problem
+
+1704577662
+sskras!sid542048@id-542048.tinside.irccloud.com
+Description:    Ubuntu 20.04.2 LTS
+
+1704577698
+sskras!sid542048@id-542048.tinside.irccloud.com
+I am going to try the short cmd from the line #27 that you linked
+
+1704577868
+andrewrk!~andrewrk@mail.ziglang.org
+I'm trying it too in a docker container for ubuntu:focal
+
+1704578019
+sskras!sid542048@id-542048.tinside.irccloud.com
+Docker is quite a different beast from OpenVZ, so I have no idea if the build would behave the same on this host (the provider's machine) but using different technology to run guests... Let's see.
+
+1704578071
+andrewrk!~andrewrk@mail.ziglang.org
+it shouldn't really matter if it is executing inside a virtual environment or not
+
+1704578431
+sskras!sid542048@id-542048.tinside.irccloud.com
+True. But this service I use feels a bit strangely (caps CPU and Disk I/O in a very brutal way). Usually I use pkgsrc system to build different versions of GCC, and here this build system already experienced some random failures with messages like "cannot fork" or "resource unavailable" to me several times. But after rerunning the build it continues just fine. So that might have been some revealed race conditions.
+
+1704578442
+sskras!sid542048@id-542048.tinside.irccloud.com
+While in Zig's case it's always the same.
+
+1704578484
+sskras!sid542048@id-542048.tinside.irccloud.com
+So maybe that's unrelated.
+
+1704578522
+sskras!sid542048@id-542048.tinside.irccloud.com
+Do you know what distro is used for running the CI script?
+
+1704578750
+andrewrk!~andrewrk@mail.ziglang.org
+debian
+
+1704578757
+andrewrk!~andrewrk@mail.ziglang.org
+basically the same as ubuntu
+
+1704578797
+andrewrk!~andrewrk@mail.ziglang.org
+sskras, can you update that issue's original comment with up to date information? (version used, error output, etc)
+
+1704578822
+sskras!sid542048@id-542048.tinside.irccloud.com
+Sure
+
+1704579068
+sskras!sid542048@id-542048.tinside.irccloud.com
+Ah, I see that I use `./bootstrap build` and CI script uses just `./bootstrap`. Could that make the difference?
+
+1704579141
+andrewrk!~andrewrk@mail.ziglang.org
+when I first made that bootstrap script, I had it also accept args to forward to zig build after it was done but I decided later to simplify it. now the bootstrap executable ignores all args
+
+1704579180
+sskras!sid542048@id-542048.tinside.irccloud.com
+Ack
+
+1704579542
+sskras!sid542048@id-542048.tinside.irccloud.com
+Added a comment. Anything's missing?
+
+1704579752
+sskras!sid542048@id-542048.tinside.irccloud.com
+I see your comment, that's strange. Could you please also share the output of lsb_release -d (if any) ?
+
+1704579852
+andrewrk!~andrewrk@mail.ziglang.org
+you can easily reproduce this environment with `docker run -it ubuntu:focal`
+
+1704579892
+andrewrk!~andrewrk@mail.ziglang.org
+I think that's as much as I'm willing to look into it currently, sorry. I have a lot of other tasks to get to today
+
+1704580053
+sskras!sid542048@id-542048.tinside.irccloud.com
+Thanks, that's quite an idea – running Docker container inside OpenVZ container :)
+
+1704580065
+sskras!sid542048@id-542048.tinside.irccloud.com
+Will try.
+
+1704580524
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not suggesting using docker as a workaround. rather, I'm using it to try to reproduce your environment. since it worked fine, I think you might need to dig around on your end to figure out what's different
+
+1704580633
+sskras!sid542048@id-542048.tinside.irccloud.com
+Sure, now it's just the quickest way for me to try your recipe. If that works, differences will be right at my hand. All's fine :)
+
+1704580700
+sskras!sid542048@id-542048.tinside.irccloud.com
+(I am running on Windows ATM and short on space, so no VMs right now)
+
