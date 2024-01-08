@@ -1,0 +1,208 @@
+1704601149
+not_reserved!~not_reser@185.153.177.185
+in the documentation, it says about packed structs: "Fields remain in the order declared, least to most significant"
+
+1704601180
+not_reserved!~not_reser@185.153.177.185
+so packed struct layout in memory is in reverse order on machines of opposite endianness?
+
+1704602553
+torque!~tachyon@user/torque
+I believe that's true
+
+1704602576
+torque!~tachyon@user/torque
+a packed struct is basically just an integer
+
+1704602838
+not_reserved!~not_reser@185.153.177.185
+i hope this is true, it ought to be, because otherwise type punning with packed structs would depend on endianness
+
+1704602928
+not_reserved!~not_reser@185.153.177.185
+(this would also mean that getting a pointer to the first field of the struct and traversing it with pointer arithmetic is endianness-dependent, but that is a ridiculous thing to do)
+
+1704604222
+ifreund!2940d10f8b@user/ifreund
+not_reserved: packed structs are implemented in terms of a backing integer type and fields are in order from least to most significant bit
+
+1704604271
+ifreund!2940d10f8b@user/ifreund
+the layout across multiple bytes in memory is the same as that of the backing integer type for the target endianess
+
+1704606912
+braewoods_!~braewoods@user/braewoods
+not_reserved, you always have the option of treating the data as an array of bytes and manipulating them that way.
+
+1704606947
+braewoods_!~braewoods@user/braewoods
+then endianness is handled in a manner that is independent of CPU byte order.
+
+1704607347
+not_reserved!~not_reser@185.153.177.185
+ah, of course -- i was just asking in a more general way if type punning between e.g. u32 and packed struct { u28, u4 } is endianness-independent (and it is)
+
+1704607448
+not_reserved!~not_reser@185.153.177.185
+so it is possible to hide the otherwise repetitive patterns of manual bit extraction
+
+1704609707
+braewoods_!~braewoods@user/braewoods
+not_reserved, i see. you may still need to resort to byte order swaps in some cases though.
+
+1704609766
+braewoods_!~braewoods@user/braewoods
+e.g., if the packed struct represents data from a binary file.
+
+1704610567
+mountaingoat!~mountaing@user/mountaingoat
+is there a way to catch a failed @cInclude()? i'm trying to conditionally compile some code based on whether or not headers for the library it uses is available
+
+1704610797
+torque!~tachyon@user/torque
+no, your build script will have to detect the presence of the header and set a flag
+
+1704610816
+mountaingoat!~mountaing@user/mountaingoat
+ok thanks torque 
+
+1704612181
+not_reserved!~not_reser@185.153.177.185
+something i don't understand: i have a function that takes in an argument of type [*:0] const u8. i try to increment this pointer in the body of the function, and the compiler complains that i am modifying a constant (?)
+
+1704612206
+not_reserved!~not_reser@185.153.177.185
+yet if i declare a new variable in the body of the function and just assign the argument to it, i can increment that just fine
+
+1704612363
+not_reserved!~not_reser@185.153.177.185
+oh, are all function arguments constant? that would explain it
+
+1704612410
+torque!~tachyon@user/torque
+yes
+
+1704612471
+torque!~tachyon@user/torque
+if you need to modify something in a function, it must be passed in as a pointer (which implicitly makes it an out-parameter) but the pointer itself is constant
+
+1704612524
+not_reserved!~not_reser@185.153.177.185
+is that so that the compiler can choose whether to pass by value vs by reference on its own?
+
+1704612536
+torque!~tachyon@user/torque
+I believe that's the main motivation
+
+1704612596
+torque!~tachyon@user/torque
+there are some awkward corner cases around this if one argument to a function aliases another argument (e.g. myFunction(x, &x) can have surprising results)
+
+1704613500
+not_reserved!~not_reser@185.153.177.185
+hm, that is hard for me to accept
+
+1704613539
+not_reserved!~not_reser@185.153.177.185
+would make more sense if everything was passed by value and the compiler outright refused to allow passing arguments that it considers too large
+
+1704613551
+not_reserved!~not_reser@185.153.177.185
+but i probably don't see some aspect of the full picture
+
+1704613633
+torque!~tachyon@user/torque
+note that the aliasing issues are known design flaws that are planned to be addressed in some way before the language reaches 1.0
+
+1704613779
+torque!~tachyon@user/torque
+https://www.youtube.com/watch?v=dEIsJPpCZYg this talk is pretty interesting if you're curious about the topic
+
+1704614080
+LemonDrop!~presentfa@185.156.46.162
+"Too large" depends on platform, calling convention and etc so it'd be very annoying if your code just randomly wouldn't compile in such cases. C's approach is to always pass by value (at the cost of performance), Zig's is just to automatically do the "right thing". IMO this is better anyways because personally at least I always spent a ton of time worrying about if passing by value or by pointer in C
+
+1704614082
+LemonDrop!~presentfa@185.156.46.162
+was optimal for a given thing, in Zig I can just worry about if it's mutable or immutable and let the compiler do the rest (as usually it will know better).
+
+1704614283
+not_reserved!~not_reser@185.153.177.185
+ah, i hadn't considered that "too large" depends on the platform and so the same code wouldn't always compile
+
+1704614343
+LemonDrop!~presentfa@185.156.46.162
+Yeah I mean there's no such thing as too large in what can theoretically be passed (until you hit a stack overflow I guess), but I assume in this case you mean "too large to be passed effeciently" which will depend on how many registers the architecture in question has and whatnot.
+
+1704614445
+LemonDrop!~presentfa@185.156.46.162
+e.g. vectorcall will allow decently big things like SIMD vectors to be passed through the various x86 vector registers rather than being copied on/off the stack which can help performance a good bit in some cases. But of course not all platforms will have that, nor have the same sized vector registers available etc.
+
+1704614572
+LemonDrop!~presentfa@185.156.46.162
+At the end of the day it's a huge headache to have to consider such things, even simple stuff like deciding if a position vector should be passed by value or by pointer just ends up being a headache in C and I am glad I don't have to deal with that in Zig. Course, that said like was mentioned above there are some "interesting" things that can happen due to aliasing in Zig that can be annoying.
+
+1704614649
+LemonDrop!~presentfa@185.156.46.162
+Like the C mindset is that immutable parameters are copies, but you have to just get out of that way of thinking in Zig as an immutable parameter aliased through a mutable one in the same function can end up being modified since it may not be a copy if it's a big struct or something. Really though once you learn that and learn to make explicit copies in a function when you need one (rather than
+
+1704614650
+LemonDrop!~presentfa@185.156.46.162
+relying on the way parameters are passed to do it for you like in C) then it's not so bad.
+
+1704614689
+LemonDrop!~presentfa@185.156.46.162
+Though there's still a lot of performance concerns with aliasing and whatever...but that's another topic lol.
+
+1704620740
+maytha8!~quassel@pa49-196-20-23.pa.vic.optusnet.com.au
+Anyone know how to build zig without the bundled libraries in lib/?
+
+1704620854
+grayhatter!~grayhatte@user/grayhatter
+do you mean with the std library in a different directory?
+
+1704620978
+maytha8!~quassel@pa49-196-20-23.pa.vic.optusnet.com.au
+No, I mean build without using lib/libc, lib/libcxx etc.
+
+1704621030
+maytha8!~quassel@pa49-196-20-23.pa.vic.optusnet.com.au
+Using the system headers instead.
+
+1704623519
+sskras!sid542048@id-542048.tinside.irccloud.com
+Hey, tried to build Zig on a different guest with lower RAM: 4 GiB
+
+1704623528
+sskras!sid542048@id-542048.tinside.irccloud.com
+Got this:
+
+1704623530
+sskras!sid542048@id-542048.tinside.irccloud.com
+zig build-exe zig Debug native: this step declares an upper bound of 7000000000 bytes of memory, exceeding the available 4379901952 bytes of memory
+
+1704623566
+sskras!sid542048@id-542048.tinside.irccloud.com
+Can I somehow proceed here?
+
+1704624459
+sskras!sid542048@id-542048.tinside.irccloud.com
+I mean without getting more memory – that would require altering the SLA, as adding swap doesn't work in OpenVZ containers: https://unix.stackexchange.com/questions/2893/swapon-operation-not-permitted/2896#2896
+
+1704648269
+freshcoffee!~fresh@user/freshcoffee
+at this time, that particular step requires about 5.1 GiB on linux for me (above and beyond the OS overhead)
+
+1704648501
+freshcoffee!~fresh@user/freshcoffee
+I ran a few measurements of the cmake-bootstrap steps... and that bootstrap may fit within a 4.0 GiB envelope
+
+1704648545
+freshcoffee!~fresh@user/freshcoffee
+but for one reason or another, when zig (stage3 or higher) is used to build zig, it seems to want more memory
+
+1704648665
+freshcoffee!~fresh@user/freshcoffee
+I'm actually very surprised to run a zig2 -> zig3 step and maxrss came back as 2.0 GiB for me. The zig1 -> zig2 step was around 3.4 GiB mark
+
