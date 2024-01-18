@@ -1,0 +1,308 @@
+1705453972
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+andrewrk: libc, libcxx, libcxxabi, libunwind, tsan, and stuff in /lib/include.
+
+1705453972
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+I'm trying to see how I can go about packaging zig for Debian, and they prefer to remove bundled libraries and use other packages instead. If the source code is needed, then this isn't possible.
+
+1705453976
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Thanks
+
+1705455385
+Tekk!~Tekk@157.245.82.116
+maytha8: I believe those being bundled is the reason why cross compiling is sane on zig and insane elsewhere, so it'd degrade user experience to un-bundle them.
+
+1705455513
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Tekk: yes, but Debian doesn't need the ability to cross compile, as host arch == build arch
+
+1705455554
+Tekk!~Tekk@157.245.82.116
+"Debian" may not, but as a user who's installing zig I expect cross compilation to work
+
+1705455609
+Tekk!~Tekk@157.245.82.116
+If the official debian package isn't able to cross-compile C libraries to arm from x86_64 (for example) then I'd consider it a bad package. This is one of the most-advertised features of zig
+
+1705455973
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Oh, I misunderstood your point; so the bundled libs are needed for zig's cross compilation feature?
+
+1705456035
+Tekk!~Tekk@157.245.82.116
+That's my understanding. afaik the "clang" package doesn't get you cross-comp in Debian does it?
+
+1705456040
+Tekk!~Tekk@157.245.82.116
+You need to install clang-arm or w/e
+
+1705456081
+Tekk!~Tekk@157.245.82.116
+One of the reasons for the bundled libraries aiui is that they're bundled with support for outputting to all of zig's supported targets
+
+1705456230
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+No, the clang package includes cross-compilation.
+
+1705456249
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+There's no arch-specific clang packages for cross-comp
+
+1705456286
+Tekk!~Tekk@157.245.82.116
+Then I guess it might be possible? I haven't run debian in a long time but I remember having to install a specific gcc for embedded stuff back in the day
+
+1705456335
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Well, that's gcc. clang natively supports cross-comp, gcc has it split up
+
+1705456386
+Tekk!~Tekk@157.245.82.116
+At meast my brain hasn't completely gone :)
+
+1705456389
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+I'm looking at zig's readme now: "A zig installation is composed of the Zig executable and the lib/ directory"
+
+1705456427
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+So zig needs third-party source code to work (or at least build Zig projects)?
+
+1705456506
+Tekk!~Tekk@157.245.82.116
+afaik it needs it because it provides a standalone compilation environment with that. Whether or not it can be patched to use Debian's I'm not sure.
+
+1705456528
+Tekk!~Tekk@157.245.82.116
+I believe it also supports cross-libc compilation. That might be trickier to support natively through Debian packaging
+
+1705457655
+torque!~tachyon@user/torque
+zig compiles library code on demand to support cross-compilation out of the box
+
+1705457688
+torque!~tachyon@user/torque
+e.g. it will compile musl if needed to target e.g. aarch64-linux-musl from an x86_64-linux-gnu host
+
+1705457762
+torque!~tachyon@user/torque
+similar story with mingw for targeting windows
+
+1705457839
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Is there a way to get zig to use e.g. gcc-13-aarch64-linux-gnu for cross-compilation, instead of compile libs on the spot>
+
+1705457845
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+s/>/?/
+
+1705457925
+torque!~tachyon@user/torque
+not that I know of. in general the zig ecosystem assumes the c compiler is the compiled-in clang so I don't know how well it would work with gcc even if you could hack it in
+
+1705457936
+torque!~tachyon@user/torque
+however, I am not an expert
+
+1705457976
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Or clang's cross-compilation ability?
+
+1705458055
+Tekk!~Tekk@157.245.82.116
+I think it's safe to say that it'd be quite the patch to replace on-the-fly compilation for cross compiling with checking whether a cross-compiler is installed and if not erroring out or running apt
+
+1705458199
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Just add a cross-compiler to the package's dependencies
+
+1705458269
+Tekk!~Tekk@157.245.82.116
+The point is more the ripping out all the work zig does for this and replacing it with invocations of the cross-compilers
+
+1705458287
+Tekk!~Tekk@157.245.82.116
+That sounds like a recipe for the classic "I hate debian" blog post.
+
+1705458346
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Yep, then I'll probably leave everything intact :)
+
+1705458349
+Tekk!~Tekk@157.245.82.116
+Somebody's going to have a weird, bad experience and the purpose of eliminating the bundled deps is defeated
+
+1705458350
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Thanks for your help
+
+1705458357
+Tekk!~Tekk@157.245.82.116
+all good! c:
+
+1705458587
+torque!~tachyon@user/torque
+I think it's also kind of complicated by the fact that specific zig versions have specific llvm/clang dependencies. I'm not sure how well that would mesh with the debian package versioning strategy
+
+1705466442
+joeypas52!~joeypas@2601:19b:c700:4e80:f584:bd8c:4c12:35ea
+Sorry if i've sent messages already and am reasking a question, still learning how to use irc
+
+1705466488
+joeypas52!~joeypas@2601:19b:c700:4e80:f584:bd8c:4c12:35ea
+does anyone have insight on how to include modules from zig.zon using master branch, having some difficulty figuring it out
+
+1705466491
+joeypas52!~joeypas@2601:19b:c700:4e80:f584:bd8c:4c12:35ea
+Thanks!
+
+1705468723
+andrewrk!~andrewrk@mail.ziglang.org
+one of the use cases for a zig debian package would be to use it to build zig projects on debian, but not for end users of zig. for this I have an idea
+
+1705468730
+andrewrk!~andrewrk@mail.ziglang.org
+let's see if I wrote it down anywhere
+
+1705468768
+andrewrk!~andrewrk@mail.ziglang.org
+hmm unfortunately I don't think I did. I should probably do that properly at some point. but I'll briefly summarize:
+
+1705468889
+andrewrk!~andrewrk@mail.ziglang.org
+zig already ships with bootstrap.c which is a way to build zig with only a system C compiler. it will not have LLVM in this case. this build of zig does however have the C backend, which could be used to build zig packages for debian and optimize them with again the system C toolchain
+
+1705468943
+andrewrk!~andrewrk@mail.ziglang.org
+in such case you may get away with deleting some of those things from lib/ if your only intention is to use this zig debian package to build other zig projects into debian packages, and not to provide zig to the user directly
+
+1705468965
+andrewrk!~andrewrk@mail.ziglang.org
+maytha8, please have a look at this short monologue ^ :)
+
+1705468988
+andrewrk!~andrewrk@mail.ziglang.org
+also Tekk who was part of the conversation earlier
+
+1705470215
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+Well I'm not that desparate to get rid of stuff from lib/ (and bootstrap.c isn't present in the latest release 0.11.0, it's a pretty new addition)
+
+1705470264
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+We want to provide zig to the user; I've done some research and found an ITP (Intent to Package) from 2021-2023 https://bugs.debian.org/995670
+
+1705470362
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+andrewrk: you sent a detailed email to that bug, and it seems the Debian devs are fine with keeping the bundled stuff. I've sent a mail to Nick and the bug asking if he's still working on packaging zig, and I've offered him my help.
+
+1705470484
+maytha8!~quassel@pa49-196-253-19.pa.vic.optusnet.com.au
+ig I'll wait and see what happens next
+
+1705484677
+helene!~helene@user/helene
+chiming in my thoughts: people are using zig as a C/C++ toolchain specifically to get rid of the distro-packaged toolchains, to e.g. build fully-static binaries that can run no matter the glibc version and/or be fully independent from the host distro. it's also very much used for building CGo libraries (and was advertised as such)
+
+1705484719
+helene!~helene@user/helene
+removing those libraries (which are built-in the project to solve that problem) would break those features, and would also break cross-compiling
+
+1705484783
+helene!~helene@user/helene
+LLVM/clang cross-compiling might work for freestanding, but it will not work to e.g. build for Windows, macOS or another arch that runs Linux/*BSD as you would lack the usual libraries for those targets 
+
+1705486493
+mountaingoat!~mountaing@user/mountaingoat
+is there an idiomatic or better way to get the next key (any) in an AutoHashMap(*Foo, void)? i'm processing a set and removing each one until it's empty. currently i'm doing while (true) { var foo_it = foo_set.keyIterator(); var foo = foo_it.next() orelse break; <process foo>; _ = foo_set.remove(foo); }. ideally i wanted to do something like while (foo_set.keyIterator().next()) |foo| { ... }, but this
+
+1705486495
+mountaingoat!~mountaing@user/mountaingoat
+leads to an error since the key iterator needs a place to live
+
+1705487282
+helene!~helene@user/helene
+mountaingoat: is there a reason to recreate the iterator every loop?
+
+1705487330
+helene!~helene@user/helene
+ah, you modify the map, right?
+
+1705487594
+helene!~helene@user/helene
+it does sound like you would want fetchRemove w/o the key argument, but sadly this doesn't exist, and it seems you would need to create an iterator to access any of the keys
+
+1705487719
+helene!~helene@user/helene
+is there a reason you are using a AutoHashMap? a list or queue seems more appropriate if you need that kind of processing (or converting your structure to one, as the Zig stdlib doesn't seem to expose list-like functionality for HashMap)
+
+1705490608
+mountaingoat!~mountaing@user/mountaingoat
+helene: i need the set effect for efficient deduplication
+
+1705490779
+helene!~helene@user/helene
+mountaingoat: it feels like you'd be better off writing your own Set, considering there's none in the std lib currently
+
+1705490844
+mountaingoat!~mountaing@user/mountaingoat
+i guesss could also do that. folks here told me the AutoHashMap(T, void) trick. there's some precedent in the std lib too
+
+1705490932
+helene!~helene@user/helene
+maybe the HashMap could be extended to have access to the first/last keys/values? but it would probably not work for some structures...
+
+1705491054
+mountaingoat!~mountaing@user/mountaingoat
+not sure, last i checked there was some sparse key business going on in there and i closed the file, haha
+
+1705491069
+mountaingoat!~mountaing@user/mountaingoat
+what i have works fine, just wanted to make it a bit more ergonomic if possible
+
+1705491165
+helene!~helene@user/helene
+you could probably make a struct + functions to wrap that but that doesn't seem like the most pleasant option either ^^"
+
+1705491480
+mountaingoat!~mountaing@user/mountaingoat
+oh well, it's not so bad
+
+1705505695
+sudw1n!~sudw1n@user/sudw1n
+Is there a way I can check if a type `T` which is `comptime` can take the value, say, 1?
+
+1705509868
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+sudw1n, like `const valid = T == comptime_int or (std.math.minInt(T) <= 1 and 1 <= std.math.maxInt(T));`?
+
+1705511613
+ifreund!2940d10f8b@user/ifreund
+which is a compile error if T isn't an integer type...
+
+1705511650
+ifreund!2940d10f8b@user/ifreund
+one can use @typeInfo() directly but this isn't something I've had to do before and I'd be curious about the use-case
+
+1705513857
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+I was mostly trying to confirm the logic, but yeah it's pretty much just a `switch (@typeInfo(T))`
+
+1705521859
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat, I'm not sure about the direct answer to your question, but there is also ArrayHashMap which puts the keys and values sequentially in memory and preserves insertion order. With this data structure, getting the next key is trivial
+
+1705535272
+mountaingoat!~mountaing@user/mountaingoat
+andrewrk: thx, it looks like AutoArrayHashMap with popOrNull() would probably do what i want
+
+1705535495
+Tekk!~Tekk@157.245.82.116
+andrewrk: You're too efficient :)
+
+1705535521
+Tekk!~Tekk@157.245.82.116
+I just saw issue 14281 and was going back to give that debian packager a link to it, only to see that you atted me with a link to it when I was asleep last night
+
