@@ -1,0 +1,260 @@
+1705537144
+Tekk!~Tekk@157.245.82.116
+I'm having some issues with the package manager. http://paste.debian.net/1304457/ Trying to use zig-wlroots but it's erroring on what I assume is line 23 there saying that there's no dependency called "wlroots" declared in build.zig.zon. Anyone have an idea what might be going on?
+
+1705540542
+Tekk!~Tekk@157.245.82.116
+^ fwiw this is on 0.11 and it seems like it's happening before packages are even fetched
+
+1705540783
+andrewrk!~andrewrk@mail.ziglang.org
+Tekk, I think the upcoming 0.12.0 release is going to be the first one where it makes sense for plenty of people to pin to this version and use the package manager. There have been a lot of improvements to the build system since 0.11
+
+1705541333
+Tekk!~Tekk@157.245.82.116
+I might see if zap works on nightlies at some point then.
+
+1705541345
+Tekk!~Tekk@157.245.82.116
+It intentionally only targets stable releases. That or I can try to wait to write a compositor
+
+1705544518
+torque!~tachyon@user/torque
+Tekk, you're missing a comma after the "url" line of the dependency in build.zig.zon. This should give you a syntax error though
+
+1705544559
+torque!~tachyon@user/torque
+also the url is incorrect, it's missing the /archive/ component 
+
+1705544574
+torque!~tachyon@user/torque
+i.e. it needs to be https://github.com/swaywm/zig-wlroots/archive/aae7f237e270ed8fc2ff10f3a661ced618c527cf.tar.gz
+
+1705544662
+torque!~tachyon@user/torque
+you'll need to let zig compute the hash line for you, probably. it's not the git commit hash, it's a hash of the package contents. If you comment out the .hash line and try to zig build, it should give you some error like 
+
+1705544665
+torque!~tachyon@user/torque
+note: expected .hash = "1220c1e44dbf03d3b4c0afee708e0aa21e2e5ea45cebf785256f91b49066d2ba3153"
+
+1705544869
+torque!~tachyon@user/torque
+however, it looks like this uses submodules and won't build out of the box like this unfortunately
+
+1705544878
+torque!~tachyon@user/torque
+https://github.com/swaywm/zig-wlroots/tree/master/tinywl/deps
+
+1705544941
+torque!~tachyon@user/torque
+the archive from github doesn't include the submodules so the build doesn't work. You could clone it with submodules and create your own tarball to host somewhere that would probably work
+
+1705544963
+torque!~tachyon@user/torque
+but I'd guess that's maybe going too far
+
+1705546271
+Tekk!~Tekk@157.245.82.116
+torque: ahh, I thought I had to specify a wrong hash to get it to tell me the right one
+
+1705546287
+Tekk!~Tekk@157.245.82.116
+and yeah, that's jumping a bit deep when I could just use the C API :)
+
+1705546362
+torque!~tachyon@user/torque
+I don't think it will tell you the correct hash if you have a wrong one, but I don't remember. I've always commented the line out entirely
+
+1705559838
+andrewrk!~andrewrk@mail.ziglang.org
+there is also `zig fetch <url> --save`
+
+1705575718
+ifreund!2940d10f8b@user/ifreund
+Tekk: zig-wlroots only uses submodules for the tinywl.zig example compositor fwiw, you don't need anything in the tinywl/ directory to use zig-wlroots yourself
+
+1705586431
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm in general quite new to building stuff, but could a waf project easily convert to project build with zig? https://github.com/linuxaudio/non/blob/master/session-manager/wscript
+
+1705608529
+andrewrk!~andrewrk@mail.ziglang.org
+flower_, yes, it's mainly a matter of adding the source files and flags to the build.zig script
+
+1705608550
+andrewrk!~andrewrk@mail.ziglang.org
+looks like there is a config.h file generated too, and zig has some API for generating those
+
+1705608662
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+andrewrk: ok, so that's not a 'no not possible'. I'll see how far I can get, thx. 
+
+1705608826
+sskras!sid542048@id-542048.tinside.irccloud.com
+Hey, is there any way to make `zig2 build -Dno-lib` verbose?
+
+1705608933
+andrewrk!~andrewrk@mail.ziglang.org
+flower_, converting a build system is a particular skill that gets easier quickly. the first time you attempt it might be a bit rough
+
+1705608946
+andrewrk!~andrewrk@mail.ziglang.org
+I've done it dozens of times at this point and so I'm particularly quick about it
+
+1705608976
+andrewrk!~andrewrk@mail.ziglang.org
+sskras, zig2 build -Dno-lib --verbose
+
+1705609252
+sskras!sid542048@id-542048.tinside.irccloud.com
+andrewrk: OK, it prints long cmd line, and then this line is being rewritten continuously:
+
+1705609257
+sskras!sid542048@id-542048.tinside.irccloud.com
+steps [6/8] zig build-exe zig Debug native... Semantic Analysis [31091] ...
+
+1705609267
+andrewrk!~andrewrk@mail.ziglang.org
+that's a progress bar
+
+1705609286
+sskras!sid542048@id-542048.tinside.irccloud.com
+Aha. Anything similar to a log file?
+
+1705609287
+andrewrk!~andrewrk@mail.ziglang.org
+wouldn't it be great if terminals let us make actual progress bars?
+
+1705609395
+sskras!sid542048@id-542048.tinside.irccloud.com
+Umm, I think progress bars in terminal emulators are pretty doable...
+
+1705609530
+Tekk!~Tekk@157.245.82.116
+Depends on the terminal emulator, but you're usually able to query the size
+
+1705609706
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for terminals, port tcell from Go to Zig. ;)
+
+1705609781
+sskras!sid542048@id-542048.tinside.irccloud.com
+If apps like tmux, vim, watch are able to restore the old content then it's surely possible to use only part of the content for drawing progress (and then restore that part upon 100%), if I get the idea right.
+
+1705609843
+Tekk!~Tekk@157.245.82.116
+Apparently it's just an ioctl you have to call
+
+1705609902
+sskras!sid542048@id-542048.tinside.irccloud.com
+andrewrk: But I still see no text output detailing all the steps the build tools do.
+
+1705609915
+sskras!sid542048@id-542048.tinside.irccloud.com
+The story: two builds on the same host produces different error when I run them. I would like to compare their steps (the smaller the better).
+
+1705609921
+andrewrk!~andrewrk@mail.ziglang.org
+sskras, are you perhaps looking for `--summary all`
+
+1705610209
+sskras!sid542048@id-542048.tinside.irccloud.com
+andrewrk: I'd say that's not enough, https://asciinema.org/a/632120
+
+1705610254
+andrewrk!~andrewrk@mail.ziglang.org
+oh you're trying to build zig itself with bootstrap.c
+
+1705610267
+andrewrk!~andrewrk@mail.ziglang.org
+are you the debian contributor? I forgot what discussions we had before
+
+1705610321
+sskras!sid542048@id-542048.tinside.irccloud.com
+No, I am just a guy running Ubuntu 20.04.6 on a cheap VPS who wants to build Zig.
+
+1705610363
+andrewrk!~andrewrk@mail.ziglang.org
+are you trying to contribute? if you just want to use it, you can use a prebuilt binary
+
+1705610392
+andrewrk!~andrewrk@mail.ziglang.org
+you probably need a llvm-enabled builds for your use case
+
+1705610443
+sskras!sid542048@id-542048.tinside.irccloud.com
+Running the build directly and inside a Docker container (on the same account) produces two different errors. I just want to find the bug (the root case, as I always tend to do). It might be in a OS setup.
+
+1705610463
+sskras!sid542048@id-542048.tinside.irccloud.com
+Ah, so no easy way to see where two LLVMless builds start to differ, right?
+
+1705610470
+andrewrk!~andrewrk@mail.ziglang.org
+in other news, today Zig Software Foundation launched a fundraiser and I wrote up a 2023 financial report: https://ziglang.org/news/2024-financials/#2024-financial-report-and-fundraiser
+
+1705610564
+sskras!sid542048@id-542048.tinside.irccloud.com
+Very nice report! Twitter is sharing this link now like mad :)
+
+1705610952
+andrewrk!~andrewrk@mail.ziglang.org
+good :)
+
+1705610976
+andrewrk!~andrewrk@mail.ziglang.org
+sskras, I remember our conversation now. I tried to reproduce your problem on ubuntu and I was unable to
+
+1705610994
+andrewrk!~andrewrk@mail.ziglang.org
+I think you should either use a prebuilt binary, or build from source using cmake 
+
+1705611008
+sskras!sid542048@id-542048.tinside.irccloud.com
+andrewrk: Thanks for the report, really. I am always glad to see things like that being transparent.
+
+1705611009
+andrewrk!~andrewrk@mail.ziglang.org
+bootstrap.c is up and coming but right now we depend too much on LLVM
+
+1705611021
+sskras!sid542048@id-542048.tinside.irccloud.com
+OK, but now I noticed the flag: --debug-log [scope]          Enable debugging the compiler
+
+1705611050
+sskras!sid542048@id-542048.tinside.irccloud.com
+Can you tell me more about scope?
+
+1705611580
+andrewrk!~andrewrk@mail.ziglang.org
+it's for debugging the compiler. grep for 'scoped('
+
+1705612053
+sskras!sid542048@id-542048.tinside.irccloud.com
+Cool, found them. Should it work in LLVM-less build?
+
+1705612311
+andrewrk!~andrewrk@mail.ziglang.org
+I think you're getting ahead of yourself... first step is to build from source with cmake for sure
+
+1705612428
+sskras!sid542048@id-542048.tinside.irccloud.com
+OK, I just wanted to have a more lightweight workflow. No luck I guess.
+
+1705612959
+andrewrk!~andrewrk@mail.ziglang.org
+not yet. you can subscribe to https://github.com/ziglang/zig/issues/16270 for that use case
+
+1705613468
+sskras!sid542048@id-542048.tinside.irccloud.com
+Ah, saw that. Anyways it's annoying that at least 3 different virtual environments make the build process behave in different ways (two of which fails). OTOH this increases chances that the LLVM-way will break too. So let's switch to that :)
+
+1705622320
+ilybb4l!~ilybb4l@097-077-107-003.biz.spectrum.com
+.
+
+1705622344
+ilybb4l!~ilybb4l@097-077-107-003.biz.spectrum.com
+is there an appropriate way to write data in memory/struct? i see the std.mem.writeInt, but doesn't feel write given there aren't any other types avail, eg writeFloat.
+
