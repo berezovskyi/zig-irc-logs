@@ -1,0 +1,288 @@
+1705801935
+andrewrk!~andrewrk@mail.ziglang.org
+bubuche87, I'm going to switch it to a nonexhaustive enum type that stores power of 2 bits instead like this: https://github.com/ziglang/zig/blob/2e7d28dd0d27d94945ac5f131d7f7b4e03bc0024/src/InternPool.zig#L3283-L3434
+
+1705802024
+andrewrk!~andrewrk@mail.ziglang.org
+so, 6 bits to store it, supports a "none" value, and capable of representing alignments all the way up to 64 bits
+
+1705802108
+andrewrk!~andrewrk@mail.ziglang.org
+then if you try to ask for a bigger alignment than llvm is capable of giving you, and ask to use llvm, the frontend will handle it fine but give a nice error message explaining why the code cannot be compiled 
+
+1705802125
+bubuche87!~bubuche87@37.170.149.167
+(are you talking to me , or did you misclick?)
+
+1705802153
+andrewrk!~andrewrk@mail.ziglang.org
+yes I am talking to you - you were asking about the design of alignment in a compiler/language, right?
+
+1705802214
+bubuche87!~bubuche87@37.170.149.167
+I was more asking "why an u29" - it's not a value often encountered in our domain.
+
+1705802240
+andrewrk!~andrewrk@mail.ziglang.org
+yes, I am sharing that in the future it will be changed from u29 to a 6-bit nonexhaustive enum
+
+1705802284
+bubuche87!~bubuche87@37.170.149.167
+Ah ok. 6bits make more sense.
+
+1705802334
+bubuche87!~bubuche87@37.170.149.167
+(incidentally I was wondering if u29 was the new hype and I had to fit them in my language - I guess not)
+
+1705802396
+bubuche87!~bubuche87@37.170.149.167
+(I think they use floating point on 19 bits in ai generating images. And it's another "but why ?" for me ^^)
+
+1705802764
+freshcoffee!~fresh@user/freshcoffee
+hmm `Alignment = enum(u6)` looks like it's only good for up to 62 bits? there is no 64 (0-index), and 63 is consumed by `.none`
+
+1705802889
+bubuche87!~bubuche87@37.170.149.167
+(for me alignment should be a power of two anyway)
+
+1705802957
+bubuche87!~bubuche87@37.170.149.167
+So you would only need three bits, maybe 4.
+
+1705802989
+freshcoffee!~fresh@user/freshcoffee
+with 4 bits how would you align at 1 GiB ?
+
+1705803097
+bubuche87!~bubuche87@37.170.149.167
+I don't understand which architecture would require whatever data to be aligned on 1gb.
+
+1705803119
+bubuche87!~bubuche87@37.170.149.167
+Or I hibernated for a century or two.
+
+1705803225
+bubuche87!~bubuche87@37.170.149.167
+In some architecture, a word of size X can only be stored on an offset multiple of X. Like a float needing to be aligned on 4 byte.
+
+1705803297
+bubuche87!~bubuche87@37.170.149.167
+(which is even somehow present in JavaScript, in the typed array, which is weird but why not). But I don't get this 1gb alignment requirement.
+
+1705803345
+freshcoffee!~fresh@user/freshcoffee
+look for example the `mmap()` system call
+
+1705803385
+bubuche87!~bubuche87@37.170.149.167
+What about it ?
+
+1705803402
+freshcoffee!~fresh@user/freshcoffee
+zig tries to reason about alignment when an address is specified
+
+1705803492
+freshcoffee!~fresh@user/freshcoffee
+it's illegal (not just at runtime) to ask mmap to give an address that is not aligned to a page
+
+1705803497
+bubuche87!~bubuche87@37.170.149.167
+Yes. Gcc does that too, which can lead to struct bigger than the sum of the sizes of its component (and I am not complaining, it's a good thing most of the time).
+
+1705803545
+freshcoffee!~fresh@user/freshcoffee
+so zig says ok, you can spec an addr that is `align(page_size)`
+
+1705803632
+freshcoffee!~fresh@user/freshcoffee
+and page_size is way more than alignment requirements for primitives or SIMD
+
+1705803677
+freshcoffee!~fresh@user/freshcoffee
+and cpu dictates what page_size is, and sometimes the page size may be configurable
+
+1705803705
+freshcoffee!~fresh@user/freshcoffee
+4096 is popular. but note x86_64 actually supports 2 MiB and 1 GiB page sizes
+
+1705803754
+freshcoffee!~fresh@user/freshcoffee
+the power ISA supports 4 KiB, 64 KiB, 16 MiB and 16 GiB (wow) page sizes
+
+1705803835
+freshcoffee!~fresh@user/freshcoffee
+oh neat. I found this chart... riscv64 is the new champ for different and huge page sizes:
+
+1705803837
+freshcoffee!~fresh@user/freshcoffee
+https://en.wikipedia.org/wiki/Page_(computer_memory)
+
+1705804216
+bubuche87!~bubuche87@37.170.149.167
+Ok
+
+1705807370
+bubuche87!~bubuche87@37.170.149.167
+(I wasn't criticizing. I am trying to understand and distinguish between technological debt and wanted features. I haven't tried zig yet but so far everything I saw about it is pleasant)
+
+1705807667
+bubuche87!~bubuche87@37.170.149.167
+(btw ... Is there something like bison+flex, yacc+l'ex for zig ? A parser generator using LALR(1) tables)
+
+1705807685
+bubuche87!~bubuche87@37.170.149.167
+(google didn't help me on that one)
+
+1705811161
+bubuche87!~bubuche87@37.170.149.167
+( I thought for a moment zigler was what I was looking for, but it's not clear(
+
+1705811164
+bubuche87!~bubuche87@37.170.149.167
+*)
+
+1705811170
+bubuche87!~bubuche87@37.170.149.167
+Dammit
+
+1705811184
+bubuche87!~bubuche87@37.170.149.167
+* )
+
+1705811229
+bubuche87!~bubuche87@37.170.149.167
+(maybe what I am looking for doesn't exist... Yet, at least)
+
+1705811423
+Tekk!~Tekk@157.245.82.116
+There's not one that I'm aware of
+
+1705811475
+bubuche87!~bubuche87@37.170.149.167
+Ok, thanks. .
+
+1705836990
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I just pulled, built, and installed from master (0.12.0-dev.2313+bf7ebfa67) and now when I go to build I get an error in the standard library: ".build.zig:1:31: error: root struct of file 'std' has no member named 'build'" 
+
+1705836999
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Am I doing something wrong, or did it actually break?
+
+1705837244
+ifreund!2940d10f8b@user/ifreund
+leeward: well it's been std.Build not std.build for a long time now, so I'd guess you've got some stale code somewhere
+
+1705837283
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It looks like it's addModule.
+
+1705837375
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Oh, I see. It made it look like it was something in the standard library because the error message had "zig/lib/zig/std/std.zig:1:1: note: struct declared here" but I think that's just a red herring.
+
+1705837478
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+And for some reason it's pulling an old version out of ~/.cache/zig...?
+
+1705839053
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ahah, it's hiding in a dependency. Somehow it got the wrong version in there.
+
+1705843484
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+How do I pass arguments to a run executable artifact in build.zig?
+
+1705843572
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+`run_artifact.addArgs(&.{ "first", "second" });`
+
+1705844453
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ok, it looks like my problem is that I'm trying to add a module to a test step and Step.Compile.addModule doesn't exist. Anyone know offhand what that turned into?
+
+1705844534
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+I think it's `exe.root_module.addImport("name", mod);`
+
+1705844691
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+jacobly: That looks like it did it, thanks.
+
+1705845348
+bubuche87!~bubuche87@37.170.227.141
+(I know I asked the question yesterday (actually: this morning, early) but just in case: do anyone knows of a yacc/lex (or bison/flex or blynn/nex) equivalent for zig ?
+
+1705845842
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I don't, and I wouldn't if there is one, but you could just wrap them.
+
+1705846552
+bubuche87!~bubuche87@37.170.227.141
+They would still not generate zig code.
+
+1705846673
+bubuche87!~bubuche87@37.170.227.141
+(the (mid-term) goal is to have the parser embedded on a microcontroller. I heard zig can generate very tiny executables/libraries)
+
+1705846788
+bubuche87!~bubuche87@37.170.227.141
+(while looking for a solution I am implementing my own parser generator, to try to squeeze as much compression as I can. But I would prefer an existing solution (both for simplicity and robustness))
+
+1705864668
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+I am trying to get this working https://zigbin.io/9fe051 but I can't find the right Writer abstraction, could someone help me out here? :>
+
+1705868705
+motiejus!~motiejus@88.223.107.21
+txdv: those are not Go interfaces. :) try `anytype` in the function args.
+
+1705868801
+motiejus!~motiejus@88.223.107.21
+just in case your mind screams "but what about checking the type matches the expected interface", there are a few ways to do it with comptime, those can be found in the stdlib (terse) or on the internets (verbose)
+
+1705871014
+andrewrk!~andrewrk@mail.ziglang.org
+bubuche87, perhaps not a satisfying answer to your question, but recursive descent is a straightforward alternative to parser generation
+
+1705871032
+andrewrk!~andrewrk@mail.ziglang.org
+not sure what you mean by "compression"
+
+1705871409
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+Hmm, I know this kind of parser, but they tend to use much more memory (on the stack, at the very least).
+
+1705871435
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+I don't remember the statement I made were I use the term compression.
+
+1705871480
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+And don't get me wrong. I tried Peggy (which is a peg parser generator for JS) not so long ago, and I love it.
+
+1705871506
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+But you only have so much space on a microcontroller.
+
+1705871657
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+That being said, I kind of progressed in my LALR table generation. I am still not sure I am doing it correctly, as I don't understand everything I am doing, but it's in progress. Maybe I will be the one to write this parser generator for zig, on the end 😆
+
+1705872061
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+(i hope this answers your question andrewrk. Without more information I cannot do much more)
+
+1705872119
+andrewrk!~andrewrk@mail.ziglang.org
+I see - for a resource constrained environment, it does make sense to look into parser generation
+
+1705872179
+bubuche87!~bubuche87@2001:861:3890:5a60:75e7:483b:e028:2fab
+And to look into zig ;)
+
+1705880669
+fengshaun_!~fengshaun@d75-155-79-139.abhsia.telus.net
+has anyone come across something like CharmBracelet ui lib but which can be used with zig?
+
