@@ -1,0 +1,140 @@
+1706023431
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Is there any way to have mutually recursive types in Zig? For example, `pub fn Forest(comptime X: type) type { return struct { xs: [2]X};}` and `pub fn Tree(comptime X: type) type { return struct { fn neighbors(self: @This(), forest: X) @This() {...} }; }`
+
+1706023442
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+oof, pastebin it is
+
+1706023708
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+https://pastebin.com/KY5TcAwJ
+
+1706023832
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Anyway, is there a language feature to support this in comptime, or should I do something with opaque pointers?
+
+1706024275
+ifreund!2940d10f8b@user/ifreund
+leeward: that snippet doesn't seem to be mutually recursive? Or maybe I don't understand what you're trying to show with it?
+
+1706024360
+ifreund!2940d10f8b@user/ifreund
+In any case, types depending on each other should be fine as long as there is indirection such that the compiler doesn't have a dependency loop when determining the size/alignment of the type
+
+1706024389
+ifreund!2940d10f8b@user/ifreund
+maybe share the code you want to work with the compile error stopping you?
+
+1706024682
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+ifreund, sorry, I skipped the usage: I want to have `const tree: Tree(Forest(Tree(...))) = undefined;`
+
+1706024784
+ifreund!2940d10f8b@user/ifreund
+leeward: and the ... is infinite recursion? That's an infinitely large struct then which mankes no sense IMO
+
+1706024882
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+It is infinite recursion, but the struct doesn't get larger. The Tree type doesn't store a forest; it just has a function that takes a pointer to one. Which I just noticed I forgot to make a pointer.
+
+1706024930
+ifreund!2940d10f8b@user/ifreund
+oh the Tree struct is intentionally empty? then why does it exist as a separate type?
+
+1706024933
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+So Tree(Forest) has a method that takes a pointer to a Forest(Tree), which contains a list of Trees.
+
+1706024992
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+It can have tree-associated data, like `branches: uint` or something, but it doesn't actually contain any `Forest`s
+
+1706025065
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+The thing is, I want Tree to be an interface (like with Random, so I have several things that implement Tree) but its method needs to accept a data structure that contains `Tree`s.
+
+1706025156
+ifreund!2940d10f8b@user/ifreund
+What's wrong with `const Node = struct { data: u32, children: [2]?*Node };`?
+
+1706025164
+ifreund!2940d10f8b@user/ifreund
+(or similar)
+
+1706025191
+ifreund!2940d10f8b@user/ifreund
+I don't understand why you want separate Forest and tree types
+
+1706025194
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+The problem is that it's 2 different structures, whose types depend on each other.
+
+1706025227
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Maybe this is an X Y problem. I'll tell you what I'm actually trying to do:
+
+1706025252
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+I have a game grid type (Grid(T)) that holds a bunch of whatever T is.
+
+1706025269
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+And I have an Actor type, which lives in the Grid.
+
+1706025309
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+So I make a Grid(Actor), and everything's hunky dory until I want my Actor's update method to accept a Grid (so, for example, it can look at its neighbors).
+
+1706025344
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Grid and Actor are clearly different types. Grid is just a container, and Actor is the thing being contained.
+
+1706025387
+ifreund!2940d10f8b@user/ifreund
+ok so not a recursive tree, just a flat container
+
+1706025405
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+It's mutually recursive. A contains B, and B contains A.
+
+1706025420
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Well, doesn't contain, but refers to.
+
+1706025426
+ifreund!2940d10f8b@user/ifreund
+Why do you say Actor contains Grid?
+
+1706025446
+ifreund!2940d10f8b@user/ifreund
+does const Actor = struct {
+
+1706025454
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Actor.update() needs to accept an instance of Grid as an argument.
+
+1706025489
+ifreund!2940d10f8b@user/ifreund
+does this not work? `const Actor = struct { fn update(grid: Grid(Actor)) void { ... } }` 
+
+1706025500
+ifreund!2940d10f8b@user/ifreund
+but take it by pointer, sorry
+
+1706025532
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Hmm, let me check...
+
+1706026634
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+ifreund: That looks like it's going to work, thanks. I lied a little about the complexity of what I'm doing, but it turns out it wasn't enough to make your answer wrong.
+
+1706026650
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+\o/
+
+1706027712
+ifreund!2940d10f8b@user/ifreund
+nice :)
+
