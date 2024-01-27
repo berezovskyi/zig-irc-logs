@@ -1,0 +1,180 @@
+1706247341
+voldial!~voldial@user/voldial
+I am trying to construct a path with std.fmt.allocPrint and then pass it to os.system.stat() but I am creating the wrong type: error: expected type '[*:0]const u8', found '[]u8' https://bpa.st/J5QQ (re-reading the various zig 101 docs until someone throws me a bone:)
+
+1706247366
+voldial!~voldial@user/voldial
+I tried @constCast(string) but nothing changed
+
+1706247502
+voldial!~voldial@user/voldial
+runnable example: https://zigbin.io/0095ed
+
+1706247536
+torque!~tachyon@user/torque
+you need `allocPrintZ` to get a 0-terminated slice
+
+1706247550
+voldial!~voldial@user/voldial
+oh. that 0 means null?
+
+1706247590
+torque!~tachyon@user/torque
+[*:0]const u8 is a 0-terminated pointer to many u8, aka essentially a C string
+
+1706247677
+torque!~tachyon@user/torque
+I don't remember if slices automatically decay to many-item pointers. however you can explicitly get a many-item pointer from a slice with `myslice.ptr`
+
+1706247696
+torque!~tachyon@user/torque
+take a look at https://ziglang.org/documentation/master/#Sentinel-Terminated-Pointers
+
+1706247731
+voldial!~voldial@user/voldial
+torque: excellent. that worked.
+
+1706247926
+voldial!~voldial@user/voldial
+if I examine stat_result for a path that does not exist, like "/et" it's a big number. For paths that exist, it's 0. What if anything does the nonzero return value tell? I see the os.system.stat function sig, it's rreturning usize... example: https://zigbin.io/add30b
+
+1706248069
+torque!~tachyon@user/torque
+`man 2 stat` on my system says "Upon successful completion a value of 0 is returned.  Otherwise, a value of -1 is returned and errno is set to indicate the error."
+
+1706248116
+torque!~tachyon@user/torque
+note that os.system.stat is a low-level API. You probably want to use a higher level API that will unwrap errno for you into a proper zig error on failure
+
+1706248159
+voldial!~voldial@user/voldial
+torque: ah, so I was using {d} instead of {u}
+
+1706248214
+torque!~tachyon@user/torque
+for example, fs.File.stat
+
+1706248338
+voldial!~voldial@user/voldial
+is there somewhere I can read about why File would be capitalized? I see it in the stdlib src, pub const File = @import("fs/File.zig");
+
+1706248353
+torque!~tachyon@user/torque
+it's because the file itself is a struct
+
+1706248386
+voldial!~voldial@user/voldial
+ohh. so structs are by convention starting with a cap?
+
+1706248404
+torque!~tachyon@user/torque
+the zig convention is that all type names use CamelCase
+
+1706248425
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/#Names
+
+1706248439
+voldial!~voldial@user/voldial
+ah great. reading
+
+1706253675
+remiliascarlet!~remiliasc@user/remiliascarlet
+Alright, I found out you can disable the fmt by adding a certain comment on top of source files, while cumbersome it's good enough for me to come back to Zig again.
+
+1706254058
+andrewrk!~andrewrk@mail.ziglang.org
+sus
+
+1706254219
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: Don't worry, I won't stir up yet another indenting drama, I understand there's a certain format that has been set, and as long as if can be disabled, I'm fine with that.
+
+1706254238
+remiliascarlet!~remiliasc@user/remiliascarlet
+s/if/it
+
+1706256911
+Akawama!akawama@user/akawama
+What's your opinion on these benchmarks? Check menu for more comparisons.  https://programming-language-benchmarks.vercel.app/zig-vs-odin
+
+1706257114
+voldial!~voldial@user/voldial
+I had a thing: []u8, and I want a thing: [*:0]const u8, so I accessed thing.ptr and now have a thing: [*]u8, then I used @constCast(thing) and I still have a [*]u8... how to I convert []u8 to [*:0]const u8?
+
+1706257866
+voldial!~voldial@user/voldial
+os.realpath() returns []u8, how do I pass that to os.system.stat() which requires [*:0]const u8?
+
+1706258369
+voldial!~voldial@user/voldial
+https://ziglang.org/documentation/master/#Sentinel-Terminated-Pointers shows how to remove the sentinal... but I need to add it
+
+1706260029
+voldial!~voldial@user/voldial
+ah. I had a slice, not an array. const resolved_path_null_terminated_slice = resolved_path[0..resolved_path.len :0]; worked
+
+1706260493
+ifreund!2940d10f8b@user/ifreund
+voldial: you can't add a sentinel with a cast, you need to reallocate and write a null byte or whatever your sentinel is at the end
+
+1706260556
+ifreund!2940d10f8b@user/ifreund
+all you can do with a cast is assert that a sentinel is in fact present after the memory you are referring to
+
+1706260589
+ifreund!2940d10f8b@user/ifreund
+you may want std.men.Allocator.dupeZ()
+
+1706260852
+voldial!~voldial@user/voldial
+ifreund: thanks, that makes sense. especially .dupeZ/.allocPrintZ. Now I'm wondering why this seems to work: https://bpa.st/2P7Q line 70 fixed the tyoe and line 71 works as expected
+
+1706260877
+voldial!~voldial@user/voldial
+it's my first zig prog, so yea.
+
+1706261046
+ifreund!2940d10f8b@user/ifreund
+are you sure its not passing garbage to stat() until the next 0 in memory?
+
+1706261066
+ifreund!2940d10f8b@user/ifreund
+could use strace to check
+
+1706261137
+voldial!~voldial@user/voldial
+ifreund: yea, I think... because if I stat() a non-directory, line 79 triggers... o wait... no. hm you are prob right... strace'in.
+
+1706262114
+voldial!~voldial@user/voldial
+yea, it's working. strace shows line 71 results in open("/some_path_that_is_supposed_to_be_a_dir_but_really_is_a_file/sha3_256", O_RDONLY|O_NONBLOCK|O_CLOEXEC|O_PATH) = 3 and line 79 triggers
+
+1706262185
+voldial!~voldial@user/voldial
+but.. I hear ya... it's not known on comptime... so those allocations for the nulls gotta be somewhere?
+
+1706262317
+ifreund!2940d10f8b@user/ifreund
+or you can manually write the required null to your buffer
+
+1706288010
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+is there a shorter way to do this? https://zigbin.io/90125f
+
+1706288263
+dutchie!~dutchie@user/dutchie
+if (std.meta.intToEnum(colorValue)) |c| { doStuffWithColor(c) } else |e| { ... }
+
+1706288307
+dutchie!~dutchie@user/dutchie
+(or use `catch` or whatever)
+
+1706289410
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+thanks :)
+
+1706292082
+andrewrk!~andrewrk@mail.ziglang.org
+Akawama, clearly someone spent a lot more time on the zig benchmarks than the odin ones. it speaks to zig's relative popularity
+
