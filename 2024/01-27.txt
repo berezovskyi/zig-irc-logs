@@ -1,0 +1,92 @@
+1706327197
+remiliascarlet!~remiliasc@user/remiliascarlet
+One question: I'm playing around with Raylib in Zig with the "raylib-zig" package. Normally, Zig would link statically by default, but when compiling a project from raylib-zig without making any changes yet, it links dynamically pointing to addresses for linux-vdso.so.1, libm.so.6, libc.so.6, and /lib/ld-linux-x86-64.so.2. Is there a way to make those link statically as well in the build.zig file?
+
+1706327373
+remiliascarlet!~remiliasc@user/remiliascarlet
+I use Zig 0.11.0 by the way, because I'm cross-developing between Linux, FreeBSD, and OpenBSD, and want to make sure the versions match to avoid another catastrophe I had previously with one being 0.10.1, the other being 0.11.0-dev, and yet another being 0.9.1.
+
+1706328230
+torque!~tachyon@user/torque
+the build.zig calls `linkSystemLibrary` for those libraries so it will link them dynamically
+
+1706328393
+torque!~tachyon@user/torque
+Since distros probably don't have static versions of those libraries, you might have to build them manually to get static versions
+
+1706328786
+remiliascarlet!~remiliasc@user/remiliascarlet
+I have static libraries installed for both libc and libm.
+
+1706328821
+remiliascarlet!~remiliasc@user/remiliascarlet
+/usr/lib/libc.a and /usr/lib/libm.a
+
+1706328851
+remiliascarlet!~remiliasc@user/remiliascarlet
+So that's a non-issue in my case.
+
+1706330248
+torque!~tachyon@user/torque
+I think that `linkSystemLibrary` just passes e.g. `-lm` to the linker which may prefer the dynamic lib? Outside of my area of knowledge so I probably can't help much
+
+1706338015
+FrostJacked!~FrostJ@50.26.199.96
+Not sure if it's a zig or an llvm issue, but is it a known issue where sometimes building a (relatively small and simple) program will randomly take ages in non-debug modes?
+
+1706380257
+voldial!~voldial@user/voldial
+when gpa.deinit() gets called, I get a few leaks detected, like: https://bpa.st/RQEA but (seemingly) no debug information. The binary is not stripped, and I compiled it on Debug mode. How do I get more information? The process was very long running (it ran all night) and was processing input from stdin, it's a but confusing that there would be (only) 6 leaked addresses when it processed millions of lines of
+
+1706380259
+voldial!~voldial@user/voldial
+input and output.
+
+1706380471
+voldial!~voldial@user/voldial
+also, there were 15 other identical processes, and only one leaked.
+
+1706380548
+voldial!~voldial@user/voldial
+(I fixed the code to use std.men.Allocator.dupeZ() if anyone happens to re-read my noob questons from above)
+
+1706380687
+voldial!~voldial@user/voldial
+oops. the binary is stripped... portage must have done that... but I have splitdebug enabled
+
+1706381117
+voldial!~voldial@user/voldial
+fixed for next time it happens, disable portage stripping with the "nostrip" feature
+
+1706388661
+andrewrk!~andrewrk@mail.ziglang.org
+remiliascarlet, vdso is a way to call kernel syscalls such as gettime() quickly. it's still effectively static linking
+
+1706388685
+andrewrk!~andrewrk@mail.ziglang.org
+remiliascarlet, as for libc, you can't really statically link libc on linux and then have open a window and do graphics drivers stuff. that's a limitation of graphics drivers and linux, not zig
+
+1706388711
+andrewrk!~andrewrk@mail.ziglang.org
+if those are your only 2 dynamically linked libraries, then you have made your binary as static as is practical on linux
+
+1706388719
+andrewrk!~andrewrk@mail.ziglang.org
+...when making a graphical application
+
+1706389810
+Earnestly!~earnest@user/earnestly
+Does dlopen count as dynamic linking?
+
+1706389880
+Earnestly!~earnest@user/earnestly
+(I'm mostly on the side that says yes but I can see arguments, especially GNU's dlmopen)
+
+1706391219
+braewoods!~braewoods@user/braewoods
+Earnestly, it's related. anything opened with dlopen() at least on Linux will also be exposed to already loaded stuff from the main executable. it's why "shared modules" don't need to be explicitly linked to everything they reference.
+
+1706391417
+Earnestly!~earnest@user/earnestly
+braewoods: Yeah, but that's also why I made mention of dlmopen
+
