@@ -1,0 +1,156 @@
+1706494010
+bubuche87!~bubuche87@37.174.2.228
+(yessss. After a few fixes I can now go from grammar description to generate tables to generate C code to execute C code on a snippet to parsing and reporting syntax errors)
+
+1706494097
+bubuche87!~bubuche87@37.174.2.228
+(now I need to work on the semantic part...)
+
+1706494263
+bubuche87!~bubuche87@37.174.2.228
+(which will be harder. The "simplest" solution would be like a protocol: the parser would call a first function saying "a reduction have been done", then would proceed with a series of function calls for every element of the RHS, then would call a function to finish. But it's like... Very ugly 😫)
+
+1706516213
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+I don't know if this is a bug or just an undocumented feature, but I was playing with hash maps (AutoHashMap to be specific) and when I getPtr some element, then getPtr another element and do stuff with it, sometimes the data pointed to by the first pointer is corrupted. I look at it in the debugger, and everything's 0xAAAAAAAA. Should I file a bug, or write some documentation?
+
+1706519156
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+I guess I probably ought to file a bug either way. :P
+
+1706519173
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+On the list for tonight.
+
+1706521727
+remiliascarlet!~remiliasc@user/remiliascarlet
+I was rewriting my SDL/OpenGL program from C to Zig which I started a week ago. However, `#include <SDL2/SDL.h>` works fine in C, but "@cImport({ @cInclude("SDL2/SDL.h"); });" gives me a compile error: `error: 'SDL2/SDL.h' file not found\n#include <SDL2/SDL.h>` Am I missing something here?
+
+1706522055
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+When did std.Build.CompileStep change to std.Build.Step.Compile?
+
+1706522060
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+which zig version?
+
+1706522566
+ifreund!2940d10f8b@user/ifreund
+0.11.0 I believe
+
+1706522607
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+hmm strange, I can build raylib with zig 0.12.23xx if I vendor it, but not with build.zig.zon github url
+
+1706522636
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+putting url in complains that std.Build.CompileStep doesn't exist, even though it's the same version of installed zig
+
+1706522938
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+oh nevermind, classic pebkac, was using the wrong raylib between the two approaches, master vs 0.5
+
+1706523451
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+a library (in this case raylib) is adding build options in its build.zig file, I'm trying to set them on the command line with -D<option>=1 (boolean), but I'm getting "Invalid option", am I missing something?
+
+1706523462
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+it otherwise compiles and runs just fine
+
+1706523689
+remiliascarlet!~remiliasc@user/remiliascarlet
+remiliascarlet: "Am I missing something here?" Solved it.
+
+1706526100
+remiliascarlet!~remiliasc@user/remiliascarlet
+remiliascarlet: "Solved it." For those who want to know, add this line to your build.zig file: `exe.linkSystemLibrary("SDL2");`
+
+1706529695
+remiliascarlet!~remiliasc@user/remiliascarlet
+Finally got my game written in C fully working in Zig, and immediately got fewer lines of code total (not counting build.zig), more motivation to work on it, and a bug in that I can't update my character's position, but that might be an error on my end.
+
+1706530047
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+remiliascarlet: You got translate-c to just import SDL.h? I thought that was still not working. I might have to run it again on my SDL wrapper.
+
+1706530761
+remiliascarlet!~remiliasc@user/remiliascarlet
+leeward: I just import SDL.h. I tried translate-c before, and all it does is give me complete nonsense.
+
+1706538081
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+remiliascarlet: Right, I meant the import. The last time I played with it, it used translate-c underneath.
+
+1706538623
+stevan!~stevan@user/stevan
+hi, i have a question about comptime. i got two functions: `fn foo(comptime T:type, f: *const fn(T) bool) void` and `fn foo2(comptime S:type, comptime T:type, f: *const fn(S, T) bool) void`, and i wonder if i can use comptime to combine them into single function? cheers!
+
+1706541771
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+stevan: Could you have the function take a slice of types? You could probably do something with typeInfo to have the result function take a struct.
+
+1706543263
+stevan!~stevan@user/stevan
+leeward: i managed to get this to work: `fn fooN(comptime n: comptime_int, comptime Ts:*const [n]type, f: *const fn(Ts[0], Ts[1]) bool) void`
+
+1706543353
+stevan!~stevan@user/stevan
+but still don't understand how to change `f` to not use indices? is that what you were refering to with typeInfo and take a struct?
+
+1706544154
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+stevan: Kinda. I think I saw something somewhere explaining how to build structs in comptime, but you'd probably have to use `inline for` to iterate over the array. So after building that struct up (which would look something like `struct { t: T, s: T }`) then you'd pass one in to the function as the caller.
+
+1706544230
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+But if you're really only concerned with the 2 types, not the general case, you could just have your implementation function take a T and a ?S, then have 2 wrappers that call the single implementation.
+
+1706544254
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+That's probably easier for your users.
+
+1706544647
+stevan!~stevan@user/stevan
+i'm curious about the general case, but i appreciate the simpler solution for the special case (i suppose realistically N will be rather small).
+
+1706545270
+remiliascarlet!~remiliasc@user/remiliascarlet
+remiliascarlet: "and a bug in that I can't update my character's position, but that might be an error on my end." I figured out what caused this. In C, I set velocity to 0.0005f because otherwise the player would be too fast to control on my desktop, although on my laptop I had to set it to 0.05f. But in Zig, 0.0005 was so slow that it made it appear as if nothing was moving. So I changed that to 0.1,
+
+1706545272
+remiliascarlet!~remiliasc@user/remiliascarlet
+and now it works as well as it did in C.
+
+1706545390
+andrewrk!~andrewrk@mail.ziglang.org
+leeward, getPtr() does not invalidate any pointers, but any additions to the hash map may cause it to become resized, invalidating previous pointers. are you sure that no elements were added in between those getPtr() calls?
+
+1706553970
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+Raylib has a build.zig in root dir which calls build in src/build.zig which has a few build options (e.g. raygui etc). I have vendored raylib and included it in my build.zig.zon and raylib builds and runs fine. However, my build script doesn't recognize raylib's options, so I can't do -Draygui to build raygui in the vendored raylib. Am I missing something?
+
+1706554000
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+raylib/src/build.zig: https://github.com/raysan5/raylib/blob/master/src/build.zig#L213
+
+1706554018
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+raylib/build.zig: https://github.com/raysan5/raylib/blob/master/build.zig
+
+1706554077
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+I tried adding b.option() in my own build.zig in hopes it would get passed, but no.
+
+1706554178
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+essentially I think I'm looking for a way to pass through build options to library build.zig
+
+1706555531
+km!znc@buildfarm.krot.org
+ACTION happy to see that zig donations options go beyond whatever github offers
+
+1706555683
+km!znc@buildfarm.krot.org
+off to send some funds :)
+
