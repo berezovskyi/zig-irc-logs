@@ -1,0 +1,120 @@
+1706604349
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+where do I read the most up to date build.zig reference? trying to learn the build system properly
+
+1706608534
+stevan!~stevan@user/stevan
+I'm confused about why `fn Foo(comptime n: comptime_int) type { comptime var fields: [n]std.builtin.Type.StructField = undefined; inline for (0..n) |i| { fields[i] = ...` gives an error saying `expected type '?*const anyopaque', found 'comptime_int'` for `i`, while when i do a very similar thing: `comptime var params: [n]std.builtin.Type.Fn.Param = undefined; inline for (0..n) |i| { params[i] = ...` it works?
+
+1706608721
+jacobly!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+That's the type of the `default_value` field, which is probably not being initialized correctly.
+
+1706608898
+stevan!~stevan@user/stevan
+i see, i thought the problem was with the indexing itself, thanks!
+
+1706615578
+Rudde!~Rudde@lw.netboot.io
+Hello
+
+1706619576
+Rudde!~Rudde@lw.netboot.io
+When Andrew talked about the difficulty bringing async to zig in the latests showtime. Does that mean the difficulty of bringing async in a language without introducing a runtime?
+
+1706621548
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+andrewrk: I think I did add elements between the getPtr() calls, and when I stopped doing that the problem went away. This feels like the kind of thing that should be in the getPtr() documentation.
+
+1706621645
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+remiliascarlet: That description of your bug makes me think you should be using a timer in your mainloop to try to hit a target frame rate instead of just letting CPU speed throttle the game.
+
+1706621919
+ifreund!2940d10f8b@user/ifreund
+leeward: it certainly wouldn't hurt to explicitly document that, feel free to open a PR :)
+
+1706622033
+ifreund!2940d10f8b@user/ifreund
+To me personally, it seems pretty obvious that adding an element and potentially causing the backing memory of the hash map to be reallocated will invalidate pointers into that memory though
+
+1706622123
+remiliascarlet!~remiliasc@user/remiliascarlet
+leeward: I have this planned for a little bit later. In the meantime I tested the same Zig code on my laptop without any changes to the velocity, and it works just as well as on the desktop.
+
+1706622152
+remiliascarlet!~remiliasc@user/remiliascarlet
+Something I didn't get with C.
+
+1706628949
+fsx!~FSX@durian.61924.nl
+rytec: Hello
+
+1706637115
+bubuche87!~bubuche87@37.166.168.237
+I am trying to write a c library in such a way it will match zig's way of doing stuff so the translation will be simpler after, but surprisingly I fail to see how allocators are used. Should I have a "allocator_ptr->function_name(parameters)" or "function_name(allocator_ptr, parameters)" ?
+
+1706637838
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+I mean if you want to match Zig it would just be `allocator.vtable->function_name(allocator.ptr, parameters);`
+
+1706637946
+bubuche87!~bubuche87@37.166.168.237
+I give an allocator to the objects that need dynamic allocation? I was supposing I would give them a pointer to an allocator.
+
+1706638079
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+In Zig, an allocator is two pointers.
+
+1706638108
+bubuche87!~bubuche87@37.166.168.237
+(so, following your snippet, it would be "allocator_ptr->vtable->function_name(allocator_ptr, parameters)"
+
+1706638433
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+Not passing the vtable is intentional so that the optimizer knows that it doesn't change and can devirtualize it.
+
+1706639039
+bubuche87!~bubuche87@37.166.168.237
+I am not arguing against passing an explicit vtable. It's more: passing an allocator as opposed to passing a pointer to an allocator.
+
+1706639124
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+I'm saying that you shouldn't pass either, but rather pass the pointer _inside_ the allocator.
+
+1706639467
+bubuche87!~bubuche87@37.166.168.237
+Yep, and it's the first time ever I see something like that. Usually either you pass pointers because they are smaller than the data they point to, or you pass the data by copy because you want some purity/mathematical notion. Passing by copy a structure containing a pointer seems like the worst of the two worlds. I am not saying it's incorrect, I
+
+1706639468
+bubuche87!~bubuche87@37.166.168.237
+am trying to understand the rational behind it.
+
+1706639547
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+a structure containing two pointers
+
+1706639593
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+which is still plenty small enough to be worth passing around without another useless pointer indirection
+
+1706639706
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+it's a tradeoff, at some size the extra copying is slower than the extra pointer dereferences
+
+1706639712
+bubuche87!~bubuche87@37.166.168.237
+Hmm, well, whatever I'll obey. Is the type of vtable stable and documented or is it dependent on the type of the allocator ? The documentation indicate a bunch of functions (free, allocate, realloc, shrink) with or without prefixes.
+
+1706639736
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+the vtable contains exactly 3 function pointers
+
+1706639824
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+all the functions in the interface are static functions that contain shared allocator logic and call down into the three virtual functions
+
+1706640019
+bubuche87!~bubuche87@37.166.168.237
+Hmm, ok. What are those three functions? (I listed four, so definitely I have at least one incorrect)
+
