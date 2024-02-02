@@ -1,0 +1,176 @@
+1706754683
+remiliascarlet!~remiliasc@user/remiliascarlet
+Andrew uses Nix himself (rating his presentations), so of course he'll make sure it works on it.
+
+1706754829
+remiliascarlet!~remiliasc@user/remiliascarlet
+But I'm personally not a fan of immutable distro's, it really sounds like the complete opposite of why GNU/Linux was made in the first place.
+
+1706812693
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+TLS question: do I need to keep the ca_bundle around for the life of the tls client?
+
+1706812893
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I've got some tls failure after my *second* round trip...the first one works just fine. But i'm on a tethered connection and not sure if that's playing into it so want to make sure I've got the bundle working properly
+
+1706812908
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+"some" failure being TlsBadRecordMAC
+
+1706814382
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, yes, that bundle represents all the root certificates in a compact representation and they are needed to verify a TLS connection handshake
+
+1706814436
+andrewrk!~andrewrk@mail.ziglang.org
+it looks like std.http does not account for the bundle to be mutated but if you don't need to do that then it should be easy enough to manage, just don't free the resource until the http client is done
+
+1706814541
+andrewrk!~andrewrk@mail.ziglang.org
+I would expect a different problem than TlsBadRecordMAC if there was an issue with the ca_bundle
+
+1706815142
+dkibi!~dkibi@163-172-57-76.rev.poneytelecom.eu
+what is the merch situation for Zig? I vaguely remember that there was a store that would donate proceeds, but I coudn't find a long.
+
+1706815147
+dkibi!~dkibi@163-172-57-76.rev.poneytelecom.eu
+s/long/link/
+
+1706815358
+dkibi!~dkibi@163-172-57-76.rev.poneytelecom.eu
+a found it on the community page
+
+1706816298
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+thanks andrewrk 
+
+1706828465
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, putting this on your radar for river: https://github.com/ziglang/zig/pull/18778
+
+1706828501
+andrewrk!~andrewrk@mail.ziglang.org
+after this lands, I'd be interested to find out if there is anything else you desire to land in 0.12
+
+1706828527
+andrewrk!~andrewrk@mail.ziglang.org
+particularly in the interest of making it easier to package river in linux distros
+
+1706828566
+andrewrk!~andrewrk@mail.ziglang.org
+also would be interested to know what you consider to be blockers for switching from git submodules to zig build (if you are even interested in that)
+
+1706828736
+ifreund!2940d10f8b@user/ifreund
+andrewrk: very cool! I am definitely interested in switching away from submodules but must admit I haven't tried zig's builtin package mananger yet
+
+1706828778
+andrewrk!~andrewrk@mail.ziglang.org
+yeah, understandable. well it's a good time to try I think because my goal right now is basically to make sure everybody who wants to pin to 0.12 is happy and then cut the release
+
+1706828838
+ifreund!2940d10f8b@user/ifreund
+Am I right that this will allow distros to ship zig packages using their distro package manager and cause those to be used rather than fetching from the URL in the build.zig.zon?
+
+1706828866
+ifreund!2940d10f8b@user/ifreund
+or is this currently just about linking system libraries, not pure-zig dependencies
+
+1706828870
+andrewrk!~andrewrk@mail.ziglang.org
+yes, the mechanism for that is that distros are expected to pass --system [dir] where [dir] is a path that has zig packages provided by the distro
+
+1706828876
+ifreund!2940d10f8b@user/ifreund
+perfect
+
+1706828890
+andrewrk!~andrewrk@mail.ziglang.org
+this does 2 things: 1. disables fetching entirely, no network access
+
+1706828911
+andrewrk!~andrewrk@mail.ziglang.org
+2. reverses the default so that all system libs default to enabled, and you have to opt out if you want the zig package instead
+
+1706828925
+andrewrk!~andrewrk@mail.ziglang.org
+that's still TODO in this branch however
+
+1706828934
+ifreund!2940d10f8b@user/ifreund
+Yeah, I definitely need to get my projects updated to Zig master and test before 0.12.0 :)
+
+1706828953
+ifreund!2940d10f8b@user/ifreund
+Great to see this use-case being taken seriously though :)
+
+1706829004
+andrewrk!~andrewrk@mail.ziglang.org
+I think it's going to be interesting, it's kind of like a negotiation between the distro and the upstream developer. they each have ways to communicate what they want without being overly specific
+
+1706829025
+andrewrk!~andrewrk@mail.ziglang.org
+the upstream author can find out that the person running zig build *wants* to integrate with their system and still ignore that request
+
+1706829039
+andrewrk!~andrewrk@mail.ziglang.org
+and of course the distro maintainer can simply patch the upstream project
+
+1706829079
+andrewrk!~andrewrk@mail.ziglang.org
+so as far as zig build is concerned I just try to make it so that the respective parties can communicate exactly what they want, so that hopefully a solution that satisfies everybody's needs is possible to encode
+
+1706829089
+ifreund!2940d10f8b@user/ifreund
+Yeah, distro maintainers will probably still complain some about Zig due to not all projects making the effort to integrate with the system
+
+1706829117
+ifreund!2940d10f8b@user/ifreund
+that's why they like meson, the default is proper integration with the system
+
+1706829120
+andrewrk!~andrewrk@mail.ziglang.org
+ah right, but, the patches being sent to upstream maintainers should hopefully look reasonable and attractive to merge
+
+1706829147
+andrewrk!~andrewrk@mail.ziglang.org
+and it gives them the ability to, e.g. notice that it's a system integrated library and change their bug report link ;)
+
+1706829160
+ifreund!2940d10f8b@user/ifreund
+very true, making this possible in the first place will go a long way, after that it's just reducing friction as much as possible
+
+1706829166
+DerTeufel!~DerTeufel@89.69.249.215
+This system is certainly better than weird special casing with long if chains
+
+1706829239
+andrewrk!~andrewrk@mail.ziglang.org
+it's definitely a compromise. but I think the non-system-integration capabilities are also crucial 
+
+1706829356
+ifreund!2940d10f8b@user/ifreund
+Yeah I 100% agree on the developer experience being better. I'm looking forward to it being easy to support both use-cases at once in the same build.zig easily
+
+1706829383
+ifreund!2940d10f8b@user/ifreund
+it would be nice to statically link wlroots by default for example, it's a much better developer experience 
+
+1706829393
+ifreund!2940d10f8b@user/ifreund
+and I could have fully static waylock builds which would be cool
+
+1706829456
+ifreund!2940d10f8b@user/ifreund
+Anyhow, off to bed now. Gotta get ahead on sleep before FOSDEM this weekend :)
+
+1706831329
+andrewrk!~andrewrk@mail.ziglang.org
+have a great time!
+
+1706831521
+bubuche87!~bubuche87@2001:861:3890:5a60:54f1:1f32:9303:9b11
+(what is fosdem?)
+
