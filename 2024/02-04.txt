@@ -1,0 +1,392 @@
+1707011909
+nicos!~nsm@2800:2131:5400:883:28f6:1624:5755:79b0
+Are the constants VMIM and VTIME defined in <termios.h> available? I tried os, io, os.linux with no luck
+
+1707012257
+nicos!~nsm@2800:2131:5400:883:28f6:1624:5755:79b0
+I found tcgetattr, tcserattr and termios under os and some of their parameter under os.linux but not VMIN and VTIME 
+
+1707032511
+amumimium!~amumimium@146.70.198.190
+Hi, guys. Can anyone help me with understanding why `std.debug.print` outputs a plus (`+`) symbol for positive integers? Is it because it's supposed to be used for debugging? I am trying to learn C and doing C exercises in Zig makes implicit C stuff quite explicit. I never would have guessed that a division function's rounding down to infinity vs. zero was a thing until I tried @divFloor when it should have @divTrunc, haha. Any help would be 
+
+1707032511
+amumimium!~amumimium@146.70.198.190
+appreciated. Thank you.
+
+1707032659
+amumimium!~amumimium@146.70.198.190
+I am trying to replicate the Fahrenheit to Celsius conversion exercise in the first chapter of The C programming Language. Here's the code snippet, if more context is needed: https://hastebin.com/share/utahiwaxam.swift
+
+1707035433
+Amun-Ra!~amun-ra@retro.rocks
+why not divide then round?
+
+1707035476
+Amun-Ra!~amun-ra@retro.rocks
+it the old C days we used: int result = (int) x / y + 0.5;
+
+1707035496
+Amun-Ra!~amun-ra@retro.rocks
+0.5 for rounding up 0.5…0.9
+
+1707035546
+Amun-Ra!~amun-ra@retro.rocks
+although in this case rounding up isn't necessary
+
+1707035625
+amumimium!~amumimium@146.70.198.190
+Compiler gives a warning and recommends using @divExact/@divFloor/@divTrunc. I can't answer why I am doing something one way instead of doing it the other way. I am solely relying on the documentation on ziglang.org to figure out what's going on. Also, I'm on the first chapter of The 
+
+1707035637
+amumimium!~amumimium@146.70.198.190
+C Programming Language. I don't even know what I don't know.
+
+1707036648
+LarstiQ!~larstiq@user/larstiq
+hello! I have a zig build that's been on [Semantic Analysis] for over 10 minutes now. I suspect it's something like the infinite looping from https://github.com/ziglang/zig/issues/4572 but am at a bit of a loss on how to find out why. Any better suggestions than trying to attach gdb?  (fwiw this is using https://github.com/ziglang/zig/pull/17382 to build a hacked up riverwm on Asahi)
+
+1707038499
+LarstiQ!~larstiq@user/larstiq
+huh, it seems deep in crash_report.zig
+
+1707038638
+helene!~helene@user/helene
+ii8: see std.build.addObjCopy, that should be what you want
+
+1707038782
+helene!~helene@user/helene
+(or std.Build.Step.Compile.addObjCopy, so you can do b.addExecutable(...).addObjCopy(...))
+
+1707041628
+remiliascarlet!~remiliasc@user/remiliascarlet
+I'm amazed that Zig's C compiler has spotted a bug neither GCC nor OpenBSD's Clang have spotted: warning: 'snprintf' size argument is too large; destination buffer has size 256, but size argument is 512 [-Wfortify-source]
+
+1707041691
+remiliascarlet!~remiliasc@user/remiliascarlet
+Using the exact same parameters, the only difference is that instead of "gcc" or "clang", I put "zig cc".
+
+1707041715
+phaleth!~phaleth@user/phaleth
+incuding the -Wfortify-source flag?
+
+1707041790
+remiliascarlet!~remiliasc@user/remiliascarlet
+Including the "-Wall -Wextra -O3" flags, not "-Wfortify-source".
+
+1707041851
+Earnestly!~earnest@user/earnestly
+remiliascarlet: cppflag FORTIFY_SOURCE=2 probably
+
+1707043477
+ii8!~ii8@45.63.97.131
+helene: addObjCopy only seems useful if I already have an object file. But I think I might be able to use the addObject and then get the filename from the Step.Compile it returns, and then use addObjCopy on it.
+
+1707043948
+helene!~helene@user/helene
+ii8: is your project fully zig or partially zig?
+
+1707044120
+ii8!~ii8@45.63.97.131
+full zig
+
+1707044227
+helene!~helene@user/helene
+is there a reason you want an unlinked object file only? 
+
+1707044241
+helene!~helene@user/helene
+i'm assuming you're linking it yourself?
+
+1707044387
+ii8!~ii8@45.63.97.131
+Yes, I want to make an image to flash an MCU. So I was going to use a linker script and then just extract the .text section
+
+1707044425
+ii8!~ii8@45.63.97.131
+I'm using the setLinkerScript thing from zig build
+
+1707044695
+helene!~helene@user/helene
+if you're already using zig build to use your linker script and do linking, you can optionally "install" that executable artifact (which should be an elf, would be useful for gdb and debugging, but not required) and then do an addObjCopy on your executable (which will extract your text section) and install the result of that
+
+1707044711
+helene!~helene@user/helene
+that should give you a file in the format you want (.bin or .hex)
+
+1707044988
+ii8!~ii8@45.63.97.131
+I'm not doing any linking
+
+1707045048
+ii8!~ii8@45.63.97.131
+I tried doing it that way first but it complains that I don't have an entry point and all that, and I tried to add a fake entry point to make the linker happy but it got a bit awkward. So since I don't even need all that I figured I should just make a regular object file
+
+1707045061
+helene!~helene@user/helene
+if you're using setLinkerScript in zig build, zig does it for you on installArtifact
+
+1707045066
+helene!~helene@user/helene
+you don't need an entrypoint?
+
+1707045086
+helene!~helene@user/helene
+now that's confusing ^^;
+
+1707045188
+ii8!~ii8@45.63.97.131
+the MCU uses an interrupt vector table to decide where to read and execute, there's not a main function or anything like that
+
+1707045273
+ii8!~ii8@45.63.97.131
+so I suppose theres multiple entrypoints and they're defined by a table that I write to the flash. But the point is it's not the same thing the elf linker wants
+
+1707045297
+helene!~helene@user/helene
+ahhhh, alright
+
+1707045328
+helene!~helene@user/helene
+so your MCU uses multiple entrypoints, i'm guessing depending on pins being enabled or not?
+
+1707045394
+helene!~helene@user/helene
+your entrypoint (since it's not used) should probably be the "default" reset routine then, it shouldn't matter too much, but that's an issue of the elf format
+
+1707045493
+ii8!~ii8@45.63.97.131
+some interrupts can be enabled or disabled, yea
+
+1707045525
+helene!~helene@user/helene
+actually, hmm, latest zig master lets you say "no entrypoint" for your program
+
+1707045542
+ii8!~ii8@45.63.97.131
+I tried using the reset handler as the entry point, it complained about the return type or the calling convention or something, can't remember I just thought I'd skip figuring all that out since I don't need it really
+
+1707045547
+helene!~helene@user/helene
+exe.entry = .disabled
+
+1707045574
+helene!~helene@user/helene
+hmmm fair
+
+1707045587
+helene!~helene@user/helene
+having a bare .o will be more complicated though
+
+1707045606
+ii8!~ii8@45.63.97.131
+how so?
+
+1707045651
+helene!~helene@user/helene
+.o files are also elfs, but no reloc/linking done etc, so you'd have to do that yourself (which, you can, but that sounds like a waste if you have zig build)
+
+1707045665
+ii8!~ii8@45.63.97.131
+I don't need to do any linking
+
+1707045696
+ii8!~ii8@45.63.97.131
+or well, I just use a linker script to make sure things are pointing to the right memory areas
+
+1707045802
+ii8!~ii8@45.63.97.131
+I do linking, ignore that, but I have to use a linker script either way. So it knows where ram and so on is on the mcu
+
+1707045864
+helene!~helene@user/helene
+if you do wish to use a .o, it does seem like you'd have no choice but to use .getEmittedBin() on your addObject()
+
+1707045942
+ii8!~ii8@45.63.97.131
+Yea I guess exe.entry = .disabled is the thing I'm actually looking for
+
+1707045996
+remiliascarlet!~remiliasc@user/remiliascarlet
+Earnestly: On the other hand, Zig's C compiler is horribly broken on OpenBSD. Compiles perfectly fine with Clang, but using the exact same CFLAGS, LDFLAGS, files, and output name but using the "zig cc" compiler emits a bunch of ld.ldd errors from especially libgpgme.
+
+1707046022
+remiliascarlet!~remiliasc@user/remiliascarlet
+Actually, all the errors come from that one library.
+
+1707046037
+remiliascarlet!~remiliasc@user/remiliascarlet
+Compiles perfectly fine on Linux though.
+
+1707046074
+ii8!~ii8@45.63.97.131
+helene: I definitely know enough to figure it out somehow now, thanks a lot
+
+1707046110
+helene!~helene@user/helene
+i had to figure that out just yesterday too, so no worries :p zig does suffer from a critical lack of documentation
+
+1707046199
+remiliascarlet!~remiliasc@user/remiliascarlet
+Yeah, documentation is a massive problem. So much so that zig.news is technically a better documentation than the actual Zig documentation.
+
+1707046245
+helene!~helene@user/helene
+except it's constantly out of date as well ^^;
+
+1707046257
+remiliascarlet!~remiliasc@user/remiliascarlet
+Yeah, that's the point.
+
+1707046302
+remiliascarlet!~remiliasc@user/remiliascarlet
+Outdated articles from others are better at teaching you to understand Zig than up to date official documentation.
+
+1707046375
+helene!~helene@user/helene
+yeah, it gives you a direction at least
+
+1707046415
+ifreund!2940d10f8b@user/ifreund
+it depends a lot on where you're coming from
+
+1707046448
+ifreund!2940d10f8b@user/ifreund
+as someone who was already proficient in C before I found Zig, the official docs were all I needed and perfect for me
+
+1707046459
+remiliascarlet!~remiliasc@user/remiliascarlet
+I came from my parents, so how is that in my case?
+
+1707046498
+helene!~helene@user/helene
+pretty good i'd say
+
+1707046504
+remiliascarlet!~remiliasc@user/remiliascarlet
+I'm proficient in C and Go. I found that Zig is kinda in the middle between the 2.
+
+1707046546
+helene!~helene@user/helene
+ifreund: the language itself, not much of an issue; the stdlib, build system, etc... different question
+
+1707046555
+remiliascarlet!~remiliasc@user/remiliascarlet
+STD is pretty extensive like in Go, but memory management is important like in C.
+
+1707046640
+remiliascarlet!~remiliasc@user/remiliascarlet
+Would be nice if Go had its own `build.go` like in Zig, makes it so much nicer to work with compared to Makefiles, even if that means having to learn a whole new way of doing things.
+
+1707046687
+ii8!~ii8@45.63.97.131
+what's wrong with makefiles?
+
+1707046711
+remiliascarlet!~remiliasc@user/remiliascarlet
+Nothing's wrong, it's just nice to keep things uniformly in 1 language, that's all.
+
+1707046745
+helene!~helene@user/helene
+i'd rather not have build systems if i can avoid it, but with zig there's no choice, it makes sense
+
+1707046769
+helene!~helene@user/helene
+for go, why have a build system
+
+1707046784
+ii8!~ii8@45.63.97.131
+I'm not so sure, because if go had build.go and C had build.c, each of them would inevitably have a different API
+
+1707046792
+ii8!~ii8@45.63.97.131
+So instead of learning make once
+
+1707046803
+ii8!~ii8@45.63.97.131
+you learn a worse syntax of make once for each language you use
+
+1707046804
+remiliascarlet!~remiliasc@user/remiliascarlet
+You actually have a choice. `zig build-exe` or `zig build-lib` is pretty similar to `cc` or `gcc` or `clang` or whatever C compiler you're using.
+
+1707046836
+helene!~helene@user/helene
+zig wants to remake the entire toolchain system so
+
+1707046842
+phaleth!~phaleth@user/phaleth
+these days I'd always recommend this resource to learn zig https://codeberg.org/dude_the_builder/zig_in_depth as it's kept relatively up to date
+
+1707047123
+remiliascarlet!~remiliasc@user/remiliascarlet
+ii8: I love Makefiles for being able to do all sorts of things with it, but I just got reminded to 2 problems with those: 1) Most projects make their Makefiles as hard as possible to understand what the hell is going on there, although I expect this problem to plague build.zig as well eventually (if not already). 2) Syntax differences between GNU Make and BSD Make exist, so you need to install `gmake`
+
+1707047125
+remiliascarlet!~remiliasc@user/remiliascarlet
+on the BSD's if you use GNU's syntax, or `bmake` on Linux if you use BSD's syntax.
+
+1707047200
+remiliascarlet!~remiliasc@user/remiliascarlet
+And as you might have noticed by now, I'm a user of both GNU/Linux and the BSD's (OpenBSD especially).
+
+1707047227
+ii8!~ii8@45.63.97.131
+Yes, unfortunately GNU insists on making everything they get their hands on incompatible with everything else
+
+1707047281
+remiliascarlet!~remiliasc@user/remiliascarlet
+Yes, and always end up with a lot more bloated versions of everything too.
+
+1707047334
+ii8!~ii8@45.63.97.131
+They just love their extensions, always extending
+
+1707047398
+ii8!~ii8@45.63.97.131
+But it's actually possible to write in a portable subset of make and it works nicely
+
+1707047426
+ifreund!2940d10f8b@user/ifreund
+helene: I just read the source code... its not a big deal for me at least and Zig is probably the most readable language Ive used
+
+1707047466
+helene!~helene@user/helene
+i fall back on that too, but i'd rather not have to spend so much time doing that :p
+
+1707047472
+ifreund!2940d10f8b@user/ifreund
+Ive had to do the same thing often enough in C projects
+
+1707047476
+helene!~helene@user/helene
+and readability, beats rust for sure
+
+1707047594
+remiliascarlet!~remiliasc@user/remiliascarlet
+ifreund: "I just read the source code..." Actually a good idea, no idea why I didn't come up with this before.
+
+1707048643
+remiliascarlet!~remiliasc@user/remiliascarlet
+helene: "and readability, beats rust for sure" Very true! The other day I was reading through arguably the most readable Rust codebase thus far, and I couldn't wrap my head around it at all. Basically like reading somebody else's Javascript code.
+
+1707048710
+remiliascarlet!~remiliasc@user/remiliascarlet
+I read somebody else's C code, I understand it, same with Go, Zig, and to some extend C++ and PHP depending on how much of a spaghetti (aka, OOP) it is.
+
+1707048782
+remiliascarlet!~remiliasc@user/remiliascarlet
+But Rust or Javascript, good luck reading the cargo.toml or package.json files to figure out the over 9000 dependencies, and reading through each one's documentation.
+
+1707056609
+remiliascarlet!~remiliasc@user/remiliascarlet
+I test drove translate-c on a C file containing only `int main() { return 0; }`, no imports or anything. Compile the outputted Zig file as-is: `error: expected return type of main to be 'void', '!void', 'noreturn', 'u8', or '!u8'`
+
+1707056657
+remiliascarlet!~remiliasc@user/remiliascarlet
+Maybe the translate-c should convert "int main" to "main() !void", because in C the main function is always of type int, whereas in Zig it's always of type !void anyway.
+
+1707056674
+remiliascarlet!~remiliasc@user/remiliascarlet
+Or void if you don't care about error handling.
+
