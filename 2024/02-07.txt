@@ -1,0 +1,576 @@
+1707268925
+remiliascarlet!~remiliasc@user/remiliascarlet
+nicos: gdb is debugging compiled binaries with debugging symbols enabled, not source code. So it debugs machine language just to put it that way. It can debug compiled C, C++, Zig, Go, Rust, Crystal, and so on and so forth.
+
+1707269002
+remiliascarlet!~remiliasc@user/remiliascarlet
+In the same sense, you can use Valgrind on compiled binaries (again, with debugging symbols enabled) to check on memory leaks.
+
+1707269861
+nicos!~nsm@2800:2131:5400:883:1487:279d:8407:5193
+yes, I thought it was not enabled and that that was the reason why I was not finding any
+
+1707269939
+remiliascarlet!~remiliasc@user/remiliascarlet
+So just enable debugging symbols, and you'll be fine.
+
+1707270025
+Trel!~Trel@159.223.223.182
+With what I said earlier, it look slike I get the 'does not work' error if I specify seemingly any target.  Anyone have any clue?
+
+1707270888
+andrewrk!~andrewrk@mail.ziglang.org
+Trel, 'does not work' is not enough to go on. perhaps there is more information available to share?
+
+1707271609
+remiliascarlet!~remiliasc@user/remiliascarlet
+Trel: I just got an error message saying "it just works lol", can you tell me in great detail what's going on?
+
+1707272455
+freshcoffee!~fresh@user/freshcoffee
+nicos: yes
+
+1707272476
+freshcoffee!~fresh@user/freshcoffee
+whups ignore
+
+1707273934
+Trel!~Trel@159.223.223.182
+andrewrk: that's literally the error when I run ./configure
+
+1707273945
+Trel!~Trel@159.223.223.182
+Checking for suitable working C compiler ... /usr/bin/zig cc -target x86_64-linux-gnu.2.34 does not work
+
+1707273962
+Trel!~Trel@159.223.223.182
+any target
+
+1707273979
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps it made a log file
+
+1707274014
+Trel!~Trel@159.223.223.182
+I don't think so, but I'll double check
+
+1707274128
+Trel!~Trel@159.223.223.182
+nope, it generates the log file and includes the config line, but after the core tests header, the file ends
+
+1707274156
+Trel!~Trel@159.223.223.182
+So I have nothing else to go on, except that it does work without -target
+
+1707274225
+Trel!~Trel@159.223.223.182
+For what it's worth, its Retroarch if it's something common to anyone trying. Latest tagged version on git
+
+1707275021
+andrewrk!~andrewrk@mail.ziglang.org
+maybe you can ask the person who wrote the configure script for help since that's the software giving you the unhelpful message
+
+1707275713
+Trel!~Trel@159.223.223.182
+well is there any way to test outside? like trying to compile a sample program each way? I'd assume something more complex than a hello world works be needed to test in that way?
+
+1707276591
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Trel it might be worth trying a zig cc wrapper, that argument is parsed a little differently by zig than by clang, for instance.  I think there are others too, I can try to find the related issue.  For now, you can try something like this bash wrapper script I threw together for myself 
+
+1707276595
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+https://gist.github.com/tsmanner/97194bbda4f5d484cdf547f31b0ea8fd
+
+1707276701
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+I know some tools also have a hard time with CC and CXX env vars with a space in them, etc.  For example, I don't think `CC="zig cc" cmake ...` has ever worked for me (probably some sh parameter quoting thing)
+
+1707278322
+Trel!~Trel@159.223.223.182
+tsmanner: I can easily test the space option, but I'm not sure how to know if I'm using the right syntax for zig, how would I find that out?  
+
+1707278449
+Trel!~Trel@159.223.223.182
+It's not the space issue.
+
+1707278633
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Yes, but zig parses the target flag differently than clang, the wrapper tries to reinterpret that on the way in to zig cc
+
+1707278699
+torque!~tachyon@user/torque
+if you're cross-compiling for a different architecture, the code snippets that the script tries to compile to check if the compiler works will not run
+
+1707278702
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+https://github.com/ziglang/zig/issues/4911
+
+1707278724
+torque!~tachyon@user/torque
+and thus the configure will think your compiler is not emitting functioning binaries
+
+1707278791
+Trel!~Trel@159.223.223.182
+Same architecture
+
+1707278808
+Trel!~Trel@159.223.223.182
+I'm trying to look at how the configure script tests the compiler
+
+1707278859
+Trel!~Trel@159.223.223.182
+You keep saying it parses it differently to clang.  Where does clang come into play?
+
+1707278922
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+zig cc passes parameters to clang to do the actual compilation
+
+1707278924
+torque!~tachyon@user/torque
+did you try running your zig cc command with a very basic c program, like `#include <stdio.h>\nint main(int argc, char **argv) { puts("ok"); }`
+
+1707278971
+Trel!~Trel@159.223.223.182
+Yes, the one it tries to compile in the configure script
+
+1707278973
+Trel!~Trel@159.223.223.182
+It worked
+
+1707278989
+Trel!~Trel@159.223.223.182
+So I'm trying to figure out what the compile script is actually looking at that would fail out 
+
+1707279016
+torque!~tachyon@user/torque
+if the configure system doesn't output a log file on failure, it's completely useless and broken anyway
+
+1707279259
+Trel!~Trel@159.223.223.182
+I think I may know the issue
+
+1707279351
+Trel!~Trel@159.223.223.182
+nevermind, red herring there, was a function defined earlier in a sourced file, not an unknown command
+
+1707280309
+Trel!~Trel@159.223.223.182
+I think I found the issue, it was actually checking the value for any dashes
+
+1707280328
+Trel!~Trel@159.223.223.182
+so my wonderful zig-wrapper wrapper lol
+
+1707280556
+Trel!~Trel@159.223.223.182
+I think I've made headway, though it says it needs libusb.h which I'm assuming means I need to compile it with this setup and include it from another location
+
+1707280692
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Glad you got to the bottom of that very vague error!
+
+1707280853
+Trel!~Trel@159.223.223.182
+It was extremely accurate.
+
+1707281133
+Trel!~Trel@159.223.223.182
+Looks like I have to grab a bunch of sources to build this for now, not sure how many
+
+1707282453
+Trel!~Trel@159.223.223.182
+Perhaps I should've tested with something less... expansive hehe
+
+1707282460
+Trel!~Trel@159.223.223.182
+*heh
+
+1707284598
+freshcoffee!~fresh@user/freshcoffee
+Trel: is the target glibc version higher than host platform? that would cause a configure script to blow up if it tries to execute some artifact
+
+1707285164
+Trel!~Trel@159.223.223.182
+freshcoffee: nope, lower
+
+1707285183
+Trel!~Trel@159.223.223.182
+My whole endeavour is to build something for a target with a lower glibc than my machine
+
+1707285202
+Trel!~Trel@159.223.223.182
+(without a VM/Docker)
+
+1707294109
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+What dll naming scheme does zig expect? I have glfw3.dll and it can't find it. it can find libglfw3dll.a (static lib) in the same directory. For dynamic dll I get DllImportLibraryNotFound
+
+1707294119
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+DllImportLibraryNotFound string isn't found in the zig sources
+
+1707295052
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+I give up, if anyone has had any success linking to dlls on windows, I'd appreciate a look at this: https://dpaste.org/r42hG
+
+1707295096
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+includes main.zig, build.zig and errors. vendor/glfw/lib/{glfw3.dll,libglfw3dll.a}
+
+1707295111
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+even the most basic example fails
+
+1707295116
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+with errors I can't decipher
+
+1707295175
+motiejus!~motiejus@88.223.107.21
+jacobly0: gentle ping re https://github.com/ziglang/zig/issues/18763#issuecomment-1925338747 ; does it sound good? i am making changed to hermetic_cc_toolchain and am trying to make the user reports as useful to youas possible
+
+1707295208
+motiejus!~motiejus@88.223.107.21
+fengshaun: DllImportLibraryNotFound is in src/link/Coff/lld.zig
+
+1707295301
+motiejus!~motiejus@88.223.107.21
+(it seems quite decipherable looking at the code which patterns it tries to use for the dll looking around the error enum)
+
+1707307424
+helene!~helene@user/helene
+hi! having huge binary bloat issues with compiler_rt (i'm targeting a MCU so flash is limited, and 190kb for compiler_rt is not very... good); it seems like there's no way to -ffunction-sections + -fdata-sections + --gc-sections via zig build directly (or at least i can't figure it out myself)
+
+1707307431
+helene!~helene@user/helene
+is there a way to achieve this effect on zig master?
+
+1707311461
+cdrmack!cdrmack@gateway/vpn/protonvpn/cdrmack
+Sup everyone, I'm new to Zig and to the community. I have joined Discord yesterday and started my first learning project (breakout clone with Zig and raylib).
+
+1707311544
+cdrmack!cdrmack@gateway/vpn/protonvpn/cdrmack
+I use FreeBSD and wanted to build zig from source (would love to contribute one day). I have followed to instructions from README and github wiki page but it fails. I wonder if it's a local issue.
+
+1707311554
+cdrmack!cdrmack@gateway/vpn/protonvpn/cdrmack
+Is there any public CI where I can check such things?
+
+1707311742
+cdrmack!cdrmack@gateway/vpn/protonvpn/cdrmack
+Compilation fails at stage1/wasm2c.c (unused variable). Might debug it further and try to fix it if it's an actual bug. It's a master branch.
+
+1707311798
+LarstiQ!~larstiq@user/larstiq
+Github has CI, e.g. https://github.com/ziglang/zig/pull/17382/checks shows a bunch of platforms passing tests
+
+1707311827
+LarstiQ!~larstiq@user/larstiq
+seemingly freebsd is not in that list, dunno if elsewhere
+
+1707314442
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+quit
+
+1707314459
+cdrmack!cdrmack@gateway/vpn/protonvpn/cdrmack
+@LarstiQ, thanks
+
+1707317212
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+motiejus: the workaround didn't land, but the output from a newer version of Zig would still be helpful
+
+1707319304
+motiejus!~motiejus@88.223.107.21
+jacobly0: ok
+
+1707319501
+cdrmack!cdrmack@gateway/vpn/protonvpn/cdrmack
+Zig master compiles on FreeBSD from source just fine, my bad. I had CFLAGS env variable set with `-Wall` in it.
+
+1707332371
+ifreund!2940d10f8b@user/ifreund
+andrewrk: gave the zig package manager's system integration a spin today, here's the result: https://github.com/chimera-linux/cports/pull/1395
+
+1707332413
+ifreund!2940d10f8b@user/ifreund
+I'll be offline for a bit now but would love to discuss further improvements with you later/tomorrow :)
+
+1707332432
+ifreund!2940d10f8b@user/ifreund
+and thanks for working on this, I'm very exicited to stop using submodules!
+
+1707333218
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+There are 400 people in here? Wow that is a lot
+
+1707333294
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+Thanks for joining and immediately leaving.
+
+1707340734
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+motiejus, thanks, I was searching in the stdlib sources for some reason! I see how it works now!
+
+1707341925
+Trel!~Trel@159.223.223.182
+What would cause the compiler to report 'libavcodec/avcodec.h' not found when it's definitely in a path included in CFLAGS from -I which has worked so far for everything but this one
+
+1707342022
+ifreund!2940d10f8b@user/ifreund
+Trel: how exactly are you compiling? I don't think zig even looks at CFLAGS
+
+1707342049
+Trel!~Trel@159.223.223.182
+ifreund: it has to be because it's worked on all the other not found errors for headers
+
+1707342077
+Trel!~Trel@159.223.223.182
+and compiling with make, zig is being called as 'zig cc'
+
+1707342126
+ifreund!2940d10f8b@user/ifreund
+in that case clang could be reading CFLAGS, `git grep '\bCFLAGS\b'` in the zig repo makes me pretty sure zig itself isn't though
+
+1707342198
+Trel!~Trel@159.223.223.182
+So how would you tell zig when called with 'zig cc' how to find library headers?
+
+1707342232
+Trel!~Trel@159.223.223.182
+I thought zig was substituting itself for clang?
+
+1707342236
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: did you set `CC=zig cc` in make? ifreund: if you do it like that then make has a built in rule I think, something like `$(CC) $(CFLAGS) -o $@ $^`
+
+1707342259
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: it's make that (sometimes) injects CFLAGS, not zig/clang/gcc itself
+
+1707342281
+Trel!~Trel@159.223.223.182
+daurnimator: yes
+
+1707342286
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: what is the whole invocation that make does?
+
+1707342303
+Trel!~Trel@159.223.223.182
+I have no idea how to find that info (not sure what to look for)
+
+1707342309
+Earnestly!~earnest@user/earnestly
+(`make -pn' to show builtin rules)
+
+1707342334
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: normally make prints what it runs by default
+
+1707342341
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: did you write your makefile?
+
+1707342370
+Trel!~Trel@159.223.223.182
+No
+
+1707342378
+Trel!~Trel@159.223.223.182
+I'm compiling Retroarch
+
+1707342411
+Trel!~Trel@159.223.223.182
+I have been grabbing prereq source packages as needed and adding the location of the needed header via CFLAGS
+
+1707342428
+Trel!~Trel@159.223.223.182
+this has worked fine until ffmpeg requirements
+
+1707342511
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ianic/flate
+
+1707342515
+andrewrk!~andrewrk@mail.ziglang.org
+you love to see it. implementation made from first principles in zig outperforms the code ported from Go, and also removes the dynamic allocation requirement
+
+1707342567
+Trel!~Trel@159.223.223.182
+I may have found the issue
+
+1707342581
+Trel!~Trel@159.223.223.182
+I'm trying a few more things before I continue trying to debug
+
+1707342749
+Trel!~Trel@159.223.223.182
+I may have needed to run configure fresh after including it in flags
+
+1707342892
+Trel!~Trel@159.223.223.182
+Ok, I think I got it so it finds all the headers for building, in which case, my next question
+
+1707342929
+Trel!~Trel@159.223.223.182
+What is the proper way to write the -target parameter for glibc 2.34?  I had '/usr/bin/zig cc -target x86_64-linux-gnu.2.34' but that doesn't look like the output was right
+
+1707342983
+Trel!~Trel@159.223.223.182
+(as in the output binary is still linked against /usr/lib/libc.so.6
+
+1707343237
+helene!~helene@user/helene
+glibc is meant to be dynamically linked only
+
+1707343314
+helene!~helene@user/helene
+andrewrk: i would guess the speedups are also partially related to not needing to do dynamic memory management?
+
+1707343342
+Trel!~Trel@159.223.223.182
+I was pointed to zig because it said it let me pick a version, did it still compile against the version I specified then?  Is there a way to check?
+
+1707343352
+Trel!~Trel@159.223.223.182
+I'm not worried about running it on a newer one
+
+1707343377
+andrewrk!~andrewrk@mail.ziglang.org
+Trel, you can use readelf to look at the symbol table. you should see versions matching the one you picked
+
+1707343399
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: that's correct. helene's comment seems like a non-sequitur as you didn't say you wanted a fully static build
+
+1707343408
+helene!~helene@user/helene
+since you're compiling retroarch targeting a specific glibc version: i'm assuming you're trying to get latest retroarch running on a specific linux device, right?
+
+1707343427
+taylan!~taylan@user/taylan
+what does "from first principles" mean in this context?
+
+1707343440
+helene!~helene@user/helene
+if so, why pick glibc and not musl? (unless retroarch doesn't compile with musl, which would surprise me considering it also targets homebrew)
+
+1707343460
+Trel!~Trel@159.223.223.182
+helene: Exactly, but my machine has too high a glibc to do that directly
+
+1707343463
+daurnimator!~daurnimat@vultr.daurnimator.com
+helene: I would assume because it uses video drivers such as nvidia's openGL that requires glibc?
+
+1707343471
+Trel!~Trel@159.223.223.182
+andrewrk: What am I looking for?
+
+1707343511
+helene!~helene@user/helene
+daurnimator: possible, i kinda forget how messy some Linux stuff tends to be; and cores dynamically load on Linux, right?
+
+1707343517
+helene!~helene@user/helene
+(retroarch cores)
+
+1707343588
+Trel!~Trel@159.223.223.182
+I see references to GLIBC_2.34 and GLIBC_2.38 when I do readelf -s
+
+1707343594
+Trel!~Trel@159.223.223.182
+I'm not sure if it'll work
+
+1707343659
+daurnimator!~daurnimat@vultr.daurnimator.com
+Trel: yeah that doesn't sound correct then
+
+1707343673
+daurnimator!~daurnimat@vultr.daurnimator.com
+you should see nothing newer than the version you passed in the target
+
+1707343893
+helene!~helene@user/helene
+could it be that your build is linking with your newer system's libraries, then?
+
+1707343918
+daurnimator!~daurnimat@vultr.daurnimator.com
+helene: zig shouldn't do that
+
+1707343944
+helene!~helene@user/helene
+it shouldn't by itself no, but i'm thinking a makefile/configure might pass some pkg-conf arguments
+
+1707344074
+Trel!~Trel@159.223.223.182
+Is there any way around that?
+
+1707344211
+ifreund!2940d10f8b@user/ifreund
+Trel: are the shared libraies you are linking from your system package manager and built against the system glibc version? (2.38)
+
+1707344266
+ifreund!2940d10f8b@user/ifreund
+or are you building all the objects linked in the entire compilation with zig targeting glibc 2.34?
+
+1707344465
+Trel!~Trel@159.223.223.182
+I haven't been linking any shared libraries directly.  I've been including header files from source packages in CFLAGS, other than that, I've done nothing additional other than specifying the compiler with CC
+
+1707346451
+ii8!~ii8@45.63.97.131
+If `lol` is a symbol defined in a linker script and I declare `extern const lol: [*]u8;` then that should just work right?
+
+1707347027
+ii8!~ii8@45.63.97.131
+(the answer is no, that doesn't work)
+
+1707348467
+daurnimator!~daurnimat@vultr.daurnimator.com
+ii8: you may need `extern var lol: [*]u8`
+
+1707348584
+daurnimator!~daurnimat@vultr.daurnimator.com
+ii8: it's been a while since I've touched a linker script in zig but this was how I did it: https://github.com/im-tomu/fomu-workshop/blob/1e3b07a5fff239f2997ec794720576247e14923f/riscv-zig-blink/src/fomu/start.zig#L13  https://github.com/im-tomu/fomu-workshop/blob/1e3b07a5fff239f2997ec794720576247e14923f/riscv-zig-blink/ld/linker.ld
+
+1707348693
+ii8!~ii8@45.63.97.131
+const works. You just don't get the pointer, you get the value it points to. Apparently in linker scripts `. = 0x20` means set the current location to 0x20 but `a = .` means define a as the value stored at the current location.
+
+1707348785
+daurnimator!~daurnimat@vultr.daurnimator.com
+ah yes. you can then take the address though. `&`
+
+1707348836
+ii8!~ii8@45.63.97.131
+yea, that's what I'm doing now
+
+1707348865
+ii8!~ii8@45.63.97.131
+do you know what the gnu.linkonce stuff means?
+
+1707348943
+daurnimator!~daurnimat@vultr.daurnimator.com
+> When the GNU linker sees two
+
+1707348945
+daurnimator!~daurnimat@vultr.daurnimator.com
+input sections with the same name, and the name starts with
+
+1707348947
+daurnimator!~daurnimat@vultr.daurnimator.com
+".gnu.linkonce.", the linker will only keep one copy and discard the
+
+1707348949
+daurnimator!~daurnimat@vultr.daurnimator.com
+other. 
+
+1707349060
+ii8!~ii8@45.63.97.131
+oo
+
