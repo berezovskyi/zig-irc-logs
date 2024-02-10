@@ -1,0 +1,208 @@
+1707445593
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: And I think it's ridiculous how this works on Linux. On Windows you can statically link GLFW, on the BSD's you can statically link it, Solaris/Illumos even let you do so, and Mac doesn't matter, because everything gets placed into its own "executable" directory anyway. It's only Linux on which you can't do that.
+
+1707445663
+remiliascarlet!~remiliasc@user/remiliascarlet
+Not blaming you, nothing you can do about it.
+
+1707445708
+andrewrk!~andrewrk@mail.ziglang.org
+I agree, it's ridiculous. One area where Linux is clearly worse than the alternatives
+
+1707487138
+aquamo4k!~mross@162.222.54.134
+remiliascarlet: out of curiosity, have you tried building zig on Illumos or any of that flavor of OS?
+
+1707487551
+remiliascarlet!~remiliasc@user/remiliascarlet
+aquamo4k: Not yet, because I didn't decide yet which laptop to install it on, and using VM's sucks.
+
+1707487599
+remiliascarlet!~remiliasc@user/remiliascarlet
+But I do remember the strong availability of static libraries.
+
+1707487782
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: Did you read any of the packaging scripts from any distro? In programs that have Cmake/Meson/Ninja/Make/`./configure` flags where you can choose to compile statically or dynamically, compile both, or static by default, distro maintainers always always choose to outright disable static and enable dynamic. Which is why I don't think we can expect any cooperation for statically linked
+
+1707487784
+remiliascarlet!~remiliasc@user/remiliascarlet
+OpenGL-based games anytime soon.
+
+1707487845
+remiliascarlet!~remiliasc@user/remiliascarlet
+s/always always/almost always
+
+1707487960
+Earnestly!~earnest@user/earnestly
+It really has nothing to do with it
+
+1707488053
+remiliascarlet!~remiliasc@user/remiliascarlet
+Partially, since it shows what's "preferred" in this space.
+
+1707488073
+Earnestly!~earnest@user/earnestly
+It has nothing to do with it
+
+1707488154
+remiliascarlet!~remiliasc@user/remiliascarlet
+Then what do you think it has to do with?
+
+1707488226
+Earnestly!~earnest@user/earnestly
+Someone not wanting to maintain a loader library to deal with all the various implementations
+
+1707488315
+Earnestly!~earnest@user/earnestly
+(It's also how opengl was designed to work)
+
+1707488392
+remiliascarlet!~remiliasc@user/remiliascarlet
+A static library gets compiled into your binary, so no idea what loader library would even be needed here.
+
+1707488418
+helene!~helene@user/helene
+vulkan has a loader library as far as i'm aware (no matter the platform)
+
+1707488447
+Earnestly!~earnest@user/earnestly
+The issue here is glfw, not random static libraries, which work just fine. Static linking glibc is also fine, but you won't get nss, iconv and stuff like that.
+
+1707488468
+Earnestly!~earnest@user/earnestly
+Well, "fine"
+
+1707488576
+Earnestly!~earnest@user/earnestly
+(I do like static linking, but even Solaris removed libc.a, fwiw: https://blogs.oracle.com/solaris/post/static-linking-where-did-it-go )
+
+1707488666
+Earnestly!~earnest@user/earnestly
+But at any rate, this is not at all related to distro maintainers not providing static libraries, these are specific design choices made by glfw/opengl/glibc that effect them in specific and different ways.
+
+1707488709
+LarstiQ!~larstiq@user/larstiq
+and in distros linking statically would mean rebuilding every package when a dependency changes
+
+1707488728
+LarstiQ!~larstiq@user/larstiq
+particularly unpleasant for security updates
+
+1707488772
+Earnestly!~earnest@user/earnestly
+LarstiQ: I've been meaning to experiment with a way to improve that situation, mostly by retaining built objects and only rebuilding when necessary so that most of the time spent is in relinking
+
+1707488844
+Earnestly!~earnest@user/earnestly
+(The difficulty being how to maintain the objects in a highly heterogenous environment where I doubt most makefiles even properly handle rebuilds.)
+
+1707488854
+Earnestly!~earnest@user/earnestly
+A bit like ccache, I suppose
+
+1707488877
+Earnestly!~earnest@user/earnestly
+(It's why I was eyeing up zig as well, as a general build tool, for the caching)
+
+1707488923
+Earnestly!~earnest@user/earnestly
+helene: Also yeah, that's why the vulkan loader exists. WGL afaik works like this too https://github.com/KhronosGroup/Vulkan-Loader/blob/main/docs/LoaderInterfaceArchitecture.md
+
+1707489121
+helene!~helene@user/helene
+Earnestly: is that even possible considering how glibc loves to change header files or inlined methods to introduce incompatibilities?
+
+1707489318
+Earnestly!~earnest@user/earnestly
+helene: Static linking glibc? I mean, if you don't use locales, nss, iconv, etc; everything it loads via dlopen (which makes no sense to me). But avoiding those interfaces is non-obvious and can change with versions, so idk
+
+1707489362
+Earnestly!~earnest@user/earnestly
+(I don't think glibc has a justification for this design)
+
+1707489377
+helene!~helene@user/helene
+it's more that i know of a few cases where they change a few defines, which would cause issues in the case of the C preprocessor if you were to just keep the objects in cache
+
+1707489398
+aquamo4k!~mross@162.222.54.134
+thanks for the oracle/solaris blog entry.  I remembered these changes during the SunOS->Solaris transistion in the '90s as well and when SGI also made similar changes in IRIX at around the same time they introduced the nsswitch / resolver changes.
+
+1707489399
+Earnestly!~earnest@user/earnestly
+Oh that, yeah
+
+1707489413
+helene!~helene@user/helene
+(you could always have a "-MMD -MP"-like behaviour etc but also for system headers, though)
+
+1707489445
+Earnestly!~earnest@user/earnestly
+helene: This is where I wish everything used something like gnat's .ali files which can detect even changes to inlined functions
+
+1707489487
+helene!~helene@user/helene
+well, that's kind of the C/C++ issue really :p
+
+1707489565
+Earnestly!~earnest@user/earnestly
+Yeah but it's a good point because that's what I mean by heterogenous, it's all languages, all sorts of artefacts that can be generated during a build/configure
+
+1707489642
+Earnestly!~earnest@user/earnestly
+The dream of the incremental build system was to only rebuild what was necessary and no more but in practice all sorts of subtle relationships don't get accounted for and eventually edge cases break everything, `make clean' try again
+
+1707490833
+remiliascarlet!~remiliasc@user/remiliascarlet
+LarstiQ: Doesn't help if updates to the dynamic library destroys the binary of actually want to use though. Ever worked with a source-based distro (Gentoo, Funtoo, CRUX) or a rolling release distro (Arch/Artix, Void)? Happens a lot!
+
+1707491063
+remiliascarlet!~remiliasc@user/remiliascarlet
+Earnestly: Glibc is such a mess, I'd much rather use a distro that uses Musl instead. But so many programs are either compiled against Glibc, or they expect Glibc to compile, so I guess we're put up with it.
+
+1707492869
+helene!~helene@user/helene
+remiliascarlet: sounds like you'd very much enjoy Adélie Linux's work on the matter, then :p
+
+1707497350
+remiliascarlet!~remiliasc@user/remiliascarlet
+helene: Never heard of that distro before. But looks like that website requires Javascript to be enabled to view, so it already failed my criteria.
+
+1707497418
+helene!~helene@user/helene
+https://git.adelielinux.org/adelie/gcompat (it's gitlab, so good luck there)
+
+1707497582
+helene!~helene@user/helene
+ah, they do have a gitweb: https://cgit.adelielinux.org
+
+1707515799
+motiejus!~motiejus@88.223.107.21
+zig 2024 roadmap on this week's lwn issue, nice
+
+1707515847
+motiejus!~motiejus@88.223.107.21
+s/this/last/ (Feb 2)
+
+1707516703
+andrewrk!~andrewrk@mail.ziglang.org
+oh wow
+
+1707517616
+motiejus!~motiejus@88.223.107.21
+I did not enjoy reading the comments (rare on lwn), only the last 10ish are constructive. But the article is well written, I can recommend if you haven't seen the video with the same title.
+
+1707517690
+motiejus!~motiejus@88.223.107.21
+the article is paywalled and will open up in ~1 week, but I will happily send a free link to anyone here, just PM me.
+
+1707519096
+andrewrk!~andrewrk@mail.ziglang.org
+well, despite whatever sentiment the comments have, zig's mere presence on lwn.net begins to subconsciously validate it in a particular kind of systems programming subculture
+
+1707519304
+motiejus!~motiejus@88.223.107.21
+it's been a bit over 2 years since the previous one: https://lwn.net/Articles/833400/
+
