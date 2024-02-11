@@ -1,0 +1,484 @@
+1707523919
+andrewrk!~andrewrk@mail.ziglang.org
+woah! when did `zig build -h` in the zig compiler get way faster?
+
+1707523930
+andrewrk!~andrewrk@mail.ziglang.org
+it used to be ~500ms for me, now it's 117ms
+
+1707525708
+andrewrk!~andrewrk@mail.ziglang.org
+while working on something else, I'm doing a bisect to find out. I just need to remember that 'bad' actually means 'good' - Michael Jackson style
+
+1707528704
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+I'm adding a build.zig to a CMake project with a config header, how do you get the path to that in a downstream project?
+
+1707529239
+andrewrk!~andrewrk@mail.ziglang.org
+tsmanner, the package that creates the config header needs to "install" it as part a static library. then when the downstream project links the static library, it automatically gets the include directory containing that config header file
+
+1707529331
+andrewrk!~andrewrk@mail.ziglang.org
+tsmanner, example: https://github.com/andrewrk/ffmpeg/blob/150fb9449a038ef45cdb88259ded97462c7354ab/build.zig#L922
+
+1707529473
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Got it, it looks like it's not transitive.  I'm working on picking up Catch2, they have Catch2 and Catch2Main, which links Catch2 adds their default test runner.  I installed the config header with Catch2 but then depend on Catch2Main downstream
+
+1707529497
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Linking both works in the downstream project, so I know what to do in the upstream now.  Thanks!
+
+1707529615
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+ope, nvm I may have missed the linking between the lib and main.  Doh
+
+1707531103
+voldial!~voldial@user/voldial
+I'm looking for a minimal-ish example of testing a cli, currently I wrap my code in a shell script that creates a testing folder, makes that CWD, creates a few paths, and then calls my zig app with the paths as argv, and parses the output to see if it worked correctly... looking through through zig/test/* I'm just lost. I did ziglings, and am re-reading https://ziglang.org/documentation/master/#Zig-Test but
+
+1707531105
+voldial!~voldial@user/voldial
+afict it's all in-code tests, how do I test argv->stdout?
+
+1707534193
+andrewrk!~andrewrk@mail.ziglang.org
+voldial, this is a good use case for using the zig build system's Run Step. it has some API for checking the stdout, stderr, exit code, etc
+
+1707534235
+voldial!~voldial@user/voldial
+ahh. excellent, I figured there had to be hooks. TY
+
+1707534246
+andrewrk!~andrewrk@mail.ziglang.org
+this should get you started: https://ziglang.org/learn/build-system
+
+1707534257
+voldial!~voldial@user/voldial
+on it!
+
+1707541200
+andrewrk!~andrewrk@mail.ziglang.org
+105db13536b4dc2affe130cb8d2eee6c97c89bcd is the commit that did it
+
+1707542304
+andrewrk!~andrewrk@mail.ziglang.org
+oh I bet it's in resolveTargetQuery, skipping resolveTargetQuery for the native query
+
+1707545382
+remiliascarlet!~remiliasc@user/remiliascarlet
+I guess I'll wait with reading that article until the 15th.
+
+1707548404
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+andrewrk, hmm I'll have a look again, maybe I be trippin! I wish windows had ldd
+
+1707548440
+andrewrk!~andrewrk@mail.ziglang.org
+fengshaun, it has the equivalent. I think it's process explorer if I remember correctly
+
+1707548457
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+thanks!!
+
+1707548491
+andrewrk!~andrewrk@mail.ziglang.org
+if that's not it, poke around, there's definitely a tool for it
+
+1707548512
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+will do! sysinternals looks like a good list
+
+1707555990
+sioc!~sioc@91-169-222-76.subs.proxad.net
+hello
+
+1707556177
+sioc!~sioc@91-169-222-76.subs.proxad.net
+I code in perl, php (for websites), and a bit of bash. Is starting directly with learning Zig a good idea or should I learn something else first?
+
+1707556419
+torque!~tachyon@user/torque
+if you want to use zig, you might as well try to learn it
+
+1707556436
+torque!~tachyon@user/torque
+the question would probably be more why you're interested in it and what you're trying to do with it
+
+1707559252
+sioc!~sioc@91-169-222-76.subs.proxad.net
+you asked a very difficult question to answer :) I want to learn a programation language to code local applications with a better looking than perl/tcltk and that can be compiled to binaries
+
+1707559651
+remiliascarlet!~remiliasc@user/remiliascarlet
+sioc: Completely depends on what you want to achieve.
+
+1707559762
+remiliascarlet!~remiliasc@user/remiliascarlet
+Games? Definitely learn Zig. GUI, TUI, or CLI programs? Maybe, but you might enjoy the native language of the GUI/TUI library you're using (or C in the case of CLI). Web? You already know PHP, so you're already well covered, but if it needs to be a compiled language, look into Go.
+
+1707559903
+sioc!~sioc@91-169-222-76.subs.proxad.net
+remiliascarlet: thanks for your answer.
+
+1707560061
+remiliascarlet!~remiliasc@user/remiliascarlet
+The other problem with Zig at the moment is that OpenBSD and FreeBSD support is a bit ass. Both OS's provide the compiler in their repositories and ports collections, but most programs that compile just fine on Linux won't compile on the BSD's.
+
+1707560172
+sioc!~sioc@91-169-222-76.subs.proxad.net
+remiliascarlet: I use a bit openBSD as server, and i'll need binaries for win64 and GNU/Linux (in my case debian)
+
+1707560271
+remiliascarlet!~remiliasc@user/remiliascarlet
+In the case of Linux you'll be just fine, Andrew himself uses Linux, and so do most of us here. As for Windows, no experience with that one, the last Windows version I ever used was 3.11 or something.
+
+1707560287
+remiliascarlet!~remiliasc@user/remiliascarlet
+So even before Windows 95 came out.
+
+1707560324
+sioc!~sioc@91-169-222-76.subs.proxad.net
+:)
+
+1707560383
+sioc!~sioc@91-169-222-76.subs.proxad.net
+my first linux was a patato (kernel 2.0.26) so i am a newbie compare to you ;)
+
+1707560584
+sioc!~sioc@91-169-222-76.subs.proxad.net
+the windows need is for the other people that will use my program. Zig can cross platform compile, isn' it?
+
+1707560694
+ifreund!2940d10f8b@user/ifreund
+indeed
+
+1707560736
+remiliascarlet!~remiliasc@user/remiliascarlet
+Zig can cross compile, although I had no success in doing so thus far.
+
+1707560737
+ifreund!2940d10f8b@user/ifreund
+It sounds to me like the main thing you should care about for your project though is choosing a GUI library that you like with good cross-platform support for the platforms you care about
+
+1707561074
+sioc!~sioc@91-169-222-76.subs.proxad.net
+At first i thought to go for C++ and Qt and i saw a video about Zig and i thought "sound good". And I think Zig (for my small insight) is going to be big in the next years, so why not go for a robust new "modern" language :)
+
+1707561104
+remiliascarlet!~remiliasc@user/remiliascarlet
+Oh God, Qt...
+
+1707561194
+remiliascarlet!~remiliasc@user/remiliascarlet
+I used GTK+ 2, I loved it, and then Gnome 3 released, GTK+ 3 sucked ass, so I looked for alternatives. Qt came up first, installed the whole Qt SDK stuff, got extremely frustrated with it 2 minutes later, and deleted it all.
+
+1707561244
+remiliascarlet!~remiliasc@user/remiliascarlet
+Out of all the GUI libraries, I only liked ncurses, which isn't even a GUI library.
+
+1707561285
+remiliascarlet!~remiliasc@user/remiliascarlet
+But nowadays we have Raygui and Nuklear that look promising, but didn't try yet.
+
+1707561383
+ifreund!2940d10f8b@user/ifreund
+sioc: Zig is indeed much nicer than C++ in my opinion, being a young languge the cross-platform gui library support is much more limited though
+
+1707561463
+sioc!~sioc@91-169-222-76.subs.proxad.net
+GTK+ is good enough for me
+
+1707561528
+sioc!~sioc@91-169-222-76.subs.proxad.net
+remiliascarlet: no fan of Raygui, and Nuklear looks nice
+
+1707561535
+ifreund!2940d10f8b@user/ifreund
+If I was writing a cross platform GUI app in zig today I'd look into the Mach core graphics toolkit and use imgui or something similar
+
+1707561538
+ifreund!2940d10f8b@user/ifreund
+see for example https://foxnne.github.io/pixi/
+
+1707561647
+remiliascarlet!~remiliasc@user/remiliascarlet
+I always associate "app" with smartphone-only programs, considering that Steve Jobs not necessarily invented it, but made normies use it for any software related terms..
+
+1707561661
+ifreund!2940d10f8b@user/ifreund
+language changes, get over it
+
+1707561705
+ifreund!2940d10f8b@user/ifreund
+I for one am simply too lazy to type out the full word "application"
+
+1707561744
+sioc!~sioc@91-169-222-76.subs.proxad.net
+I am really not an Apple user. I am allergic to the eat/poo/think apple way or die
+
+1707561789
+remiliascarlet!~remiliasc@user/remiliascarlet
+Abbreviations are ultra-common in my native language, although can be confusing sometimes when you see it being used for the first time.
+
+1707561825
+ifreund!2940d10f8b@user/ifreund
+Yeah, I've been on linux or grapheneos on my various devices for quite some years now
+
+1707561897
+sioc!~sioc@91-169-222-76.subs.proxad.net
+Abbreviations are also always context linked, so go figure the meaning without enough text around :p
+
+1707561902
+remiliascarlet!~remiliasc@user/remiliascarlet
+Ever since the iPhone came out, I feel like you can't just use a single Apple product, but rather you're always being reminded to sign your soul away for the entire ecosystem.
+
+1707561944
+ifreund!2940d10f8b@user/ifreund
+airpods are the only apple thing I still use, which luckily do work together with non-apple technology
+
+1707561952
+ifreund!2940d10f8b@user/ifreund
+(they were a gift, and are actually quite nice)
+
+1707561956
+remiliascarlet!~remiliasc@user/remiliascarlet
+Have a Mac? Now you need iCloud, iPhone, iPad, iRaq, iRan......... Yeah, fuck off!
+
+1707562000
+sioc!~sioc@91-169-222-76.subs.proxad.net
+I only used MacOS 8 at work for 3 monthes after that i changed to NT4 ... old days
+
+1707562054
+sioc!~sioc@91-169-222-76.subs.proxad.net
+and NT4 beta was less crashing than MacOS 8
+
+1707562121
+sioc!~sioc@91-169-222-76.subs.proxad.net
+old age when windows didn't use registry ... .ini were so nice to understand
+
+1707562246
+sioc!~sioc@91-169-222-76.subs.proxad.net
+what documentation / website should I go for starting learning Zig as beginner?
+
+1707562392
+ifreund!2940d10f8b@user/ifreund
+sioc: https://ziggit.dev/docs?topic=3160
+
+1707562419
+sioc!~sioc@91-169-222-76.subs.proxad.net
+Nice
+
+1707562440
+sioc!~sioc@91-169-222-76.subs.proxad.net
+Thanks a lot all. Have a good day
+
+1707562451
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1707562469
+sioc!~sioc@91-169-222-76.subs.proxad.net
+bye
+
+1707586907
+Nightwulf!~totto@p200300db0f1970002ef05dfffea2cb51.dip0.t-ipconnect.de
+Hi guys!
+
+1707586934
+Nightwulf!~totto@p200300db0f1970002ef05dfffea2cb51.dip0.t-ipconnect.de
+I've a question regarding interaction with C libraries and using C-compatible types vs Zig types
+
+1707586976
+Nightwulf!~totto@p200300db0f1970002ef05dfffea2cb51.dip0.t-ipconnect.de
+What is considered to be "best practice"? Translating between the types, using only C types in such a program or which way would be the best and most organic?
+
+1707595033
+voldial!~voldial@user/voldial
+how do I write a [][:0]u8 literal?
+
+1707595352
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+You can't write a non-empty literal of that type since literals are not mutable
+
+1707597098
+voldial!~voldial@user/voldial
+can I ask "zig run" to output a note whenever a cast is performed?
+
+1707600310
+voldial!~voldial@user/voldial
+Why cant I "const a = slice[0..slice.len].*"? -> "error: index syntax required for slice type '[]u8'" It's because slize.len isnt known at compile-time, and "const a" is an array, and thus is really "comptime const a"?
+
+1707601280
+ii8!~ii8@45.63.97.131
+voldial: the pointer dereference syntax .* is not applicable to slices. Use index syntax instead: s[i]
+
+1707602407
+voldial!~voldial@user/voldial
+I'm looping through argv and passing each to std.os.realpath() which returns a slice, and I want to ArrayList.append() each. ArrayList.appendSlize() wants a slice of slices ([]const []const u8).. but I just have []u8
+
+1707602635
+voldial!~voldial@user/voldial
+If I just ArrayList.append(slice), it's the same memory address each time, so the ArrayList is a bunch of entries pointing to the last item in argv
+
+1707603466
+ii8!~ii8@45.63.97.131
+voldial: I can't say what you're doing wrong without seeing the code, using ArrayList.append sounds fine to me
+
+1707603489
+voldial!~voldial@user/voldial
+ii8: one sec, I'll make minimal example
+
+1707603865
+voldial!~voldial@user/voldial
+ii8: https://bpa.st/CKIQ
+
+1707604145
+voldial!~voldial@user/voldial
+I guess my hangup is I expect ArrayList.append() to take the slice (a pointer and a length) allocate memory for it, and then make a copy of the string. Instead it just allocates memory for the slice itsself... because that's what I told it to do:)
+
+1707604172
+ii8!~ii8@45.63.97.131
+yes, you need to allocate space for the realpath it returns
+
+1707604184
+ii8!~ii8@45.63.97.131
+you are using stack space and then it gets overwritten each loop iteration
+
+1707604254
+ii8!~ii8@45.63.97.131
+you can skip the first element by using a slice `for (args[1..]) |arg| {`
+
+1707604419
+voldial!~voldial@user/voldial
+ii8: what function would I use to allocate? "const slice_ptr = try allocator.alloc(u8, slice.len);"
+
+1707604508
+ii8!~ii8@45.63.97.131
+I would have a buffer of MAX_PATH_BYTES
+
+1707604522
+ii8!~ii8@45.63.97.131
+and then copy out from it, so you know the size and waste less space
+
+1707604665
+voldial!~voldial@user/voldial
+oh, so a fixed buffer on the stack... ok tryin'
+
+1707604696
+bubuche87!~bubuche87@217-23-3-96.hosted-by-worldstream.net
+Is there a misra equivalent document for zig ?
+
+1707604860
+ii8!~ii8@45.63.97.131
+most likely not
+
+1707604954
+voldial!~voldial@user/voldial
+ii8: am I missing something? All I did was move the existing "var buffer" outside the loop to line 19: https://bpa.st/NPIQ and it appears to work correctly now...
+
+1707605111
+ii8!~ii8@45.63.97.131
+voldial: it's not working for me
+
+1707605176
+voldial!~voldial@user/voldial
+ii8: I'm on 0.12.0-dev.2059+42389cb9c
+
+1707605254
+ii8!~ii8@45.63.97.131
+look carefully at the output, I don't think it's working for you either regardless of zig version
+
+1707605315
+ii8!~ii8@45.63.97.131
+maybe your paths have common prefixes, and because the buffer is reused it looks right
+
+1707605326
+voldial!~voldial@user/voldial
+ii8: I'm not seeing it... ines 41 and 42 are as expected... what is unexpected is it's working considering &resolved_path is the same each time...
+
+1707605342
+voldial!~voldial@user/voldial
+er, lines 40 and 41
+
+1707605358
+ii8!~ii8@45.63.97.131
+yes, your paths are the same up to a point, that's the problem
+
+1707605373
+ii8!~ii8@45.63.97.131
+use completely different filepaths and you'll see
+
+1707605387
+ii8!~ii8@45.63.97.131
+or use them the other way around
+
+1707605408
+ii8!~ii8@45.63.97.131
+the first one got overwritten, but you can't tell because the second path is a prefix of the first
+
+1707605459
+voldial!~voldial@user/voldial
+ii8: ah. insufficient test coverage:) https://bpa.st/4PYA ok, problem remains, was it correct to move that "var buffer" def out of the loop?
+
+1707605724
+voldial!~voldial@user/voldial
+if I understand correctly, buffer is a fixed length array, allocated on the stack at comptime... so idk what difference it would make putting it inside the loop...
+
+1707605726
+ii8!~ii8@45.63.97.131
+voldial: it seems to be reusing the same memory when it's inside the loop, so I suppose it makes no difference
+
+1707605756
+ii8!~ii8@45.63.97.131
+well it's not allocated at comptime
+
+1707605766
+voldial!~voldial@user/voldial
+ah.
+
+1707605782
+ii8!~ii8@45.63.97.131
+it's allocated when the stack frame is created
+
+1707605879
+voldial!~voldial@user/voldial
+TY. slowly... getting it:) ok, so I'll make a buffer_realpath the same way... and then use std.mem.Allocator.dupe()?
+
+1707605909
+voldial!~voldial@user/voldial
+testin'
+
+1707605974
+ii8!~ii8@45.63.97.131
+yea, that sounds fine to me, and then you can put that straight in your result array I suppose
+
+1707605991
+ii8!~ii8@45.63.97.131
+make sure to slice it to length before passing to dupe, to not waste space
+
+1707606328
+voldial!~voldial@user/voldial
+ii8: apparently I still dont understand how to get the slice's contents into buffer_realpath: https://bpa.st/ALJQ
+
+1707606493
+voldial!~voldial@user/voldial
+if I instead do "buffer_realpath = try std.mem.Allocator.dupe(allocator, u8, resolved_path.*);" I get the somewhat confusing error "error: index syntax required for slice type '[]u8'" .. it's confusing because @TypeOf(resolved_path) is []u8
+
+1707607422
+voldial!~voldial@user/voldial
+similar issue if I instead try "mem.copyForwards(u8, &buffer_realpath, resolved_path);" -> "error: expected type '[]u8', found '*const [4096]u8'" (with buffer_realpath being underlined in green in the backtrace)
+
+1707607883
+voldial!~voldial@user/voldial
+"@memcpy(&buffer_realpath, resolved_path);" -> "panic: @memcpy arguments have non-equal lengths"
+
+1707608338
+voldial!~voldial@user/voldial
+how the heck to I copy the contents of a u8 slice into a u8 array? I tried std.mem.Allocator.dupe(), mem.copyForwards() and @memcpy() so far: https://bpa.st/F57A 
+
+1707609559
+ii8!~ii8@45.63.97.131
+voldial: you need to slice the resolved_path  when you pass it to dupe
+
