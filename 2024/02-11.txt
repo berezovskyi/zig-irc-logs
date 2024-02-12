@@ -1,0 +1,420 @@
+1707609648
+ii8!~ii8@45.63.97.131
+wait no that's already a slice
+
+1707609868
+voldial!~voldial@user/voldial
+ii8: got @memcpy() to compile, but the problem is worse, here's my attempts so far https://bpa.st/BRWA
+
+1707609873
+ii8!~ii8@45.63.97.131
+idk, I guess it doesn't handle that case and you have to just allocate and copy seperately yourself
+
+1707609936
+ii8!~ii8@45.63.97.131
+you've used the stack again
+
+1707609971
+voldial!~voldial@user/voldial
+ii8: so dont use "var buffer_realpath: [std.fs.MAX_PATH_BYTES]u8 = undefined;" ?
+
+1707610005
+ii8!~ii8@45.63.97.131
+that puts the buffer on the stack
+
+1707610011
+ii8!~ii8@45.63.97.131
+use alloc
+
+1707610019
+voldial!~voldial@user/voldial
+ok, testin
+
+1707610023
+ii8!~ii8@45.63.97.131
+and copy
+
+1707610478
+voldial!~voldial@user/voldial
+ii8: this works, but leaks: https://bpa.st/DVVQ if I uncomment line 43, it stopps working
+
+1707610551
+ii8!~ii8@45.63.97.131
+why are you calling dupe?
+
+1707610569
+ii8!~ii8@45.63.97.131
+you are allocating memory for the path strings twice
+
+1707610628
+voldial!~voldial@user/voldial
+ii8: oh. I thought dupe made a copy of resolved_path's contents and placed them in realpath_buffer, starting at realpath_buffer[0]...
+
+1707610664
+voldial!~voldial@user/voldial
+what's copy?
+
+1707610672
+ii8!~ii8@45.63.97.131
+yes, it allocates new memory and then places the contents there
+
+1707610683
+ii8!~ii8@45.63.97.131
+so you just want to move the memory over
+
+1707610695
+ii8!~ii8@45.63.97.131
+and I get why that's confusing because @memcpy doesn't allocate new memory
+
+1707610710
+ii8!~ii8@45.63.97.131
+but the hint is that dupe is a function that takes an allocator
+
+1707610797
+voldial!~voldial@user/voldial
+ii8: yea, I see the double allocation... ok, so I tried "var realpath_buffer: []u8 = undefined;" and then "realpath_buffer = try std.mem.Allocator.dupe(allocator, u8, resolved_path);" but I get unreachablecode
+
+1707610882
+voldial!~voldial@user/voldial
+also unreachable panic with "var realpath_buffer = try std.mem.Allocator.dupe(allocator, u8, resolved_path);" only
+
+1707610932
+voldial!~voldial@user/voldial
+so... dont use std.mem.Allocator.dupe at all?
+
+1707611158
+voldial!~voldial@user/voldial
+I must be using @memcpy() wrong still? https://bpa.st/6NAA
+
+1707611357
+voldial!~voldial@user/voldial
+looks right... https://ziglang.org/documentation/master/#memcpy dst is a []u8 as is src
+
+1707611453
+ii8!~ii8@45.63.97.131
+that's right no dupe, we're using alloc instead and @memcpy
+
+1707611507
+ii8!~ii8@45.63.97.131
+you can just pass the newly allocated buffer, it's already the right size
+
+1707611647
+ii8!~ii8@45.63.97.131
+and you are freeing the memory too early, you have to free it after you're done using it
+
+1707611665
+voldial!~voldial@user/voldial
+ii8: great, this works: https://bpa.st/6VAA but leaks... and again if I uncomment the defer on line 31, it stops working
+
+1707611703
+voldial!~voldial@user/voldial
+oh... so move the free to after I print the paths...
+
+1707611775
+ii8!~ii8@45.63.97.131
+yes, you need to keep the memory allocated as long as you're using it
+
+1707611791
+ii8!~ii8@45.63.97.131
+and when you're done and don't want to refer to it anymore then free it
+
+1707611815
+voldial!~voldial@user/voldial
+hm. that didnt work... I put the free after "try paths.append(realpath_buffer);" so it's the last thing that happens in that scope, but still get unreachable code
+
+1707611867
+ii8!~ii8@45.63.97.131
+you are using the memory after that scope, you are printing the strings at the end, those are the strings we just allocated memory for
+
+1707611872
+ii8!~ii8@45.63.97.131
+so it needs to be available there
+
+1707611901
+voldial!~voldial@user/voldial
+ii8: if I put it utside the scope I get "unknown identifier realpath_buffer"
+
+1707611924
+voldial!~voldial@user/voldial
+utside/outside
+
+1707611933
+ii8!~ii8@45.63.97.131
+right, but think about where the reference to that memory has gone
+
+1707611991
+voldial!~voldial@user/voldial
+ii8: into the paths ArrayList?
+
+1707612001
+ii8!~ii8@45.63.97.131
+exactly
+
+1707612007
+voldial!~voldial@user/voldial
+but I have "defer paths.deinit();"
+
+1707612027
+ii8!~ii8@45.63.97.131
+but that just deinits the arraylist
+
+1707612062
+ii8!~ii8@45.63.97.131
+not the strings that are referenced by the items in the array list
+
+1707612090
+voldial!~voldial@user/voldial
+then what do I allocator.free()? each item in the list?
+
+1707612094
+voldial!~voldial@user/voldial
+ah. hm.
+
+1707612099
+ii8!~ii8@45.63.97.131
+yes
+
+1707612122
+ii8!~ii8@45.63.97.131
+because you allocator.alloc() for each item in the list
+
+1707612258
+voldial!~voldial@user/voldial
+ii8: :)))) Thank you so much. It works! https://bpa.st/5ZUQ Is there a way to use defer? I guess no? I need to remember to free the pointers (slices) in the ArrayList when I am done using it?
+
+1707612327
+ii8!~ii8@45.63.97.131
+well done
+
+1707612349
+ii8!~ii8@45.63.97.131
+you can do just `@memcpy(realpath_buffer, resolved_path);` you don't need the extra slicing
+
+1707612365
+ii8!~ii8@45.63.97.131
+defer is only for delaying some action to the end of the scope
+
+1707612389
+ii8!~ii8@45.63.97.131
+you want to keep the memory around beyond the current scope, so no defer is not the right tool here
+
+1707612422
+ii8!~ii8@45.63.97.131
+yes, you have to remember
+
+1707612441
+voldial!~voldial@user/voldial
+understood! can I farm that job out to ArrayList in theory? 
+
+1707612460
+voldial!~voldial@user/voldial
+I gave it the same allocator instance...
+
+1707612488
+ii8!~ii8@45.63.97.131
+you could make your own version and call it stringlist or something that automatically frees all the strings it contains when you deinit it
+
+1707612631
+ii8!~ii8@45.63.97.131
+why is it even called ArrayList? I wonder what the rationale there was, doesn't make sense to me
+
+1707612649
+ii8!~ii8@45.63.97.131
+it's not a list of arrays
+
+1707612667
+voldial!~voldial@user/voldial
+ii8: Ah. ok. So I bet some of these zig string libs do such things. I'll wait until I can hello world better before I get lazy. So, final product: https://bpa.st/ZXTQ other than no test coverage (that's next), is there anything else I should be working on?
+
+1707612668
+ii8!~ii8@45.63.97.131
+it's just a dynamic array
+
+1707612904
+voldial!~voldial@user/voldial
+... technically paths can be longer than MAX_PATH_BYTES, but since these paths come in on argv, I think that limits their length... .. hm `getconf ARG_MAX` is 2097152 on my system... so maybe not... I guess I'll try and devise test coverage to find that issue
+
+1707613040
+ii8!~ii8@45.63.97.131
+If they can be longer then that sounds like a bug, no path should have more bytes than MAX_PATH_BYTES, hence the MAX part
+
+1707613125
+voldial!~voldial@user/voldial
+ii8: consider the case where you bind mount a filesystem deep into a pre-existing directory tree. There's a issue: https://github.com/ziglang/zig/issues/4812
+
+1707613184
+voldial!~voldial@user/voldial
+but with mkdir and changing CWD each time, you can create arb deep folder nestings
+
+1707613249
+voldial!~voldial@user/voldial
+that's fun.... because `tree` for example wont show them (last time I checked)
+
+1707613273
+ii8!~ii8@45.63.97.131
+oh, goofy
+
+1707613278
+voldial!~voldial@user/voldial
+yea lol
+
+1707613557
+ii8!~ii8@45.63.97.131
+but that's a limitation of the realpath function so ig there's nothing you can do about it
+
+1707615478
+voldial!~voldial@user/voldial
+is there a way to resolve a path and verify it's a dir (getdents64 d_type DT_DIR) without a race condition?
+
+1707615576
+voldial!~voldial@user/voldial
+I think I gotta realpath() and then obtain a fd to hold while making any other checks...
+
+1707674354
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+Hi Guys! I have strange problem with building my application and I tried to break it down to the simplest possible example, which you can find here: https://gist.github.com/Nightwulf/347f6bb37419269fab310a1b097da285
+
+1707674399
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+Building that with "zig build-exe" gives the correct output but with "zig build-exe -O ReleaseFast" it is wrong. Could please anybody explain to me, what is happening there?
+
+1707674482
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: that's illegal behavior, you're reading from a dangling pointer to a variable on the stack after getFoo() has returned
+
+1707674552
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+Yeah, thought that something like that is the problem but why differs the behaviour from debug to release mode?
+
+1707674665
+ifreund!2940d10f8b@user/ifreund
+reading a pointer to free'd memory can give you any arbitrary value or crash your program or whatever
+
+1707674701
+ifreund!2940d10f8b@user/ifreund
+what ends up happening in practice is affected by optimizations, which assume illegal behavior does not occur
+
+1707674806
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+ok, thank you....so correct way would be to change the return type to a struct and creating the address of the returned value where that is called and used?
+
+1707674879
+ifreund!2940d10f8b@user/ifreund
+returning the struct by value is one option yes
+
+1707675015
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+shouldn't the compiler then moan about using such pointers as a return type? zig is very restrrictive with types at many other places, which is good, don't get me wrong on that ;-)
+
+1707675104
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: there's nothing wrong with returning a pointer, it just has to be a pointer to memory that outlives the function scope
+
+1707675124
+ifreund!2940d10f8b@user/ifreund
+for example, memory allocated on the heap using an allocator
+
+1707675234
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+yes, but what I ment was, that the compiler is able to distinguish that in my small example, so it could detect and report it as an error
+
+1707675248
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: https://github.com/ziglang/zig/issues/2646
+
+1707675274
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+Great...thank you :)
+
+1707675291
+ifreund!2940d10f8b@user/ifreund
+essentially, yes trivial cases like your example could be identified but it gets complicated/impossible really quickly
+
+1707675312
+ifreund!2940d10f8b@user/ifreund
+and what code compiles/doesn't compile has to be clearly and explicitly defined by the language specification
+
+1707675335
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+My question was exactly intended to find out whether it would make sense to create an issue or not. 
+
+1707675625
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+btw: the other application is a small game using SDL2 I made to find out whether zig might be a good choice for a bigger game I plan and my conclusion is: it will be zig :)
+
+1707676697
+ifreund!2940d10f8b@user/ifreund
+nice!
+
+1707676948
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+I'm using Go for most other projects at my company and at home but if it comes to combining it with C libraries, Go is really not a clever choice...so I searched for a language which combines C/C++ when it comes to speed and secure and structured code but easy integration with libraries. Well....there was not really any other chioce. I found Odin too but that is by far not where zig is already
+
+1707678696
+ifreund!2940d10f8b@user/ifreund
+Yeah, that's pretty much why I started using Zig as well, wanted to use a C library for a project but didn't really want to write it in C :)
+
+1707678803
+grayhatter!~grayhatte@user/grayhatter
+I always describe zig as C, but with modern language features. It's C, if C's compiler was actually smart
+
+1707678858
+Nightwulf!~totto@p200300db0f215f002ef05dfffea2cb51.dip0.t-ipconnect.de
+I started a manual Go wrapper for vulkan the other day because the ones made from generators didn't work as expected....but that was a sisiphos task...luckily then came zig :)
+
+1707691182
+remiliascarlet!~remiliasc@user/remiliascarlet
+I actually find it easier to write code in C, but in Zig it's a lot harder to shoot yourself in the foot.
+
+1707691278
+bubuche87!~bubuche87@2001:861:3890:5a60:9d7f:fbb8:73a0:b2fc
+Does zig inherits the UB and weird corner cases of C ?
+
+1707691350
+bubuche87!~bubuche87@2001:861:3890:5a60:9d7f:fbb8:73a0:b2fc
+(like signed overflow being an UB for example)
+
+1707691530
+ifreund!2940d10f8b@user/ifreund
+bubuche87: in zig you choose whether overflow is illegal or not by using either + or +% :)
+
+1707691540
+ifreund!2940d10f8b@user/ifreund
+(the % means wrapping)
+
+1707691570
+bubuche87!~bubuche87@2001:861:3890:5a60:9d7f:fbb8:73a0:b2fc
+Ah :)
+
+1707691603
+ifreund!2940d10f8b@user/ifreund
+in general, zig tries hard to make decisions on how things should work from first principles with a healthy does of pragmatism
+
+1707691615
+bubuche87!~bubuche87@2001:861:3890:5a60:9d7f:fbb8:73a0:b2fc
+Are struct packing part of the basic language or extensions ? (That and alignment)
+
+1707691618
+ifreund!2940d10f8b@user/ifreund
+s/does/dose/
+
+1707691643
+ifreund!2940d10f8b@user/ifreund
+there are no language "extensions" in zig
+
+1707691688
+ifreund!2940d10f8b@user/ifreund
+Zig lets you set the alignment of fields in structures if that's what you're asking
+
+1707691711
+bubuche87!~bubuche87@2001:861:3890:5a60:9d7f:fbb8:73a0:b2fc
+It's more the alignment of the structure itself.
+
+1707691747
+ifreund!2940d10f8b@user/ifreund
+which is defineds as the maximum of the alignment of the fields
+
+1707691800
+bubuche87!~bubuche87@2001:861:3890:5a60:9d7f:fbb8:73a0:b2fc
+I think yes.
+
