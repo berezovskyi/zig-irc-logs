@@ -1,0 +1,368 @@
+1707719345
+remiliascarlet!~remiliasc@user/remiliascarlet
+Anyone worked with the libraries from `https://github.com/zig-gamedev/zig-gamedev`?
+
+1707719450
+remiliascarlet!~remiliasc@user/remiliascarlet
+Can't seem to figure out how to use sdl scancodes in this one, but it seems like it's not `state[sdl.Scancode.w] != 0`, nor `state == sdl.Scancode.w`, nor `state.w`, nor `state == sdl.Scancode.w`, nor `state == .w`.
+
+1707719576
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+remiliascarlet, sample code?
+
+1707719658
+remiliascarlet!~remiliasc@user/remiliascarlet
+Yeah, there doesn't seem to be a sample code for that in this repository.
+
+1707719703
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+sorry, I meant can you post a sample code that doesn't work, I haven't used the library myself
+
+1707719758
+remiliascarlet!~remiliasc@user/remiliascarlet
+If you mean from me, what am I supposed to show? If it were C, you'd do `if (state[SDL_SCANCODE_W] != 0) { /*Do something*/ }`
+
+1707719802
+remiliascarlet!~remiliasc@user/remiliascarlet
+And since they don't provide any sample code that covers this in zsdl, all I can do is guess how it is in their implementation.
+
+1707720084
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+remiliascarlet, what's the type of `state`?
+
+1707720103
+remiliascarlet!~remiliasc@user/remiliascarlet
+[]const u8, I guess.
+
+1707720109
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+Scancode.w == 26
+
+1707720129
+remiliascarlet!~remiliasc@user/remiliascarlet
+At least, it's []const u8 when I ported my C code to Zig.
+
+1707720183
+remiliascarlet!~remiliasc@user/remiliascarlet
+And doing state[26] gives "error: incompatible types: 'u8' and 'bool'".
+
+1707720215
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+oh, so you're using KeyboardEvent.state: ReleasedOrPressed
+
+1707720278
+remiliascarlet!~remiliasc@user/remiliascarlet
+On the other hand, just `if (state[26])` gives "error: expected type 'bool', found 'u8'".
+
+1707720323
+remiliascarlet!~remiliasc@user/remiliascarlet
+Oh, I got it now. One sec.
+
+1707720334
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+if your code is open sauce, if you could paste a bit of context around it would help
+
+1707720355
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+if you're getting KeyboardEvent, then .state == enum(u8) { .released .pressed }
+
+1707720433
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+getKeyboardState() might be helpful as well: https://github.com/zig-gamedev/zig-gamedev/blob/main/libs/zsdl/src/sdl2.zig#L1357
+
+1707720549
+remiliascarlet!~remiliasc@user/remiliascarlet
+Code is actually closed source. I have `const state = sdl.getKeyboardState();`, but I couldn't get the state enums to work with that one.
+
+1707720567
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+plot thickens
+
+1707720575
+remiliascarlet!~remiliasc@user/remiliascarlet
+I got it to compile with `if (stat[26] != 0)` though.
+
+1707720600
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+then state[sdl.Scancode.w] != 0 should work as well
+
+1707720606
+remiliascarlet!~remiliasc@user/remiliascarlet
+"plot thickens" How degenerate of you. (just joking)
+
+1707720614
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+ohhh @enumtoint or something
+
+1707720661
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+state[@intFromEnum(sdl.Scancode.w)] != 0
+
+1707720786
+remiliascarlet!~remiliasc@user/remiliascarlet
+Looks like that one compiled.
+
+1707720807
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+looks ugly, I'm not sure why there's a type mismatch between Scancode:enum(u32) and getKeyboardState()'s return can have a size up to `usize`
+
+1707720810
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+awesome
+
+1707720869
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+sounds like state should be encapsulated in a struct of some form, but that's an api thing.
+
+1707721644
+remiliascarlet!~remiliasc@user/remiliascarlet
+Maybe I'll change this myself at a later time. They forgot to add bindings for GetTicks(), which I added in on my end myself.
+
+1707721655
+remiliascarlet!~remiliasc@user/remiliascarlet
+So it's pretty easy to modify.
+
+1707723527
+remiliascarlet!~remiliasc@user/remiliascarlet
+error: type 'f32' does not support field access\npub fn abs(z: anytype) @TypeOf(z.re) {
+
+1707723532
+remiliascarlet!~remiliasc@user/remiliascarlet
+Seriously?
+
+1707723586
+remiliascarlet!~remiliasc@user/remiliascarlet
+So `anytype` excludes floats?
+
+1707723681
+remiliascarlet!~remiliasc@user/remiliascarlet
+`abs` is from `std.math.complex.abs()` by the way.
+
+1707723842
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+f32 is fine, abs() source has a test with abs(Complex(f32).init(5, 3))
+
+1707723870
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+the one in Complex has type @TypeOf(z.re, z.im), not @TypeOf(z.re)
+
+1707723921
+remiliascarlet!~remiliasc@user/remiliascarlet
+I found a better fix that worked: @abs()
+
+1707725563
+fsx!~FSX@durian.61924.nl
+Is there something similar to the io.Reader and io.Writer interfaces in Go for Zig? Or is there some pattern that's used for (de)serializers?
+
+1707725606
+grayhatter!~grayhatte@user/grayhatter
+fsx have you looked at the api std.io.reader/writer
+
+1707725649
+fsx!~FSX@durian.61924.nl
+Not yet. Didn't know it existed.
+
+1707725867
+fsx!~FSX@durian.61924.nl
+thanks. that looks good
+
+1707742473
+ifreund!2940d10f8b@user/ifreund
+neat: http://coypu.sdf.org/porting-zig.html
+
+1707742614
+ifreund!2940d10f8b@user/ifreund
+oh wait, that's really old lol
+
+1707742629
+ifreund!2940d10f8b@user/ifreund
+wonder why it just showed up in my mastodon feed
+
+1707755533
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+was just talking with der teufel on discord about this and wondering if I should make an issue on github
+
+1707755550
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+There are several constants defined in std.os.linux that are *not* defined in std.c.linux
+
+1707755603
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+For example, IGNBRK. This is defined in std.c.darwin and std.os.linux, but not std.c.linux
+
+1707755635
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+So I can write something that doesn't link libc, and IGNBRK is there. If this is a library and imported to a project which *does* link libc, std.c.linux.IGNRBK does not exist
+
+1707755707
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+This workaround fixes it on my end https://0x0.st/Hd4i.txt
+
+1707772200
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, that workaround will break an important feature of the zig std lib which is that it transparently uses libc when you link libc, and doesn't otherwise
+
+1707772258
+andrewrk!~andrewrk@mail.ziglang.org
+IGNBRK is not exposed in std.os either
+
+1707772286
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not sure why it is in the std lib at all to be honest
+
+1707772291
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Hmm
+
+1707772341
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+ok, I may put these constants in my own file so I don’t break libc linking
+
+1707772414
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, what's the problem with using status quo?
+
+1707772466
+andrewrk!~andrewrk@mail.ziglang.org
+oh, I see it now - these are constants that are related to posix because they are defined by other operating systems too
+
+1707772529
+andrewrk!~andrewrk@mail.ziglang.org
+I'll put something together for you since I already started looking into it
+
+1707772606
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Cool, thanks
+
+1707772666
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+https://man7.org/linux/man-pages/man3/termios.3.html
+
+1707772783
+andrewrk!~andrewrk@mail.ziglang.org
+this looks like a libc API and not a linux API
+
+1707772789
+andrewrk!~andrewrk@mail.ziglang.org
+in which case it does not belong in std.os.linux
+
+1707772967
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+golang defines these in the x/sys/unix package
+
+1707772974
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+for what that is worth
+
+1707773050
+andrewrk!~andrewrk@mail.ziglang.org
+looks like these APIs are a libc wrapper around the ioctl syscall
+
+1707773151
+andrewrk!~andrewrk@mail.ziglang.org
+oh, and std.os.linux already implements them
+
+1707773202
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+yeah they are in std.c.darwin too, for example
+
+1707773659
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, help me with one thing: IGNBRK and OPOST are both of type tcflag_t but that seems incorrect since they overlap in values
+
+1707774006
+andrewrk!~andrewrk@mail.ziglang.org
+tcflag_t is a lie
+
+1707774018
+andrewrk!~andrewrk@mail.ziglang.org
+I'll just create a type named after each of the fields
+
+1707774564
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+sorry went afk, yeah it’s a lie. they apply to different fields - type for each field sounds good
+
+1707774708
+ii8!~ii8@45.63.97.131
+How can I get the value of a tagged union without worrying about which alternative it is?(i.e. without switching on the tag)
+
+1707774757
+ii8!~ii8@45.63.97.131
+All of the alternatives are packed structs of 8 bits, and I want them as a u8, no matter the tag
+
+1707774817
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewrk: there's also TIOCSCTTY etc, see here: https://github.com/mitchellh/ghostty/blob/f115e257a4cd732e552eac22ccfb3475e68a469d/src/pty.zig#L61
+
+1707774854
+andrewrk!~andrewrk@mail.ziglang.org
+ii8, hmm I don't have a better idea than this: switch(u) { inline else => |_, v| @bitCast(v) }
+
+1707774888
+andrewrk!~andrewrk@mail.ziglang.org
+in theory the optimizer should be able to collapse this into a simple bit cast
+
+1707774963
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, also I noticed the constants in std.os.linux are wrong for some architectures. what a mess 
+
+1707774974
+andrewrk!~andrewrk@mail.ziglang.org
+I'm on it
+
+1707774985
+andrewrk!~andrewrk@mail.ziglang.org
+good thing I made https://github.com/andrewrk/flag2struct a couple days ago
+
+1707774986
+ii8!~ii8@45.63.97.131
+andrewrk: thanks, I think that'll work fine
+
+1707775099
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewrk: thanks!
+
+1707775279
+ii8!~ii8@45.63.97.131
+looks like it's |value, tag| actually, unless that changed since 0.11
+
+1707777049
+ii8!~ii8@45.63.97.131
+this might be asking a bit much but, is there a way to put the union back together again? As in, use the same tag it was before, with the now modified value, and recreate the union.
+
+1707777156
+ifreund!2940d10f8b@user/ifreund
+ii8: you might be interested in @unionInit()
+
+1707777179
+ifreund!2940d10f8b@user/ifreund
+it accepts a comptime-known tag (which you have from the inline else capture) and a value
+
+1707777202
+ii8!~ii8@45.63.97.131
+yes, I've looked at it, but the problem is I have the tag as a variable, not a comptime string
+
+1707777225
+ifreund!2940d10f8b@user/ifreund
+ii8: ah right, @tagName()?
+
+1707777229
+ii8!~ii8@45.63.97.131
+oh, maybe I can convert it to a string
+
+1707777231
+ii8!~ii8@45.63.97.131
+ah yes, ty
+
+1707777308
+ii8!~ii8@45.63.97.131
+I didn't see tagName, was only searching for union related things
+
+1707777389
+ifreund!2940d10f8b@user/ifreund
+the tag is an enum yeah
+
+1707777577
+ii8!~ii8@45.63.97.131
+I've created a very weird and wonderful function. Maybe I drank a bit too much of the packed struct kool aid
+
