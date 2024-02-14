@@ -1,0 +1,336 @@
+1707783482
+mips64el!~mips64el@185.65.135.228
+hi
+
+1707785715
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, lol: https://github.com/haiku/haiku/blob/master/headers/posix/termios.h#L115-L118
+
+1707785753
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+lol
+
+1707785854
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+You will do separate types though, right?
+
+1707785871
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+looks like haiku left them all as tcflag_t
+
+1707785918
+andrewrk!~andrewrk@mail.ziglang.org
+yeah I'm almost done
+
+1707786085
+gog!~ada@user/gog
+haikuuu
+
+1707786114
+gog!~ada@user/gog
+in the good timeline we'd all be using beos
+
+1707800750
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, https://github.com/ziglang/zig/pull/18910
+
+1707807295
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+cool, I’ll take it for a spin tomorrow. thanks again!
+
+1707807999
+andrewrk!~andrewrk@mail.ziglang.org
+no problem. it doesn't appear to be well-tested so I imagine you might run into a couple minor things. should hopefully be obvious how to fix from here
+
+1707812083
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: To compile Zig from source, do I need to download zig-0.12.0-dev.2711+f995c1b08.tar.xz or zig-bootstrap-0.12.0-dev.2711+f995c1b08.tar.xz?
+
+1707812516
+remiliascarlet!~remiliasc@user/remiliascarlet
+In case I get asked why, to test the master branch on the BSD's and maybe Solaris/Illumos as well.
+
+1707814965
+ifreund!2940d10f8b@user/ifreund
+remiliascarlet: just use the git repo and follow the build instructions
+
+1707814971
+ifreund!2940d10f8b@user/ifreund
+they shouldn't be hard to find
+
+1707816569
+remiliascarlet!~remiliasc@user/remiliascarlet
+Oh, looks even better then.
+
+1707816647
+remiliascarlet!~remiliasc@user/remiliascarlet
+"Building from Source without LLVM" Especially this.
+
+1707816710
+remiliascarlet!~remiliasc@user/remiliascarlet
+bootstrap.c:70:1: warning: non-void function does not return a value in all control paths [-Wreturn-type]
+
+1707816712
+remiliascarlet!~remiliasc@user/remiliascarlet
+warning: sprintf() is often misused, please use snprintf()
+
+1707816716
+remiliascarlet!~remiliasc@user/remiliascarlet
+Good to take note.
+
+1707817349
+remiliascarlet!~remiliasc@user/remiliascarlet
+Alright, so building from source without LLVM has failed.
+
+1707817471
+remiliascarlet!~remiliasc@user/remiliascarlet
+https://paste.opensuse.org/pastes/b11357bdf33b
+
+1707817877
+remiliascarlet!~remiliasc@user/remiliascarlet
+Same problem on FreeBSD as on OpenBSD: https://paste.opensuse.org/pastes/6170ba898af2
+
+1707817883
+remiliascarlet!~remiliasc@user/remiliascarlet
+Works fine on Linux however.
+
+1707818450
+ifreund!2940d10f8b@user/ifreund
+perhaps a stack trace from the coredump would be helpful
+
+1707818463
+ifreund!2940d10f8b@user/ifreund
+In any case, seems like something for the issue tracker
+
+1707818551
+remiliascarlet!~remiliasc@user/remiliascarlet
+Maybe if someone can proxy that, I don't have a Microsoft Github account.
+
+1707819087
+ifreund!2940d10f8b@user/ifreund
+fair
+
+1707835223
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+anfrewrk: so from where do I import the termios.h constants after that pull request?
+
+1707836385
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewrk: Maybe I'm missing it but I can't find how to access the array indexes for the termios.cc field
+
+1707836412
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+it looks like os.linux has these under a V struct, but std.c has them as VMIN, VTIME etc
+
+1707837561
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I think that array is wrong. I was going to comment on the PR but it got automerged
+
+1707837610
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+The index of the array is symbolic (VMIN, VTIME) and defined by implementation, but the value at the index is a cc_t, which is an unsigned int (I'm guessing usize?)
+
+1707837688
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+So what I want to do is `termios[os.VMIN] = 1`
+
+1707837737
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+os.cc_t.VMIN exists but is an enum, and I have to cast to usize to index but then I have to cast the 1 as a cc_t, which is an enum ...hopefully that illustrates the problem
+
+1707838376
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Another example, I might set `termios[VSUSP] = 0x1A;`, which sets the suspend control character to 0x1A (ctrl+z)
+
+1707838394
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+s/termios/termios.cc
+
+1707847229
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, I deleted all the "V" structs, did I miss one?
+
+1707847278
+andrewrk!~andrewrk@mail.ziglang.org
+nicos, std.posix
+
+1707848901
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+thanks
+
+1707850170
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+wait, I'm not getting neither of BRKINT, INPCK, ISTRIP, IXON, ICRNL, OPOST, CS8, ECHO, ICANON, ISIG that where in os.linux (and VMIN and VTIME that I didn't find before aswell)
+
+1707850262
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+nicos: these are books on the termios struct now
+
+1707850271
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+s/books/bools 
+
+1707850307
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+or rather, their respective fields
+
+1707850862
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+so instead of, for  instance, seting t.oflag = OPOST one should rather set t.opost = true?
+
+1707850989
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+ah I think I found it, it is t.oflag.OPOST = true.
+
+1707851152
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+my tag generator does not support zig son Im using grep right now
+
+1707851607
+gpanders!be60a9b05a@user/gpanders
+nicos: forgive the shameless self plug, but have you tried https://git.sr.ht/~gpanders/ztags?
+
+1707852211
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+thank you!
+
+1707852233
+andrewrk!~andrewrk@mail.ziglang.org
+nicos, rockorager: ok I see now that cc_t is just an alias for u8, while those other definitions are indices into the array
+
+1707852269
+andrewrk!~andrewrk@mail.ziglang.org
+would you be willing to make the std lib changes, test them for your use case, and then submit a PR? Note that you do not need to recompile the compiler in order to test std lib changes
+
+1707852776
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewrk: Yeah I can do that
+
+1707852798
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Not today, but probably tomorrow
+
+1707852990
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Are the enum values the index values for each of those OSes?
+
+1707853000
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, here this should get you started: https://github.com/ziglang/zig/pull/18919
+
+1707853097
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewrk: thanks
+
+1707853205
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+andrewrk is that pr all the changes or is there anything else to be done?
+
+1707853221
+andrewrk!~andrewrk@mail.ziglang.org
+let me know if it works for you
+
+1707853226
+andrewrk!~andrewrk@mail.ziglang.org
+if so, that's all the changes
+
+1707853229
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I was just looking at that - with the V structs back it might be it
+
+1707853255
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+I see, I will test it then
+
+1707853369
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Ah there is still a change needed for the V struct in std/c.zig
+
+1707853913
+nicos!~nsm@host98.181-4-190.telecom.net.ar
+which one?
+
+1707853925
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+.linux points to cct_t = u8
+
+1707853940
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I think these should all be structs with constants like os.linux.V
+
+1707855212
+andrewrk!~andrewrk@mail.ziglang.org
+there is no V struct, they are all enums which are array indices into cc
+
+1707855218
+andrewrk!~andrewrk@mail.ziglang.org
+the array values are u8
+
+1707855243
+andrewrk!~andrewrk@mail.ziglang.org
+cc_t = u8 looks correct to me
+
+1707855380
+andrewrk!~andrewrk@mail.ziglang.org
+oh I see the problem, I missed one find-replace
+
+1707855445
+andrewrk!~andrewrk@mail.ziglang.org
+fixed and force-pushed
+
+1707855636
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+ok that looks right
+
+1707855695
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+if there are any lingering issues I can send in a pr, thanks for the fixes
+
+1707856499
+nicos!~nsm@2800:2131:5400:883:b596:a177:9be1:f306
+well it is taking some time to compile all. How can I build only std lib and not the compiler also?
+
+1707856579
+nicos!~nsm@2800:2131:5400:883:b596:a177:9be1:f306
+I am using @intFromEnum to use the V enum values as indeces
+
+1707856586
+nicos!~nsm@2800:2131:5400:883:b596:a177:9be1:f306
+indexes
+
+1707856767
+andrewrk!~andrewrk@mail.ziglang.org
+nicos, you don't need to rebuild the compiler for std lib changes. you just swap the source files and you're done
+
+1707856786
+andrewrk!~andrewrk@mail.ziglang.org
+or, just edit the source files and you're done
+
+1707856831
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, no problem, thanks for testing it out
+
+1707856969
+nicos!~nsm@2800:2131:5400:883:b596:a177:9be1:f306
+ok, I have just tested the changes and it works fine
+
+1707857182
+nicos!~nsm@2800:2131:5400:883:b596:a177:9be1:f306
+I am doing a readline implementation as my first zig project. this is how I tested the pr: https://codeberg.org/nsm/zigline/src/branch/new-termios-iface
+
+1707863008
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+In case anyone was wondering about my segfault in a map, it was because I had a function returning a pointer to stack. Except it was only stack in certain optimization levels because it was a function argument. Like this: https://zigbin.io/0c9930
+
+1707863064
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It feels like the kind of mistake that shouldn't be too hard for the compiler to catch in Debug (returning a pointer to this function's stack) and would be high value.
+
+1707863108
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Bugs that only surface when the optimization level goes up are not fun.
+
+1707866480
+andrewrk!~andrewrk@mail.ziglang.org
+it's not really possible for the compiler to catch it but I have a plan for how to catch it at runtime in debug mode
+
