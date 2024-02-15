@@ -1,0 +1,72 @@
+1707870274
+ii8!~ii8@45.63.97.131
+how do you ignore an unused function parameter error?
+
+1707870556
+ii8!~ii8@45.63.97.131
+nvm, figured it
+
+1707871483
+andrewrk!~andrewrk@mail.ziglang.org
+_ = x; 
+
+1707871489
+mips64el!~mips64el@149.88.22.166
+hi
+
+1707871502
+mips64el!~mips64el@149.88.22.166
+o/
+
+1707871609
+andrewrk!~andrewrk@mail.ziglang.org
+hello
+
+1707909154
+ovf!sid19068@id-19068.hampstead.irccloud.com
+i'm looking at a piece of perfectly cromulent 90s-era c ffi code, that will become invalid in c2x: https://zigbin.io/3ab1be to keep it alive, one would need to add ugly casts to every call site. can i do better with zig? (note that we're talking c abi here, and the f's are fixed-arity, not varargs)
+
+1707915201
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+ovf: It depends on what you think of as better. Do you want to just write a Zig function that can be called by C code that uses `call`, or do you want to write a Zig function that applies a function to an array of arguments? Zig's function pointers are strongly typed, so the naive translation has your casting problem. On the other hand, you could write a function to wrap f, which would probably be prettier than the C.
+
+1707915275
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+You could probably write another function that did some magic and have that one reduce to `return arify(f, n)(a)`
+
+1707915389
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Or, if you didn't want to get too deep into comptime, your casts could just turn into `case 1: return arify(f, 1)(a[0]); case 2: return arify(f, 2)(a[0], a[1]); ...`
+
+1707915493
+ovf!sid19068@id-19068.hampstead.irccloud.com
+i actually do want to go into comptime, and ideally have the calling sequence (and casts?) generated. but it looks more like a macro thing than a comptime thing to me so far, at least i couldn't figure out how to programmatically construct a call expression, hence my question
+
+1707915652
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+trying something
+
+1707916057
+ovf!sid19068@id-19068.hampstead.irccloud.com
+aha, at least it looks like i can construct types myself with @Type(), but that's perhaps a bit too low-level for what i'm trying to do
+
+1707916865
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Yeah, that's the direction I was going: construct a std.builtin.Type.Fn then reify it with @Type.
+
+1707920100
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+ovf: https://zigbin.io/cf9e4e Yep, probably more complicated than you want. Some parts of that might be useful though.
+
+1707920709
+ovf!sid19068@id-19068.hampstead.irccloud.com
+leeward: thanks! to begin with, i can't believe i've missed @call. :-)
+
+1707921237
+ovf!sid19068@id-19068.hampstead.irccloud.com
+your code makes total sense, and it will likely become much simpler if std.* grows some helper functions similar to your Mk*, which would also help cover up the somewhat implementation-dependent inner fields of std.builtin.Type.*
+
+1707923503
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+ovf: I'm glad it was useful. That's a good point about the Mk* functions. Slightly more generic versions of them would not be hard to write.
+
