@@ -1,0 +1,260 @@
+1708047928
+grayhatter!~grayhatte@user/grayhatter
+I'm writing out a packed struct to a file on disk. Is the a "channel" that I can subscribe to in order to get some kinda notifcation if the ABI changes? 
+
+1708048011
+andrewrk!~andrewrk@mail.ziglang.org
+the ABI of a packed struct is the ABI of the underlying integer, same rule as an enum. that's going into the lang spec for sure
+
+1708048088
+grayhatter!~grayhatte@user/grayhatter
+right, currently I'm using padding out to a u64 for my u1 enum, which is "promised" as least significant. But that might change, and if it does, I don't wanna miss that
+
+1708048366
+grayhatter!~grayhatte@user/grayhatter
+and just incase someone's reading that description and going "ew"... I agree, but I'm missing first class support for bitfields
+
+1708048816
+braewoods!~braewoods@user/braewoods
+grayhatter, should you really be writing a bit packed datatype to disk? i have to wonder if other machines will be able to read it correctly.
+
+1708048866
+braewoods!~braewoods@user/braewoods
+as much as i like bit fields, i don't use them in anything intended to be exchanged with other systems.
+
+1708048903
+grayhatter!~grayhatte@user/grayhatter
+braewoods: only if you know what you're doing... not saying I am, but normally you'd only want to if you know it's ok. In my case, it's "internal" data storage, and I don't wanna use a more complicated format
+
+1708048939
+braewoods!~braewoods@user/braewoods
+i've read about how much of a mess it can be in C because the order isn't necessarily guaranteed from what I can tell.
+
+1708048962
+grayhatter!~grayhatte@user/grayhatter
+here' I just need a bool, but I know I'm gonna need more than a signle bool, and instead of just writing out a byte, I've gone with 64 bits 
+
+1708048992
+grayhatter!~grayhatte@user/grayhatter
+it's 100% guaranteed in C, but you have to understand system endianess, which Zig makes super easy
+
+1708049013
+braewoods!~braewoods@user/braewoods
+i see.
+
+1708049028
+grayhatter!~grayhatte@user/grayhatter
+the readIntNative() series of functions will do that for you, (which is super nice)
+
+1708049031
+braewoods!~braewoods@user/braewoods
+so why does everyone seem to use bit masks then?
+
+1708049052
+grayhatter!~grayhatte@user/grayhatter
+it's not portable, but I don't need it to be, I'd rather the files stay small
+
+1708049052
+braewoods!~braewoods@user/braewoods
+i rarely see bit fields in use in the wild.
+
+1708049105
+grayhatter!~grayhatte@user/grayhatter
+braewoods: they're much more common hardware/systems programs, but they take a bit of attention, so when a developer feels like being lazy, they don't use them. 
+
+1708049143
+braewoods!~braewoods@user/braewoods
+i see. right.
+
+1708049177
+braewoods!~braewoods@user/braewoods
+i mostly use bit fields for booleans in something that doesn't get written to disk.
+
+1708049183
+grayhatter!~grayhatte@user/grayhatter
+I want the file size to be small. I'm probably a bit crazy for wanting to save 7 bytes of disk... but I want to, so I am 
+
+1708049185
+braewoods!~braewoods@user/braewoods
+as an alternative to bit flags
+
+1708067745
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, packed structs are first class support for bit fields, no?
+
+1708067756
+andrewrk!~andrewrk@mail.ziglang.org
+the ABI is completely well defined, not going to change
+
+1708077419
+ii8!~ii8@45.63.97.131
+Is there a shortcut for: `const v = returnsopt() orelse return MyError.MyCode;`, converting an optional into an error, I find myself doing this a lot.
+
+1708081082
+ii8!~ii8@45.63.97.131
+scratch that I found a way
+
+1708081189
+ii8!~ii8@45.63.97.131
+But is there a way to write a function that has it's return type inferred?
+
+1708081275
+ii8!~ii8@45.63.97.131
+For example if the last statement is `return @intFromEnum(e)`, can it figure out which int it should be given that I don't know which enum it is.
+
+1708081617
+ii8!~ii8@45.63.97.131
+nvm, figured out how to do that too `@typeInfo(E).Enum.tag_type` as function return type
+
+1708099678
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+Hey! In most examples I have seen according to usage of C libraries in zig programs, simply all used libraries where imported in one @cImport, which results in only one constant containing all the symbols for all libraries. Now, since it is allowed to use one cInclude in a cImport for a single library header and use another cImport wird another constant for a second one (e.g. sdl. for SDL2 library and vk for Vulkan 
+
+1708099680
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+libraries) ist that considered to be good or an anti-pattern?
+
+1708102094
+remiliascarlet!~remiliasc@user/remiliascarlet
+It's considered Zig still being a very young language, so a lack of native libraries is to be expected.
+
+1708102216
+remiliascarlet!~remiliasc@user/remiliascarlet
+I do hope that one day we can have actual native equivelants to SDL2 and Vulkan rather than just wrappers, but whether this will happen or not depends on whether Zig gains enough attention from game developers or not.
+
+1708102322
+remiliascarlet!~remiliasc@user/remiliascarlet
+And it's not like the web development industry that changes once every 15 minutes, game development industry is relatively conservative in comparison, which is why everyone is still either hardcore Team C++, or hardcore Team Unity (or was in most cases, it got rebranded to Team Unreal or Team Godot mostly).
+
+1708102561
+Earnestly!~earnest@user/earnestly
+remiliascarlet: It rarely happens for established languages
+
+1708103609
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+well....you don't kneed really a "wrapper" since in zig you're using the real thing...my question was just about best practices with the include constants ;-)
+
+1708103613
+torque!~tachyon@user/torque
+Nightwulf, typically I would separately cImport the headers for each c dependency library
+
+1708103645
+torque!~tachyon@user/torque
+since the "constant" basically ends up being a namespace through which the functions/constants of that library are accessed
+
+1708103702
+torque!~tachyon@user/torque
+i.e. if you're depending on libA and libB, I's not an antipattern at all to have a separate import for libA and libB
+
+1708103709
+torque!~tachyon@user/torque
+it's
+
+1708103725
+remiliascarlet!~remiliasc@user/remiliascarlet
+Nightwulf: On one hand, wrappers can be made so that C functions become more "Ziggy", like `sdl.init()` rather than `c.SDL_Init()`. But on the other hand, wrappers tend to be more likely to not work in my experience.
+
+1708103863
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+@torque yeah...that's what I thought when I started my vulkan in zig experience....thank you for confirming it!
+
+1708103946
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+@remiliascarlet: in Go you need them for ovious reasons but since they would produce an uneccessary layer just for "readability", I would refuse to use such in zig....new library version -> new wrapper needed....so I would vote against it
+
+1708104034
+remiliascarlet!~remiliasc@user/remiliascarlet
+Go does have a "CGO", which to me sounds more like a video game than an interop feature, but I heard it's not as good compared to Zig's @cImport.
+
+1708104158
+remiliascarlet!~remiliasc@user/remiliascarlet
+But never used CGO myself, so can't really comment on it.
+
+1708104218
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+I used it...since Go uses a very different memory model than C (or assembly that is) and because it uses a runtime with garbage collection, you need to copy every structure and other variables over and often type convert them
+
+1708104409
+remiliascarlet!~remiliasc@user/remiliascarlet
+The reason why I never used CGO is because I see Go more as a web development language, and Zig more as a game development language.
+
+1708104455
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+This is, how it looks like (from my vulkan -> go wrapper): https://gist.github.com/Nightwulf/1e3928b026fec58c9fb1ba535ac4f39f
+
+1708104569
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+well, Go is also big in backend services and devops....but not really if it comes to UI stuff or other areas, where a stack of libraries is used
+
+1708104638
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+using it at my company very often...and also for my private use when it comes to backend services...I'm faster than with any other language for that. But as shown....interacting with native libraries is awful
+
+1708104711
+remiliascarlet!~remiliasc@user/remiliascarlet
+I have yet to find any UI library that doesn't suck. GTK2 was good, but is now dead. Ncurses is nice, but a bit bloated. Suckless.org recommends Nuklear for GUI and Termbox2 for TUI, but I have yet to give those a try.
+
+1708104818
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+for the rare occasions I needed a terminal UI, i used ncurses...but for GUI stuff...well....desktop applications I'm doing with QT (not very often the case) and Games with SDL2/Vulkan/Godot
+
+1708104864
+remiliascarlet!~remiliasc@user/remiliascarlet
+I do games with SDL2 and OpenGL. Not sure if switching to Vulkan would be beneficial yet.
+
+1708104891
+remiliascarlet!~remiliasc@user/remiliascarlet
+Khronos really doesn't seem to like static linking for whatever reason.
+
+1708105124
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+Well....for long time it didn't look like Vulkan will ever take the place of OpenGL or even DirectX....but recent games show, that this has changed.
+
+1708105167
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+Direct use of SDL2 and Vulkan (for me) ist just for learning/refreshing purposes and to get "warm" with zig for game programming....after that, I'll probably switch to Godot
+
+1708105243
+remiliascarlet!~remiliasc@user/remiliascarlet
+I actually plan on sticking with Zig for game programming, I really enjoy the whole process of creating my own engine from the ground up rather than using somebody else's engine.
+
+1708105432
+remiliascarlet!~remiliasc@user/remiliascarlet
+Always made my own frameworks in PHP and Lua using only the default functionality, my own everything in C and Go using only the standard library, and Zig too. Perhaps because I started programming back when we weren't conditioned into believing we need a billion different tools going over a gazillion classes and more dependencies than the total amount of stars in the entire universe combined just to
+
+1708105434
+remiliascarlet!~remiliasc@user/remiliascarlet
+print "Hello World" in a terminal.
+
+1708105457
+remiliascarlet!~remiliasc@user/remiliascarlet
+++yet.
+
+1708105527
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+I just finished a very simple Arkanoid clone....a really small learning project using SDL2, some CC free music, self made assets and of course zig
+
+1708113328
+andrewrk!~andrewrk@mail.ziglang.org
+sounds fun, Nightwulf 
+
+1708113523
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+as I said...was just for learning...461 lines total
+
+1708113596
+Nightwulf!~totto@p200300db0f0948002ef05dfffea2cb51.dip0.t-ipconnect.de
+if anyone is interested, I could put it on my github...but don't expect anything special :D
+
+1708117570
+motiejus!~motiejus@88.223.107.21
+An excellent article in lwn about dynamic linking (overview, but quite technical) by the same author that wrote "zig roadmap 2024" a fortnight ago. If anyone wants a higher-level intro than Levine's "linkers and loaders" (which I had to start understanding some pieces of Go, lld and zld), this is a great one: https://lwn.net/Articles/961117/ bookmark and read after 2 weeks or pm me for a 
+
+1708117570
+motiejus!~motiejus@88.223.107.21
+subscriber link :)
+
+1708120404
+motiejus!~motiejus@88.223.107.21
+(or most desirably, of course, become a subscriber)
+
