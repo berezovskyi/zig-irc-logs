@@ -1,0 +1,76 @@
+1708245187
+remiliascarlet!~remiliasc@user/remiliascarlet
+`zig cc -c -o viewer.o -Wall -Wextra -Wshadow -Wformat=2 -pedantic -std=c99 -O2 -g -lglfw3 -target x86_64-linux-musl viewer.c` gives me `'GL/glu.h' file not found\n27 | #include <GL/glu.h>`. But `ls /usr/include/GL/glu.h` confirms this file exists. Changing the include to `#include </usr/include/GL/glu.h>` works, but now it's complaining about not being able to find `<GL/gl.h>`. Does Zig's C compiler
+
+1708245189
+remiliascarlet!~remiliasc@user/remiliascarlet
+set the includes folder to a different path by any chance?
+
+1708245200
+remiliascarlet!~remiliasc@user/remiliascarlet
+(Repeated because no answer thus far.)
+
+1708247506
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+can you add -v zig cc and then run the command and pastebin the output of it?
+
+1708248259
+remiliascarlet!~remiliasc@user/remiliascarlet
+txdv: Thanks, the -v flag exposed what went wrong. Apparently it's looking into the `~/.local/include` folder, which doesn't exist.
+
+1708248356
+txdv!~bentkus@78-56-38-107.static.zebra.lt
+if tools have some directories where they look for stuff they most probably have a verbose option to display it because someone already faced some issue with it
+
+1708287542
+Nightwulf!~totto@p200300db0f1384002ef05dfffea2cb51.dip0.t-ipconnect.de
+Houston...I have a problem. I use Vulkan and SDL in my program. The surface needs to be created by a SDL function but one of the parameters is a Vulkan structure (instance). But....for Zig, sdl.VkInstance is not the same as vk.VkInstance.. @as doesn't help. Any idea how to solve that?
+
+1708287662
+lordmzte!~lordmzte@user/lordmzte
+Try importing both with one @cImport
+
+1708287709
+lordmzte!~lordmzte@user/lordmzte
+It's advisable to use at most one C-import for each Zig module. That's how I usually do it.
+
+1708287774
+Nightwulf!~totto@p200300db0f1384002ef05dfffea2cb51.dip0.t-ipconnect.de
+Is that the only chance other than copying all fields over? I did different cImports by purpose because I find it to be irritating (and dangerous) to use it in one. Imagine, there are types or func with the same name in two imports, then you *need* to seperate them.
+
+1708287889
+lordmzte!~lordmzte@user/lordmzte
+Indeed, if that happens you need to use workarounds, but it'll usually be fine with well-behaved C libraries. After all, this has worked in C for decades :D
+
+1708287910
+torque!~tachyon@user/torque
+if they're actually identical (presuming the sdl one comes from the vk libraries and you don't have a header mismatch) you should be able to bitCast between them
+
+1708287915
+torque!~tachyon@user/torque
+though that's an ugly hack
+
+1708287961
+lordmzte!~lordmzte@user/lordmzte
+It should also be safe to ptrCast or bitCast here, assuming both cImports have the exact same struct definition.
+
+1708287968
+lordmzte!~lordmzte@user/lordmzte
+But as torque said, avoid that.
+
+1708288039
+Nightwulf!~totto@p200300db0f1384002ef05dfffea2cb51.dip0.t-ipconnect.de
+yes...wouldn't do such thing neither....you never know whether something changes in one of the two types when updating your systems libraries and if it changes, the big search for the crash reason starts....no, thanks ;-)
+
+1708288051
+Nightwulf!~totto@p200300db0f1384002ef05dfffea2cb51.dip0.t-ipconnect.de
+ok, thank you. I'll try to use one import and see whether that works
+
+1708290181
+Nightwulf!~totto@p200300db0f1384002ef05dfffea2cb51.dip0.t-ipconnect.de
+@lordmzte works with one cImport. Thx!
+
+1708290481
+lordmzte!~lordmzte@user/lordmzte
+👍
+
