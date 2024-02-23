@@ -1,0 +1,520 @@
+1708561321
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+rockorager, that looks pretty good!
+
+1708561372
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+quite a bit of it is already done, it seems
+
+1708567021
+andrewrk!~andrewrk@mail.ziglang.org
+it just occurred to me: what the hell is the point of transfer-encoding: chunked?
+
+1708567113
+andrewrk!~andrewrk@mail.ziglang.org
+ok I get it: it's so that you can have a persistent connection, that, when it ends, gets reused for the next HTTP request
+
+1708570897
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: isn't it also used in streaming requests as well?
+
+1708570940
+andrewrk!~andrewrk@mail.ziglang.org
+streaming is already implemented in the networking stack. you can pass content-length and then stream, you can also not pass a content-length and stream
+
+1708570990
+grayhatter!~grayhatte@user/grayhatter
+nginx doesn't like that so if you don't pass transfer-encoding: chunked, it'll buffer the entire request, calculate the length for you, and only then send the headers
+
+1708571022
+andrewrk!~andrewrk@mail.ziglang.org
+that's a rather opinionated thing for nginx to do that prevents perfectly valid uses of http
+
+1708571157
+grayhatter!~grayhatte@user/grayhatter
+could just be user error when I set it up, I didn't really care and was happy to set the chunked header
+
+1708571188
+grayhatter!~grayhatte@user/grayhatter
+std.http has plenty of other opinions that are just as annoying
+
+1708571213
+grayhatter!~grayhatte@user/grayhatter
+you learn to accept strange opinions when you work with http anything
+
+1708571316
+andrewrk!~andrewrk@mail.ziglang.org
+you're talking about zig? what in particular? because I'm working on a big changeset right now
+
+1708571326
+andrewrk!~andrewrk@mail.ziglang.org
+maybe I already solved it in my branch :D
+
+1708571425
+grayhatter!~grayhatte@user/grayhatter
+I'm hopefuly
+
+1708571473
+grayhatter!~grayhatte@user/grayhatter
+bit packing the response string into an u512 for some reason stands out as insane
+
+1708571522
+grayhatter!~grayhatte@user/grayhatter
+if for no other reason than it's using u8 for ASCII which would be u7... other than the fact that there's no reason to do that
+
+1708571566
+grayhatter!~grayhatte@user/grayhatter
+case coercion of response headers... that's what actually made me give up on using std.http
+
+1708571680
+andrewrk!~andrewrk@mail.ziglang.org
+oh you're referencing the TODO comment? yeah I simply deleted that
+
+1708571693
+grayhatter!~grayhatte@user/grayhatter
+it have a few other things that were just annoying to fight with
+
+1708571726
+andrewrk!~andrewrk@mail.ziglang.org
+I deleted std.http.Headers entirely
+
+1708571755
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/pull/18955
+
+1708571758
+grayhatter!~grayhatte@user/grayhatter
+did you read parse? why is it trying to use the ASCII to invent a number?
+
+1708571787
+andrewrk!~andrewrk@mail.ziglang.org
+I kept most of that code, which line are you referring to?
+
+1708571811
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/src/std/http.zig.html#L39
+
+1708571833
+grayhatter!~grayhatte@user/grayhatter
+but really I'm confused as to why this enum exists at all
+
+1708571859
+grayhatter!~grayhatte@user/grayhatter
+err.. I get why the enum exists, I don't get why enum(uANYTHING) exists?
+
+1708571884
+andrewrk!~andrewrk@mail.ziglang.org
+oh you don't like using a 64 bit integer to store the method as an enum?
+
+1708571902
+andrewrk!~andrewrk@mail.ziglang.org
+that was my idea actually :)
+
+1708571952
+grayhatter!~grayhatte@user/grayhatter
+-_-
+
+1708571987
+grayhatter!~grayhatte@user/grayhatter
+so, http Methods needs an enum(int), but bitpacking using enum isn't?
+
+1708572015
+andrewrk!~andrewrk@mail.ziglang.org
+I don't understand the question
+
+1708572055
+grayhatter!~grayhatte@user/grayhatter
+that's expected, it's a nonsensical just so I could complain about my favorite missing feature :P
+
+1708572144
+andrewrk!~andrewrk@mail.ziglang.org
+it sounds like you're talking about packed structs?
+
+1708572189
+grayhatter!~grayhatte@user/grayhatter
+trying to use TLS through http was painful as well, but when I looked into it, it was SSL/TLS being only partially implemented. At the time I didn't have the time to invest into looking at how hard it would be to fix the TLS implementation
+
+1708572206
+grayhatter!~grayhatte@user/grayhatter
+being able to use the HTTP server with a custom TLS wrapper would be nice
+
+1708572226
+grayhatter!~grayhatte@user/grayhatter
+getting helpful errors out of it when the TLS layer fails would have saved me an hour of debugging too
+
+1708572352
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I'm more talking about how I'd like to write an enum, and and then use bitwise operators without @intFromEnum(.value) & @intFromEnum(.value2) ... repeat until it's 27 lines long
+
+1708572414
+andrewrk!~andrewrk@mail.ziglang.org
+a packed struct is how to name discrete set of bits
+
+1708572424
+andrewrk!~andrewrk@mail.ziglang.org
+an enum is how to give names to independent integer values
+
+1708572460
+grayhatter!~grayhatte@user/grayhatter
+I've been duplicating the pattern from the linux api using a struct instead, but that feels... I don't know, hacky?
+
+1708572555
+grayhatter!~grayhatte@user/grayhatter
+yeah, I'm using a packed struct to hold the packed bits. But I'm lacking a clear way to enumerate all the possible options
+
+1708572571
+andrewrk!~andrewrk@mail.ziglang.org
+that's just every field of the struct, isn't it?
+
+1708572581
+andrewrk!~andrewrk@mail.ziglang.org
+@typeInfo(S).Struct.fields
+
+1708572602
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziggit.dev/t/mmap-v-0-12-dev-map-shared/3269
+
+1708572639
+andrewrk!~andrewrk@mail.ziglang.org
+this user's code stopped compiling when I changed std.os.linux.MAP to be a packed struct. turns out they were trying to set both SHARED and PRIVATE at the same time
+
+1708572660
+andrewrk!~andrewrk@mail.ziglang.org
+more specifically I changed the TYPE field of MAP to correctly be an enum
+
+1708572971
+grayhatter!~grayhatte@user/grayhatter
+I'll have to look at my code using Struct.fields and see if that's not actually all I really wanted 
+
+1708573009
+grayhatter!~grayhatte@user/grayhatter
+I've been trying to think of them as powers of 2, but perhaps the way I should be thinking of them is field names
+
+1708573102
+andrewrk!~andrewrk@mail.ziglang.org
+well they're not powers of 2 if some of the fields are 2 bits of data (as is the case with std.os.linux.MAP)
+
+1708573181
+grayhatter!~grayhatte@user/grayhatter
+mine is just a list of bools
+
+1708573260
+grayhatter!~grayhatte@user/grayhatter
+in describing, I get the impression that I'm more comfortable with bitwise operators, but given zig asserts `true != 1` I think I'm actually the one that's doing it incorrectly 
+
+1708575108
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: is there anything that might help for v0.12?
+
+1708575128
+grayhatter!~grayhatte@user/grayhatter
+anything I could help with if that wasn't obvious
+
+1708575305
+andrewrk!~andrewrk@mail.ziglang.org
+you willing to use Windows?
+
+1708575325
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/16272
+
+1708575393
+remiliascarlet!~remiliasc@user/remiliascarlet
+fengshaun: Just looked up charmbracelet, and looking at the GIF's in the README.md of some of them, it looks like it won't display well in many different terminals.
+
+1708575628
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+remiliascarlet: i'd be surprised if any terminal made in the last 25 years had issues with charmbracelet. do you have one in mind?
+
+1708575892
+remiliascarlet!~remiliasc@user/remiliascarlet
+For example xterm and (u)rxvt, both are pretty old, but still the default in a lot of Unix systems and Linux distro's.
+
+1708575949
+grayhatter!~grayhatte@user/grayhatter
+am I willing to use windows long term... I'd rather never use zig again, do I have a windows install to fix an issue? I do
+
+1708575952
+grayhatter!~grayhatte@user/grayhatter
+ACTION reads
+
+1708576070
+grayhatter!~grayhatte@user/grayhatter
+is that issue related to windows, and I'm just missing out on the problem?
+
+1708576162
+grayhatter!~grayhatte@user/grayhatter
+oh
+
+1708576207
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+remiliascarlet: curious which parts you think won't display well?
+
+1708576283
+grayhatter!~grayhatte@user/grayhatter
+using ACLs on windows isn't how that should be done... so the comment confuses me
+
+1708576370
+andrewrk!~andrewrk@mail.ziglang.org
+std.tar needs to set some kind of state that makes sense corresponding to the executable bit from the tar file on windows
+
+1708576389
+andrewrk!~andrewrk@mail.ziglang.org
+and then src/Package/Fetch.zig needs to detect that bit from the file system on windows and use it in the package hash
+
+1708576409
+grayhatter!~grayhatte@user/grayhatter
+windows doesn't have that
+
+1708576437
+andrewrk!~andrewrk@mail.ziglang.org
+I don't believe you
+
+1708576455
+grayhatter!~grayhatte@user/grayhatter
+windows executable is based on file extention only
+
+1708576488
+grayhatter!~grayhatte@user/grayhatter
+unless I forgot how to use google, there's no way to mark a file.txt as executable, nor is there any way to mark a file.exe as non-excutable 
+
+1708576499
+grayhatter!~grayhatte@user/grayhatter
+you can restrict users/accounts, but not the file itself
+
+1708576637
+grayhatter!~grayhatte@user/grayhatter
+if you'd like, I can do a bit a reasarch into how git handles this case, and then can make that the suggestion, but I really think the solution here is not to attempt to force unix permissions onto the windows API
+
+1708576873
+andrewrk!~andrewrk@mail.ziglang.org
+the requirement is that a fetched package can only fall into one of two categories: 1. it unpacks successfully, and calculating the package hash from the file system directory is always correct, or 2. unpacking fails because the OS cannot represent it faithfully
+
+1708576911
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: any thoughts on requiring NTFS extended attributes?
+
+1708576967
+grayhatter!~grayhatte@user/grayhatter
+that's how WSL works, but it might be restricting unpacking to more modern versions of windows.
+
+1708577011
+grayhatter!~grayhatte@user/grayhatter
+but, it's all just metadata, and wouldn't have meaning to windows outside of WSL... which I'd guess might be the point? No idea how painful this would be to interact with
+
+1708577057
+andrewrk!~andrewrk@mail.ziglang.org
+here's the reasoning:
+
+1708577064
+andrewrk!~andrewrk@mail.ziglang.org
+1. any observable state must be captured in the package hash
+
+1708577104
+andrewrk!~andrewrk@mail.ziglang.org
+2. executable bit is observable state on posix systems; therefore it must either be captured in the package hash, or unpacking must always set executable bit to 0
+
+1708577120
+andrewrk!~andrewrk@mail.ziglang.org
+3. executable bit being always set to 0 would be very annoying on posix, so we want to preserve it when unpacking
+
+1708577171
+andrewrk!~andrewrk@mail.ziglang.org
+4. a fetched package must only fall into one of two categories: it either fails to unpack, or it unpacks successfully, and calculating the package hash from the file system directory is always correct
+
+1708577248
+andrewrk!~andrewrk@mail.ziglang.org
+5. therefore, unpacking on windows must either fail to unpack if any executable bit is set; or it must set some file system state so that the hash can be computed correctly
+
+1708577601
+remiliascarlet!~remiliasc@user/remiliascarlet
+rockorager: Anything with a specific width/height (like that yes/no prompt), anything with a specific color. But then again, I didn't try it out myself.
+
+1708577649
+remiliascarlet!~remiliasc@user/remiliascarlet
+grayhatter: "windows executable is based on file extention only" That sounds like Windows is open to all sorts of catastrophic exploits.
+
+1708577688
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: would you rather partial support for exec bit in windows, or for it to fail to unpack? 
+
+1708577708
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, I feel that I was 100% clear in the answer to this question above
+
+1708577742
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+remiliascarlet: i tried on both, and their examples worked. charm implements fallbacks from rgb to 256 when needed, widths are an entirely different - and relevant - issue. urxvt is perhaps the word offender by calling themselves "unicode" rxvt
+
+1708577766
+remiliascarlet!~remiliasc@user/remiliascarlet
+I see.
+
+1708577864
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+bit offtopic for #zig though :)
+
+1708577884
+remiliascarlet!~remiliasc@user/remiliascarlet
+I have tried many different terminals in the past, so I know how problematic things like symbols (→　←　↑　↓ for example) can be.
+
+1708578000
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+It's a huge issue, that's for sure. we have ways to do better. Terminals fall into 3 classes: non-unicode, kitty, and unicode-conforming ;)
+
+1708578032
+grayhatter!~grayhatte@user/grayhatter
+you were clear about the minimum required behavior, but there's still ambiguity about the level of effort, and the opinions an implementation would have. 
+
+1708578126
+grayhatter!~grayhatte@user/grayhatter
+you originally asked if I would be willing to run windows, which implies you wanna support windows, but NTFS support is problematic for a number of reasons, in addition to just executable bit. e.g. case sensitivity, should the implementation reject uppercase letters, or just refuse to unpack on NTFS
+
+1708578161
+grayhatter!~grayhatte@user/grayhatter
+either way, I have more than enough to look into it, and I'll make a comment on the issue with any additional context or questions if they come up
+
+1708578316
+andrewrk!~andrewrk@mail.ziglang.org
+to reiterate: on a given OS, unpacking must either fail to unpack, or it must produce a directory whose package hash is consistent across all operating systems
+
+1708578356
+andrewrk!~andrewrk@mail.ziglang.org
+so, to answer your question directly: no, partial implementations are not ok
+
+1708578379
+andrewrk!~andrewrk@mail.ziglang.org
+it needs to either work correctly, or fail
+
+1708578492
+remiliascarlet!~remiliasc@user/remiliascarlet
+rockorager: I'm using suckless st, which works really well after some patching. I used to use Alacritty, but that one won't run on OpenBSD, and use about 300 MiB of RAM per instance on Linux and FreeBSD, which is quite a lot for a terminal emulator.
+
+1708578549
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+andrewrk grayhatter It could work correctly on Windows with WSL and fail on older versions though, right?.  That would still satisfy that requirement, it is deterministic based on some OS version/configuration and fully succeeds or fails
+
+1708578568
+andrewrk!~andrewrk@mail.ziglang.org
+tsmanner, yes, correct
+
+1708578585
+grayhatter!~grayhatte@user/grayhatter
+ah, the important aspect is the hash, I understand exactly the narrow bug now
+
+1708578630
+grayhatter!~grayhatte@user/grayhatter
+WSL isn't really windows though, if functioning in WSL, but not in it's absence is fine (failing to unpack) the issue is a lot easier to resolve
+
+1708578650
+grayhatter!~grayhatte@user/grayhatter
+in both cases I understand what the solution needs to look like
+
+1708578678
+andrewrk!~andrewrk@mail.ziglang.org
+WSL is kind of irrelevant to this problem
+
+1708578780
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+I wasn't suggesting using WSL, that was in reference to the conditional solution using NTFS extended attributes; I most likely misunderstood that part
+
+1708578800
+grayhatter!~grayhatte@user/grayhatter
+agreed, but it but it would be easier to implement, because you could ignore the non-linux case, and it would "appear" to work
+
+1708580165
+andrewrk!~andrewrk@mail.ziglang.org
+it already works on linux. the problem is making it work on windows
+
+1708580206
+andrewrk!~andrewrk@mail.ziglang.org
+I don't see why WSL is even mentioned
+
+1708581017
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+My understanding is that the NTFS extended attributes was added for Windows to be able to mount the WSL volumes and understand the rwx bits.  I should have said NTFS extended attributes, the implication is that only Windows editions that support WSL would be able to unpack things and set an executable bit.
+
+1708581035
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+In thier Windows NTFS file systems, not in the WSL vm
+
+1708581277
+andrewrk!~andrewrk@mail.ziglang.org
+NTFS extended attributes sounds like it's worth exploring. let's have a peek at which windows version introduced that
+
+1708581435
+andrewrk!~andrewrk@mail.ziglang.org
+https://learn.microsoft.com/en-us/windows/win32/fileio/file-access-rights-constants
+
+1708581449
+andrewrk!~andrewrk@mail.ziglang.org
+FILE_EXECUTE For a native code file, the right to execute the file. This access right given to scripts may cause the script to be executable, depending on the script interpreter.
+
+1708581452
+andrewrk!~andrewrk@mail.ziglang.org
+this looks old as fuck
+
+1708581464
+andrewrk!~andrewrk@mail.ziglang.org
+yeah this API has been available since Windows XP
+
+1708581487
+andrewrk!~andrewrk@mail.ziglang.org
+lib/std/os/windows.zig:pub const FILE_EXECUTE = 0x00000020;
+
+1708581494
+andrewrk!~andrewrk@mail.ziglang.org
+oh look at that we already have a zig constant for it
+
+1708581495
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Yeah, says since XP there
+
+1708581533
+andrewrk!~andrewrk@mail.ziglang.org
+there you have it. set that bit when unpacking; read that bit when calculating the hash. that's the task
+
+1708581578
+andrewrk!~andrewrk@mail.ziglang.org
+I feel like I already did half the work
+
+1708581600
+andrewrk!~andrewrk@mail.ziglang.org
+the part where you type code into your editor is the fun part
+
+1708581652
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+rooting around in MS docs pages is for sure not the fun part :P
+
+1708612304
+marler8997_!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+regarding the discussion around packed structs vs enums, here's where zigwin32 landed: https://github.com/marlersoft/zigwin32/blob/main/win32/ui/windows_and_messaging.zig#L3285
+
+1708612399
+marler8997_!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+the "window style" parameter to CreateWindowEx is a set of flags, and Microsoft includes constants that include multiple flags, and...they have multiple names for the same individual flag, so I had to find a way to work around all those issues and WINDOW_STYLE has all of them
+
+1708630718
+andrewrk!~andrewrk@mail.ziglang.org
+marler8997_, looks like those underscore fields could be collapsed into each other
+
+1708630817
+marler8997_!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+it's possible yes but in some cases in can get a bit complicated to implement correctly. there are some mask values that set individual bits that have no name
+
+1708630892
+marler8997_!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+i.e. in that same file, a bunch of masks set the _3 bit such as SPI_SETMOUSEDOCKTHRESHOLD
+
+1708632442
+andrewrk!~andrewrk@mail.ziglang.org
+I see
+
+1708643859
+daurnimator!~daurnimat@vultr.daurnimator.com
+How do I should zig on a system without /usr/bin/env? i.e. what flag do I pass to cmake to set the default abi?
+
+1708646043
+andrewrk!~andrewrk@mail.ziglang.org
+what system is that?
+
