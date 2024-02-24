@@ -1,0 +1,120 @@
+1708648568
+daurnimator!~daurnimat@vultr.daurnimator.com
+In a bare container
+
+1708648604
+daurnimator!~daurnimat@vultr.daurnimator.com
+The only things installed in there are llvm, clang, lld, zlib and cmake
+
+1708650202
+andrewrk!~andrewrk@mail.ziglang.org
+anyway there is the cmake flag ZIG_TARGET_TRIPLE
+
+1708650253
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose zig could look at any file in /usr/bin indiscriminately
+
+1708653159
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: I'd prefer to be explicit in any case
+
+1708678888
+Earnestly!~earnest@user/earnestly
+(It may not be the goal of your container, but excluding posix utils is a bit odd)
+
+1708679127
+Earnestly!~earnest@user/earnestly
+And if env is just used without arguments a wrapper: #!/bin/sh\nexec -- "$@", supporting key=val would mean walking each param until it doesn't contain '='
+
+1708683101
+daurnimator!~daurnimat@vultr.daurnimator.com
+Earnestly: zig inspects /usr/bin/env to figure out the system default ABI.
+
+1708683276
+Earnestly!~earnest@user/earnestly
+daurnimator: Huh, how does that work?
+
+1708683295
+Earnestly!~earnest@user/earnestly
+Like strings(1) over the binary?
+
+1708683333
+daurnimator!~daurnimat@vultr.daurnimator.com
+Earnestly: https://github.com/ziglang/zig/blob/256c5934bfc19d3b8a1cf01bc07c9ad86a6c6524/lib/std/zig/system.zig#L920
+
+1708683445
+daurnimator!~daurnimat@vultr.daurnimator.com
+==> it chases (any) shebangs until it finds an actual ELF binary, then looks at the elf header
+
+1708683720
+Earnestly!~earnest@user/earnestly
+env is required by posix, barring anything else it's the only reasonably solid ground to stand on. Removing non-optional posix utils seems like a "keep the pieces" response is reasonable enough.
+
+1708683983
+Earnestly!~earnest@user/earnestly
+daurnimator: But perhaps, wouldn't using ld.so be better for this purpose?
+
+1708684094
+daurnimator!~daurnimat@vultr.daurnimator.com
+Earnestly: I'm after a way to specify it explicitly rather than have the auto detection happen
+
+1708684108
+daurnimator!~daurnimat@vultr.daurnimator.com
+with normal zig you can do that via `-target` or whatever
+
+1708684120
+Earnestly!~earnest@user/earnestly
+daurnimator: Actually I agree with you entirely, that is the proper way
+
+1708684121
+daurnimator!~daurnimat@vultr.daurnimator.com
+but it wasn't obvious how that got plumbed through cmake for compiling zig itself
+
+1708723333
+torque!~tachyon@user/torque
+are there any guarantees with regard to allocator thread safety
+
+1708723394
+torque!~tachyon@user/torque
+it appears that ArenaAllocator is not thread safe, which is a bit awkward when it is being passed around as a mem.Allocator abstract interface
+
+1708723495
+torque!~tachyon@user/torque
+I guess you could argue this is the responsibility of the caller to be aware of this
+
+1708724258
+andrewrk!~andrewrk@mail.ziglang.org
+torque, thread safety properties are implementation defined
+
+1708724302
+andrewrk!~andrewrk@mail.ziglang.org
+so the best you can do is document your API to require a thread-safe allocator
+
+1708724586
+torque!~tachyon@user/torque
+is there any documentation which stdlib allocators are thread safe?
+
+1708724628
+torque!~tachyon@user/torque
+I only glanced at page allocator (which seems to have fixed the race condition) and ArenaAllocator and didn't see anything specific called out
+
+1708724822
+torque!~tachyon@user/torque
+which is fine, just curious if any of these provide a thread-safety guarantee. page allocator has a few atomic operations in it, which seemed promising but I am by no means an expert
+
+1708724934
+torque!~tachyon@user/torque
+on a completely unrelated topic, is there a "formal" process for proposing/implementing `zig fmt` style changes?
+
+1708726627
+andrewrk!~andrewrk@mail.ziglang.org
+torque, std.heap.page_allocator says "Thread-safe and lock-free"
+
+1708726666
+andrewrk!~andrewrk@mail.ziglang.org
+looks like ArenaAllocator does not mention threads which means that it has the standard thread safety properties of any struct: safe to use if only 1 thread is using it at a time
+
+1708732732
+torque!~tachyon@user/torque
+oh, thank you. I was looking at PageAllocator.zig, not heap.zig
+
