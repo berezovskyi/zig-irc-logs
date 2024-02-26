@@ -1,0 +1,204 @@
+1708852288
+copygirl!~koppeh@copy.mcft.net
+Does it make sense to use `return try Allocator.dupe(..., .{ ... });` instead of `var p = try Allocator.create(...); p.* = .{ ... }; return p;` ?
+
+1708852351
+copygirl!~koppeh@copy.mcft.net
+Wait, dupe is for arrays.
+
+1708852358
+copygirl!~koppeh@copy.mcft.net
+Or rather slices.
+
+1708852382
+copygirl!~koppeh@copy.mcft.net
+Well, it would be nice to have an "allocate and init" shorthand.
+
+1708852416
+copygirl!~koppeh@copy.mcft.net
+like zeroInit
+
+1708853106
+copygirl!~koppeh@copy.mcft.net
+Added my comment to an open issue I found: https://github.com/ziglang/zig/issues/15764#issuecomment-1962868191
+
+1708853284
+andrewrk!~andrewrk@mail.ziglang.org
+copygirl, your suggestion would mean an unnecessary copy
+
+1708853297
+andrewrk!~andrewrk@mail.ziglang.org
+by using p.* = .{ ... } you are initializing the memory in place
+
+1708853348
+andrewrk!~andrewrk@mail.ziglang.org
+true to your name, I suppose :)
+
+1708854735
+copygirl!~koppeh@copy.mcft.net
+andrewrk: Does zeroInit manage to avoid copying?
+
+1708854846
+andrewrk!~andrewrk@mail.ziglang.org
+zeroInit is generally not an advisable way to initialize in zig
+
+1708854852
+copygirl!~koppeh@copy.mcft.net
+If yes, then apply similar logic to createInit (but require every field to be present), if no, then createInit would still have as much reason to exist as zeroInit, no?
+
+1708854873
+andrewrk!~andrewrk@mail.ziglang.org
+initialization syntax is the preferred way to initialize in zig
+
+1708854886
+copygirl!~koppeh@copy.mcft.net
+Mmm fair, it's more for interacting with structs you have no control over (C compat).
+
+1708854932
+copygirl!~koppeh@copy.mcft.net
+But then ... I have an easier time initializing structs from C than I do pointers with an initial value in Zig..?
+
+1708855362
+copygirl!~koppeh@copy.mcft.net
+The function's documentation could simply mention there being a small overhead of an additional copy, and mention how to avoid it. Programmers don't always like to choose performance over readability.
+
+1708855449
+copygirl!~koppeh@copy.mcft.net
+I do have another question by the way. Wondering if this is possible with Zig, or perhaps what the best way to approach it would be.
+
+1708855511
+copygirl!~koppeh@copy.mcft.net
+I've started writing a library wrapper around Flecs, an Entity Component System library written in C/C++.
+
+1708855557
+copygirl!~koppeh@copy.mcft.net
+When setting a component of an entity, it would be nice to simply write something along the lines of: `entity.set(Position{ .x = 10, .y = 20 })`
+
+1708855620
+copygirl!~koppeh@copy.mcft.net
+But this requires having a type => id mapping somewhere, and it would be nice if the lookup would be a simple field lookup using comptime magic.
+
+1708855945
+copygirl!~koppeh@copy.mcft.net
+However you can have multiple worlds, each with their own type => id mapping, and one thing Flecs and many other wrappers aren't able to do is keep track of that mapping for separate worlds.
+
+1708855957
+copygirl!~koppeh@copy.mcft.net
+(Without using a more expensive map lookup.)
+
+1708856058
+copygirl!~koppeh@copy.mcft.net
+In C# I was able to use generics, basically `class Lookup<TContext> { class Component<T> { static ID Value; } }`
+
+1708856112
+copygirl!~koppeh@copy.mcft.net
+So using `Lookup<Foo>.Component<Position>.ID` I can assign and lookup a value based on two generic values, a context that is unique per world, and the type of the component.
+
+1708856269
+copygirl!~koppeh@copy.mcft.net
+From what I remember, this approach doesn't work in Zig? Something about static variables being shared across different generic types or so?
+
+1708856322
+andrewrk!~andrewrk@mail.ziglang.org
+I think you'll have better success if you don't make it a wrapper
+
+1708856323
+copygirl!~koppeh@copy.mcft.net
+Actually I wonder what problem I did run into. I should write a test case.
+
+1708856343
+copygirl!~koppeh@copy.mcft.net
+Implement my own ECS from scratch, or what is your suggestion?
+
+1708856399
+andrewrk!~andrewrk@mail.ziglang.org
+right. it's a use case that benefits deeply from the zig type system and language
+
+1708856414
+andrewrk!~andrewrk@mail.ziglang.org
+trying to wrap a C API is not really a good idea IMO
+
+1708856434
+andrewrk!~andrewrk@mail.ziglang.org
+here's an example of one already written if you need some inspiration: https://github.com/MasonRemaley/2Pew/tree/main/src/ecs
+
+1708856465
+copygirl!~koppeh@copy.mcft.net
+I would only be able to build something simple. One of the powers of Flecs is its query language, and I don't think I could ever approach something close to that, or workable at all.
+
+1708856478
+andrewrk!~andrewrk@mail.ziglang.org
+here's another one: https://machengine.org/pkg/mach-ecs/
+
+1708856510
+copygirl!~koppeh@copy.mcft.net
+I've avoided other native (to the language) implementations so I could use Flecs when I was dabbling in C# and Rust, and I don't think that'll change.
+
+1708856584
+copygirl!~koppeh@copy.mcft.net
+Flecs makes many things first-class within its own ECS that are really nice, and I'm in love with how it encodes relationships between entities as part of the entities archetype.
+
+1708856744
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not very symathetic to this issue that you're having; C like semantics are available for using C APIs
+
+1708856777
+andrewrk!~andrewrk@mail.ziglang.org
+so you should be at least as well off as you would be using C with that C API
+
+1708856861
+andrewrk!~andrewrk@mail.ziglang.org
+that said I'm headed to bed so I didn't really try to understand the use case very hard, so maybe I'm missing something. good night
+
+1708856882
+copygirl!~koppeh@copy.mcft.net
+Oh and another benefit is that components aren't static. They can be added and removed as the application is running. I understand that in many cases having the available components be defined at comptime is enough, but I have ideas that would require things to be more dynamic. (For the future.)
+
+1708856922
+copygirl!~koppeh@copy.mcft.net
+Have a wonderful night. o/
+
+1708857345
+copygirl!~koppeh@copy.mcft.net
+Oh wait, no. I think I can do it after all: https://gist.github.com/copygirl/530a9a14c102dd4046f4d03fed537867
+
+1708857386
+copygirl!~koppeh@copy.mcft.net
+Not sure what mistake I made last time I attempted this.
+
+1708857453
+copygirl!~koppeh@copy.mcft.net
+(The reason these are nested is so I could create a reusable Lookup, but it might not be necessary.)
+
+1708858785
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+andrewrk, what changes to std.http are you working on? If there'll be a changelog, no need to describe. I was going to poke std.http a bit more after a hiatus.
+
+1708862045
+ifreund!2940d10f8b@user/ifreund
+fengshaun: all the changes can be seen in the git log and merged PRs
+
+1708862070
+ifreund!2940d10f8b@user/ifreund
+and yes, i expect it will be mentioned in the release notes
+
+1708875540
+marler8997!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+andrewrk have you seen https://github.com/ziglang/zig/issues/18968 ? I'm thinking through some ideas on improving our def files today.  One idea is I could generate them all via zigwin32?  Not sure why you removed the api-ms-win-* def files though?  You explicitly filter them out so I'm wondering what the reason was?
+
+1708875955
+marler8997!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+thinking about ideas, the win32metadata project has versioning information that would allow us to have a win32 equivalent for glibc-abi-tool
+
+1708891746
+andrewrk!~andrewrk@mail.ziglang.org
+marler8997, hmm I think I saw those files and thought, "those files look sus" and then summarily excluded them
+
+1708891771
+andrewrk!~andrewrk@mail.ziglang.org
+they can be added back
+
+1708895833
+marler8997!~marler899@96-19-96-19-6-78.cpe.sparklight.net
+lol
+
