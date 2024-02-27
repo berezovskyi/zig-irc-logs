@@ -1,0 +1,176 @@
+1708913457
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: I'm trying to compile zig in a container: http://sprunge.us/FGvner 
+
+1708913491
+daurnimator!~daurnimat@vultr.daurnimator.com
+oh. I had to scroll up further to see an error message: `#44 285.7 error: Unable to parse target 'linux-native-musl': UnknownArchitecture`
+
+1708913591
+daurnimator!~daurnimat@vultr.daurnimator.com
+`native` seemed to work when I was linking dynamically. But I just swapped to `ZIG_STATIC=ON` and now it complains that it doesn't know what the architecture is :/
+
+1708913757
+andrewrk!~andrewrk@mail.ziglang.org
+daurnimator, it's cpu-os-abi
+
+1708913762
+andrewrk!~andrewrk@mail.ziglang.org
+you have os-cpu-abi
+
+1708913775
+daurnimator!~daurnimat@vultr.daurnimator.com
+doh!
+
+1708913807
+daurnimator!~daurnimat@vultr.daurnimator.com
+that then makes me question why that *worked* when linking dynamically then
+
+1708914227
+daurnimator!~daurnimat@vultr.daurnimator.com
+also even with `-DZIG_TARGET_TRIPLE` set I still get hundreds of `warning: Encountered error: FileNotFound, falling back to default ABI and dynamic linker.` messages
+
+1708914801
+daurnimator!~daurnimat@vultr.daurnimator.com
+new build failure: http://sprunge.us/zXs4gB 
+
+1708914842
+daurnimator!~daurnimat@vultr.daurnimator.com
+I'm going to guess I'm missing libstdc++ or something
+
+1708915552
+andrewrk!~andrewrk@mail.ziglang.org
+sounds about right
+
+1708915577
+andrewrk!~andrewrk@mail.ziglang.org
+it shouldn't be emitting those warnings if it's being given an explicit target
+
+1708916297
+daurnimator!~daurnimat@vultr.daurnimator.com
+I see `-lc++` in the invocation there.... is it not working somehow :/
+
+1708916710
+daurnimator!~daurnimat@vultr.daurnimator.com
+But also why is it trying to link libc++ dynamically rather than statically
+
+1708921121
+freshcoffee!~fresh@user/freshcoffee
+zig2 is linking with `-lc++` which suggests llvmorg's libcxx project
+
+1708921138
+freshcoffee!~fresh@user/freshcoffee
+yet he undefined symbols indicate implementation details of libstdc++
+
+1708921262
+freshcoffee!~fresh@user/freshcoffee
+libc++ != libstdc++; my guess is that the .cpp files and llvm dependency is compiled with gcc/g++ and require -lstdc++ 
+
+1708921430
+freshcoffee!~fresh@user/freshcoffee
+btw symbols with `std::__cxx11` are an implementation detail of libstdc++
+
+1708921450
+freshcoffee!~fresh@user/freshcoffee
+whereas `std::__1` is an implementation detail of libc++
+
+1708921476
+daurnimator!~daurnimat@vultr.daurnimator.com
+freshcoffee: I'm trying to recompile LLVM now with `-DLLVM_ENABLE_RUNTIMES=all` to see if that helps
+
+1708921712
+freshcoffee!~fresh@user/freshcoffee
+that may be overkill. RUNTIMES=libcxx;libcxxabi;libunwind should be enough for that direction?
+
+1708921971
+freshcoffee!~fresh@user/freshcoffee
+re: ZIG_TARGET_TRPLE; that's passed to the zig2 cli for artifact zig3 (stage3)
+
+1708922067
+freshcoffee!~fresh@user/freshcoffee
+you may enounter issues building zig2 (that long list of ABI messages?) . perhaps ZIG_HOST_TARGET_TRIPLE needs tweaking? that's passed to zig1 cli for the ofmt=c output to compile zig2 with system tools
+
+1708922115
+freshcoffee!~fresh@user/freshcoffee
+oh wait never mind, logs show zig2 built before those messages
+
+1708922234
+freshcoffee!~fresh@user/freshcoffee
+ah those hundres of warnings are caused by detectAbiAndDynamicLinker() -- ie. `/usr/bin/env` stuff
+
+1708923156
+daurnimator!~daurnimat@vultr.daurnimator.com
+freshcoffee: yeah. but andrew's expectation was that an explicit `ZIG_TARGET_TRIPLE` should disable/remove the /usr/bin/env stuff
+
+1708923194
+freshcoffee!~fresh@user/freshcoffee
+oh i missed that
+
+1708923711
+andrewrk!~andrewrk@mail.ziglang.org
+you can't mix c++ compilers. this is a limitation of c++
+
+1708923834
+daurnimator!~daurnimat@vultr.daurnimator.com
+so I guess that means that if I build libllvm with one compiler.... I can't use llvm to make a static zig?
+
+1708923864
+daurnimator!~daurnimat@vultr.daurnimator.com
+i.e. static zig only can exist if I already compiled libllvm with the same c++ library that zig2 will use?
+
+1708924319
+freshcoffee!~fresh@user/freshcoffee
+the same compiler and c++ standard library combination used to build llvm should also be used to build zig's .cpp sources and link zig2
+
+1708924342
+freshcoffee!~fresh@user/freshcoffee
+then zig2 is used to build and link zig3, and it must be the same c++ standard library
+
+1708924560
+freshcoffee!~fresh@user/freshcoffee
+hmmm do you have a `/usr/lib/libstd++.a` ?'
+
+1708924574
+freshcoffee!~fresh@user/freshcoffee
+if that puppy is missing, it just may fallback to `-lc++` 
+
+1708925014
+freshcoffee!~fresh@user/freshcoffee
+yeah i bet that's it; libstd++.a is not found, and fallback to vendored libc++.a
+
+1708925236
+freshcoffee!~fresh@user/freshcoffee
+hey I just duplicated almost exactly your link error
+
+1708925401
+freshcoffee!~fresh@user/freshcoffee
+and I have libstdc++.a installed. so scratch my earlier bet
+
+1708925999
+freshcoffee!~fresh@user/freshcoffee
+ah! there is cmake logic to NOT support glibc and ZIG_STATIC
+
+1708926056
+freshcoffee!~fresh@user/freshcoffee
+well a comment at least
+
+1708926094
+freshcoffee!~fresh@user/freshcoffee
+with this patch, I am able to build ZIG_STATIC=ON, with libstdc++.a and an llvm built with archlinux system tools, thus glibc and libstdc++:
+
+1708926109
+freshcoffee!~fresh@user/freshcoffee
+https://gist.github.com/mikdusan/8bfda762f2795fff13a521ee075e3c71
+
+1708926166
+freshcoffee!~fresh@user/freshcoffee
+(patch not suitable for PR, it's just a way to get linking working).
+
+1708929141
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: Compiling my code on FreeBSD renders the compiler to get stuck at "LLD Link..." forever, is that a known bug?
+
+1708929169
+andrewrk!~andrewrk@mail.ziglang.org
+to answer this question, I would search the issue tracker
+
