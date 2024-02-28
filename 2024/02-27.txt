@@ -1,0 +1,476 @@
+1709004661
+daurnimator!~daurnimat@vultr.daurnimator.com
+freshcoffee: thanks, that patch helped!
+
+1709004673
+daurnimator!~daurnimat@vultr.daurnimator.com
+I managed to get a working zig compiler via that mechanism
+
+1709004698
+daurnimator!~daurnimat@vultr.daurnimator.com
+The /usr/bin/env issue is showing up in even more unexpected places, e.g.: http://sprunge.us/LdyLe2 
+
+1709004803
+daurnimator!~daurnimat@vultr.daurnimator.com
+Though despite the error, it succeeded and I have the output file I expected
+
+1709015862
+grayhatter!~grayhatte@user/grayhatter
+non mutated var is an error now huh?
+
+1709015865
+grayhatter!~grayhatte@user/grayhatter
+*sigh* :(
+
+1709016220
+freshcoffee!~fresh@user/freshcoffee
+I think andrew added that specifically because I am a repeat-offender of using var unnecessarily in PR's
+
+1709018486
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: Is there a way for me to debug the Zig compiler to see why exactly it gets stuck at "LLD Link..." forever on FreeBSD?
+
+1709018640
+andrewrk!~andrewrk@mail.ziglang.org
+remiliascarlet, yes you can use standard debugging tools on zig such as GDB
+
+1709018659
+andrewrk!~andrewrk@mail.ziglang.org
+attach the the process, press ctrl+c, inspect the call stack of the thread(s)
+
+1709018669
+remiliascarlet!~remiliasc@user/remiliascarlet
+Ah, nice.
+
+1709018919
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: "(gdb) run build\nStarting program: /home/remilia/.local/bin/zig build\nptrace (PT_LWPINFO): 許可されていない操作です." The Japanese part  means "this operation is not being permitted".
+
+1709021645
+andrewrk!~andrewrk@mail.ziglang.org
+damn, I'm only at WaniKani level 7 so I only recognize one of those kanji
+
+1709021696
+andrewrk!~andrewrk@mail.ziglang.org
+sorry, I mentioned GDB but I think FreeBSD prefers lldb
+
+1709026548
+dnkl!86c6ab4b71@user/dnkl
+what's the most appropriate way to insert int3 debug breaks in zig code?
+
+1709026603
+dnkl!86c6ab4b71@user/dnkl
+just found @breakpoint... sorry for the noise
+
+1709026745
+ifreund!2940d10f8b@user/ifreund
+I find if (some complex condition) @breakpoint(); quite handy in certain cases :)
+
+1709027717
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: lldb gives the same error, but in English.
+
+1709027799
+remiliascarlet!~remiliasc@user/remiliascarlet
+許可 is read as きょか, and means permission. 操作 is read as そうさ and means operation.
+
+1709027811
+ifreund!2940d10f8b@user/ifreund
+remiliascarlet: this does not sound like an issue with zig. I don't use FreeBSD but it seem pretty clear that you need elevated privileges to use ptrace
+
+1709027834
+ifreund!2940d10f8b@user/ifreund
+perhaps try asking in FreeBSD channels if you can't figure it out
+
+1709027918
+remiliascarlet!~remiliasc@user/remiliascarlet
+Ah yes, I had to run it as root. Very odd considering it's in my home directory.
+
+1709028058
+remiliascarlet!~remiliasc@user/remiliascarlet
+andrewrk: Stacktrace: https://paste.opensuse.org/pastes/bbfde8066ea6
+
+1709028389
+ifreund!2940d10f8b@user/ifreund
+remiliascarlet: that doesn't look terribly readable to me, perhaps you are missing debug symbols
+
+1709028419
+ifreund!2940d10f8b@user/ifreund
+in any case, bug reports really belong on the issue tracker
+
+1709028554
+remiliascarlet!~remiliasc@user/remiliascarlet
+I guess I'll try to compile the latest master build, and see if the same happens with that one.
+
+1709037931
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+that's also not a stack trace (`bt all`), if you don't have libc debug symbols then the first frame will look like that
+
+1709044944
+raster!~raster@fw-tnat-cam4.arm.com
+zig minus-one user here (have yet to use zig in anger beyond hello world and reading some stuff - but i find zig to me my flavor for a possible better-than-c - been doing c/asm for decades so my brain works that way...) with a question ...
+
+1709044948
+raster!~raster@fw-tnat-cam4.arm.com
+https://devlog.hexops.com/2022/zig-hashmaps-explained/
+
+1709044990
+raster!~raster@fw-tnat-cam4.arm.com
+that std.StringHashMap(V).init(allocator); returns a new hash map. fine. great. i think of it as struct hashmap *map = my_hashmap_alloc();
+
+1709045022
+raster!~raster@fw-tnat-cam4.arm.com
+ie it allocates a new hashmap struct on the heap and returns me a ptr to it. now this struct has methods (func ptrs) in the struct...
+
+1709045119
+raster!~raster@fw-tnat-cam4.arm.com
+like put() and so on... does this mean the hashmap struct returned literally is big enough to hold at runtime all the func ptrs in that actual struct along with any other hash map internal data and so when i do hash_map.put(); is literally needs the put func in that hash map memory to have a valid func ptr (and in thoery i could override it with hash_map.put = my_put_func;)
+
+1709045158
+raster!~raster@fw-tnat-cam4.arm.com
+si i create 1000 hashmaps - they all duplicate all these func ptrs in the hash map struct again and again and dont share some kind of class common func table?
+
+1709045547
+brass!~brass@user/dac
+raster: map.puts(val) is the same as MapType.puts(map, val)
+
+1709045558
+brass!~brass@user/dac
+It's just syntactic sugar 
+
+1709045570
+raster!~raster@fw-tnat-cam4.arm.com
+but is the func ptr stored int he returned hash map alloc?
+
+1709045579
+brass!~brass@user/dac
+No
+
+1709045611
+raster!~raster@fw-tnat-cam4.arm.com
+aaaah i haven't looked that far - there is some syntax magic you can do to have these func ptrs map to a fixed func without using actual struct mem space?
+
+1709045691
+raster!~raster@fw-tnat-cam4.arm.com
+(c doesn't have this magic so my brain is converting things to the c struct model)
+
+1709045694
+brass!~brass@user/dac
+It's not magic, the compiler is aware of the type and knows which "methods" to use
+
+1709045713
+raster!~raster@fw-tnat-cam4.arm.com
+but the struct must have to delcare this in some way?
+
+1709045744
+brass!~brass@user/dac
+Yes, when you declare a type in zig you can also add methods to it as part of the declaration 
+
+1709045766
+raster!~raster@fw-tnat-cam4.arm.com
+aaaah that's what i was after :) so these are delcared that way. cool.
+
+1709045781
+raster!~raster@fw-tnat-cam4.arm.com
+sorry - i was just readng this and going "halp - i'm going to fill my ram with func ptrs!"
+
+1709045806
+raster!~raster@fw-tnat-cam4.arm.com
+(or well i'm trying to decide if zig is indeed my future lang of choice ... post-c)
+
+1709045840
+brass!~brass@user/dac
+Haha no worries
+
+1709045940
+raster!~raster@fw-tnat-cam4.arm.com
+i've done enough evil™ in C to do full OO with lots of code gen and so on - and tbh some syntax sugar would be nice and it looks like zig is doign the sugar ... but at the same time i wonder what is going on behind the scenes if tis just compiler sugar or actual memory :) but cool! thanks! answers a q as i dig in and work out if zig is for me...
+
+1709045977
+brass!~brass@user/dac
+raster: take a look, https://github.com/ziglang/zig/blob/master/lib/std/process.zig#L472-L499
+
+1709046009
+dutchie!~dutchie@user/dutchie
+raster: also, std.StringHashMap(V).init(allocator) doesn't do anything on the heap (you can tell because it doesn't return an error union like `ErrorSet!StringHashMap(V)`)
+
+1709046026
+raster!~raster@fw-tnat-cam4.arm.com
+aaah so all the pubs are sugar rather than real func ptrs in the struct
+
+1709046041
+brass!~brass@user/dac
+exactly
+
+1709046069
+dutchie!~dutchie@user/dutchie
+it's just a bit of metadata on the stack which in the end has some pointers to the heap where the actual entries are stored
+
+1709046101
+raster!~raster@fw-tnat-cam4.arm.com
+dutchie: well to my C eyes ... the init+allocator screamed "i malloc stuff"
+
+1709046113
+raster!~raster@fw-tnat-cam4.arm.com
+also my cat was also screaming that... his name is in fact malloc.
+
+1709046154
+brass!~brass@user/dac
+actually it does, not initially. It keeps a reference to the allocator and allocates when it needs to
+
+1709046159
+dutchie!~dutchie@user/dutchie
+^
+
+1709046182
+dutchie!~dutchie@user/dutchie
+almost always there is a `try` or other error handling when allocation actually happens
+
+1709046217
+raster!~raster@fw-tnat-cam4.arm.com
+i've implemented all these basic data structs myself in c often enough and they all malloc a struct of basic hash or list or whatever accounting data and return it ... so to my c eyes it looked like that :)
+
+1709046254
+raster!~raster@fw-tnat-cam4.arm.com
+ok - so the try hash_map.put() ... as in the above example
+
+1709046259
+raster!~raster@fw-tnat-cam4.arm.com
+as it might need to alloc
+
+1709046291
+brass!~brass@user/dac
+In zig, types that can exist on the stack usually do for performance reasons, and alloc is only called when absolutely required 
+
+1709046334
+raster!~raster@fw-tnat-cam4.arm.com
+our of curiosity... the pub fn funtime sugar seems almost oo-ish... so other than code gen at compile time i cant create a class and inherit + override right?
+
+1709046345
+brass!~brass@user/dac
+Also, pub controls the visibility of a function, fn is the actual function declaration keyword 
+
+1709046354
+raster!~raster@fw-tnat-cam4.arm.com
+yeah - for a short term hash map for a func livingo n the stack is the right thing
+
+1709046407
+brass!~brass@user/dac
+raster: not really but sort of, in zig types are first class values at compile time so you can manipulate them and do things like modify methods on them
+
+1709046435
+brass!~brass@user/dac
+Although implementing some sort of generic inheritance using those facilities would be very frowned upon
+
+1709046458
+raster!~raster@fw-tnat-cam4.arm.com
+reality is tho - if you do ui stuff you do kind of want to/need to do this
+
+1709046506
+brass!~brass@user/dac
+It depends, comptime is so powerful you generally don't need things like inheritance 
+
+1709046513
+raster!~raster@fw-tnat-cam4.arm.com
+as the whole oo concept really maps to that
+
+1709046517
+brass!~brass@user/dac
+It takes a little bit to master, but it's extremely powerful 
+
+1709048086
+raster!~raster@fw-tnat-cam4.arm.com
+well looking at zig as it seems neat. c+asm have served me well for many decades... but it's time to look ahead to the future... and rust just makes my brain hurt :)
+
+1709048209
+raster!~raster@fw-tnat-cam4.arm.com
+:)
+
+1709048216
+raster!~raster@fw-tnat-cam4.arm.com
+ok - voom time o/ tnx!
+
+1709055395
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+is it possible to check if an error set contains a given error?
+
+1709055622
+grayhatter!~grayhatte@user/grayhatter
+rockorager: why would you want to?
+
+1709055673
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+If an error is from a certain call I want to handle cleanup differently
+
+1709055735
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+usecase: ziglua. If the error happened during a lua call I want to grab the error message off the stack, log it, and exit
+
+1709055786
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+There aren't *that* many errors exposed for that library but it would be nice to just compare to the exposed error set they provide
+
+1709055801
+grayhatter!~grayhatte@user/grayhatter
+I'm not sure what you mean by error set then.
+
+1709055835
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+this: https://ziglang.org/documentation/master/#Error-Set-Type
+
+1709055859
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+const SomeError = error {...}
+
+1709055877
+grayhatter!~grayhatte@user/grayhatter
+right... but why would you care if an error is in an error set?
+
+1709055927
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+errdefer |err| { if (errorSetContains(ziglua.Error, err)) { ... this was a ziglua error } else { soemthing else } }
+
+1709055974
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Arguably it's lazy...I could enumerate the error contained in ziglua.Error
+
+1709055976
+grayhatter!~grayhatte@user/grayhatter
+if you're planning to mutate the error set, then I'd imagine you can just mutate it. If you're looking to depend on if this error can be returned or not, you either likely 1. want to specific the error return type explicitly; or 2. use a switch (error) { error.Name => {...}, }; where that way the compiler can ensure you're handling all errors
+
+1709056019
+grayhatter!~grayhatte@user/grayhatter
+you don't get an error set there, you get a specific error only
+
+1709056031
+grayhatter!~grayhatte@user/grayhatter
+errdefer |err| switch (err) {}
+
+1709056038
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+ziglua.Error is an error set
+
+1709056063
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+in that switch I want a case that captures _all_ ziglua.Error errors
+
+1709056085
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+switch (err) { ziglua.Error...=> {} }
+
+1709056088
+grayhatter!~grayhatte@user/grayhatter
+that's definitely an anti-pattern
+
+1709056134
+grayhatter!~grayhatte@user/grayhatter
+why can't you write an additional function that handles Lua errors, and call that function by your code that handles all other errors
+
+1709056165
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I can
+
+1709056177
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I was hoping to keep this in errdefer
+
+1709056219
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+But I can have each call be `lua.foo() catch |err| return handleLuaError(err)`
+
+1709056220
+grayhatter!~grayhatte@user/grayhatter
+that's what I'd do then. It'd make it a lot easier to reason about where the bug exists when you hit a given lua error
+
+1709056303
+grayhatter!~grayhatte@user/grayhatter
+the reason I call that an antipattern is because the only way I can imagine that code would make sense is if the code is poorly isolated, (and thus difficult to debug)
+
+1709056314
+grayhatter!~grayhatte@user/grayhatter
+but then again, that could just be my own lack of immagination
+
+1709056444
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Hmm
+
+1709056457
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Maybe this is just too specific to lua
+
+1709056476
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+if a lua call fails, it returns only a small set of error codes but sitting on the top of the stack is an error message with more detail
+
+1709056499
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+So when a lua error happens, grab that message and pass along the error
+
+1709056511
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Any other error wll leave that being nonsense
+
+1709056546
+ifreund!2940d10f8b@user/ifreund
+rockorager: I think the issue here is that if the right way to handle the errors in this set that ziglua may return is identical for all errors in the set, there should only be 1 error in the set
+
+1709056613
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+ifreund: Oh good point. since I don't care about the specifics of that error I can return a default error of my own type
+
+1709056623
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+lua.foo() catch return error.LuaError
+
+1709056629
+ifreund!2940d10f8b@user/ifreund
+yep
+
+1709056633
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+perfect
+
+1709056637
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Thanks
+
+1709056639
+grayhatter!~grayhatte@user/grayhatter
+yeah, to what ifreund said, you need a function that if there's a lua error, to collect the error your code needs. Or, a function that handles lua errors
+
+1709056651
+ifreund!2940d10f8b@user/ifreund
+and if all users of ziglua do that, ziglua should probably be fixed
+
+1709056659
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I doubt all users do that
+
+1709064053
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, the way I think about it: in zig, errors are for control flow. A function's error set should contain different error codes only in the sense that the caller might want do take different branches depending on them. For diagnostics, other kind of reporting/storage is needed
+
+1709064073
+andrewrk!~andrewrk@mail.ziglang.org
+zig errors: control flow; not diagnostics
+
+1709065077
+cancername!~cancernam@user/cancername
+for diagnostics, you may find something like this useful (criticism welcome): https://ziggit.dev/t/applying-the-diagnostics-pattern-in-practice/3042, probably not exactly this, but something to that effect
+
+1709066929
+Earnestly!~earnest@user/earnestly
+(It's amusing that in programming there are many ways for something to fail but usually only one way for it to succeed, yet all languages are optimised for the single successful case and sacrifice the failure to a set of different conventions, see all ways haskell libs do error handling.)
+
+1709069625
+andrewrk!~andrewrk@mail.ziglang.org
+I don't find it amusing because it all seems perfectly rational to me
+
+1709069681
+andrewrk!~andrewrk@mail.ziglang.org
+obviously you're going to optimize the hot path of your code and not waste a bunch of human and machine time on a rarely taken branch
+
+1709071665
+freshcoffee!~fresh@user/freshcoffee
+CI workout 24x7 since Sunday
+
