@@ -1,0 +1,132 @@
+1709083251
+daurnimator!~daurnimat@vultr.daurnimator.com
+yeah there's a lot going on
+
+1709083270
+daurnimator!~daurnimat@vultr.daurnimator.com
+I got an alert from my email provider that I've exceeded quota and they're not ratelimiting my incoming messages
+
+1709083277
+daurnimator!~daurnimat@vultr.daurnimator.com
+most of that has been zig github notifications
+
+1709085479
+remiliascarlet!~remiliasc@user/remiliascarlet
+raster: Fully understandable. I've been using C for a long time, and out of the modern options, only Go and Zig are reasonable. Everything else is either too abstract, or too painful to look at.
+
+1709090600
+daurnimator!~daurnimat@vultr.daurnimator.com
+Does vexu still visit here?
+
+1709090719
+remiliascarlet!~remiliasc@user/remiliascarlet
+No. (what is a vexu?)
+
+1709090752
+daurnimator!~daurnimat@vultr.daurnimator.com
+remiliascarlet: https://github.com/Vexu
+
+1709105314
+grayhatter!~grayhatte@user/grayhatter
+what are the chances that non-mutated var becomes a warning instead of an error in tests?
+
+1709109344
+torque!~tachyon@user/torque
+zig has a no warning policy so uhh, very unlikely
+
+1709109349
+torque!~tachyon@user/torque
+(it's a good policy)
+
+1709135548
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+is there a specific reason why io.Reader.read doesn't take amount to read as an argument or is it an arbitrary design decision?
+
+1709135550
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+ for example fs.File uses the length of the buffer as an amount to read, in case I want to read less than the length of the buffer I can slice it which is fine but also feels a bit implicit to me, I'd much rather pass some kind of max_size parameter to the read function, maybe it could be optional and fallback to buffer.len if not supplied
+
+1709143145
+grayhatter!~grayhatte@user/grayhatter
+ashie: readUntilDelimiter exists (or at least it used to)
+
+1709145787
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+I know, I am just curious about the design decisions, not asking for help
+
+1709146199
+grayhatter!~grayhatte@user/grayhatter
+I assumed that it was a simpler api. Because if you only want [length] bytes, you'd just pass a slice of that length... e.g. slice[start..][0..length_wanted], why would you want to pass in another param?
+
+1709146227
+cancername!~cancernam@user/cancername
+maybe two slices of the same length?
+
+1709146245
+cancername!~cancernam@user/cancername
+er, two array pointers, one length for both
+
+1709146252
+cancername!~cancernam@user/cancername
+multi-item pointers
+
+1709146265
+cancername!~cancernam@user/cancername
+😅
+
+1709147267
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+cancername: no, nothing like that, I was just curious cause python, C and C++ (probably others but I know about these) all have count as a parameter when reading
+
+1709147362
+cancername!~cancernam@user/cancername
+ah, I see. apologies, I didn't have that context. This is just something I've done in zig.
+
+1709152046
+grayhatter!~grayhatte@user/grayhatter
+ashie: I don't recall seeing anything like that in python, do you have an example? I thought python's API only exposed calls that would also alloc. In which case if you were gonna alloc, you'd probably use readAllAlloc? 
+
+1709153425
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+grayhatter: in python file.read can optionally take size as parameter, by default it reads the entire file no matter how big it is
+
+1709153658
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+also actually I ran into an issue where readAllAlloc fails with StreamTooLong (not sure if this was the exact name) if I use it on a custom reader I had but works if I allocate a buffer manually and then pass it to read
+
+1709153789
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+but I didn't look into it, at the time I just wanted to get my code to work and be done for the day
+
+1709153852
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+ashie: if that was the interface you would have to check if length argument is greater than the slice length to prevent UB/buffer overflow. C requires the length because it doesn't have slices. The python file.read method is allocating a buffer to hold the data based on the optional size argument.
+
+1709154255
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+wouldnt it be enough for Reader.read to check? and then the readerFn could take it at face value, the read method could take ?usize, if its supplied assert if its smaller than buffer.len and if its not supplied then just use buffer.len and readerFn would take non-optional usize
+
+1709154297
+ashie!~ashie@45.158.9.201.unconfigured.hostaris.com
+I mean hypothetically if it took the size as an argument, the way it is now is completely fine tho
+
+1709159233
+arya_elfren!8e828d9895@2a03:6000:1812:100::125a
+Has anyone discussed "struct colouring" as a problem anywhere?
+
+1709159301
+ifreund!2940d10f8b@user/ifreund
+i dont even know what you mean by that
+
+1709160210
+cancername!~cancernam@user/cancername
+arya_elfren: I assume you mean that you can't embed structs of undefined representation inside structs of defined representation?
+
+1709164475
+arya_elfren!8e828d9895@2a03:6000:1812:100::125a
+yes. I had a discussion on zulip about someone dealing with it as a problem. You can't use std lib structs like Atomic in anywhere where you need defined representation. They needed to align to cache lines with padding I think.
+
+1709164574
+arya_elfren!8e828d9895@2a03:6000:1812:100::125a
+So you end up with duplicating it for packed, extern, and normal structs. My workaround would just be writing a wrapper and padding it at comptime, but there are problems with that
+
