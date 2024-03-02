@@ -1,0 +1,140 @@
+1709270154
+mips64el!~mips64el@45.134.213.205
+hi o/
+
+1709270284
+Ximo!~kd@50.110.233.100
+hi
+
+1709270949
+mips64el!~mips64el@45.134.213.205
+hey Ximo 
+
+1709277810
+grayhatter!~grayhatte@user/grayhatter
+are stdlib API changes documented anywhere? I've spent a surprising amount of time crawling through a number API changes, so having a list of changes would have been very useful to me, because I would have either waited longer, or allocated myself much more time to spend rewriting all my stdlib usages 
+
+1709279089
+grayhatter!~grayhatte@user/grayhatter
+related, I used to be able to @embedFile() for a file in a sibling directory, because @embedFile() was relative to the build.zig file, and not src/ but now (according to the docs) it matches @import() Is this expected or a bug? and is there a work around/new method, or is breaking this directory layout intentional?
+
+1709281502
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter, how about this link? https://github.com/ziglang/zig/pulls?q=is%3Apr+label%3Abreaking+label%3A%22standard+library%22+is%3Aclosed
+
+1709289745
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+rockorager: I fixed all the bugs I found. https://zigbin.io/0ca067 It's probably worth changing std.RingBuffer to take a type argument instead of only working on `u8`s. Then we could greatly simplify the threadsafe queue implementation, and maybe get it stuck in std somewhere.
+
+1709289929
+ifreund!2940d10f8b@user/ifreund
+leeward: std.RingBuffer should probably be removed tbh, it just duplicates a subset of std.LinearFifo
+
+1709289944
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Well that's a lot less work.
+
+1709290477
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Hmm, LinearFifo's interface is a bit big. Oh, I see now. readItem and writeItem. Ok, I see. There's a bunch of extra complexity for being able to expand.
+
+1709295341
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+leeward: thanks for following up!
+
+1709295552
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+LinearFifo looks nice, having dynamic size would be handy in some places
+
+1709295943
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Yeah. I'm hacking up a threadsafe queue that uses LinearFifo underneath. Will probably push it somewhere at some point.
+
+1709295969
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Having the backing data structure somewhere else really simplifies the code.
+
+1709296200
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Yeah you just need to add the conditions and it looks like a blocking read and blocking write (unless I missed those, but I wouldn't see the point of those in a non-thread-safe FIFO)
+
+1709296265
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Yep, it looks like... https://zigbin.io/2e58e5 for one that just uses a static buffer.
+
+1709296345
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+You could pretty much turn this into a go channel
+
+1709296382
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Add a close method to refuse new writes and broadcasts to any blocked readers
+
+1709296488
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Ooh, that's a good idea.
+
+1709296514
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+the blocking read call needs to be `?T` then, but that is probably fine
+
+1709296520
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+return value **
+
+1709296533
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Go channels are something I think we probably ought to have, though with manual memory management and no coroutines life is a bit harder.
+
+1709296550
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Maybe ClosableQueue.
+
+1709296556
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+It'd be a pretty thin wrapper.
+
+1709296562
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Yeah
+
+1709296590
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I would not like checking for nil every time if I know I'll never close the channel :)
+
+1709296596
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+exactly
+
+1709296597
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+s/nil/null
+
+1709298331
+leeward!~sask@cust-95-128-93-211.breedbanddelft.nl
+Hmm, I think making it closable means almost the whole thing has to be reimplemented. The blocking push and pop both need to be able to check if the queue's been closed when they're signalled.
+
+1709334638
+drs!~drs@104-189-12-91.lightspeed.irvnca.sbcglobal.net
+is there some documentation on how to create a const array of structs?
+
+1709334665
+drs!~drs@104-189-12-91.lightspeed.irvnca.sbcglobal.net
+https://pastebin.com/dhn3XFhB  (lines 9-12, the compiler doesn't like)
+
+1709334899
+squeek502!~squeek502@user/squeek502
+drs, https://zigbin.io/f04956
+
+1709334965
+squeek502!~squeek502@user/squeek502
+also !Person? should be !?Person
+
+1709335007
+squeek502!~squeek502@user/squeek502
+actually it can just be ?Person, there's no possible error in that function
+
+1709336842
+drs!~drs@104-189-12-91.lightspeed.irvnca.sbcglobal.net
+thanks squeek502 
+
