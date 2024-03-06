@@ -1,0 +1,100 @@
+1709632466
+copygirl!~koppeh@copy.mcft.net
+When a constructor-like function takes an allocator, would it be sensible to always specify the allocator as the first parameter?
+
+1709645891
+mips64el!~mips64el@45.134.213.205
+hi
+
+1709645897
+mips64el!~mips64el@45.134.213.205
+:)
+
+1709645977
+copygirl!~koppeh@copy.mcft.net
+Is it atypical for an object to hold onto its own allocator such that it may free itself when calling deinit() on it?
+
+1709657736
+motiejus!~motiejus@88.223.107.21
+copygirl: it is quite usual (see, say, ArrayList). If you think there will be many instances of such objects, you may offer a version that accepts allocator for each method. Saves 2 pointers for each instance.
+
+1709657826
+copygirl!~koppeh@copy.mcft.net
+motiejus: In my particular case the allocation is even optional. One constructor doesn't need it (memory managed by library) while the other I need to handle myself. So the allocator field is an optional.
+
+1709657897
+copygirl!~koppeh@copy.mcft.net
+But yeah because of the usage, making the consumer of that type keep around the allocator is not ideal. (Previously I was using a "global" allocator and I'm trying to phase that out, if I can.)
+
+1709657905
+copygirl!~koppeh@copy.mcft.net
+Thank you
+
+1709658675
+motiejus!~motiejus@88.223.107.21
+on the surface feels like 2 types then — one with alloc and one without?
+
+1709658692
+motiejus!~motiejus@88.223.107.21
+(similarly, plenty of such examples in stdlib)
+
+1709660442
+copygirl!~koppeh@copy.mcft.net
+motiejus: Not sure if this adds any meaningful, understandable context, but the type is a wrapper around a C type. Most cases where this type is used, it's done so as a pointer. But a specific use case has you allocate the type yourself (typically on the stack) to use it.
+
+1709660520
+copygirl!~koppeh@copy.mcft.net
+A separate type might be useful, but I'm not particularly keen on duplication the functionality. I'm also already using some comptime shenanigans, so adding onto it could be bothersome.
+
+1709660523
+copygirl!~koppeh@copy.mcft.net
+I'll keep it in mind.
+
+1709660635
+copygirl!~koppeh@copy.mcft.net
+If you have an idea for a wrapper type that can operate both on a pointer and a value type of the wrapped value, let me know.
+
+1709664061
+andrewrk!~andrewrk@mail.ziglang.org
+in retrospect, I think I generally prefer the "unmanaged" variants of ArrayList and HashMap
+
+1709664092
+andrewrk!~andrewrk@mail.ziglang.org
+it's not a strict superset but I feel they are actually more convenient API wise than the ones that store the allocator
+
+1709666530
+motiejus!~motiejus@88.223.107.21
+I find the managed one easier to use, since I don't need to think about which allocator to pass (at times when I have more than 1 in scope)
+
+1709666706
+andrewrk!~andrewrk@mail.ziglang.org
+noted
+
+1709670922
+motiejus!~motiejus@88.223.107.21
+not only in the same sxo
+
+1709670938
+motiejus!~motiejus@88.223.107.21
+scope*, just throughout the object's lifetime
+
+1709678377
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I agree about the unmanaged ones being easier to use in most of my use-cases
+
+1709678439
+ifreund!2940d10f8b@user/ifreund
+having the static = .{} initialization is really convenient
+
+1709678513
+andrewrk!~andrewrk@mail.ziglang.org
+it's also handy for appending to a fixed size buffer
+
+1709678528
+ifreund!2940d10f8b@user/ifreund
+motiejus: I don't find it hard to know what allocator should be used for growable containers, nothing except a GPA really makes sense IMO
+
+1709678610
+ifreund!2940d10f8b@user/ifreund
+maybe its scoped to a thread or whatever I suppose
+
