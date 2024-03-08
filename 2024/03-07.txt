@@ -1,0 +1,324 @@
+1709773501
+andrewrk!~andrewrk@mail.ziglang.org
+anybody have some simple, liberally licensed tar creation zig code I can look at for inspiration?
+
+1709777944
+andrewrk!~andrewrk@mail.ziglang.org
+never mind, found exactly what I needed here: https://github.com/mattnite/tar/blob/main/src/main.zig
+
+1709778757
+mattnite!sid508577@id-508577.uxbridge.irccloud.com
+Bro
+
+1709782353
+Fingel!~Fingel@user/fingel
+Bruh
+
+1709785167
+andrewrk!~andrewrk@mail.ziglang.org
+homie
+
+1709795382
+grayhatter!~grayhatte@user/grayhatter
+has anyone implemented a memcache in zig yet?
+
+1709799767
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/pull/19208
+
+1709799775
+andrewrk!~andrewrk@mail.ziglang.org
+thanks mattnite ^
+
+1709803055
+mattnite!sid508577@id-508577.uxbridge.irccloud.com
+Looks great!
+
+1709807127
+Earnestly!~earnest@user/earnestly
+andrewrk: These are early days of course but keep in the back of your mind browsers like qutebrowser, vimium, vimperator, etc. which use keyboard navigation clashing with keybind driven web UIs
+
+1709810295
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+Is there any way to know how many items (or bytes) std.io.AnyReader.streamUntilDelimiter actually read?
+
+1709810467
+ifreund!2940d10f8b@user/ifreund
+pmk: I suppose you could use a CountingReader or CountingWriter and check before/after calling that function
+
+1709810571
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+Will look it up. Thank you ifreund!
+
+1709810598
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1709812249
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+so, there are a couple of issues with the CountingWriter and stremUntilDelimiter. streamUntilDelimiter calls the method writeByte of the underlying writer which CountingWriter does not implement.
+
+1709812288
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+This is pretty easy to do and I am going to open a PR if this is something that the project is interested in.
+
+1709812388
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+but even then, I get a compile error related to the constness of the CountingWriter. If I declare it as const the compiler rejects it because writeByte needs to be able to modify the writer.
+
+1709812425
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+on the other hand if I declare it as var the compiler complains that the variable is never mutated.
+
+1709812530
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+another solution I see is for streamUntilDelimiter to return the number of bytes it actually read, but I am not sure I understand the streamUntilDelimiter use case correctly.
+
+1709812733
+ifreund!2940d10f8b@user/ifreund
+pmk: I think you're missing that you need to call CountingWriter.writer() to get the corresponding Writer struct that has `fn writeByte()` and everything else
+
+1709812776
+ifreund!2940d10f8b@user/ifreund
+everything in the io.Writer() type is implement in terms of the single `write()` function you see in CountingWriter
+
+1709812835
+ifreund!2940d10f8b@user/ifreund
+(same with BufferedWriter.writer(), ArrayList.writer(), etc)
+
+1709813093
+pmk!6afe4476a1@2a03:6000:1812:100::26d
+you are absolutely right! sorry about this, I am still new to zig :) Thanks.
+
+1709813137
+ifreund!2940d10f8b@user/ifreund
+no worries!
+
+1709828714
+remiliascarlet!~remiliasc@user/remiliascarlet
+One question: @abs() has been introduced in Zig 0.12.0, and doesn't exist in 0.11.0, but all the BSD's are still on 0.11.0 with no pre-compiled binaries available for them. And because of that, I can't really compile my game on FreeBSD and OpenBSD. So what are we supposed to use on 0.11.0 instead of @abs()?
+
+1709829233
+remiliascarlet!~remiliasc@user/remiliascarlet
+https://github.com/ziglang/zig/issues/6718 Knowing the OpenBSD core dev team, they will probably completely roast you and cut you in a thousand pieces, and then say "no".
+
+1709829344
+remiliascarlet!~remiliasc@user/remiliascarlet
+At least the OpenBSD mailing list isn't as scary to post to compared to the Linux kernel one.
+
+1709829541
+ifreund!2940d10f8b@user/ifreund
+did you read the first comment on that issue?
+
+1709830595
+remiliascarlet!~remiliasc@user/remiliascarlet
+I was just joking.
+
+1709834039
+bblack!~bblack@wikimedia/bblack-WMF
+remiliascarlet: it's an interesting question in general, how to work around a new @foo in older versions seamlessly, other than just a straight up version check.
+
+1709834073
+bblack!~bblack@wikimedia/bblack-WMF
+for most other 0.11 v 0.122 discrepancies, I've been able to use @hasDecl and/or @hasField to branch code that works on both.
+
+1709834084
+bblack!~bblack@wikimedia/bblack-WMF
+s/122/12/ :)
+
+1709834105
+bblack!~bblack@wikimedia/bblack-WMF
+but I don't think there's a hasBuiltin?
+
+1709834207
+ifreund!2940d10f8b@user/ifreund
+nope, @import("builtin").zig_version is the only option there
+
+1709834244
+ifreund!2940d10f8b@user/ifreund
+I personally don't think trying to support multiple zig versions is a good use of my time just yet though, too many breaking changes still
+
+1709834301
+bblack!~bblack@wikimedia/bblack-WMF
+for my case, I'm just supporting 0.11.0 + 0.12-dev, which hasn't been that bad.  As soon as 0.12 releases, I'll probablh move on to supporting 12+13 or whatever.
+
+1709834339
+bblack!~bblack@wikimedia/bblack-WMF
+some of the diffs are tricky, but it's been an englightening part of the zig learning journey to track them down anyways
+
+1709834401
+bblack!~bblack@wikimedia/bblack-WMF
+the funniest one by far was:
+
+1709834425
+bblack!~bblack@wikimedia/bblack-WMF
+ // Handle 0.11.0 -> 0.12-dev capitalization change to std.builtin.Endian... :P
+
+1709834425
+bblack!~bblack@wikimedia/bblack-WMF
+fn endian_little() std.builtin.Endian {                                                                         
+
+1709834428
+bblack!~bblack@wikimedia/bblack-WMF
+    return if (@typeInfo(std.builtin.Endian).Enum.fields[1].name[0] == 'L')
+
+1709834431
+bblack!~bblack@wikimedia/bblack-WMF
+        .Little // 0.11.0
+
+1709834433
+bblack!~bblack@wikimedia/bblack-WMF
+    else  
+
+1709834436
+bblack!~bblack@wikimedia/bblack-WMF
+        .little; // 0.12-dev
+
+1709834438
+bblack!~bblack@wikimedia/bblack-WMF
+}
+
+1709834445
+bblack!~bblack@wikimedia/bblack-WMF
+... for a later: std.mem.writeInt(u64, salt[0..8], subkey, endian_little());
+
+1709835697
+bblack!~bblack@wikimedia/bblack-WMF
+anyone have an idea on the rationale (if any) on std/os.zig wrappers almost universally internally-retrying EINTR?  It's something that, from my use-cases' perspective, seems a bit off, even though it may be convenient 95% of the time.
+
+1709835766
+bblack!~bblack@wikimedia/bblack-WMF
+there are definitely cases where systems-level C programmers need to explicitly handle EINTR in a different way than /just/ restarting the call.  We of course have the option of calling std.system.foo() instead (to get the direct Linux syscall, or the direct libc call when linking libc).
+
+1709835815
+bblack!~bblack@wikimedia/bblack-WMF
+but then we lose the rest of the cross-POSIX-platform abstraction (e.g. minor interface differences between netbsd and linux that might be covered by os.zig, and the translation of errno to proper Zig errors, etc).
+
+1709836128
+bblack!~bblack@wikimedia/bblack-WMF
+I guess this all is hard to reason about without settling some of the issues raised in https://github.com/ziglang/zig/issues/5019 and https://github.com/ziglang/zig/issues/6600
+
+1709836177
+bblack!~bblack@wikimedia/bblack-WMF
+but if others are actively working on all related things with a goal of leaning up the std.os/c/posix space into more coherence in some rational direction, I'd love to help!
+
+1709836184
+bblack!~bblack@wikimedia/bblack-WMF
+s/leaning/cleaning/
+
+1709838015
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+note that you can just do `const endian_little: std.builtin.Endian = @field(std.builtin.Endian, @typeInfo(std.builtin.Endian).enum.fields[1].name);`
+
+1709838154
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+err, case typo `const endian_little = @field(std.builtin.Endian, @typeInfo(std.builtin.Endian).Enum.fields[1].name);`
+
+1709838577
+Ankhers!e99e97ef8e@2a03:6000:1812:100::2a2
+Should `zig run`, just work? Or am I expected to use `zig run src/main.zig`?
+
+1709838782
+andrewrk!~andrewrk@mail.ziglang.org
+Ankhers, I encourage you to try it and see
+
+1709838799
+Ankhers!e99e97ef8e@2a03:6000:1812:100::2a2
+I did. I would have expected zig run to work though.
+
+1709838818
+andrewrk!~andrewrk@mail.ziglang.org
+I feel like the error message pretty clearly answers this question
+
+1709838933
+andrewrk!~andrewrk@mail.ziglang.org
+are you expecting it to interact with a build script?
+
+1709839064
+Ankhers!e99e97ef8e@2a03:6000:1812:100::2a2
+zig run --help shows the usage as "zig run         [options] [files] [-- [args]]". The [] usually denotes an optional argument. I was also unsure what "error: `zig run` expects at least one positional argument" meant at first given the listed usage.
+
+1709839182
+Ankhers!e99e97ef8e@2a03:6000:1812:100::2a2
+For example, `man grep` gives an example usage as "grep [OPTION...] PATTERNS [FILE...]", because the pattern is required.
+
+1709842536
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+heyo, I like C a lot and would like to learn Zig because it seems like it probably has a lot of what C has to love but with a lot less of the bizzare historical baggage. When I learned C++ I already knew C, and I read a book largely aimed at helping people coming from C to learn the language inside and out. Does Zig have such a resource? Does it need one? If the answer to either of those is no, is zig.guide considered a good starting 
+
+1709842536
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+point? I like to learn things quite thoroughly, and sometimes I find that the default learning resource is a bit more of a quickstart tutorial than it is a comprehensive overview, so I want to check before diving in.
+
+1709842589
+andrewrk!~andrewrk@mail.ziglang.org
+squingly, https://ziglang.org/documentation/master/
+
+1709842639
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+oh neat, I didn't realize the documentation came with a really thorough overview of the language
+
+1709842645
+andrewrk!~andrewrk@mail.ziglang.org
+I think if you know C, you already kinda know Zig
+
+1709842733
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+I'm very used to documentation which focuses on being reference material for the standard library and whatnot rather than being a good learning resource *and* reference material. This is a good approach that I never thought of.
+
+1709842805
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+andrewrk: That's interesting! I'm excited to see what the differences are and what those design decisions mean.
+
+1709843199
+andrewrk!~andrewrk@mail.ziglang.org
+for me personally, my favorite part about zig is that it delivers on its promise to disappear and let you focus on building your application
+
+1709843341
+andrewrk!~andrewrk@mail.ziglang.org
+contrasted with c++ for instance where one tends to get bogged down trying to work around language complications, or C where one tends to run into a lot of runtime bugs caused by language footguns
+
+1709843747
+trnry!~nate@c-67-169-255-59.hsd1.ut.comcast.net
+Zig is so much of an upgrade from C it's ridiculous. I'll never be able to convince anyone to use it until the language stabilizes a bit, but the minute 1.0 happens I'm gonna push hard for it at my work
+
+1709844138
+torque!~tachyon@user/torque
+I've been using zig at work for a project I'm running and it has been very pleasant to use. If you stick with the latest stable it's quite manageable, though I have been keeping a 0.12 upgrade in the back of my mind, I think the biggest change there is the build system
+
+1709844217
+torque!~tachyon@user/torque
+made the mistake of looking at some C++ recently and it is completely impossible to read C++ and understand what it does. I have sort of a horrified respect for C++ programmers for abusing themselves in this way
+
+1709844337
+torque!~tachyon@user/torque
+meanwhile for zig I have largely just read the stdlib source code to find the APIs I want and how to use them
+
+1709844371
+torque!~tachyon@user/torque
+there's nothing super exotic about the language itself and that is a really good thing imo
+
+1709844571
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+I use C++ for work and I can confirm it adds readability to the list of tradeoffs you have to make as a programmer because often the only way to do the thing you want to do well is to use a very funky language construct
+
+1709844617
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+looking at you, templates
+
+1709844974
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+like, okay, readability is already on the list of course. but I'm talking about *syntax* readability, which is normally not a problem
+
+1709845009
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+if you don't speak C++ then you're basically hecked
+
+1709846101
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Speaking of weird C++ stuff: I'm writing some zig in one tab and C++ in another.  This static assert fails in C++: `static_assert(std::is_unsigned_v<_T>)` if `_T` is deduced from `std::array<uint16_t, 2>{}[0] >> 8u`.  Why does this language want ints to be signed so badly??
+
+1709846110
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+It's really making me want to just close the C++ tab lol
+
