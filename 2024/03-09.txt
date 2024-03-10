@@ -1,0 +1,128 @@
+1709957687
+listeria!~listeria@186.128.23.147
+is there a better way to do this? https://godbolt.org/z/1PdMjoMaT
+
+1709958632
+listeria!~listeria@186.128.23.147
+let me reword that, it seems like a missed optimization, but does this concern zig or is it an upstream issue?
+
+1709961464
+bblack!~bblack@wikimedia/bblack-WMF
+listeria: I would guess it's because you're using signed integers.  If you change the argument and retval types of your mod_builtin and divFloor builtin from i32 to u32, the optimizations appear.
+
+1709961483
+bblack!~bblack@wikimedia/bblack-WMF
+and technically those "optimizations" aren't safe for all signed values.
+
+1709961626
+bblack!~bblack@wikimedia/bblack-WMF
+(at least, i don't think so.  I guess in the C world it depends on a lot of things.  Not sure in Zig!)
+
+1709961695
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm although the unsigned one of course uses "sar" rather than "shr", so I guess it should be possible
+
+1709961743
+bblack!~bblack@wikimedia/bblack-WMF
+^ I wrote that backwards.  but yeah, sar for signed, shr for unsigned
+
+1709961782
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm
+
+1709966113
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+my project is valgrind clean producing 2705104 lines of output, still a ways to go
+
+1709970668
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0, lines of.... what kind of output?
+
+1709988802
+listeria!~listeria@186.128.23.147
+regarding the @mod() and @divFloor() builtins, the instructions generated when the denominator is known to be a power of 2 are suboptimal for signed integers: https://godbolt.org/z/1PdMjoMaT, does this concern zig or is it an upstream issue?
+
+1709990964
+ifreund!2940d10f8b@user/ifreund
+listeria: feel free to open a zig issue
+
+1709990990
+ifreund!2940d10f8b@user/ifreund
+I'm not sure whether we should expect llvm to optimize this or not...
+
+1709992281
+belst!~belst@user/belst
+I have a C header that includes windows.h when I translate-c this, I get a 86k loc zig file out. is there a way to only translate the header without the includes?
+
+1709992299
+belst!~belst@user/belst
+only includes are stdbool.h and windows.h
+
+1709992409
+gog!~ada@user/gog
+did you define WIN32_LEAN_AND_MEAN
+
+1709992453
+gog!~ada@user/gog
+it's not going to exclude windows.h and anything not included, but it'll reduce the size of the output substantially
+
+1709992645
+belst!~belst@user/belst
+still over 50k lines :(
+
+1709992941
+gog!~ada@user/gog
+dang
+
+1709992978
+ifreund!2940d10f8b@user/ifreund
+I don't think there's anything to be done there. there's no way to translate C code correctly without translating all includes
+
+1709992997
+ifreund!2940d10f8b@user/ifreund
+(yes text-based includes suck, and yes windows.h is too big)
+
+1709993056
+ifreund!2940d10f8b@user/ifreund
+you can always manually define extern functions/types for the thing you want to call and skip @cImport()
+
+1710010141
+grayhatter!~grayhatte@user/grayhatter
+are the stdlib docs broken?
+
+1710011069
+evocatus!~evocatus@2a02:a210:20c6:1f00:d2c0:b982:94f0:fc66
+hi
+
+1710011085
+evocatus!~evocatus@2a02:a210:20c6:1f00:d2c0:b982:94f0:fc66
+how to properly divide two u64 numbers and get an f64 result?
+
+1710011114
+evocatus!~evocatus@2a02:a210:20c6:1f00:d2c0:b982:94f0:fc66
+I tried to type cast the result of the division itself and looks like it's not idiomatic Zig
+
+1710011708
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+`const result = @as(f64, @floatFromInt(x)) / @as(f64, @floatFromInt(y));`
+
+1710011806
+evocatus!~evocatus@2a02:a210:20c6:1f00:d2c0:b982:94f0:fc66
+thanks, jacobly0 
+
+1710013792
+evocatus!~evocatus@2a02:a210:20c6:1f00:d2c0:b982:94f0:fc66
+it looked a bit counterintuitive at first but I checked and looks like it doesn't truncate u64 types https://bpa.st/PPDA
+
+1710014099
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+evocatus, you are implicitly truncating the comptime_int returned from maxInt to a f64, which of course truncates to the same f64 as the cast
+
+1710014223
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+if you do `@as(u64, @intFromFloat(div64(std.math.maxInt(u64), 1)))` it will fail
+
+1710014314
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+actually it won't because of rounding + saturation but subtract one from the max and it will
+
