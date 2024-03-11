@@ -1,0 +1,540 @@
+1710086969
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I'm trying to rewrite a C thing in Zig, and my tests are now failing with a deadlock. I grab a std.Thread.Mutex, call wait on my std.Thread.Condition (with a pointer to the mutex) and it looks like the mutex is still being held, so all the other threads that are trying to grab the mutex are blocked. The std.Thread constructs are pthreads under the hood on posix, right?
+
+1710087742
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I looked at the other threads in gdb, and they're working with the same mutex.
+
+1710088197
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+If anyone wants to see what I'm talking about, you can check out https://github.com/nmichaels/smear/tree/zig2 and run `make runtests` and it should crash with something like "thread 7245 panic: Deadlock detected"
+
+1710089012
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Never mind, I'm a dummy and tried to get the lock when I already had it.
+
+1710089056
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Hooray for the rubber duck that is an IRC channel where everyone's away.
+
+1710089120
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+And now all my tests pass!
+
+1710089121
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+\o/
+
+1710089132
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+(tests written against the C version of the library)
+
+1710090124
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Hmm, and now the helgrind tests are failing because they see data races writing to a std.Thread.Mutex. That seems like a problem with a solution.
+
+1710091174
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+And, after some digging, the solution appears to be a bunch of inline assembler for marking the mutex functions. That seems like a real project. Maybe later.
+
+1710091333
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Hmm, 7519 makes it look like there was helgrind support at one point but "but it seems to be a dead-end with many false positives." It's working for my C codebase, so maybe it's worth it to get it working again.
+
+1710099869
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+okay finally got around to checking out the documentation and uh, this hello world is looking concerningly javalike lol
+
+1710099919
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+not saying zig is javalike at all, just saying that my Zig First Impression is lots of .
+
+1710100009
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+wonder why it's like that
+
+1710100046
+grayhatter!~grayhatte@user/grayhatter
+squingly: how many programming langauges do know?
+
+1710100079
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+depends on what you count as "know"
+
+1710100146
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+I've written code in c++, c, javascript, haskell, scala, java, php, and c#. I'd say you can draw a line between scala and java as the point where my knowledge gets shaky
+
+1710100163
+grayhatter!~grayhatte@user/grayhatter
+"dot notation" for referencing struct/class members is *the* most common way, so I'd never consider using a lot of dots to be "javalike"
+
+1710100178
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+the thing that throws me off isn't the dot notation
+
+1710100184
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+it's the depth of composition
+
+1710100235
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+oh I forgot python lol
+
+1710100417
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+anyway yeah no there is syntax in here which feels funky - the sheer number of syntactical symbols in this code seems like a lot - but the syntax isn't what's getting me with regard to what I came in here writing
+
+1710100497
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+!,@, and . besides braces is much?
+
+1710100529
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+if you have done haskell you should have seen a pleathora of random operators
+
+1710100536
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+there's also a bunch of braces that aren't clear at a glance
+
+1710100540
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+yeah no I'm not saying it's a fault
+
+1710100562
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+I guess you're wondering about .{} ?
+
+1710100588
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+.{} does seem particularly difficult for me to interpret at a glance
+
+1710100612
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+it's anonymous structs
+
+1710100626
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+the compiler infers the correct type for them
+
+1710100629
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+I went in thinking that a goal of zig was to be relatively easy to read for someone who doesn't know the language so the use of any symbols like this was unexpected
+
+1710100665
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+interesting, I suppose I'll learn why this should be a struct instead of a raw string later
+
+1710100687
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+squingly: in eg "try stdout.print("Hello, {s}!\n", .{"world"});" ?
+
+1710100696
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+ye
+
+1710100938
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+it was a simple way to have multiple strings for the formatting in stdout.print() but still have it only take 2 arguments
+
+1710100942
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+*I guess
+
+1710100957
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+The .{} is an empty tuple, so the print function doesn't have to be variadic. Not having variadic functions is one of those things that makes the language a lot simpler. I feel you with all the .s though. There's a lot of standard library boilerplatey stuff required to print right now.
+
+1710100967
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+oh, does zig not support varargs?
+
+1710100971
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It does not.
+
+1710100973
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It used to!
+
+1710100977
+squingly!~gigabitte@97-122-242-239.hlrn.qwest.net
+okay that's probably for the best lol
+
+1710101004
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Yeah, since it can infer the types of tuples at compile time it doesn't really need to.
+
+1710101815
+torque!~tachyon@user/torque
+there are a lot of . compared to e.g. c because zig actually has namespaces
+
+1710101858
+torque!~tachyon@user/torque
+I much prefer it to having :: everywhere, and you can unnest declarations if you don't like it
+
+1710101896
+somercet!~somercet@c-73-144-84-45.hsd1.mi.comcast.net
+doesn't C use '->' because it binds more tightly to pointers than '.'?
+
+1710101932
+torque!~tachyon@user/torque
+no, `->` is a combined dereference-field access
+
+1710101958
+torque!~tachyon@user/torque
+zig is smart enough to do dereferencing automatically when necessary so you don't need an operator (htough you can do `.*.` if you really want to)
+
+1710102008
+torque!~tachyon@user/torque
+e.g. in c if you have a `*MyStruct` and you want to access field `foo` you have to do `mystruct->foo` or you have to do `(*mystruct).foo`
+
+1710102026
+torque!~tachyon@user/torque
+whereas in zig you can just do `mystruct.foo` to get the same result
+
+1710102210
+torque!~tachyon@user/torque
+I guess you could call the C situation an operator precedence issue because `*mystruct.foo` is equivalent to `*(mystruct.foo)` which does not work if `mystruct` is a pointer. 
+
+1710102314
+torque!~tachyon@user/torque
+also zig has more .s than c for struct initialization because structs are required to initialize fields by name, which is a good choice
+
+1710102387
+torque!~tachyon@user/torque
+the really aggressive type inference zig does is nice and in my opinion it generally makes code easier to read. I wouldn't say I have a hugely complicated codebase, but I've never had a problem where I couldn't figure out what a given type was pretty easily
+
+1710102638
+torque!~tachyon@user/torque
+unrelated, can someone explain to me why `usingnamespace` has become a pariah feature for incremental compilation? I really do not understand how it is different than syntactic sugar for attaching decls to a different namespace which you can do entirely manually
+
+1710102717
+torque!~tachyon@user/torque
+I use `usingnamespace` quite a bit to attach (generic) interface methods to handwritten structs (this works very nicely for serialization and deserialization routines)
+
+1710102741
+torque!~tachyon@user/torque
+I wish it were called `mixin` because I think that's its most useful feature
+
+1710103197
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Isn't that its only feature now? It doesn't let you stick things en masse into the global namespace.
+
+1710103221
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+a la "from module import *" in Python
+
+1710103234
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It's more like a re-export.
+
+1710103243
+torque!~tachyon@user/torque
+that's my understanding
+
+1710103274
+torque!~tachyon@user/torque
+although you could say that's pretty much `from module import *` in python, where it just dumps symbols into the current namespace
+
+1710103308
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+But only from the point of view of a module external to the one where it's called.
+
+1710103338
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Module A imports B. Module B `pub usingnamespace C`s, and now from module A's perspective B has all of C's public symbols.
+
+1710103366
+torque!~tachyon@user/torque
+as far as I know there's no semantic difference between `const A = struct { pub usingnamespace B; };` and `const A = struct { const foo = B.foo; const bar = B.bar; };` except it saves a lot of repetition
+
+1710103367
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+But from B's perspective, you still have to "const foo = C.foo" for everything you care about using without qualification.
+
+1710103383
+torque!~tachyon@user/torque
+er, p;us some Pubs
+
+1710103429
+torque!~tachyon@user/torque
+ah, uh, yes
+
+1710103457
+torque!~tachyon@user/torque
+for interfaces this is less of a deal because you can access `self.method()` even if method comes from `C`
+
+1710103488
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Sure.
+
+1710103504
+torque!~tachyon@user/torque
+I wonder if `usingnamespace` would be simpler to implement if it did just dump things into the current namespace, even though I know that was a change that specifically got made a while ago
+
+1710103548
+torque!~tachyon@user/torque
+I think that was done for good reason though since it makes the provenance of free constants somewhat confusing
+
+1710103562
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Andrew's said he's willing to take hits on language goodness to get optimizability. I don't know enough about the relevant optimizations to know if it would matter.
+
+1710103590
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I agree though that it does make it harder to attribute symbols.
+
+1710103667
+torque!~tachyon@user/torque
+I find the interface mixin feature really nice to use and wonder if there's a good way to give it semantics that are simpler for the compiler
+
+1710103709
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It is indeed super handy.
+
+1710103716
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+The standard library makes very extensive use of it.
+
+1710103744
+torque!~tachyon@user/torque
+I think most of those have been purged
+
+1710103748
+andrewrk!~andrewrk@mail.ziglang.org
+leeward, can you provide even a single example of the standard library using it?
+
+1710103763
+torque!~tachyon@user/torque
+I also haven't seen the stdlib do specifically what I'm talking about
+
+1710103808
+andrewrk!~andrewrk@mail.ziglang.org
+there are exactly 2 occurrences in the standard library of usingnamespace and neither of them are the mixin pattern
+
+1710103816
+torque!~tachyon@user/torque
+i.e. something like this https://github.com/epicyclic-dev/zig/blob/f1fa66771c5dc5e6779729db66e674ba9ec063e2/lib/std/io/writer.zig#L31
+
+1710103821
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+andrewrk: It's been a while since I looked; maybe it's changed? I guess I'm wrong. Last time I checked, it was used heavily in `std.zig`
+
+1710103829
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Or maybe I'm hallucinating?
+
+1710103842
+andrewrk!~andrewrk@mail.ziglang.org
+it was never the case
+
+1710103867
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Huh. I wonder where I got the impression.
+
+1710103867
+torque!~tachyon@user/torque
+from what I've seen the stdlib has mostly used it to conditionally import decls into structs
+
+1710103876
+torque!~tachyon@user/torque
+which is a pattern I don't think it's very good for
+
+1710103897
+andrewrk!~andrewrk@mail.ziglang.org
+torque, I agree, and those instances have all been eradicated
+
+1710104006
+andrewrk!~andrewrk@mail.ziglang.org
+I never intended for the mixin pattern to be possible, but now there are several important zig projects in existence that make heavy use of it. so if I want to remove that from the language I need to go about it in a careful way so as to provide a path forward for these projects
+
+1710104020
+torque!~tachyon@user/torque
+yeah I'm fine with that and I think those changes have largely been improvements. I've just seen a lot of comments recently regarding removing `usingnamespace` from the language
+
+1710104039
+torque!~tachyon@user/torque
+yeah, I personally would be fine with morphing into a different feature
+
+1710104080
+torque!~tachyon@user/torque
+I think it works really ergonomically as a way to add a shared set of methods to a struct
+
+1710104102
+torque!~tachyon@user/torque
+basically fills the role having formal interfaces would in a way that feels very zig-like to me
+
+1710104160
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ok, it looks like hash/crc.zig uses it to `pub usingnamespace @import("crc/catalog.zig")`. Maybe that's what I was thinking? Memory is weird, and this one is clearly a few years out of date.
+
+1710104190
+andrewrk!~andrewrk@mail.ziglang.org
+that's not the mixin strategy
+
+1710104218
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It's what I was talking about: re-export symbols from another library as though they come from this file.
+
+1710104236
+torque!~tachyon@user/torque
+yeah that's basically namespace grafting
+
+1710104259
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ok, so I didn't understand what torque was talking about then?
+
+1710104279
+andrewrk!~andrewrk@mail.ziglang.org
+check out torque's link above to see an example
+
+1710104301
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Oh, huh.
+
+1710104347
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Feels like inheritance, but spelled differently and with different semantics.
+
+1710104365
+torque!~tachyon@user/torque
+that was my own patch that I made without noticing someone had already made a PR for AnyWriter implemented different
+
+1710104368
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I guess that explains the name.
+
+1710104392
+andrewrk!~andrewrk@mail.ziglang.org
+it's a popular pattern in the ruby programming language ecosystem
+
+1710104408
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ah, I bounced off Ruby.
+
+1710104429
+torque!~tachyon@user/torque
+I've used it in my own code for a number of structs that need to be packed/unpacked directly in memory
+
+1710104470
+torque!~tachyon@user/torque
+they can all implement the same binpacking methods and then get an `instance.pack()` method and a `Type.unpackFrom(array)` function
+
+1710104472
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I had heard the term in D, but never really got it.
+
+1710104507
+torque!~tachyon@user/torque
+you could of course implement these functions externally
+
+1710104557
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Right, there's nothing to prevent you from writing `pub fn foo(thing: *Thing) void` right?
+
+1710104574
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+It's a bit awkward when Thing is parameterized...
+
+1710104606
+torque!~tachyon@user/torque
+yeah, but since structs tend to use methods (and I like using methods), being able to mix in the shared functionality ends up looking more consistent
+
+1710104758
+torque!~tachyon@user/torque
+anyway I think you answered my original question, leeward, which is that `usingnamespace` is different because it doesn't make the imported decls accessible unprefixed in the current namespace so it does act differently than just manually declaring everything
+
+1710104770
+torque!~tachyon@user/torque
+glad to hear I'm not the only person who likes the mixin pattern at least
+
+1710104786
+torque!~tachyon@user/torque
+though to defend myself against scurrilous allegations, I have no ruby background!!!!
+
+1710104792
+andrewrk!~andrewrk@mail.ziglang.org
+you're certainly not alone
+
+1710105753
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ok torque, I'm interested. If you didn't get it from Ruby, where'd you pick up the mixin thing?
+
+1710105818
+torque!~tachyon@user/torque
+I came up with it while trying to figure out how to get interfaces in zig
+
+1710105862
+torque!~tachyon@user/torque
+I've probably seen similar things in other languages over the years but there was a definite "ah ha" moment for me when I realized I could `usingnamespace` a parameterized struct and it would Just Work
+
+1710105950
+torque!~tachyon@user/torque
+it's a very cool example of zig's lazy evaluation and comptime type parameterization composing nicely with another feature
+
+1710105968
+torque!~tachyon@user/torque
+imo
+
+1710106112
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ok, so let's say you have `Foo` that re-exports `ThingDoer`, which exports doThing(). How do you know what methods and properties ThingDoer needs Foo to have in order to implement doThing()?
+
+1710106168
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I guess the runtime polymorphism stuff has the same problem.
+
+1710106216
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+You still have to implement the hooks in the thing being wrapped, instead of just implementing the method being provided.
+
+1710106347
+torque!~tachyon@user/torque
+you get a compile error if you're missing a method
+
+1710106382
+torque!~tachyon@user/torque
+but the slightly more practical answer would be "documentation"
+
+1710106438
+torque!~tachyon@user/torque
+as I mentioned, in my own code I've mostly used it with (de)serialization routines which just generate code (recursively) on the parent struct field definitions
+
+1710106476
+torque!~tachyon@user/torque
+which it works really well for, though as I linked above I think it also works well for having a common "feature" interface that can call back to a small number of specific methods
+
+1710106721
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Yeah, obviously the answer is documentation; I just don't love that the compiler doesn't get to check the documentation and the stuff the compiler does check doesn't tell you what the function should do; only that it should exist. Things like Go's interfaces or ABCs feel more explicit to me. Not that I think they're a good fit for Zig (I don't think there's any risk of Zig getting inheritance, at least) but I find the current paradigm 
+
+1710106721
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+unsatisfying.
+
+1710106795
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I mean, it's still better than C.
+
+1710106813
+torque!~tachyon@user/torque
+I mean it works in the same way as zig's general method resolution, which is if the code is never analyzed, it doesn't matter if it's missing, so you can only implement the parts you actually need
+
+1710106819
+torque!~tachyon@user/torque
+and if it is missing the compiler will tell you
+
+1710106838
+torque!~tachyon@user/torque
+I think this strategy works well (and will completely kick ass once the compiler is Fast As Hell)
+
+1710107090
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I hope you're right. I'll have to try it out with something substantial. Or maybe it will go away and we'll have to find another way to do it. It feels like Zig ought to be able to really nail comptime polymorphism.
+
+1710107515
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Anyway, time for sleep. Maybe tomorrow I'll port another module.
+
