@@ -1,0 +1,116 @@
+1710136316
+andrewrk!~andrewrk@mail.ziglang.org
+here's a link to play with the new autodoc since it'll be about another day before the CI gets it online: https://andrewkelley.me/temp/autodoc-preview-1397342/index.html
+
+1710139432
+bheesham!3aa22d8375@2a03:6000:1812:100::e40
+should links like on https://andrewkelley.me/temp/autodoc-preview-1397342/index.html#std.tar be, uh, link-ified?
+
+1710139456
+bheesham!3aa22d8375@2a03:6000:1812:100::e40
+er, urls, rather
+
+1710140009
+bheesham!3aa22d8375@2a03:6000:1812:100::e40
+neat
+
+1710146526
+krichprollsch!~krichprol@82.66.134.59
+Hey, I pushed a gist to illustrate my issue with type comparison and tests: https://gist.github.com/krichprollsch/455f9f7e6274c471b31b9bb11fc971e9
+
+1710146580
+krichprollsch!~krichprol@82.66.134.59
+The problem is: if I compare a type imported from root with the same type imported directly, it works in main, but it fails in test func.
+
+1710146628
+krichprollsch!~krichprol@82.66.134.59
+Maybe it's a normal behavior, but it confuses me.
+
+1710187561
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+Not sure why you didn't get a compile error, but you can't have a source file in multiple modules for exactly this reason (here "root.zig" is both imported into the root module and is the main module).
+
+1710187592
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+Maybe it's not checking root source files properly.
+
+1710189963
+Nightwulf!~totto@p200300db0f09be002ef05dfffea2cb51.dip0.t-ipconnect.de
+is there a better way to compare a C string with a Zig []const u8 other than doing it manually or to import string.h and do a strcmp() with .ptr for the zig slice?
+
+1710190382
+andrewrk!~andrewrk@mail.ziglang.org
+Nightwulf, std.mem should have something for you there
+
+1710190488
+andrewrk!~andrewrk@mail.ziglang.org
+if the zig string is also null terminated you could use std.mem.orderZ. if not, you can use std.mem.sliceTo on the C string and then std.mem.eql 
+
+1710190510
+Nightwulf!~totto@p200300db0f09be002ef05dfffea2cb51.dip0.t-ipconnect.de
+andrewrk: ah...thx....startsWith should do the trick :-)
+
+1710190540
+andrewrk!~andrewrk@mail.ziglang.org
+just remember that you can convert a C string to a zig slice with std.mem.sliceTo(s, 0)
+
+1710190549
+andrewrk!~andrewrk@mail.ziglang.org
+then all the zig functions will work on the result
+
+1710190558
+Nightwulf!~totto@p200300db0f09be002ef05dfffea2cb51.dip0.t-ipconnect.de
+even better...thx again!
+
+1710191492
+Nightwulf!~totto@p200300db0f09be002ef05dfffea2cb51.dip0.t-ipconnect.de
+andrewrk: hmm...I should have looked better....it's a string in a C structure and the type seems to be [256]u8. I guess because it got converted that way by importing that structure from C?  So it is already an array. Problem is of course that it is filled with lots of 0x00 after the respective string. Is there a reason for it to be 256 bytes long?
+
+1710191684
+torque!~tachyon@user/torque
+you'd need to consult your c library documentation, but probably 256 is just an upper bound on the string size so that they don't have to dynamically allocate memory to hold it
+
+1710191738
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: in any case, mem.sliceTo(&array, 0) is still what you want
+
+1710191765
+ifreund!2940d10f8b@user/ifreund
+it will iterate the array looking for the first 0 and then return the slice of the array up to that point
+
+1710191765
+torque!~tachyon@user/torque
+`std.mem.sliceTo` will also work on a pointer to an array, so you can still use it to slice
+
+1710191795
+torque!~tachyon@user/torque
+I have been beaten
+
+1710191812
+Nightwulf!~totto@p200300db0f09be002ef05dfffea2cb51.dip0.t-ipconnect.de
+man...at some times I'm really blind...thx to you all!
+
+1710191970
+Nightwulf!~totto@p200300db0f09be002ef05dfffea2cb51.dip0.t-ipconnect.de
+works like a charm....this is an awesome community I must say!
+
+1710192098
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+when should one use mem.sliceTo over mem.span?
+
+1710192219
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+`sliceTo` for slicing a non-sentinel or different-sentinel pointer, `span` for slicing a same-sentinel pointer
+
+1710192321
+andrewrk!~andrewrk@mail.ziglang.org
+span looks appropriate for C pointers
+
+1710192332
+jacobly0!~jacob@ec2-3-210-217-213.compute-1.amazonaws.com
+For example, getting the zero terminated string from the beginning of an array is `std.mem.sliceTo(&array, 0);`, but getting a zero-terminated slice from a zero-terminated many pointer (maybe returned from C) is just `std.mem.span(ptr);`
+
+1710193705
+yoshikage_kira!~yoshikage@2600:1700:aa94:6400:e37d:b02d:da85:d87
+test
+
