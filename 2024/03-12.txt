@@ -1,0 +1,176 @@
+1710209794
+gastus_!~gastus@185.6.123.136
+Trynig to make my life easier to learn zig. Thus want to have a buildExe macro / function:  https://dpaste.com/HW9R8RMMT   However compilation fails because eg target is found twice.
+
+1710209865
+gastus_!~gastus@185.6.123.136
+Of course I could pass as argument to buildExe function. But how to cope with local vars ? Shouldn't zig rename them for each invocation ?
+
+1710210402
+torque!~tachyon@user/torque
+the problem is that `b.standardTargetOptions` actually adds a flag to the build command line (i.e. allows the user to provide `-Dtarget=x86_64-linux` or whatever)
+
+1710210435
+torque!~tachyon@user/torque
+if you call it more than once, it will see you trying to add a flag called `target` while one is already defined and error out
+
+1710210975
+torque!~tachyon@user/torque
+in general, the build API is designed around you defining options in one place and then passing around their resolved results if needed between your functions
+
+1710211032
+torque!~tachyon@user/torque
+you can dig into the build object and access the raw options if you want, but that bypasses the value type conversion that the build API does for you
+
+1710224031
+voldial!~voldial@user/voldial
+anyone know why getdents64 returns fs.File.Kind.unknown ... sometimes ... for files? My first syscall, returns as expected, with the dents and fs.File.Kind.file, but ... sometimes ... the 2nd getdents64 comes back with the expected files, but they are fs.File.Kind.unknown, which is uh. fun. I seem to remember hitting this long ago using C, so I'm pretty sure it's not a zig issue... just asking 'cuz people here
+
+1710224033
+voldial!~voldial@user/voldial
+would know:)
+
+1710224070
+voldial!~voldial@user/voldial
+oh, left out critical info... this only happens when calling getdents64 on a NFS share
+
+1710224229
+voldial!~voldial@user/voldial
+uugh https://bugzilla.redhat.com/show_bug.cgi?id=1248140
+
+1710226286
+voldial!~voldial@user/voldial
+ah. known issue: https://github.com/ziglang/zig/pull/18312
+
+1710243394
+gastus!~gastus@185.6.123.242
+torque: Thanks. Now standardTargetOptions(): CrossTarget. Found in zig/std/zig/CrossTarget.zig I fail to import it so that I can reference it in my function. ./lib/std/zig.zig|19| pub const CrossTarget = @import("zig/CrossTarget.zig");
+
+1710243413
+gastus!~gastus@185.6.123.242
+Not even this works found in compilers source code.
+
+1710244050
+ifreund!2940d10f8b@user/ifreund
+gastus: not sure what zig version you are using, but CrossTarget no longer exists on master branch
+
+1710244069
+ifreund!2940d10f8b@user/ifreund
+standardTargetOptions() returns a ResolvedTarget
+
+1710244107
+gastus!~gastus@185.6.123.242
+So using master is suggested :-P
+
+1710244134
+ifreund!2940d10f8b@user/ifreund
+not necessarily, you just need to make sure you read the code corresponding to the version of zig you are using
+
+1710244198
+ifreund!2940d10f8b@user/ifreund
+if you're using 0.11.0 then `const std = @import("std");` and then std.zig.CrossTarget
+
+1710244224
+ifreund!2940d10f8b@user/ifreund
+just like you see at the top of std/Build.zig
+
+1710245291
+gastus!~gastus@185.6.123.242
+comptime x where x is "abc" for instance is it possible to access the type of x without having to pass type parameter ?
+
+1710245319
+gastus!~gastus@185.6.123.242
+Thus would it be possible to replace std.mem.eql(u8, a, b)  by a comptime function figuring out u8 itself ?
+
+1710245726
+ifreund!2940d10f8b@user/ifreund
+gastus: you can use `fn foo(x: anytype)` and then @TypeOf(x)
+
+1710245758
+ifreund!2940d10f8b@user/ifreund
+there is a readability tradeoff though
+
+1710246054
+gastus!~gastus@185.6.123.242
+My background is a lot of web programming. And I always wondered about why not have a poly glot language which doesn't target JS but knows JS thus when targeting js you can mix features. Zig is the first language actually fixing the maybe async cases. Like JS plv8 (pg macros in JS no async) vs knex( sql lib async) .. all causing duplication. Are there long term plans about Zig and the web eg JS ? vlang eg 
+
+1710246060
+gastus!~gastus@185.6.123.242
+targets JS directly. Problem with Webassembly kinda is little more MB to download for small websites.
+
+1710246341
+ifreund!2940d10f8b@user/ifreund
+there are no plans for zig to target JS, it doesn't really make any sense to do so IMO
+
+1710246370
+ifreund!2940d10f8b@user/ifreund
+zig produces very small wasm binaries, you might want to give it a try
+
+1710246404
+ifreund!2940d10f8b@user/ifreund
+but JS has totally different semantics than zig. It's a garbage-collected interpreted language for one
+
+1710246549
+ifreund!2940d10f8b@user/ifreund
+gastus: for zig wasm vs similar js download sizes: see the numbers in this PR for example: https://github.com/ziglang/zig/pull/19208
+
+1710246917
+gastus!~gastus@185.6.123.242
+https://dpaste.com/DNRKEVGH7 That's part of my story why I am here and stil seaking to simplify my life. And feel that's a common goal of me and Zig. Just trying to understand how much common ground there could be explored.
+
+1710246952
+gastus!~gastus@185.6.123.242
+5.7 M gezipped. And a JS website is 1 MB.
+
+1710247033
+gastus!~gastus@185.6.123.242
+And I've looked at all the C# like .. blah .. all load little bit slower. That's why I am trying to find the common patterns between server side and client side wondering whether we already reached the optimal solution.
+
+1710247073
+gastus!~gastus@185.6.123.242
+And part of the problem cannot be solved (or can it?) Its that JS ships its runtime (eg std.mem.eql and hash implementations etc).
+
+1710247136
+gastus!~gastus@185.6.123.242
+But let me read the details.
+
+1710247340
+ifreund!2940d10f8b@user/ifreund
+zig is very lazy with it's compilation and will for example only include exactly the parts of the standard library that are actually used by your program in the binary
+
+1710252706
+belst!~belst@user/belst
+are there any examples on opening a specific file? currently I do std.fs.openDirAbsolute and then dir.openFile but I get an exception
+
+1710253001
+belst!~belst@user/belst
+stackoverflow somewhere in wToPrefixedFileW
+
+1710253451
+belst!~belst@user/belst
+also how can I provide a custom logFn in a dll?
+
+1710253533
+belst!~belst@user/belst
+I tried providing std_options in lib.zig but it doesn't work
+
+1710253860
+belst!~belst@user/belst
+the documentation in this is really lacking :(, I don't get how it's supposed to work
+
+1710253983
+belst!~belst@user/belst
+ok, I somehow got it.
+
+1710274480
+cancername!~cancernam@user/cancername
+Hello everyone, I wrote a thread-safe queue for a personal project of mine. I am inexperienced when it comes to multithreaded programming, and would love to receive criticism for the atomics use, waiting mechanism, and for how long to spin / whether to spin at all. If anyone would like to try, the source is here: <https://codeberg.org/zig-multimedia/spsc-queue/src/branch/master/src/main.zig>.
+
+1710283117
+somercet!~somercet@c-73-144-84-45.hsd1.mi.comcast.net
+https://github.com/somercet/hexchat
+
+1710283151
+somercet!~somercet@c-73-144-84-45.hsd1.mi.comcast.net
+I was gonna leave the new text widget out for a while, maybe reformat it first, but I accidentally included it. :-P
+
