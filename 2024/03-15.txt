@@ -1,0 +1,260 @@
+1710502014
+gastus_!~gastus@185.6.123.207
+I am looking for eg a cross platform way to glob files. Actually I found https://github.com/mattnite/glob.git but what's the correct way to manage Zig dependencies within Zig ? But there are different cases let's talk about Godot wihch is C++ kind of and can use C code. But it can target many architectures. So the challenge is like compiling eg libjpeg/png/libvnc/ some C code with godot headers -> then 'app' 
+
+1710502020
+gastus_!~gastus@185.6.123.207
+is ready. I think I might start loving the compitme stuff from Zig thus maybe it's a good 'glue' layer for such stuff.
+
+1710502092
+gastus_!~gastus@185.6.123.207
+I understand that Zig's build system can have dependencies etc. But I am uncertain whether the cross platform compilation dependency stuff and management which can but doesn't have to use eg Nixpkgs should be part of a compiler ? I know about Xmake, but its old style like compile, install rather than defining the dependencies the Nix way and be reproducible and somewhat well defined.
+
+1710502175
+gastus_!~gastus@185.6.123.207
+The existing libvnc code was built by scons for example. So managing dependencies eventually means managing many differetn build systems? Is there any guide about whether each target project should just build its own dependencies and be happy ? Or is there any mindset of sharing dependencies if it makes sense to shorten compilation / rebuild times like distros have ?
+
+1710502241
+gastus_!~gastus@185.6.123.207
+And the libvnc case (assuming me wanting to rewrite that code with Zig) is interesing because the dependencies eventually use different build systems on Windows/Linux (vc vs configuere).
+
+1710502274
+gastus_!~gastus@185.6.123.207
+So what I am actually looking for is a way to abstract all the noise and just say "want that lib for that target architecture take from pool recipes how to build it" and 'that pool recipes' to be defined :-)
+
+1710521554
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+hello all
+
+1710521561
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm doing ziglings
+
+1710521592
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but exercise 004_arrays fails
+
+1710521599
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+it tells me my output is wrong
+
+1710521605
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+but i don't see how it could be
+
+1710521628
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+relevant line is `const fourth = some_primes[5];`
+
+1710521643
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+where `var some_primes = [_]u8{ 1, 3, 5, 7, 11, 13, 17, 19 };`
+
+1710521679
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+the output it expects is `First: 2, Fourth: 7, Length: 8`
+
+1710521706
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+and apparently my output is `First: 2, Fourth: 13, Length: 8`
+
+1710521729
+pog!~Ada@user/gog
+arrays indicies in zig are zero-based
+
+1710521730
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+so how on earth is `fourth` equal to `13`?
+
+1710521740
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+oh
+
+1710521742
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+duh
+
+1710521747
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i compensated in the wrong direction
+
+1710521754
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i am retarded
+
+1710521762
+pog!~Ada@user/gog
+perhaps just sleepy
+
+1710521774
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+indeed
+
+1710521798
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+i'm a programmer by trade and i made probably the dumbest mistake of all time
+
+1710521802
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+way too sleepy
+
+1710521813
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+cofee will fix that for a while
+
+1710521815
+pog!~Ada@user/gog
+i'm a programmer by trade also and i constantly make silly mistakes
+
+1710521816
+ih8u!~Thunderbi@global133-89-149.aitai.ne.jp
+thank you
+
+1710521823
+pog!~Ada@user/gog
+np
+
+1710521859
+pog!~Ada@user/gog
+i treat other programmers' mistakes way more gently than my own :D
+
+1710521902
+pog!~Ada@user/gog
+other programmers: valid, beautiful, intelligent. me: terrible, inept, ugly
+
+1710524027
+torque!~tachyon@user/torque
+<gastus_> So what I am actually looking for is a way to abstract all the noise and just say "want that lib for that target architecture take from pool recipes how to build it" and 'that pool recipes' to be defined :-)
+
+1710524041
+torque!~tachyon@user/torque
+I don't think this will happen until the build system APIs and feature set stabilize
+
+1710524083
+torque!~tachyon@user/torque
+but in general the lowest-friction approach for me has been to "replace" the upstream build system with a zig build file
+
+1710524098
+torque!~tachyon@user/torque
+of course this probably doesn't scale well for huge projects
+
+1710524126
+gastus_!~gastus@185.6.123.207
+Yes, but there are some complex stuff with many options. Eg have a look at zsv which hase tons of special options about SIMD for CPU.
+
+1710524140
+torque!~tachyon@user/torque
+and all of my dependencies can be built statically (which I specifically want anyway), so they integrate easily into the build system
+
+1710524174
+gastus_!~gastus@185.6.123.207
+The question I have is not about Zig only - Zig just happens to feel strong enough to actually do the job itself, too. Its about how to declare dependencies for multiple languages sot hat gentoo, nixpkgs, zig build systems, others would just be targets.
+
+1710524203
+torque!~tachyon@user/torque
+I think that's outside of the scope of this chatroom probably
+
+1710524259
+gastus_!~gastus@185.6.123.207
+Maybe, just put it on the table cause the build.zig seems incredible powerful thus might have been related. And because Zig is close to C/* and header files etc. So there are some common features such as picking the right libraries for target architectures etc.
+
+1710524259
+torque!~tachyon@user/torque
+trying to build some kind of meta package manager abstraction on top of a bunch of existing package managers is probably hard and likely to have bugs
+
+1710524312
+torque!~tachyon@user/torque
+in my experience the zig build system works a lot better if you are building your dependencies rather than linking pre-built dependencies
+
+1710524349
+gastus_!~gastus@185.6.123.207
+The alternative is to not even know whether starting a build might work out. You're right. You can go the nix way: Once its in and works your'e fine. I want to understand the process how much work to get something in .. causet hat feels hard to judge often. Into Gentoo, xmake, nixpkgs, brew, gentoo, get me ? So a meta dependency system would at least tell you Hey, ubuntu-8.0 might not work cause libjpeg 
+
+1710524354
+torque!~tachyon@user/torque
+I mean it's easy to link a system library, but then you become dependent on target system state, which is more of a problem for package managers to solve
+
+1710524355
+gastus_!~gastus@185.6.123.207
+shipping with it is too old.
+
+1710524375
+torque!~tachyon@user/torque
+which is why the zig build system has made steps toward supporting compilation by package managers
+
+1710524394
+gastus_!~gastus@185.6.123.207
+50% rust = cargo => joy cause it works more likely :-/. And yes got that zig even has its own libc like whatever it was.
+
+1710524435
+torque!~tachyon@user/torque
+it builds libc on the fly as part of the compilation process (except on platforms where it can't)
+
+1710524528
+torque!~tachyon@user/torque
+anyway, distro maintainers and package developers have different major concerns for building their software. And modern software development practices put very little emphasis on trying to maintain a stable abi
+
+1710524570
+gastus_!~gastus@185.6.123.207
+My world is like Neovim & Lua & TS & JS & Rust & maybe soon some Zig and .. how ot reproduce a system which works (on windows/linux/cygwin/..) or get told fast what the problem might be. And some package managers like brew clearly state: Hey, let's distribute binaries cause they at leats work .. (if possible) if I recall correctly. But there is always the dev .. who gets the work done. And I want to find an 
+
+1710524576
+gastus_!~gastus@185.6.123.207
+easier path acceptingt it will never be easy.
+
+1710531207
+lordmzte!~LordMZTE@user/lordmzte
+It appears that `std.fs.path.join` acts somewhat strangely with absolute paths. The paths `&.{"a", "/b"}` are joined to `a/b` instead of `/b`, which is what I'd expect. Is there a function that behaves like I've described, and why has the function been designed like this?
+
+1710531366
+lordmzte!~LordMZTE@user/lordmzte
+More precisely, I'd like to "resolve" two paths against eachother. I basically want to get where you'd end up if you'd `cd` to the given paths sequentially.
+
+1710533640
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+that's what `std.fs.path.resolve` does :)
+
+1710533687
+lordmzte!~LordMZTE@user/lordmzte
+I see! Thanks!
+
+1710544199
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+Hi y'all. I'm trying to learn Zig by doing aoc (2019 because Int Machine cool :D ) and for day 1 I had this code https://bpa.st/L6LA but then I saw that `readUntilDelimiterOrEof` was deprecated, so I tried to switch to `streamUntilDelimiter` like suggested and now have this code https://bpa.st/BQRQ . I was wondering if anyone could just take a look
+
+1710544199
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+and let me know if it's idiomatic-ish or if there are better ways I should be doing things :) 
+
+1710544862
+andrewrk!~andrewrk@mail.ziglang.org
+The_Buhs, for advent of code I suggest to more simply use readFileAll or just copy paste the input into a multiline string literal
+
+1710544889
+andrewrk!~andrewrk@mail.ziglang.org
+creating optimal parsers is an interesting problem space but it's usually not what those puzzles are trying to explore
+
+1710544975
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+Makes sense
+
+1710545017
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+Do you mean `readFileAlloc` (or just `readFile`)? On the 0.11 zig stdlib docs I don't see readFileAll
+
+1710545037
+andrewrk!~andrewrk@mail.ziglang.org
+sure, readFileAlloc 
+
+1710545060
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+Cool, thanks. I'll give that a shot
+
+1710546061
+andrewrk!~andrewrk@mail.ziglang.org
+then you can use one of the std.mem functions such as tokenize or split
+
+1710546114
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+Yeah, I did read about those and I'll do that. Thanks :) 
+
