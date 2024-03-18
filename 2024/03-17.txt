@@ -1,0 +1,152 @@
+1710645227
+r2com!~r2com@ip98-177-189-79.ph.ph.cox.net
+so `align` is a keyword which can be used either like: var foo: u8 align(4) = 100; or it can be used as *align(4) i32 ?
+
+1710645281
+r2com!~r2com@ip98-177-189-79.ph.ph.cox.net
+reference manual gave some examples but i dont find the rules specifying on how exactly this keyword can be used (in which combinations)
+
+1710646861
+r2com!~r2com@ip98-177-189-79.ph.ph.cox.net
+maybe its cuz im coming from C, its just it was a bit unnatural for me to see this allowed: *align(4) u32
+
+1710646887
+r2com!~r2com@ip98-177-189-79.ph.ph.cox.net
+my brain would process easier this: *align(4, u32);
+
+1710646910
+r2com!~r2com@ip98-177-189-79.ph.ph.cox.net
+the former one is ok , its just would be nicer to see explicitly written spec for that kind of syntactic sugar
+
+1710647390
+torque!~tachyon@user/torque
+the alignment is an attribute of the pointer, primarily. my understanding is that something like `u8 align(4)` doesn't actually have an effect if you never take the address of the variable with that type
+
+1710647430
+torque!~tachyon@user/torque
+so `*align(4) u8` reads "a pointer of alignment 4 to a u8", which makes sense to me
+
+1710648236
+andrewrk!~andrewrk@mail.ziglang.org
+r2com, alignment is a property of pointers, variable declarations, and function declarations
+
+1710649690
+grayhatter!~grayhatte@user/grayhatter
+someone needs to %s/always a race condition//g across all files in stdlib
+
+1710649724
+grayhatter!~grayhatte@user/grayhatter
+every single time I've seen these lines in error traces, it's never once actually been a race condition
+
+1710651416
+r2com!~r2com@ip98-177-189-79.ph.ph.cox.net
+got it
+
+1710704619
+k_r_k!~krk@2a02:8084:42e1:1480:d8d9:d2b:7c77:c3c4
+Hi! I am trying some ideas to parse and generate the loop in https://github.com/ziglang/zig/issues/8220. I can parse both `sw: switch` and `continue :sw <expr>` without generating the correct Zir.
+
+1710704626
+k_r_k!~krk@2a02:8084:42e1:1480:d8d9:d2b:7c77:c3c4
+Inside Parser.zig or AstGen.zig, how can I create a Node or Zir.Inst corresponding to `while (true) {...}`, when `true` is not a token in the source code.
+
+1710705284
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+k_r_k, you shouldn't be rewriting the ast in any way, you should lower a switch containing continues into the necessary loop, block, and break instructions
+
+1710705333
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+the Ast represents the actual source code that is in the program, Zir can lower syntax sugar to other forms
+
+1710705425
+k_r_k!~krk@user/k-r-k/x-2069410
+Without modifying the ast, How can I create Zir to represent `while(true) { <switchExpr> }`. I am having trouble finding where to get `true`, or is this still rewriting the ast at this level?
+
+1710705490
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+Zir doesn't have while loops or switch exprs, so I assume you are talking about the Ast, not Zir
+
+1710705630
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+The Ast needs to say that it's a labeled switch expr containing continues, once it does that the Ast is complete.
+
+1710705639
+k_r_k!~krk@user/k-r-k/x-2069410
+I have the ast complete then
+
+1710705784
+k_r_k!~krk@user/k-r-k/x-2069410
+I am trying to create a .while_simple zir node with true as condition, how to create this in Zir, without the corresponding whileExpr Ast.Node?
+
+1710705895
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`while_simple` is an Ast node, not a Zir inst
+
+1710705915
+Earnestly!~earnest@user/earnestly
+Oh like Ada's loop
+
+1710705942
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+like I said, no Ast nodes should be created from nothing
+
+1710705960
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+*shouldn't
+
+1710705968
+k_r_k!~krk@user/k-r-k/x-2069410
+I see, then I thought I would need .while_simple when I don't
+
+1710705987
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+correct
+
+1710706049
+k_r_k!~krk@user/k-r-k/x-2069410
+thanks, will try to generate zir directly
+
+1710707773
+GreaseMonkey!greaser@user/greasemonkey
+the mention of AST nodes reminds me... a few years back, Zig had a habit of breaking when i tried to implement a programming language but nowadays that doesn't seem to be a problem any more
+
+1710709232
+Nightwulf!~totto@p200300db0f23a0002ef05dfffea2cb51.dip0.t-ipconnect.de
+I need to include the execution of a tool (shader compiler) into my build.zig. I added a step with b.step(), addes a system command with b,addSystemCommand and made the created step depend on that run but it is not executed. Did I miss something?
+
+1710709505
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`b.step()` creates a top-level step that is only run with `zig build step-name`
+
+1710709577
+Nightwulf!~totto@p200300db0f23a0002ef05dfffea2cb51.dip0.t-ipconnect.de
+ah....that explains it...so I should make a default step depend on that, like install e.g.?
+
+1710709656
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I mean it depends on when you want it to run aka what are its outputs used for.
+
+1710709712
+Nightwulf!~totto@p200300db0f23a0002ef05dfffea2cb51.dip0.t-ipconnect.de
+It should just run every time, the project is build. I made it depend on the install step and that works perfect. Thank you!
+
+1710709804
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I mean if, for example, the command outputs files to be installed, you should use add an install step on the generated files.
+
+1710709884
+Nightwulf!~totto@p200300db0f23a0002ef05dfffea2cb51.dip0.t-ipconnect.de
+so the compiled shaders then get copied directly to zig-out/bin?
+
+1710710064
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+yeah, if you want the output of a command to be installed you would do `b.addInstallBinFile(run_out, "out.name");` and that will make the install step depend on the run step
+
+1710710194
+Nightwulf!~totto@p200300db0f23a0002ef05dfffea2cb51.dip0.t-ipconnect.de
+great....exactly what I need :)
+
+1710710390
+Nightwulf!~totto@p200300db0f23a0002ef05dfffea2cb51.dip0.t-ipconnect.de
+works like a charm!
+
