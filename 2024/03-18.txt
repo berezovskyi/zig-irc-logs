@@ -1,0 +1,396 @@
+1710723355
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Ah, n
+
+1710723402
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+now* with timezone handling I can use my zig irc client with local times attached to messages :)
+
+1710723469
+torque!~tachyon@user/torque
+incidentally, I had to fix that timezone code to handle dst properly this last week
+
+1710723479
+torque!~tachyon@user/torque
+what a wonderful system
+
+1710723486
+torque!~tachyon@user/torque
+hopefully you got that worked out
+
+1710723491
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+which timezone code?
+
+1710723513
+torque!~tachyon@user/torque
+I linked some code in here a couple of weeks ago for getting system timezone offsets
+
+1710723524
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Ohh, no I just wrote my own thing
+
+1710723529
+torque!~tachyon@user/torque
+that's for the best
+
+1710723546
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Went down a bit of a rabbit hole and just came out today
+
+1710723548
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+https://github.com/rockorager/zeit
+
+1710723573
+torque!~tachyon@user/torque
+ah, nice
+
+1710723576
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+All so I could parse an irc server-time message from ISO8601, and present it in my local timezone
+
+1710723606
+torque!~tachyon@user/torque
+I thought about parsing timezone files but that seemed like a pain in the ass
+
+1710723637
+torque!~tachyon@user/torque
+my own application doesn't care about arbitary timezones, only local and UTC
+
+1710723731
+torque!~tachyon@user/torque
+seems like a nice library, though I personally think ISO8601 is stupid because it tries to be way too flexible, and RFC3339 is better for timestamps (though it's essentially a subset of iso8601)
+
+1710723878
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Ha, I wrote a tzif parser and then found on in the stdlib
+
+1710723881
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+std.tz
+
+1710723919
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Surprisingly parsing iso8601 wasn't too bad...There are only two cases I don't handle
+
+1710723953
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+The week num one, mostly because the calculations from weeknum to weekday aren't something straight forward and it's not used very often anyways
+
+1710723964
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+And fractional minutes...cause who even uses that
+
+1710726587
+grayhatter!~grayhatte@user/grayhatter
+are stdlib tests allowed to connect to the internet?
+
+1710726986
+torque!~tachyon@user/torque
+that sounds to me like it would be a bad idea in general if you want to avoid flaky tests
+
+1710727006
+torque!~tachyon@user/torque
+what kind of test would need to connect to the internet?
+
+1710727743
+grayhatter!~grayhatte@user/grayhatter
+I need to be able to connect to SSL and TLSv1.0 web servers, and was thinking about the kinda tests I'd want to add to ensure the code is correct
+
+1710770890
+PabloIsCoding!~PabloIsCo@79.108.99.16.dyn.user.ono.com
+Hi, can you read me?
+
+1710770903
+Ximo!~kd@50.110.233.100
+yes
+
+1710771028
+PabloIsCoding!~PabloIsCo@130.41.231.73
+Alright, I was writing earlier that I'm new here and I'm trying to learn zig. I'm finding some things odd (even though I know a bit of C) and I wanted to know if this is a good place to share code and ask questions
+
+1710771191
+PabloIsCoding!~PabloIsCo@130.41.231.73
+I'm particularly confused with how to tell if something is known at compile time in the context of arrays and slices. I have had to use a trick that feels like a hack to create slices...
+
+1710771240
+PabloIsCoding!~PabloIsCo@130.41.231.73
+How is this not known at compile time? `var known_at_runtime_zero: usize = 0;`
+
+1710771500
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+outside of a comptime scope, `var` always creates a runtime variable, `comptime var` can be used in this case to create a mutable comptime value
+
+1710771615
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+a runtime slice (`[]const u8`) contains a runtime sequence of items and a runtime length, a runtime pointer to an array (`*const [5]u8`) only contains the runtime items, since the length is part of the type it is naturally known at comptime
+
+1710771678
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+pointers to arrays coerce to slices, so they can be used interchangeably in many cases
+
+1710771931
+PabloIsCoding!~PabloIsCo@130.41.231.73
+Ok I'm going to do some testing to see all of this. Thanks!
+
+1710772153
+PabloIsCoding!~PabloIsCo@130.41.231.73
+Wait, another question: how can I pass an array of unspecified length to a function? Or do I have to turn it into a slice?
+
+1710772266
+PabloIsCoding!~PabloIsCo@130.41.231.73
+For example, this makes the compiler unhappy `pub fn myfun(s: []const u8) bool{`
+
+1710772290
+ifreund!2940d10f8b@user/ifreund
+PabloIsCoding: a pointer to an array will coerce to a slice
+
+1710772303
+ifreund!2940d10f8b@user/ifreund
+so you can do `myfun(&array)`
+
+1710772344
+PabloIsCoding!~PabloIsCo@130.41.231.73
+yeah but is there no way of not coercing and keeping it as it was?
+
+1710772420
+ifreund!2940d10f8b@user/ifreund
+I don't understand what you mean?
+
+1710772427
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+PabloIsCoding: what is the callsite of that function? That signature shouldn't have any compilation issues
+
+1710772519
+PabloIsCoding!~PabloIsCo@130.41.231.73
+no, it's the calling that makes the compiler angry. `myfun(array)` doesn't work, and as ifreund says `myfun(&array)` does work. So the question is how can I indicate that I'm always going to pass arrays, where everything is known at compile time
+
+1710772528
+PabloIsCoding!~PabloIsCo@130.41.231.73
+idk maybe this is a minor issue but it bothered me lol
+
+1710772624
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+If your arrays are always the same length you can change the function signature to accept that type
+
+1710772634
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+But if they aren't, I don't see what the issue is with coercing to a slice?
+
+1710772642
+PabloIsCoding!~PabloIsCo@130.41.231.73
+yeah but what if i have like 10 arrays of different known sizes?
+
+1710772674
+PabloIsCoding!~PabloIsCo@130.41.231.73
+there's no issue, just that I thought maybe there was some way of doing this that I didn't know about
+
+1710772742
+PabloIsCoding!~PabloIsCo@130.41.231.73
+and also that I wasn't doing `myfunc(&array)` in the beginning but creating a runtime zero and then doing `myfunc(array[runtime_zero..array.len])` which felt really hacky
+
+1710772780
+ifreund!2940d10f8b@user/ifreund
+PabloIsCoding: you can do `fn myfun(comptime N: usize, array: [N]u8) bool` or `fn myfun(foo: anytype) bool`. I'd consider both of those inferior to taking a slice though in general
+
+1710772812
+ifreund!2940d10f8b@user/ifreund
+the advantage is that the length is comptime known, but you have the downside of generic function bloat
+
+1710772813
+PabloIsCoding!~PabloIsCo@130.41.231.73
+yeah, it feels like back to C lol
+
+1710772831
+ifreund!2940d10f8b@user/ifreund
+I don't see how that's "back to C"
+
+1710772832
+PabloIsCoding!~PabloIsCo@130.41.231.73
+but the `func(&array)` is what i really wanted
+
+1710772876
+PabloIsCoding!~PabloIsCo@130.41.231.73
+I meant that having to pass the length as an argument is the sort of thing you do in C, while in zig the len is part of the array
+
+1710772905
+ifreund!2940d10f8b@user/ifreund
+passing the length seprately makes sense if the length is comptime-know but the array value itself isnt
+
+1710772944
+PabloIsCoding!~PabloIsCo@130.41.231.73
+yeah
+
+1710772958
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+An array of length N is a distinct type from an array of length N+1, which is why you need to change the type to a slice, accept `anytype`, or create a generic fucntion like ifreund said
+
+1710773025
+PabloIsCoding!~PabloIsCo@130.41.231.73
+alright, thank you guys! I will continue with ziglings and other exercises to get used to Zig, so far I love the concept =)
+
+1710777790
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I have a network connection and am reading it via a tls client. When the network connection is lost, I still wait on tls_client.read(stream, buf)...How should I exit out of this if I lose network?
+
+1710778513
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+is `unreachable` supposed to be used only in debug version of code or in release as well?
+
+1710778664
+lordmzte!~LordMZTE@user/lordmzte
+Also in release when you're sure that there is absolutely no way that it cannot be reached. It allows the compiler to optimize.
+
+1710778699
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+ok
+
+1710779060
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+you probably meant 'absolutely no way that it can be reached'
+
+1710785234
+andrewrk!~andrewrk@mail.ziglang.org
+another way to think about it: unreachable is a way of marking unreachable locations in your code. then you can decide with optimization mode if you want bugs to cause crashes or undefined behavior
+
+1710787362
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+Zig sends me in a full circle here. I'm using a C struct from a library which contains a pointer to a data blob. It's defined as a uint32_t*. Now, since I read the data from a file in a []u8 buffer, it refuses to take it's .ptr as an address. error says "use @alignCast". If I do that, it says "use @ptrCast"...now I'm confused ;-)
+
+1710787489
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+the example code for the library uses a C++ "reinterpret_cast" for that
+
+1710787562
+ifreund!2940d10f8b@user/ifreund
+it sounds like what you want to do is use a []u32 buffer and use mem.sliceAsBytes() when passing the buffer to read()
+
+1710787577
+lordmzte!~LordMZTE@user/lordmzte
+The compiler started behaving like this a few weeks ago: https://paste.rs/mxcic The **type** here is dependant on whether the variable is comptime known or runtime known. This is causing me lots of problems in situations where this is dependant on comptime logic. What is everyone's oppinion on this, and do you think I should open an issue?
+
+1710787809
+ifreund!2940d10f8b@user/ifreund
+I don't immediatley see any problem with that in isolation, you'd have to share more about the use-case you think it regresses
+
+1710788354
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+ifreund: that complains then "expected type '[]u32', found '[]u8'"...if I understand sliceAsBytes correctly, it takes the data in the argument slice and converts it to the same data with the type of the variable it is assigned to?
+
+1710788412
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+so 'const new_buf: []u32 = std.mem.sliceAsBytes(u8slice)' should be, what you mean?
+
+1710788431
+lordmzte!~LordMZTE@user/lordmzte
+ifreund: in the practical use-case, the value is returned from a function that sometimes isn't there, or null if the function is never there at compile time... easiert way to phrase that :D
+
+1710788605
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: no, I'm saying you should do things the other way around. You want a buffer with 4-byte alignment so your options are either a `[]align(4) u8` buffer or a []u32
+
+1710788623
+ifreund!2940d10f8b@user/ifreund
+however reading data into the buffer requires interpreting it as a []u8
+
+1710788635
+ifreund!2940d10f8b@user/ifreund
+which is where mem.sliceAsBytes() helps you
+
+1710788761
+ifreund!2940d10f8b@user/ifreund
+lordmzte: sorry, but that explanation didn't really make the use-case clearer to me. Perhaps you could share the code?
+
+1710788838
+lordmzte!~LordMZTE@user/lordmzte
+ The code is insanely complex, so be warned. Call site (error happens here): https://git.mzte.de/zenolith/zenolith/src/branch/master/src/platform.zig#L18-L24 implementation of that function: https://git.mzte.de/LordMZTE/statspatch/src/branch/master/src/main.zig#L96
+
+1710788967
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+ah...now I get it...let me try
+
+1710790152
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+ifreund: I chose to use allocator.allocWithOptions() with an alignment of 4 and then @ptrCast() it when passing into the C structure....feels more natural to me than dealing with []u32. And I can use the function which reads the file for other files too then. Works perfectly. Thank you!
+
+1710790263
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1710790457
+ifreund!2940d10f8b@user/ifreund
+lordmzte: Could you share the compile error you get as well? I have a suspicion that your issue can be fixed with an @as() somewhere
+
+1710791679
+lordmzte!~LordMZTE@user/lordmzte
+of course, my apologies for not providing this upfront: https://paste.rs/8wwhU
+
+1710791785
+ifreund!2940d10f8b@user/ifreund
+does `try @as(anyerror!void, foo() orelse {})` work?
+
+1710792082
+lordmzte!~LordMZTE@user/lordmzte
+seems like it does! thanks!
+
+1710792091
+lordmzte!~LordMZTE@user/lordmzte
+(i still find this very nonsensical though :P)
+
+1710793728
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+is there any way to output the complete command with all arguments and the path it gets executed in which is issued on an addSystemCommand()? I need to debug what is happening because the resulting files from that command are of zero size every time
+
+1710794194
+andrewrk!~andrewrk@mail.ziglang.org
+Nightwulf, --verbose
+
+1710794490
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+andrewrk: but that  shows me only, that the file which should be generated by that command is not present when it tries to install it but not how the command itself looked like
+
+1710794545
+andrewrk!~andrewrk@mail.ziglang.org
+it prints every time a subprocess is created
+
+1710794572
+andrewrk!~andrewrk@mail.ziglang.org
+if a subprocess is not being created, it is probably a cache hit
+
+1710794637
+andrewrk!~andrewrk@mail.ziglang.org
+if you are experiencing a false positive cache hit, then you probably didn't use the Run API correctly. make sure to pass file arguments via the file APIs
+
+1710794648
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+in more detail: the command is glslc which should be called like this: "glslc -o foo.spv shader.vert" but perhaps I did something wrong when adding the arguments to the command. To compare that I need the command really executed
+
+1710794664
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+perhaps it is best to create a pastebin from that...gimme a sec
+
+1710794787
+Nightwulf!~totto@p200300db0f2ac2002ef05dfffea2cb51.dip0.t-ipconnect.de
+https://pastebin.com/SFucE70Q
+
+1710796343
+k_r_k!~k_r_k@user/k-r-k/x-2069410
+I am trying to add result of a `switchExpr(...)` to a `condBr` `then_scope`, as part of implementing https://github.com/ziglang/zig/issues/8220.
+
+1710796343
+k_r_k!~k_r_k@user/k-r-k/x-2069410
+I create a `then_scope` for a loop with `makeSubBlock`, then calling `setBlockBody`(`makeBlockInst`(.block, ...)). At this point, I am trying to add the result of `switchExpr`(...) to this new `then_scope`/`then_block`.
+
+1710796344
+k_r_k!~k_r_k@user/k-r-k/x-2069410
+This doesn't work yet: https://paste.rs/PvxjG.c, is it the right approach though?
+
+1710796344
+k_r_k!~k_r_k@user/k-r-k/x-2069410
+Do I need to use the return value of `switchExpr` somewhere?
+
+1710796345
+k_r_k!~k_r_k@user/k-r-k/x-2069410
+When I don't, insts in Sema.condBr then_scope is empty and I get a panic for copying slice of length zero.
+
