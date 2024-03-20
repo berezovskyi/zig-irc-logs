@@ -1,0 +1,264 @@
+1710806947
+andrewrk!~andrewrk@mail.ziglang.org
+Nightwulf, you used addFileArg instead of addOutputFileArg. I'll update the documentation for that function to make note of this use case
+
+1710807092
+andrewrk!~andrewrk@mail.ziglang.org
+k_r_k, I think the first step would be to determine the desired new ZIR for a piece of example code
+
+1710807575
+andrewrk!~andrewrk@mail.ziglang.org
+nobody wants to stick around for the answers to their questions today 🤷
+
+1710807802
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+ACTION is still waiting
+
+1710808378
+andrewrk!~andrewrk@mail.ziglang.org
+ACTION scrolls up
+
+1710808447
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I have a network connection and am reading it via a tls client. When the network connection is lost, I still wait on tls_client.read(stream, buf)...How should I exit out of this if I lose network?
+
+1710808483
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, you need API that lets you set a timeout on requests, so that you can get an error after some period of time goes by without a response. I have not yet investigated this, but as a workaround, perhaps there is a way to set such a timeout on a socket?
+
+1710808518
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+This is what I assumed I would need to do - thanks for confirming
+
+1710808632
+andrewrk!~andrewrk@mail.ziglang.org
+looks like some promising options with setsockopt: https://linux.die.net/man/3/setsockopt
+
+1710813586
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewk: This is a persistent connection...i get error.WouldBlock on timeout _and_ when there is no network connection
+
+1710813652
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+It's IRC though and has a ping/pong round trip that I can play off of with the timeout to make it work, but I shall keep searching
+
+1710817462
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, is that a problem? those seem like kind of the same thing to me
+
+1710817488
+andrewrk!~andrewrk@mail.ziglang.org
+a timeout is equivalent to when there is no network connection for a period of time
+
+1710817536
+andrewrk!~andrewrk@mail.ziglang.org
+I mean it's literally the same thing right? the bits either get there in time or they don't. whether the network is connected is not really a boolean
+
+1710835253
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+andrewrk: no, it’s no a problem. my assumption was that a read of a disconnected network wouldn’t block but I think that was a bad assumption
+
+1710858544
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Ok I've got a nice working solution based on setsockopt, thanks andrewrk
+
+1710858815
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+https://asciinema.org/a/WRmiSfjvbOpyb7pj5jj4odHE6
+
+1710866151
+lionkor!~lionkor@beammp/staff/lionkor
+Hi everyone, I have the following code https://pastebin.com/ptWwMuhR and it fails to compile with https://pastebin.com/YZuKUEmC. I can't find any documentation on how I would go about specifying the struct to be ABI sized and packed...?
+
+1710867805
+sp2!uid197664@id-197664.lymington.irccloud.com
+to me, "ABI sized" reads that it's as many bits as /any of the integers/ defined in the ABI, so generally 8, 16, 32, or 64 bits (/maybe/ 128 or 256, depending on platform); i think you may have to change the struct to be `extern` instead of `packed`.
+
+1710867939
+sp2!uid197664@id-197664.lymington.irccloud.com
+(oops, didn't see you left! repeating my message:) to me, "ABI sized" reads that it's as many bits as /any of the integers/ defined in the ABI, so generally 8, 16, 32, or 64 bits (/maybe/ 128 or 256, depending on platform); i think you may have to change the struct to be `extern` instead of `packed`.
+
+1710867961
+lionkor!~lionkor@beammp/staff/lionkor
+Thank you, I wasn't aware that was possible! It works.
+
+1710868077
+lionkor!~lionkor@beammp/staff/lionkor
+Another silly question - you used to be able to specify callconv(.Naked) on a function, and then @call() within it. Seems like that's no longer possible? Did that behavior move to something/where else?
+
+1710868126
+sp2!uid197664@id-197664.lymington.irccloud.com
+i think the intended replacement is an `asm` block
+
+1710868138
+lionkor!~lionkor@beammp/staff/lionkor
+ Ah, and then set the stack manually via that... okay!
+
+1710868141
+lionkor!~lionkor@beammp/staff/lionkor
+That makes sense
+
+1710869310
+lionkor!~lionkor@beammp/staff/lionkor
+Can I get an extern struct to pack, somehow?
+
+1710869417
+ifreund!2940d10f8b@user/ifreund
+lionkor: you can use a packed stuct as a field in an extern stuct
+
+1710869425
+ifreund!2940d10f8b@user/ifreund
+what is the memory layout you are trying to acheive
+
+1710869470
+lionkor!~lionkor@beammp/staff/lionkor
+a multiboot1 header
+
+1710869709
+lionkor!~lionkor@beammp/staff/lionkor
+ifreund: seems like i can *not* use a packed struct inside an extern struct, it explicitly tells me: "extern structs cannot contain fields of type 'main.Internal'" (which is packed)
+
+1710869934
+ifreund!2940d10f8b@user/ifreund
+linear_cannon: the packed struct must be an ABI-sized integer to be allowed as a field in an extern struct
+
+1710869994
+ifreund!2940d10f8b@user/ifreund
+oops sorry, I meant to ping lionkor 
+
+1710870011
+lionkor!~lionkor@beammp/staff/lionkor
+yeah that sadly doesn't work for multiboot, i dont think
+
+1710870034
+lionkor!~lionkor@beammp/staff/lionkor
+ill just write it in NASM or something and link to it, zig seems to not be able to do this in a sane way as far as I can tell :(
+
+1710870043
+lionkor!~lionkor@beammp/staff/lionkor
+thank you though :)
+
+1710870080
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager, nice!
+
+1710870115
+andrewrk!~andrewrk@mail.ziglang.org
+lionkor, indeed, packed structs are allowed in extern structs, and there is even a note attached to the compile error that you received that informs you about the ABI-sized integer limitation
+
+1710870117
+ifreund!2940d10f8b@user/ifreund
+lionkor: Zig can represent any layout of data you want in an extern struct with packed struct fields... 
+
+1710870161
+ifreund!2940d10f8b@user/ifreund
+If you shared more information about the data layout you want we might be able to help
+
+1710870224
+andrewrk!~andrewrk@mail.ziglang.org
+it's maddening when people say "it doesn't work" rather than providing details that would actually make it possible to provide assistance
+
+1710870557
+lionkor!~lionkor@beammp/staff/lionkor
+As I said before, I'm trying to get a multiboot1 header - sorry if I come across as dismissive, I just don't wanna waste your time. I've been trying to convert code written for some older zig version to a newer zig version, and I ran into one thing after the other which was not documented in the official docs. I understand that pretty much anything is possible, but it's taken me around four hours now to get a pretty simple thing done (mostly due to my 
+
+1710870558
+lionkor!~lionkor@beammp/staff/lionkor
+lack of experience with this language, only have experience with an earlier version), so I was very much ready to give up on this. Here's what I need: https://pastebin.com/tRtdtwWe
+
+1710870673
+lionkor!~lionkor@beammp/staff/lionkor
+My solution so far is this https://pastebin.com/5XCs0Dea but when building it with these options https://pastebin.com/xrDNwS5k I get an ELF file which does not pass `grub-file --is-x86-multiboot zig-out/bin/kernel.elf`
+
+1710870719
+lionkor!~lionkor@beammp/staff/lionkor
+I know that my linker script is correct, because when I replace the zig code with an obj file generated via the assembly you see in the first link, it works - this leads me to believe that somehow the alignment, or the padding, is messing with it!
+
+1710871059
+sp2!uid197664@id-197664.lymington.irccloud.com
+i think the `iso_cmd` step might be running before the kernel is installed
+
+1710871075
+lionkor!~lionkor@beammp/staff/lionkor
+andrewrk: I see the note, but it says "only extern structs and ABI sized packed structs are extern compatible", and sadly I can't find anything in the 0.11.0 docs that explains how to specify a struct to be a certain ABI size(?). Simply putting `packed struct(u96)` triggers the same error (and seems wrong).
+
+1710871096
+sp2!uid197664@id-197664.lymington.irccloud.com
+building an executable and installing it into zig-out/... are separate steps, and it seems like your'
+
+1710871100
+sp2!uid197664@id-197664.lymington.irccloud.com
+e only depending on the former
+
+1710871104
+andrewrk!~andrewrk@mail.ziglang.org
+your zig code for outputting the multiboot record looks fine to me
+
+1710871173
+andrewrk!~andrewrk@mail.ziglang.org
+it seems like you're assuming the bits are different than the one generated by asm but have you checked? what are the differences if so?
+
+1710871279
+lionkor!~lionkor@beammp/staff/lionkor
+sp2: possibly, but the iso_cmd step is not relevant, as the kernel.elf itself is not of the correct format. I'm running grub --is-x86-multiboot on it to check it.
+
+1710871291
+sp2!uid197664@id-197664.lymington.irccloud.com
+gotcha
+
+1710871325
+lionkor!~lionkor@beammp/staff/lionkor
+I'll dig into the file and compare it with some known good ELFs, maybe I can figure out where the code starts
+
+1710871702
+lionkor!~lionkor@beammp/staff/lionkor
+Yeah the resulting .elf file does not have the multiboot magic in it
+
+1710871792
+lionkor!~lionkor@beammp/staff/lionkor
+I'm gonna take a break for today, but thanks for letting me know the zig code looks good, I probably screwed something in the build system!
+
+1710875692
+andrewrk!~andrewrk@mail.ziglang.org
+lionkor, perhaps the file is never being imported
+
+1710881557
+lionkor!~lionkor@beammp/staff/lionkor
+andrewrk: it's in the main.zig, and the symbols from it show up, except the multiboot stuff... I assume the build.zig maybe is not respecting my linker script(?)
+
+1710882316
+lionkor!~lionkor@beammp/staff/lionkor
+I can't get *any* variables with `linksection()` to show up - that doesn't seem quite right to me
+
+1710882512
+lionkor!~lionkor@beammp/staff/lionkor
+looks like maybe i need to KEEP() them in the linker script
+
+1710883612
+andrewrk!~andrewrk@mail.ziglang.org
+you should be able to narrow down where the problem is quickly by inspecting the various artifacts
+
+1710883788
+lionkor!~lionkor@beammp/staff/lionkor
+andrewrk: yeah I figured it out - zig is putting sections before the first section. The linker script (https://pastebin.com/Xh6R9Gad) specifies that .text shall be the first, with the .multiboot part as the first part - however, this actually generates this: https://pastebin.com/ngU3XMwG. Note how zig has added two sections a the beginning, which throw it off. If I specifically take those sections and put them below the rest, in the linker scropt, grub-
+
+1710883790
+lionkor!~lionkor@beammp/staff/lionkor
+file correctly identifies it as multiboot1.
+
+1710883941
+lionkor!~lionkor@beammp/staff/lionkor
+I'm not sure if this is *intended* behavior by the linker, it's different from how gcc or clang link
+
+1710883992
+andrewrk!~andrewrk@mail.ziglang.org
+you can get the linker line with --verbose-link and then try swapping out the linker with ld and see if you get different results
+
+1710884395
+lionkor!~lionkor@beammp/staff/lionkor
+How do I set which linker to use?
+
+1710887506
+andrewrk!~andrewrk@mail.ziglang.org
+by copy pasting the command line and editing the first token
+
