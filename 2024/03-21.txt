@@ -1,0 +1,160 @@
+1710997462
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+i am trying to use poll() under windows. when i "-target x86_64-windows -lws2_32 -lc" i get "error: lld-link: undefined symbol: poll". Im trying with git head version. As a workaround i could use std.os.windows.ws2_32.WSAPoll(). So, my idea is, zig doesnt need poll() but would use WSAPoll(). But where to fix it? lib/std/posix.zig:poll() uses system.poll(). I could instead, for .windows WSAPoll() inside the 
+
+1710997468
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+if-windows-clause, but i dont have that grip on zig sources yet to understand what the right solution is. Should i open a github issue or try to create a PR myself with some help ? Or just open the PR and wait for comments on it?
+
+1710997535
+grayhatter!~grayhatte@user/grayhatter
+is there a way generate a struct programtically based on a comptime input? (other than writing writing code to generate a file.zig and including that?
+
+1710997684
+grayhatter!~grayhatte@user/grayhatter
+mortmann: I don't really fully understand your question, but I've solved similar issues by using `const poll = if (builtin.os == .windows) WSAPoll else std.os.poll;` I'm also just going from memory, so the syntax might be broken
+
+1710997789
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: `@Type`?
+
+1710997792
+grayhatter!~grayhatte@user/grayhatter
+if you're not asking about your code, but stdlib instead. Then you could create an issue on github if one doesn't exist. But if you're willing to write a pull request, that's a good place to solicit comments as well. IIRC std.os.poll is already a comptime if or switch, which is currently based on the OS api available, it's very likely someone simply hasn't thought to implement it for windows yet and
+
+1710997794
+grayhatter!~grayhatte@user/grayhatter
+just needs someone to
+
+1710997849
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: note that @Type to construct a `struct` has the limitation that it can only be fields; no methods.
+
+1710997882
+grayhatter!~grayhatte@user/grayhatter
+daurnimator: that's more than enough for my goal, reading @Type now
+
+1710997984
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+gray: yeah, this is a workaround thatg worked for me, but it should be fixed in core. this very code could be used in lib/std/posix.zig:poll(). but im not sure if thats the right fix, for currently posix.zig is using system() to do its bidding. so im loking for the right sport to create a proper fix PR.
+
+1710998033
+daurnimator!~daurnimat@vultr.daurnimator.com
+mortmann: windows is probably more complicated than you think. on windows you can't give non-sockets to WSAPoll. unlike on other operating systems where you can mix file handles, pipes, sockets, etc.
+
+1710998059
+grayhatter!~grayhatte@user/grayhatter
+IIRC the cannon way to call poll would be `std.os.poll` so lib/std/os.zig maybe?
+
+1710998072
+daurnimator!~daurnimat@vultr.daurnimator.com
+mortmann: windows doesn't really like the concept of polling for readiness. instead you need to do overlapped IO and poll for completion.
+
+1710998086
+daurnimator!~daurnimat@vultr.daurnimator.com
+mortmann: so a better question is: what are you trying to do?
+
+1710998101
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+didnt i just change all my os.* to posix.* ?
+
+1710998158
+grayhatter!~grayhatte@user/grayhatter
+mortmann: seems like the issue you're seeing is a known issue 
+
+1710998160
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/issues/16122
+
+1710998193
+grayhatter!~grayhatte@user/grayhatter
+if you believe iamtimmy, (I'm not sure if I do yet or not) might be worth considering other options instead of trying to use poll on windows :)
+
+1710998375
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+im trying to do a simple select/poll style loop. i know io completion, io uring kqueue and stuff, but thats not what i wanna do here.  thx for finding the known issue for me, and sry for asking a known issue *ouch*.
+
+1710998670
+grayhatter!~grayhatte@user/grayhatter
+mortmann: don't be sorry, it's never a problem to start a conversation or ask a question :)
+
+1710998699
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+its interesting tho that WSAPoll is (still) unstable. thats exactly the reason i never used poll() in the past because some decades ago it was a mess. and now it still. zig doesnt offer my lovely;) select(), thats why i turned my attention to poll() in the first place.
+
+1710998794
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+gray: sure, but not finding that issue did lead to wasting your precious time.
+
+1710999135
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+also im not really trying to create a production server on windows, i just wanted to play with the -target cross compile to see if it would work, and was then surprized it broke that quick.
+
+1710999168
+grayhatter!~grayhatte@user/grayhatter
+lol, I'm just puttering around playing with zig, I'm happy to help, and was curious too so I'm not wasting my time :)
+
+1710999737
+daurnimator!~daurnimat@vultr.daurnimator.com
+mortmann: generally a program that wants to be portable shouldn't use `std.posix` and should instead use e.g. `std.fs`
+
+1710999765
+daurnimator!~daurnimat@vultr.daurnimator.com
+once zig gets the async/event story going again no program should have a reason to reach for poll again
+
+1711000684
+mortmann!~mortmann@p57b292a8.dip0.t-ipconnect.de
+darn: we are on the same page. waiting for new event-stuff. i didnt want to fall back to posix/os but thats the option available in the meantime.
+
+1711002819
+voldial!~voldial@user/voldial
+I have a `const stat = try std.fs.cwd().statFile(filename);` how do I get a fs.Path from here? I want Path.basename
+
+1711003058
+squeek502!~squeek502@user/squeek502
+voldial, unless i'm misunderstanding, `const basename = std.fs.path.basename(filename);`
+
+1711003189
+voldial!~voldial@user/voldial
+squeek502: ah, thanks. yes, that worked.
+
+1711050106
+andrewrk!~andrewrk@mail.ziglang.org
+mortmann, most windows devs don't use libc, they use Windows native APIs
+
+1711050151
+andrewrk!~andrewrk@mail.ziglang.org
+i.e. WaitForMultipleObjects rather than poll. the latter is implemented on top of the former
+
+1711050183
+andrewrk!~andrewrk@mail.ziglang.org
+generally, reaching for libc on windows is a bad idea
+
+1711055248
+companion_cube!~simon@user/companion-cube
+`errdefer comptime unreachable` that's awesome, damn
+
+1711055565
+Earnestly!~earnest@user/earnestly
+I caught that too
+
+1711055571
+Earnestly!~earnest@user/earnestly
+Peak zig indeed
+
+1711056663
+bblack!~bblack@wikimedia/bblack-WMF
+yeah that is neat.  Can you use errdefer+defer side by side? (IOW, could it have been "defer map.deinit(); errdefer comptime unreachable;"?)
+
+1711056779
+andrewrk!~andrewrk@mail.ziglang.org
+yes, it could be written that way. however, I think it is more clear that there is only 1 return point in the function, specifically so that the deinit can happen directly after the swap
+
+1711056825
+bblack!~bblack@wikimedia/bblack-WMF
+neat.  I was more just wondering in general, as I hadn't before contemplated how the two would mix it up side by side.
+
+1711056840
+bblack!~bblack@wikimedia/bblack-WMF
+I'm still getting into this :)
+
