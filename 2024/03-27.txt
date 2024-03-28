@@ -1,0 +1,136 @@
+1711548853
+hardliner66!~hardliner@147.161.131.22
+Hi. Does zig automatically strip debug symbols when running with ReleaseFast or do I have to do something additionally to keep the symbols intact?
+
+1711549607
+bblack!~bblack@wikimedia/bblack-WMF
+hardliner66: AFAICS, at least for my native x86_64/linux builds, symbols are not stripped by default, even in ReleaseFast.  But at least starting with 0.12-dev, it can be controlled through build.zig options on the executable.
+
+1711549663
+hardliner66!~hardliner@147.161.131.22
+Thanks for the info
+
+1711549680
+bblack!~bblack@wikimedia/bblack-WMF
+basically if you were starting from the build.zig made by "zig init-exe", the exe options stanza is the one that starts out with:
+
+1711549684
+bblack!~bblack@wikimedia/bblack-WMF
+    const exe = b.addExecutable(.{
+
+1711549702
+bblack!~bblack@wikimedia/bblack-WMF
+and for one of my little projects, what I did there for conditional strip was:
+
+1711549721
+bblack!~bblack@wikimedia/bblack-WMF
+        .strip = (optimize != .Debug),
+
+1711549778
+bblack!~bblack@wikimedia/bblack-WMF
+so if you really cared to ensure it rather than rely on defaults, you could I guess force ".strip = false," there.
+
+1711557589
+vimproved!~vimproved@user/vimproved
+Hi, I understand that with the release of Zig 0.12 there will be enhancements to the ability to use a global system package cache (e.g.) for packagers, and I've been working on integrating this into my Gentoo packaging. My main concern here is that since the packages are referred to with hashes, will there be any way to patch Zig source packages without breaking all dependent packages?
+
+1711557602
+vimproved!~vimproved@user/vimproved
+Really appreciate the work on this btw
+
+1711561850
+leopoldek!~leopoldek@user/leopoldek
+daurnimator: btw in case you're interested, I was able to get zig compiled by disabling lto in the makepkg.conf. I did a system update recently and the new makepkg.conf has lto explicitly enabled. I have no idea why that changes anything.
+
+1711570326
+andrewrk!~andrewrk@mail.ziglang.org
+vimproved, the system does not verify the hashes, and it is expected that distributions will apply patches into the system-provided packages, making the hashes (according to zig) no longer match. but those hashes are still used as identifiers for which package to use
+
+1711570328
+andrewrk!~andrewrk@mail.ziglang.org
+does it make sense?
+
+1711570374
+andrewrk!~andrewrk@mail.ziglang.org
+sorry, I used the word "system" in two different meanings there. The zig build system does not verify the hashes if they already exist on the file system. It is expected that distribution-provided packages will be sometimes patched
+
+1711570452
+andrewrk!~andrewrk@mail.ziglang.org
+by design, hash verification occurs only as part of the "fetch" mechanism. the fetch mechanism is entirely skipped in System Mode, which is what I expect distributions to use
+
+1711574110
+vimproved!~vimproved@user/vimproved
+ohhh thank you!
+
+1711575203
+ifreund!2940d10f8b@user/ifreund
+the pain point of the status quo is that if e.g versions 1.0 and 1.1 of a dependency are required by two separate zig programs and the distro (obviously) only wants to package 1.1 it is necessary to either patch the hash of version 1.0 in the build.zig.zon of the zig program to be the hash of version 1.1 or otherwise work around the problem with symlinks
+
+1711575294
+ifreund!2940d10f8b@user/ifreund
+this obviously doesn't scale great so it so would be nice to have a better solution before the zig ecosystem gets too big
+
+1711575328
+vimproved!~vimproved@user/vimproved
+it's really not *that* much of a pain to package both versions but yeah
+
+1711575351
+vimproved!~vimproved@user/vimproved
+actually i suppose i'm thinking about the gentoo specific use case with slots, i can imagine that would be more annoying for other distros
+
+1711579953
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+slots <3
+
+1711580110
+Earnestly!~earnest@user/earnestly
+ifreund: It's the problem of distributed package management and there really is no general solution for it. Many adopt nix style isolation, pinning, etc. But ultimately centralised curation is the only way (like the Haskell stack project) where projects are simply collected together which are known to place nicely with each other. The solution in this case is to fix the software still using 1.0 of the
+
+1711580112
+Earnestly!~earnest@user/earnestly
+dependency
+
+1711581011
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: I was thinking symlinks actually. do you see that as a subpar solution?
+
+1711581074
+ifreund!2940d10f8b@user/ifreund
+andrewrk: hmm, what symlink srategy did you have in mind?
+
+1711581141
+ifreund!2940d10f8b@user/ifreund
+The best I came up with is having a separate directory of zig package directories using the distro package name instead of the hash for the directory names
+
+1711581181
+ifreund!2940d10f8b@user/ifreund
+and then symlinking from hash to the named distro package dir
+
+1711581231
+ifreund!2940d10f8b@user/ifreund
+It's certainly workable, but feels like something that the zig toolchain should handle for distros
+
+1711581890
+andrewrk!~andrewrk@mail.ziglang.org
+yeah that's the idea. each symlink maps zig hash to distro package. what would be the practical difference of the zig toolchain doing it vs the distro doing it?
+
+1711582737
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I haven't tried yet, but I think automating that symlink creation would require distro tooling to parse the desired dependency hash a given project wants from the build.zig.zon
+
+1711582815
+andrewrk!~andrewrk@mail.ziglang.org
+I see
+
+1711582820
+ifreund!2940d10f8b@user/ifreund
+i.e. the build style for creating a waylock package would need to create a symlink from the zig-wayland hash in waylock's build.zig.zon to the distro package dir for zig-wayland
+
+1711583784
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+For anyone willing to experiment: here's a zig IRC client which is pretty basic but is enough for me to use daily: https://git.sr.ht/~rockorager/zircon
+
+1711583909
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+It's not great, but it's pretty damn fast and supports the most basic ircv3 stuff for a good experience on chat.sr.ht
+
