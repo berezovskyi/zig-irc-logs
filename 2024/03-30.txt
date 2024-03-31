@@ -1,0 +1,224 @@
+1711778435
+sm2n!ae95cb1267@user/sm2n
+andrewrk: you can write rust in any language?
+
+1711784525
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+There was a really good Zig blog post from someone I read a few years ago that outlined scripting / doing stuff quickly in Zig and how Zig's type system can help you with that. I.e. by _not_ being super specific and strict. I think it was from one the TigerBeetle guys but for the life of me I cannot find this blog post anymore
+
+1711784537
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Anyone know of said post? Can you link if you do?
+
+1711812941
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+How do I turn a value of the tag type for a tagged union into a value of the tagged union's type?
+
+1711812977
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+https://zigbin.io/f292ec <- elaboration
+
+1711813143
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ah, just found @unionInit
+
+1711813539
+sia!~sia@178.236.107.227
+What was the intention in creating zig?
+
+1711813569
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+You might want to start here: https://ziglang.org/
+
+1711815406
+Earnestly!~earnest@user/earnestly
+sia: https://www.youtube.com/watch?v=YXrb-DqsBNU
+
+1711815826
+Earnestly!~earnest@user/earnestly
+sia: Hm, actually I think the older talk only found on vimeo is better: https://vimeo.com/649009599
+
+1711815903
+Earnestly!~earnest@user/earnestly
+Ostensibly about data oriented programming/development but the rationale for "why zig" is better in context
+
+1711815964
+sia!~sia@178.236.107.227
+OK I am checking them out
+
+1711822744
+sia!~sia@178.236.107.227
+There is a zig cc which compiles C++ code? What does Zig have to do with C++?
+
+1711822947
+sia!~sia@178.236.107.227
+Aba because its code is first translated to C
+
+1711823126
+gog!~ada@user/gog
+zig can work alongside c code
+
+1711825880
+copygirl!~koppeh@copy.mcft.net
+Huh I just updated Zig to master and am running tests for a library, and they're taking abysmally long?
+
+1711825960
+copygirl!~koppeh@copy.mcft.net
+Like 15 seconds per test? It hasn't even finished running all the tests yet.
+
+1711826018
+copygirl!~koppeh@copy.mcft.net
+I'll see what's going on once it's done with them all, maybe I'll get some errors?
+
+1711826236
+txdv!~txdv@78-56-38-107.static.zebra.lt
+flamegraph it and report
+
+1711826737
+copygirl!~koppeh@copy.mcft.net
+Okay presumably it's because most of them failed / leaked. But there's so much output I don't actually know what's going on. Gonna see how to run a single test.
+
+1711827200
+copygirl!~koppeh@copy.mcft.net
+Aaand I don't know how I can do that. I can't simply run "zig test <file>" because I need to link to C and who knows what else.
+
+1711828895
+andrewrk!~andrewrk@mail.ziglang.org
+copygirl: --test-filter
+
+1711828911
+copygirl!~koppeh@copy.mcft.net
+andrewrk: Can't use it with "zig build test" though?
+
+1711828939
+andrewrk!~andrewrk@mail.ziglang.org
+you need to expose it through your own build options. you can set the test filter on the test executable step
+
+1711829003
+copygirl!~koppeh@copy.mcft.net
+I see, with .filter ?
+
+1711829007
+andrewrk!~andrewrk@mail.ziglang.org
+it also prints the command line after a failed run which you can copy/paste and edit
+
+1711829036
+copygirl!~koppeh@copy.mcft.net
+Yeah but there's too much make sense of after running 43 failed tests that all ended up leaking.
+
+1711829057
+copygirl!~koppeh@copy.mcft.net
+Oh, nevermind, I understand what you meant.
+
+1711829060
+andrewrk!~andrewrk@mail.ziglang.org
+it sounds like you just have a lot of memory leaks?
+
+1711829084
+copygirl!~koppeh@copy.mcft.net
+Seemingly new ones, yeah?
+
+1711829119
+andrewrk!~andrewrk@mail.ziglang.org
+I don't know what version of zig you were using before, but at some point the feature was introduced. so they are likely latent memory leaks that are only now being detected
+
+1711829140
+copygirl!~koppeh@copy.mcft.net
+It was post 0.11
+
+1711829256
+mortmann!~mortmann@p5dcb2c0a.dip0.t-ipconnect.de
+i was looking at the implementation of std.crypto.utils.secureZero(). In C i have to go circles to make sure i securely oeverwrite with 0. in C i must use special functions like explicit_bzero() or memset_explicit() because the volatile keyword would not help and can be optimized away. Now with zig i see only the volatile keyword used. So i wonder and fear std.crypto.utils.secureZero() is not secure enough?
+
+1711829382
+copygirl!~koppeh@copy.mcft.net
+Okay looking into the error now.
+
+1711829435
+copygirl!~koppeh@copy.mcft.net
+Maybe the fact that there's errors and the C library doesn't free stuff when it aborts is causing the issues.
+
+1711830046
+copygirl!~koppeh@copy.mcft.net
+Oh, I think I know what it is!
+
+1711830205
+copygirl!~koppeh@copy.mcft.net
+It's the thing where structs nested in comptime functions now aren't unique unless you put in some extra effort.
+
+1711830261
+copygirl!~koppeh@copy.mcft.net
+So, this doesn't work anymore: https://git.mcft.net/copygirl/flecs-zig-ble/src/commit/12280219cbb345011b3e277a327baf8b33f06271/src/context.zig#L27-L29
+
+1711831084
+copygirl!~koppeh@copy.mcft.net
+And all that to find out that my one test that uses an http client still adds 10s to the run time.
+
+1711831284
+andrewrk!~andrewrk@mail.ziglang.org
+are you expecting that linked code to be something other than a global variable?
+
+1711831311
+andrewrk!~andrewrk@mail.ziglang.org
+oh you want there to be one global variable per type, yes?
+
+1711831543
+copygirl!~koppeh@copy.mcft.net
+andrewrk: Per type per Context.
+
+1711831626
+copygirl!~koppeh@copy.mcft.net
+The idea is that for each context you can have a unique comptime set of types you can look up.
+
+1711831659
+copygirl!~koppeh@copy.mcft.net
+So Context(1) can have a lookupMut(Position) return a different id than Context(2).lookupMut(Position).
+
+1711831694
+andrewrk!~andrewrk@mail.ziglang.org
+copygirl: https://github.com/ziglang/zig/pull/19190#issuecomment-2028465523
+
+1711831725
+copygirl!~koppeh@copy.mcft.net
+Oddly enough, it looks like the returned struct is already unique over the Context without me needing to do anything special.
+
+1711831771
+copygirl!~koppeh@copy.mcft.net
+Oh, is this issue fixed then? https://github.com/ziglang/zig/issues/19274
+
+1711831847
+copygirl!~koppeh@copy.mcft.net
+But yeah my code looked similar except I had used @TypeOf(T) instead of T since I thought it didn't work.
+
+1711832084
+copygirl!~koppeh@copy.mcft.net
+To be fair this has been discovered and a workaround put in by other people doing Zig gamedev.
+
+1711832624
+copygirl!~koppeh@copy.mcft.net
+But yeah the struct doesn't capture the ctx anytype from the Context function, yet is still unique to it, is this intentional?
+
+1711832815
+copygirl!~koppeh@copy.mcft.net
+I suppose this is because it's part of another struct that IS unique over ctx.
+
+1711833141
+copygirl!~koppeh@copy.mcft.net
+Oh when I said workaround I really meant fix.
+
+1711834312
+copygirl!~koppeh@copy.mcft.net
+Oh nevermind my finding, it looks like I *do* have to capture ctx.
+
+1711834544
+copygirl!~koppeh@copy.mcft.net
+I appreciate the help.
+
+1711836184
+andrewrk!~andrewrk@mail.ziglang.org
+happy hacking
+
+1711836432
+Earnestly!~earnest@user/earnestly
+keyboard
+
