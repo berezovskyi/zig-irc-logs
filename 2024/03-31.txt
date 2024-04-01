@@ -1,0 +1,168 @@
+1711857224
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+Is there a zig library for text rendering?
+
+1711860317
+txdv!~txdv@78-56-38-107.static.zebra.lt
+Regarding tasks like these there is usually a lib written in C and blood by some lone developer and you just use that lib
+
+1711860728
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+in the builtin.zig on line 256 this starts `pub const Type = union(enum) {`
+
+1711860749
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+i do understand tagged unions, where after `union` theres (tag) 
+
+1711860761
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+where tag is declared enum
+
+1711860787
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+but in this case theres just keyword enum right inside `union(...)` i am not quite getting it
+
+1711861148
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+that tells the compiler to generate an enum with one tag per union field
+
+1711861270
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+hmm
+
+1711861793
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+i guess then theres no point in doing it manually, if language can do it for you this way
+
+1711861938
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+txdv, got it, makes sense lol ty
+
+1711863407
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+R2COM, if you don't need to explicitly number them, then generally you would always use `union(enum)` because you can still get the enum type with `@typeInfo(U).Union.tag_type.?`
+
+1711863528
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+nice thanks
+
+1711893576
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I don't understand how @floor and @trunc are different, or how @round and @ceil are different. Also, @round is very confusingly named.
+
+1711893628
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I would expect @round to do what @floor(value + 0.5) does.
+
+1711894868
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+leeward, @floor(-9, 2) == -5, @trunc(-9, 2) == -4
+
+1711895010
+The_Buhs!~the_buhs@user/The-Buhs/x-5080862
+floor is always down, ceil is always up, trunc is towards 0, and round… rounds
+
+1711913237
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Ahhh, towards zero not down.
+
+1711922012
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Though it does look like @round is always away from zero (at least according to the docs), which is not what "rounding" means to me.
+
+1711922220
+torque!~tachyon@user/torque
+what does rounding mean to you? I think the documentation is a little ambiguous because it defines "rounding" as "rounding" but I believe that means that e.g. 10.5 -> 11, 10.4 -> 10, -9.4 -> -9, -9.5 -> -10
+
+1711922309
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Your definition of rounding matches mine, but the doc says "Rounds the given floating point number to an integer, away from zero. Uses a dedicated hardware instruction when available."
+
+1711922325
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Away from zero seems to mean 10.4 -> 11
+
+1711922378
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+And it makes sense that there would be a function to do that, since trunc feels like it should be matched with something in the way that floor and ceil are.
+
+1711922452
+torque!~tachyon@user/torque
+I think the documentation is poorly worded, https://zig.godbolt.org/z/rxYoGWx1e
+
+1711922496
+torque!~tachyon@user/torque
+arguably using the word "round" under the description of e.g. @trunc is part of the problem here
+
+1711922550
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+I would say that the "away from zero" leaves very little wiggle room. That's a bug.
+
+1711922554
+squeek502!~squeek502@user/squeek502
+the 10.5 -> 11, etc examples would be nice to have in the docs
+
+1711922571
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Maybe the definition of @round is wrong, but the documentation is clear about what the definition is.
+
+1711922675
+torque!~tachyon@user/torque
+I assume the compiler behavior is correct and the documentation is poorly worded, or at worst incorrect
+
+1711922713
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+At worst incorrect? It's definitely incorrect. I'm glad though, because at least that means the function isn't badly named.
+
+1711922715
+torque!~tachyon@user/torque
+how would you word it to improvement, "round the given floating point value to the nearest integer"?
+
+1711922748
+torque!~tachyon@user/torque
+*to improve it
+
+1711922762
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Yeah, I think that's fine, maybe with an example of what it does with 1.4, 1.5, -1.4, and -1.5
+
+1711922796
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Though the example shouldn't really be necessary.
+
+1711922808
+torque!~tachyon@user/torque
+I think having a doctest example would be good actually
+
+1711922815
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Yeah, that would be great.
+
+1711922867
+torque!~tachyon@user/torque
+mayhaps I should attempt to make a pull request. I have a vague recollection this is not the first time this particular discussion has been brought up in here
+
+1711922976
+leeward!~Ashes@2001:1c00:b1e:2b00:25d1:f85b:1387:faf6
+Probably worth while. It would be very quick to review.
+
+1711926403
+grayhatter!~grayhatte@user/grayhatter
+is anyone working on looking at pull #19308
+
+1711928802
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I don't look at drafts. I have enough ready-for-review patches to look at already
+
+1711928822
+grayhatter!~grayhatte@user/grayhatter
+sorry, I meant working on, or looking at
+
+1711928853
+grayhatter!~grayhatte@user/grayhatter
+I need to implement tls1.2 for [reasons] and I'm wondering if I should try to base it from that PR or from zig master
+
+1711928942
+grayhatter!~grayhatte@user/grayhatter
+but I think the fact that it's just a draft kind of answers my question :)
+
