@@ -1,0 +1,288 @@
+1712657802
+dliviu!~dliviu@dliviu.plus.com
+Hi, is native aarch64 build from source zig supposed to be usable? I've tried yesterday trunk with commit 6dcbad780cb71, done the "cmake + make" on a clean ArchLinuxArm machine setup, running on RK3588. Build succeeded, however when I create a new project with "zig init" and then try to build it with "zig build", it crashes with an illegal instruction in sha2.zig.
+
+1712657833
+dliviu!~dliviu@dliviu.plus.com
+Looks like it is mis-detecting support for sha2 instructions in the build process.
+
+1712657951
+dliviu!~dliviu@dliviu.plus.com
+I've come up with a patch in lib/std/zig/system/linux.zig to get the feature register array and the pass it on to @import("arm.zig").aarch64.detectNativeCpuAndFeatures() and that seems to work, but I have no idea if that's the right thing to do
+
+1712657969
+dliviu!~dliviu@dliviu.plus.com
+s/and the/and then/
+
+1712658106
+andrewrk!~andrewrk@mail.ziglang.org
+dliviu: that sounds right to me. are you willing to submit a github pull request?
+
+1712659062
+dliviu!~dliviu@dliviu.plus.com
+sure, will do.
+
+1712659221
+dliviu!~dliviu@dliviu.plus.com
+one question first: how do I check the generated code? I'm not trusting my understanding of Zig's "asm" usage, so I want to look at what was generated for lib/std/zig/system/linux.zig
+
+1712659320
+ifreund!2940d10f8b@user/ifreund
+dliviu: the easiest way is probably to copy paste the snippet into https://zig.godbolt.org/
+
+1712659364
+dliviu!~dliviu@dliviu.plus.com
+yes, good idea! Thanks!
+
+1712659450
+dliviu!~dliviu@dliviu.plus.com
+any way to generate AArch64 code?
+
+1712659494
+ifreund!2940d10f8b@user/ifreund
+-target aarch64-linux?
+
+1712666078
+txdv!~txdv@78-56-38-107.static.zebra.lt
+is there an {#any} which prints structs but uses better indentation, like in rust with {:?} and {:#?} ?
+
+1712668368
+Tekk!~Tekk@157.245.82.116
+txdv: That gets into the realm of real pretty printing, so you'd need a library
+
+1712668373
+Tekk!~Tekk@157.245.82.116
+(or to hand-roll your printing)
+
+1712668442
+txdv!~txdv@78-56-38-107.static.zebra.lt
+https://zig.news/timfayz/pretty-a-pretty-printer-for-deeply-nested-data-in-zig-ekj i guess someone already did it, gonna user it
+
+1712668449
+Tekk!~Tekk@157.245.82.116
+I was about to link you to that :)
+
+1712669551
+txdv!~txdv@78-56-38-107.static.zebra.lt
+you almost googled it for me
+
+1712671744
+arya_elfren!8e828d9895@2a03:6000:1812:100::125a
+is there a reason the allocator interface is an actual vtable `*const fn ...` rather than just comptime functions `fn ...`? how frequently are they dynamic?
+
+1712671867
+arya_elfren!8e828d9895@2a03:6000:1812:100::125a
+binary bloat for specialisation? Couldn't you write a set of comptime functions that use a vtable and so just have `vtablify(comptime Interface: type, comptime comptimeInterface: anytype) Interface`
+
+1712689800
+dliviu!~dliviu@dliviu.plus.com
+andrewrk: I've created pull request 19595 for the AArch64 fix
+
+1712690282
+andrewrk!~andrewrk@mail.ziglang.org
+dliviu: thank you!
+
+1712690481
+dliviu!~dliviu@dliviu.plus.com
+related discovery: after copying the stage3 directory generated on a RK3588 (Cortex A76/A55) onto another machine with an older Soc (Cortex A72/A53), zig crashes with another illegal instruction, this time due to atomic.Value(u32).cmpxchgWeak
+
+1712690508
+andrewrk!~andrewrk@mail.ziglang.org
+another cpu detection problem?
+
+1712690524
+dliviu!~dliviu@dliviu.plus.com
+is there a way to target a specific CPU when building stage3?
+
+1712690544
+dliviu!~dliviu@dliviu.plus.com
+don't know if it is cpu detection or just generating an instruction that's not supported by the older SoC
+
+1712690620
+andrewrk!~andrewrk@mail.ziglang.org
+I have the baseline set to v7a
+
+1712690659
+dliviu!~dliviu@dliviu.plus.com
+crash is in zig/lib/std/atomic.zig:58, which does "return @cmpxchgWeak(....)" which points to the native implementation
+
+1712690681
+andrewrk!~andrewrk@mail.ziglang.org
+if you're building via cmake, the config is -DZIG_TARGET_TRIPLE=foo and -DZIG_TARGET_MCPU=bar
+
+1712690683
+dliviu!~dliviu@dliviu.plus.com
+not familiar enough with Zig code generation to trace where that's selected.
+
+1712690703
+dliviu!~dliviu@dliviu.plus.com
+I've build with just "cmake .." from build directory, as per README.md
+
+1712690734
+andrewrk!~andrewrk@mail.ziglang.org
+keep in mind that zig's default target is native, including the host CPU. if you want to cross compile a binary, you have to pass -target
+
+1712690736
+dliviu!~dliviu@dliviu.plus.com
+OK, I can try to generate a lower common denominator stage3, see if that works
+
+1712690766
+andrewrk!~andrewrk@mail.ziglang.org
+generally, I would suggest not messing with your stage3 build, and then when it is finished building for the host, use it to create a new build for the other computer
+
+1712690790
+dliviu!~dliviu@dliviu.plus.com
+Yes, but for stage3 it might make sense to force a lower compatible CPU, otherwise how are distros going to build for AArch64?
+
+1712690867
+andrewrk!~andrewrk@mail.ziglang.org
+mmm for distros I think I would recommend those cmake options
+
+1712690967
+Earnestly!~earnest@user/earnestly
+distros will already seek to use options like that
+
+1712690993
+Earnestly!~earnest@user/earnestly
+(And many other flags, or even flags that are equivalent, to the various policies they want to employ)
+
+1712691024
+andrewrk!~andrewrk@mail.ziglang.org
+distros need to choose the minimum required CPU for their builds too, they really should not leave it up to the compiler
+
+1712691182
+dliviu!~dliviu@dliviu.plus.com
+you're both right, thanks!
+
+1712691244
+dliviu!~dliviu@dliviu.plus.com
+looks like the builds are failing, zig2.c not able to handle indirect register inputs. Suggestions welcome on how to fix/improve my bodged inline zig asm
+
+1712691477
+andrewrk!~andrewrk@mail.ziglang.org
+dliviu: if you grep the std lib for inline asm you'll find some good examples. I left you a comment on the patch with a suggestion
+
+1712691633
+dliviu!~dliviu@dliviu.plus.com
+hmm, gcc had some objections on using same identifier for input and output. I can try your suggestion, maybe with a "%w[ret]" as suggested by the warnings before
+
+1712691922
+andrewrk!~andrewrk@mail.ziglang.org
+gcc and zig have different inline asm rules
+
+1712691961
+andrewrk!~andrewrk@mail.ziglang.org
+C leaves it implementation defined, and in zig it's kind of a temporary syntax with plans to change it before 1.0
+
+1712692081
+andrewrk!~andrewrk@mail.ziglang.org
+I think ifreund's suggestion to play with it in https://zig.godbolt.org/ is a good one
+
+1712692131
+dliviu!~dliviu@dliviu.plus.com
+problem with zig.godbolt.org is that it doesn't show aarch64 disassembly (it expects Intel format)
+
+1712692160
+dliviu!~dliviu@dliviu.plus.com
+(or I don't know how to get godbolt to show me the disassembly)
+
+1712692172
+andrewrk!~andrewrk@mail.ziglang.org
+pass -target
+
+1712692192
+dliviu!~dliviu@dliviu.plus.com
+yeah, done that, compilation succeeds, but disassembly output is empty
+
+1712692269
+ifreund!2940d10f8b@user/ifreund
+are you exporting anything?
+
+1712692286
+dliviu!~dliviu@dliviu.plus.com
+no
+
+1712692295
+ifreund!2940d10f8b@user/ifreund
+then that's why the output is empty
+
+1712692333
+ifreund!2940d10f8b@user/ifreund
+see the `export fn square()` example when you open https://zig.godbolt.org
+
+1712692352
+dliviu!~dliviu@dliviu.plus.com
+don't know. Well, I'm trying from home now, and indeed, square() example works
+
+1712692360
+dliviu!~dliviu@dliviu.plus.com
+Let me try my code again
+
+1712692443
+ifreund!2940d10f8b@user/ifreund
+zig is very lazy about what it actually compiles into the output binary, if your functions aren't referenced anywhere they won't even be semantically analzyed
+
+1712692467
+andrewrk!~andrewrk@mail.ziglang.org
+you might also want to add -OReleaseFast to the CLI to see what optimized output looks like
+
+1712692470
+ifreund!2940d10f8b@user/ifreund
+so you need to export some symbol that uses the code you want to look at
+
+1712692494
+ifreund!2940d10f8b@user/ifreund
+and yeah, -OReleaseFast or -OReleaseSmall will give you much less noisy output
+
+1712692941
+dliviu!~dliviu@dliviu.plus.com
+OK, managed to get zig.godbolt.org to output disassembly. Bad news: that compiler (even zig trunk) doesn't like "%w[x]" or "%w[ret]" that GitHub's CI compiler suggests :(
+
+1712693735
+andrewrk!~andrewrk@mail.ziglang.org
+what about my suggestion
+
+1712694263
+dliviu!~dliviu@dliviu.plus.com
+trying it now
+
+1712697246
+dliviu!~dliviu@dliviu.plus.com
+I still get the crash with your suggestion, andrewrk. Looking at compiler explorer, looks like it keeps reusing x8 register: https://zig.godbolt.org/z/s7qenxa6z
+
+1712697358
+andrewrk!~andrewrk@mail.ziglang.org
+that assembly code does not have side effects, so you should remove volatile
+
+1712697387
+andrewrk!~andrewrk@mail.ziglang.org
+it looks like it is working perfectly to me. you are only reading the result from the first one
+
+1712697400
+dliviu!~dliviu@dliviu.plus.com
+with my version, I get different registers for each call: https://zig.godbolt.org/z/hE1d9ra15
+
+1712697449
+andrewrk!~andrewrk@mail.ziglang.org
+your version is incorrect since it uses "volatile"
+
+1712697488
+dliviu!~dliviu@dliviu.plus.com
+without volatile the compiler might remove the assembly entirely, at least according to gcc docs
+
+1712697509
+andrewrk!~andrewrk@mail.ziglang.org
+that would be a correct thing to do, if you did not read the result value
+
+1712697519
+andrewrk!~andrewrk@mail.ziglang.org
+improved example: https://zig.godbolt.org/z/cM81Yh9jh
+
+1712697554
+dliviu!~dliviu@dliviu.plus.com
+OK, I see
+
+1712704928
+dliviu!~dliviu@dliviu.plus.com
+my conclusion so far is that the patch I'm proposing is broken and disables .sha2 CPU feature regardless if it is actually supported or not. Need to do a bit more debugging.
+
