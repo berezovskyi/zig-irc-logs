@@ -1,0 +1,552 @@
+1712825598
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+how to I make a function that accepts arrays of different sizes?
+
+1712825613
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+or, alternatively, how do I coerce an array into a slice of itself
+
+1712825619
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+?
+
+1712825636
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+tried array[0..], &array, no bueno
+
+1712825715
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+the length is known comptime, but I don't want to have to update the length at the function argument level every time I change the array
+
+1712825830
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+*const [129:0]u8 -> *const []u8
+
+1712825835
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+^ this is what I want to do
+
+1712826124
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+you want `*const [129:0]u8` -> `[]const u8` which is an implicit coercion
+
+1712826147
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`*const []u8` is a double pointer, which is not what you want
+
+1712826206
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+hmm I got that from @embedFile
+
+1712826225
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+*const [129:0]u8
+
+1712826241
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+oh wait, I get it now
+
+1712826247
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+hold on
+
+1712826273
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`[N]T` is an array value, `[]T` is a slice which is a pointer to a runtime-known number of Ts
+
+1712826305
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+so the coercion is from pointer to array to slice
+
+1712826443
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+makes sense, thanks!
+
+1712826534
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+so `*const [129:0]u8` is `const char **` and `[]const u8` is `const char *`?
+
+1712826568
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+no, `*const [129:0]u8` is `const char (*)[130]`, there is only one pointer
+
+1712826583
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+ohhhh ok
+
+1712826602
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`[]const u8` is `const char *ptr` + `size_t len`
+
+1712826913
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+alright, I think I got it, so `*const []u8` is 2 stars, `*const [N]u8` is 1-star, and `[]u8` is 1-star.
+
+1712826932
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+sure
+
+1712826997
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+so `*const [N:0]u8` to `const []u8` is implicit, and  `@ptrCast(& const []u8) == char **`
+
+1712827003
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+and no more segfaults!
+
+1712827010
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+thanks a lot jacobly! much appreciated!
+
+1712827031
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+close, it's `[]const u8`, the `const` is a pointer attribute, so it goes after the pointery part of the type
+
+1712827107
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+right, `[]const u8` is `const char *` and `const []u8` would be like `char * const`-ish
+
+1712827114
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+or something like that, C decls are hard
+
+1712827118
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+`const []u8` is not valid
+
+1712827127
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+oh, nvm then
+
+1712827145
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+it's either `const x: []u8 = ...;` or `const x: *const u8 = ...;`
+
+1712827190
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+So if you have `const x: []u8 = undefined;` then `@TypeOf(&x) == *const []u8`
+
+1712827235
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+that makes sense
+
+1712827283
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+thanks a lot!
+
+1712827299
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+<3
+
+1712836586
+copygirl!~koppeh@copy.mcft.net
+I'm slightly confused why @truncate requires same-signedness when it doesn't even preserve the sign bit for signed integers anyway?
+
+1712836635
+copygirl!~koppeh@copy.mcft.net
+I'm trying to @truncate an anytype integer for convenience. Basically just want the least signficant bits and fit them into an i4, in my case.
+
+1712836774
+ifreund!2940d10f8b@user/ifreund
+copygirl: I don't think the results of truncating a negative, two's complement integer would be very intuitive
+
+1712836812
+ifreund!2940d10f8b@user/ifreund
+(chopping off the sign bit does *not* just make it a positive integer of the same value)
+
+1712836904
+copygirl!~koppeh@copy.mcft.net
+Not what want.
+
+1712836942
+copygirl!~koppeh@copy.mcft.net
+I just want to chop off some bits from a value, then fit those bits into an i8, I suppose?
+
+1712837788
+_________!~nobody@user/noodly
+copygirl: you can use @bitCast to do what you probably want: https://zig.godbolt.org/z/WaWv8jfKh
+
+1712838255
+copygirl!~koppeh@copy.mcft.net
+I guess that's what I ended up doing: https://gist.github.com/copygirl/3f6e5e85a06508e8da8131ea852cbc4c
+
+1712838311
+copygirl!~koppeh@copy.mcft.net
+Probably won't work for a lot of cases, but it compiled for now.
+
+1712840566
+ifreund!2940d10f8b@user/ifreund
+so you are ok with initTruncate(-1, -1, -1) giving you .{ x = 15, y = 15 z = 15 }?
+
+1712840580
+ifreund!2940d10f8b@user/ifreund
+copygirl: ^
+
+1712852895
+copygirl!~koppeh@copy.mcft.net
+ifreund: Yes. What else would it do?
+
+1712852989
+copygirl!~koppeh@copy.mcft.net
+Maybe there's special logic for truncating negative integers. I read somewhere it's possible to lose the sign bit when truncating, but that could be outdated info.
+
+1712853056
+copygirl!~koppeh@copy.mcft.net
+But if it's literally just chopping off the most significant bits, @truncate should be able to deal with mixed signed and unsigned ints, right?
+
+1712853121
+gog!~Ada@user/meow/gog
+you'd need to do right arithmetic shift before truncating to preserve the signedness
+
+1712853158
+gog!~Ada@user/meow/gog
+er no
+
+1712853168
+gog!~Ada@user/meow/gog
+ignore me idk what i'm talking about rn
+
+1712853245
+gog!~Ada@user/meow/gog
+for a negative two's complement value, if any of the truncated bits are zero then you lose information
+
+1712853282
+gog!~Ada@user/meow/gog
+the only to do it in two's complement is to check sign, truncate, negate if sign
+
+1712853332
+gog!~Ada@user/meow/gog
+i can't think of a bitfiddling way that is well-defined for a negative value
+
+1712853385
+gog!~Ada@user/meow/gog
+check sign, truncate absolute value, negate if sign. but then what if the value is the minimum?
+
+1712853398
+gog!~Ada@user/meow/gog
+you overflow if  you take absolue value
+
+1712853410
+gog!~Ada@user/meow/gog
+so it's all ill-defined
+
+1712857584
+copygirl!~koppeh@copy.mcft.net
+Ah, I missed gog.
+
+1712857622
+copygirl!~koppeh@copy.mcft.net
+So yeah, @truncate does what I want it to do, except you can't mix signed and unsigned integer types of the same size.
+
+1712858836
+copygirl!~koppeh@copy.mcft.net
+wb gog, to respond to you:
+
+1712858865
+copygirl!~koppeh@copy.mcft.net
+So @truncate would do what I'd want if only it would allow converting from unsigned to signed integers.
+
+1712860148
+gog!~ada@user/meow/gog
+right but how is this conversion taking place and what happens if it under/overflows
+
+1712860218
+gog!~ada@user/meow/gog
+it's not allowing it because it's not well-defined for all conversions
+
+1712861108
+copygirl!~koppeh@copy.mcft.net
+How can truncation under/overflow?
+
+1712861135
+copygirl!~koppeh@copy.mcft.net
+It's not conversion, it's just chopping off the most signigicant bits?
+
+1712864466
+gog!~ada@user/meow/gog
+you want the result to be signed, and the input is unsigned right?
+
+1712864583
+gog!~ada@user/meow/gog
+but why?
+
+1712865896
+gog!~ada@user/meow/gog
+ok i think i understand where you're coming from here
+
+1712868290
+andrewrk!~andrewrk@mail.ziglang.org
+@bitCast is used to reinterpret bits as a different type
+
+1712868631
+copygirl!~koppeh@copy.mcft.net
+andrewrk: Yeah but then they already need to be the same size, hence the need for @truncate.
+
+1712868732
+copygirl!~koppeh@copy.mcft.net
+gog: It's for a weird game thing. I know what I want, I just need to know how to do it properly. And, I mean, I figured out how, but it's not as straightforward as I hoped it'd be.
+
+1712868796
+andrewrk!~andrewrk@mail.ziglang.org
+truncating before or after has different results, so you need to choose between those results
+
+1712868830
+copygirl!~koppeh@copy.mcft.net
+I believe in one case I want to truncate a usize to an i4 (because of the usize limitation of looping over ranges) and in another case it's a c_int.
+
+1712868890
+copygirl!~koppeh@copy.mcft.net
+@truncate cuts of bits, and @bitCast reinterprets bits, I don't see why it'd be different ... what am I missing?
+
+1712868960
+andrewrk!~andrewrk@mail.ziglang.org
+never mind, I misspoke
+
+1712870701
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+Are there any active efforts to build the Linux kernel with the ZBS? https://github.com/rsepassi/linux-zig seems to be abandoned.
+
+1712870777
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+(There is also https://github.com/ziglang/zig/issues/16944, but that doesn't seem to have had much progress.)
+
+1712871233
+andrewrk!~andrewrk@mail.ziglang.org
+that's a fun idea
+
+1712871241
+andrewrk!~andrewrk@mail.ziglang.org
+I bet I could do it in 1 day
+
+1712871261
+andrewrk!~andrewrk@mail.ziglang.org
+unless they added Rust to the kernel
+
+1712872950
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I count 77k lines of Makfile to replace
+
+1712872958
+ifreund!2940d10f8b@user/ifreund
+plus 200k lines of Kconfig
+
+1712872985
+ifreund!2940d10f8b@user/ifreund
+might take a bit more than a day :P though maybe partial support wouldn't be too bad
+
+1712872995
+ii8!~ii8@45.63.97.131
+What's the type of this function? https://zigbin.io/1b54b7
+
+1712873075
+ifreund!2940d10f8b@user/ifreund
+ii8: type
+
+1712873118
+ifreund!2940d10f8b@user/ifreund
+e.g. `fn ArrayList(comptime T: type) type {  ... } ` in the standard library
+
+1712873139
+ii8!~ii8@45.63.97.131
+That errors with 'found type expected fn(anytype) anytype'
+
+1712873146
+ifreund!2940d10f8b@user/ifreund
+oh wait, I missed the .f at the end
+
+1712873164
+ii8!~ii8@45.63.97.131
+Yes it all works fine if I just return the struct
+
+1712873171
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: oof ok I take it back
+
+1712873174
+ii8!~ii8@45.63.97.131
+But I'd like to return the function
+
+1712873183
+ifreund!2940d10f8b@user/ifreund
+did you try "f(in: anytype) [O]@typeInfo(@TypeOf(in)).Array.child"
+
+1712873212
+ii8!~ii8@45.63.97.131
+Yes it says "error: use of undeclared identifier 'in'"
+
+1712873240
+ii8!~ii8@45.63.97.131
+assuming you meant `fn` not `f`
+
+1712873296
+ifreund!2940d10f8b@user/ifreund
+yeah, on thinking a bit more that won't work since the type of your function f is generic, I'd suggest just returing the struct type...
+
+1712873349
+ifreund!2940d10f8b@user/ifreund
+there might be a cleaner way to accomplish what you're going for though if you share more context
+
+1712873378
+ii8!~ii8@45.63.97.131
+But I can use const `lol = F(1,2).f;` at the callsite just fine, so shouldn't this variable also have a corresponding type?
+
+1712873400
+ii8!~ii8@45.63.97.131
+It seems a  bit strange that there are objects that have types that are impossible to specify
+
+1712873467
+ifreund!2940d10f8b@user/ifreund
+what does the compiler print for @typeName(@TypeOf(F(1,2).f))?
+
+1712873526
+ifreund!2940d10f8b@user/ifreund
+> 'found type expected fn(anytype) anytype'
+
+1712873546
+ii8!~ii8@45.63.97.131
+More context is: it's a convolution function that is parameterized by kernel size, weights and so on, but the size of the feature map is determined by the array dimensions passed to `f` (lowercase)
+
+1712873552
+ifreund!2940d10f8b@user/ifreund
+this is pretty weird cause anytype is not a vaild return type, writing that type would be a compile error
+
+1712873561
+ii8!~ii8@45.63.97.131
+Yep
+
+1712873676
+ii8!~ii8@45.63.97.131
+for `@typeName(@TypeOf(F(1,2).f))` it says `error: dependency loop detected` which makes sense
+
+1712873736
+ii8!~ii8@45.63.97.131
+Can't use F itself to determine the type of F
+
+1712873829
+ifreund!2940d10f8b@user/ifreund
+oh, I wasn't suggesting to use that as the return type, just as a way to determine what the compiler thinks the type of the function f is
+
+1712873851
+ifreund!2940d10f8b@user/ifreund
+I suspect it would print fn(anytype) anytype though like it did for the compile error
+
+1712873939
+dliviu!~dliviu@dliviu.plus.com
+hi. Regarding pull request #19595: first, I'm surprised it got closed, I said I'm debugging why the sha256h assembly still gets generated in sha2.zig::round()
+
+1712874018
+dliviu!~dliviu@dliviu.plus.com
+second, with all the debugging that I have added in linux.zig, illegal instructions are still generated in that round() function even if there is no support for sha256 on that CPU
+
+1712874064
+dliviu!~dliviu@dliviu.plus.com
+anyone has any ideas for me to try to figure out why that code gets generated in the zig binary?
+
+1712874175
+andrewrk!~andrewrk@mail.ziglang.org
+dliviu: based on your messages here I thought you had abandoned it. you are free to open another one
+
+1712874195
+dliviu!~dliviu@dliviu.plus.com
+I haven't abandoned it, but I'm not working full time on zig
+
+1712874210
+dliviu!~dliviu@dliviu.plus.com
+it's a late night play for me
+
+1712874244
+andrewrk!~andrewrk@mail.ziglang.org
+you described the patch as broken, which I misunderstood to have a sense of finality to it
+
+1712874269
+ii8!~ii8@45.63.97.131
+ifreund: yes indeed it prints "fn (anytype) anytype"
+
+1712874290
+dliviu!~dliviu@dliviu.plus.com
+I can address the comments and I know that the generated assembly code in my patch will be correct (as in reading the right values for CPU features)
+
+1712874347
+dliviu!~dliviu@dliviu.plus.com
+but I still don't understand why stage3 zig still has unsupported instructions in it. In that sense the patch is broken, it doesn't fix the original problem
+
+1712874397
+andrewrk!~andrewrk@mail.ziglang.org
+why do you think that stage3 zig has unsupported instructions in it?
+
+1712874433
+dliviu!~dliviu@dliviu.plus.com
+because when I execute 'zig build' it crashes with an illegal instruction, per the stack trace in the pull request
+
+1712874465
+dliviu!~dliviu@dliviu.plus.com
+and if I disassemble the memory at that address I see 'sha256h    q1, q2, v3.4s'
+
+1712874511
+andrewrk!~andrewrk@mail.ziglang.org
+all on the same host?
+
+1712874518
+dliviu!~dliviu@dliviu.plus.com
+yes
+
+1712874523
+dliviu!~dliviu@dliviu.plus.com
+native build and tools
+
+1712874659
+andrewrk!~andrewrk@mail.ziglang.org
+can you start with a bug report that lists your cpu, the output of `zig build-obj --show-builtin`, and the by-hand corrected output of that same command?
+
+1712874769
+dliviu!~dliviu@dliviu.plus.com
+what do you mean "by-hand corrected output"? i.e. after my patch?
+
+1712874850
+andrewrk!~andrewrk@mail.ziglang.org
+presumably `zig build-obj --show-builtin` is returning incorrect results for cpu features
+
+1712874871
+andrewrk!~andrewrk@mail.ziglang.org
+a bug report should identify what exactly is wrong
+
+1712874875
+dliviu!~dliviu@dliviu.plus.com
+funny enough, it is returning the correct results
+
+1712874893
+dliviu!~dliviu@dliviu.plus.com
+it looks like sha2.zig:round() function gets miscompiled
+
+1712874975
+andrewrk!~andrewrk@mail.ziglang.org
+then your pull request should be closed
+
+1712874990
+dliviu!~dliviu@dliviu.plus.com
+I can fill in a bug report, in the meanwhile this is what 'zig build-obj --show-builtin' gives me on target CPU: pub const cpu: std.Target.Cpu = .{ .arch = .aarch64, .model = &std.Target.aarch64.cpu.cortex_a76, .features = std.Target.aarch64.featureSet(&[_]std.Target.aarc\
+
+1712874992
+dliviu!~dliviu@dliviu.plus.com
+h64.Feature{ .ccpp, .crc, .dotprod, .fp_armv8, .fullfp16, .lse, .neon, .rcpc, .rdm, .ssbs, }), };
+
+1712875113
+dliviu!~dliviu@dliviu.plus.com
+technically you're right, my code should not result in a different behaviour. OTOH, given that system/arm.zig has that nice parsing of CPU feature registers, it's a shame to force the parsing of '/proc/cpuinfo' with all that unstable API
+
+1712875193
+andrewrk!~andrewrk@mail.ziglang.org
+I think this conversation is going in circles because you have not shared Steps To Reproduce which is the most important field in the bug report template. that's why I suggest to file a bug
+
+1712875278
+dliviu!~dliviu@dliviu.plus.com
+sorry, I'm not trying to waste anyone's time. I thought the commit message describes clearly the reproducer: build zig natively on a CPU that doesn't support sha256 instructions
+
+1712875311
+dliviu!~dliviu@dliviu.plus.com
+then create a new project with "zig init" using the newly built stage3. When compiling that new project watch zig binary crash 
+
+1712879792
+dliviu!~dliviu@dliviu.plus.com
+Bug #19626 submitted. Without my patch the target CPU looks like it is supporting SHA2 instruction set. Now I need to figure out why with my patch I still get a binary with unsupported instructions.
+
