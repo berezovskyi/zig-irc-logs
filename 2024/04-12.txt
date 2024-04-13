@@ -1,0 +1,312 @@
+1712884023
+dliviu!~dliviu@dliviu.plus.com
+OK, looks like it was a case of "make clean" not actually cleaning stuff that went into next build. "rm -rf *" and re-starting from "cmake .." step seems to show that my patch works.
+
+1712884135
+dliviu!~dliviu@dliviu.plus.com
+As I was also trying to create a binary that works on other devices that I have, I now need to try now a clean build with "cmake -DZIG_TARGET_MCPU=cortex_a72 .." to see if that works before opening another pull request
+
+1712884208
+andrewrk!~andrewrk@mail.ziglang.org
+dliviu: I reopened your exising PR so you can force push to that one
+
+1712884241
+dliviu!~dliviu@dliviu.plus.com
+is it OK if I also rebase it on top of current master? Looks like 30 new patches have been added since
+
+1712884318
+andrewrk!~andrewrk@mail.ziglang.org
+yes in fact that is preferable
+
+1712884681
+dliviu!~dliviu@dliviu.plus.com
+how do I update the pull request once I've updated my branch? I don't seem to be an option in the web UI
+
+1712884729
+dliviu!~dliviu@dliviu.plus.com
+do I create another pull request from my branch and Github magically figures out that's the same as my previous pull request?
+
+1712885178
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+dliviu, you updated the pull request by pushing to the branch
+
+1712886789
+daurnimator!~daurnimat@vultr.daurnimator.com
+o.o reading spirv diff and I spy https://github.com/KhronosGroup/SPIRV-Headers/compare/vulkan-sdk-1.3.275.0...vulkan-sdk-1.3.280.0#diff-93e05035cabafc5df5ad595aeaa62e73068b1bc22a7a8ddc9cd62f6dbfbf7a4bR94
+
+1712909357
+copygirl!~koppeh@copy.mcft.net
+Dang, zigimg doesn't allow me to read a PNG at comptime.
+
+1712909615
+copygirl!~koppeh@copy.mcft.net
+I have a feeling it might be because it creates its own ArenaAllocator when reading the header.. and that one fails with "unable to evaluate comptime expression".
+
+1712909635
+copygirl!~koppeh@copy.mcft.net
+On this line, if anyone's curious: const addr = @intFromPtr(ptr);
+
+1712909638
+grayhatter!~grayhatte@user/grayhatter
+I would love a comptime allocator
+
+1712909717
+copygirl!~koppeh@copy.mcft.net
+Not entirely sure if a FixedBufferAllocator will work, but one can hope? Either way, what allocator I pass to this function doesn't matter.
+
+1712913259
+andrewrk!~andrewrk@mail.ziglang.org
+are you sure that's a good idea? you probably want to decode it at runtime
+
+1712913268
+andrewrk!~andrewrk@mail.ziglang.org
+otherwise your exe size is going to be large
+
+1712913899
+copygirl!~koppeh@copy.mcft.net
+andrewrk: By more than the size of the decoded image?
+
+1712913984
+copygirl!~koppeh@copy.mcft.net
+This isn't a serious project, but does it matter if the image is shipped with the executable, or whether it's pre-processed and embedded?
+
+1712914026
+copygirl!~koppeh@copy.mcft.net
+For smaller assets, like in my case a 256px² texture map, would it be a big deal?
+
+1712914044
+copygirl!~koppeh@copy.mcft.net
+This is just theoretical because honestly I couldn't get it to work.
+
+1712914056
+Amun-Ra!~amun-ra@retro.rocks
+make that ppm, etc.
+
+1712914072
+Earnestly!~earnest@user/earnestly
+width * height * 24/48 bits per pixel
+
+1712914094
+Amun-Ra!~amun-ra@retro.rocks
+~200KB
+
+1712914096
+Earnestly!~earnest@user/earnestly
+(For rgb)
+
+1712914165
+copygirl!~koppeh@copy.mcft.net
+The humanity! :p
+
+1712914202
+copygirl!~koppeh@copy.mcft.net
+Does Zig have trouble dealing with that much static data?
+
+1712914245
+Earnestly!~earnest@user/earnestly
+For perspective, Farbrausch's Debris is less than 200kb
+
+1712914278
+Earnestly!~earnest@user/earnestly
+The scene, music, textures, everthing: https://www.youtube.com/watch?v=wqu_IpkOYBg
+
+1712914295
+copygirl!~koppeh@copy.mcft.net
+The demoscene is amazing.
+
+1712914357
+Amun-Ra!~amun-ra@retro.rocks
+kkrieger is a 96KB game: https://www.youtube.com/watch?v=8fZBUsn5RYg
+
+1712914454
+Earnestly!~earnest@user/earnestly
+(colourmapped pngs might be smaller)
+
+1712914489
+copygirl!~koppeh@copy.mcft.net
+This is 256 bytes: https://www.youtube.com/watch?v=sWblpsLZ-O8
+
+1712914491
+Amun-Ra!~amun-ra@retro.rocks
+most images with color palette should be
+
+1712914580
+ifreund!2940d10f8b@user/ifreund
+copygirl: if you want to embed the data in the binary you could embed the raw .png data and then parse it at runtime
+
+1712914587
+ifreund!2940d10f8b@user/ifreund
+it's probably more compact in that form
+
+1712914629
+Amun-Ra!~amun-ra@retro.rocks
+it'll be faster, compact as in size, rather not
+
+1712914642
+Amun-Ra!~amun-ra@retro.rocks
+I mean faster to use after start
+
+1712914721
+ifreund!2940d10f8b@user/ifreund
+is PNG not a lossless image *compression* format? I don't see how the decompressed version would be more compact than the raw, compressed version
+
+1712914750
+Amun-Ra!~amun-ra@retro.rocks
+raw usually refers to raw, uncompressed bitmap
+
+1712914787
+ifreund!2940d10f8b@user/ifreund
+ok, then my message was unclear. I meant @embedFile("foo.png")
+
+1712914829
+Amun-Ra!~amun-ra@retro.rocks
+ah, ok
+
+1712928292
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+ifreund: So is trying to port Kbuild to zig something that is best left alone, or is it plausible?
+
+1712928309
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+(The only use of Rust is in the Asahi GPU drivers, IIRC)
+
+1712928320
+ifreund!2940d10f8b@user/ifreund
+alethkit: I personally don't see much of a point tbh
+
+1712928346
+ifreund!2940d10f8b@user/ifreund
+anything's possible, but would the result be worth the effort?
+
+1712928387
+ifreund!2940d10f8b@user/ifreund
+rust isn't necessarily an issue either, zig build could invoke rustc the same way Kbuild currently does
+
+1712928846
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+ifreund: so you can't get incremental builds from porting something to the ZBS?
+
+1712928858
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+I was trying to avoid long compile times
+
+1712930244
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+What is the best way to seed the random number generation like "std.rand.DefaultPrng.init()"? Tried to use local time stamp but that is not available comptime and I would like to use the returned instance as a constant in that file!?
+
+1712930823
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: the most truely random way is to use hardware entropy provided by the OS, e.g. getrandom()
+
+1712930861
+ifreund!2940d10f8b@user/ifreund
+there is intentionally no way to introduce non-determinism at comptime though
+
+1712930893
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+ok...understand the purpose....sometimes one stumbles over the own good intentions there ;-)
+
+1712930976
+ifreund!2940d10f8b@user/ifreund
+alethkit: zig isn't magic, it may slightly different performance due to running the clang instances in a threadpool in the same process rather than as separate process. I can't say how much of an impact that would have though
+
+1712931010
+ifreund!2940d10f8b@user/ifreund
+as far as caching go, I suspect zig's caching for C files is pretty much the the same is whatever Kbuild does
+
+1712931069
+ifreund!2940d10f8b@user/ifreund
+"incremental compiliation" in the sense of hot-patching an existing binary with a minimal code change is not supported for C code and likely never will be
+
+1712931129
+ifreund!2940d10f8b@user/ifreund
+for Zig code it's currently at the proof of concept stage but is the core goal of most of the compiler development
+
+1712933403
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+ifreund: So probably just llvm + ccache should do, then
+
+1712933407
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+thank you!
+
+1712933985
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+ifreund: tried to follow your advice but most web founds refer to os. and I learned the other day, that some stuff went to other namspaces like posix e.g. Now...that said, I'm not the winows guy, so if I use std.posix.getrandom() will that work on windows too? Or better asked: can I assume that every part of the std library does work on every supported target?
+
+1712934032
+ifreund!2940d10f8b@user/ifreund
+no you cannot assume that every pant of tha std library works on every target zig can compile for
+
+1712934047
+ifreund!2940d10f8b@user/ifreund
+there are many parts of the standard library with os-specific code
+
+1712934079
+ifreund!2940d10f8b@user/ifreund
+and the parts that do implement cross-platform abstractions may not support niche operating systems
+
+1712934107
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+thank you...thought it would be that way....ok then how do I find out, by which targets a function in the std lib is supported?
+
+1712934214
+ifreund!2940d10f8b@user/ifreund
+Nightwulf: by reading the documentation, or if that is incomplete the source code: https://ziglang.org/documentation/master/std/#std.posix.getrandom
+
+1712934249
+ifreund!2940d10f8b@user/ifreund
+see the source code at the bottom, it looks to support many targets including linux, windows, and BSDs
+
+1712934369
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+thank you...I'll go for getrandom() then, but good to know what to check prior to choose a function like that
+
+1712934397
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1712934479
+ifreund!2940d10f8b@user/ifreund
+in general, stuff in std.os is not cross-platform, std.posix is somewhat cross-platform, and the rest of the std is mostly cross-platform
+
+1712934873
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+I have to look out not only for OS but also for the architecture since I do work often on RISC-V systems
+
+1712934895
+Nightwulf!~totto@p200300db0f1ff8002ef05dfffea2cb51.dip0.t-ipconnect.de
+but the way of looking that up is the same so no problems with that ;-)
+
+1712946062
+copygirl!~koppeh@copy.mcft.net
+Is there a nice way to access a [16][16]T as a []T (of length 256)?
+
+1712947092
+Oglo!~Oglo@2600:1700:a5b0:ef40::1c
+std.debug.print("Hello, world!\n", .{});
+
+1712947229
+Oglo!~Oglo@2600:1700:a5b0:ef40::1c
+std.debug.print("Bye, bye!\n", .{});
+
+1712947300
+ifreund!2940d10f8b@user/ifreund
+copygirl: mem.asBytes()
+
+1712947346
+ifreund!2940d10f8b@user/ifreund
+er, that will get you []u8. Then you can mem.bytesAsSlice(T, mem.asBytes(&array)) to get []T
+
+1712947374
+ifreund!2940d10f8b@user/ifreund
+or something along those lines, have a look in std.mem if that's not exactly right
+
+1712947979
+copygirl!~koppeh@copy.mcft.net
+sliceAsBytes, from the looks of it?
+
+1712948018
+copygirl!~koppeh@copy.mcft.net
+Thank you
+
