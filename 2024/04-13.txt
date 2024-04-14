@@ -1,0 +1,128 @@
+1712989386
+mcf!~mforney@netbsd/developer/mcf
+andrewrk: re zig bootstrap with cproc, i get `qbe:-:73500: slot %.174 is read but never stored to`. bad error message coming from the backend, but this usually indicates a use of an uninitialized variable
+
+1712989501
+andrewrk!~andrewrk@mail.ziglang.org
+hmmmmm
+
+1712989515
+andrewrk!~andrewrk@mail.ziglang.org
+at what point in the process did that happen?
+
+1712989588
+mcf!~mforney@netbsd/developer/mcf
+compiling zig1.c. i'm not sure if those differ from system to system, but the f17 function has `uint32_t l156;`, followed by a bunch of lines not mentioning l156, then at the end `uint32_t l3007 = l156; return l3007;`
+
+1712989708
+mcf!~mforney@netbsd/developer/mcf
+(it's actually not against the c spec to do this, but qbe rejects it)
+
+1712989739
+mcf!~mforney@netbsd/developer/mcf
+e.g. if the return value wasn't used for anything
+
+1712989877
+mcf!~mforney@netbsd/developer/mcf
+initializing l156 to get further: rega.c: dying: cannot have more moves than registers
+
+1712989885
+mcf!~mforney@netbsd/developer/mcf
+alas, it seems you have defeated qbe
+
+1712989916
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+wow, qbe and msvc in the same week
+
+1712990122
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+for the record, the reason it does that is because the use of undefined is completely unreachable
+
+1712990233
+txdv!~txdv@78-56-38-107.static.zebra.lt
+I have created a build.zig for a c library https://github.com/txdv/snappy-c/blob/master/build.zig how do I tell the zig build system to make the snappyc.h file available in the another build.zig project?
+
+1712990783
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly: mcf is the author of oasislinux and cproc! I accidentally nerd baited him over in #musl hehe
+
+1712990947
+andrewrk!~andrewrk@mail.ziglang.org
+txdv: use one of these functions: https://ziglang.org/documentation/master/std/#std?Compile%20install%20header
+
+1712990974
+andrewrk!~andrewrk@mail.ziglang.org
+ideally, attach the header to the static library that it belongs to
+
+1712990992
+andrewrk!~andrewrk@mail.ziglang.org
+then when you do linkLibrary() in the dependee it gets the include dir automatically
+
+1712991044
+txdv!~txdv@78-56-38-107.static.zebra.lt
+amazing! thanks for the quick answer
+
+1712991151
+andrewrk!~andrewrk@mail.ziglang.org
+I just did this today so I have an example handy, one sec
+
+1712991235
+andrewrk!~andrewrk@mail.ziglang.org
+library build script: https://github.com/allyourcodebase/openssl/blob/cfb071de062624d8acbfad4c995e8092f4f6bc7a/build.zig#L1253-L1254
+
+1712991254
+andrewrk!~andrewrk@mail.ziglang.org
+user of the library build script: https://github.com/allyourcodebase/cpython/blob/1f6318617525af742910c87f5c25c6e846a2c851/build.zig#L24
+
+1712992526
+txdv!~txdv@78-56-38-107.static.zebra.lt
+Is this a collection of projects with build.zig?
+
+1712992570
+txdv!~txdv@78-56-38-107.static.zebra.lt
+Maybe it would be more convenient to define a build.zig outside of the actual repo and just target it somehow via url and checksum?
+
+1712997258
+txdv!~txdv@78-56-38-107.static.zebra.lt
+trying to run newest zig binary on maccos: zsh: killed     zig-macos-aarch64-0.12.0-dev.3644+05d975576/zig
+
+1712997263
+txdv!~txdv@78-56-38-107.static.zebra.lt
+is anyone else experiencing a similar issue?
+
+1712997320
+txdv!~txdv@78-56-38-107.static.zebra.lt
+nevermind, deleted the directory, unpacked it again, works
+
+1712998363
+andrewrk!~andrewrk@mail.ziglang.org
+txdv: re: "define a build.zig outside of the actual repo" that's the "pristine tarball" strategy and is how some of the projects in that github org are done. check out zlib for example
+
+1712998397
+andrewrk!~andrewrk@mail.ziglang.org
+also, the openssl example I linked is using that strategy but I did bundle the generated files because I found that preferable to adding a perl dependency
+
+1712998875
+txdv!~txdv@78-56-38-107.static.zebra.lt
+https://github.com/allyourcodebase/zlib/ o yeah looks very clean
+
+1713000313
+txdv!~txdv@78-56-38-107.static.zebra.lt
+the build system and package manager sparks joy
+
+1713023091
+txdv!~txdv@78-56-38-107.static.zebra.lt
+Ok I am facing now the same problem, basically there is a simple .in file and just for that cmake is used. Since it is very simple I can generate the output file myself, do you you have example of how you do it? Need to put somewhere the generated file
+
+1713024057
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+cmake in files are supported by the zig build system
+
+1713024124
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+see `std.Build.addConfigHeader`
+
+1713048129
+cancername!~cancernam@user/cancername
+//quit
+
