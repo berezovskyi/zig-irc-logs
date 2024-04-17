@@ -1,0 +1,292 @@
+1713229774
+lf94!~lf94@user/lf94
+Does Zig have right rotate?
+
+1713229790
+lf94!~lf94@user/lf94
+I'm flabergasted C doesn't have right rotate
+
+1713230097
+torque!~tachyon@user/torque
+there's std.math.rotr
+
+1713241055
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+andrewrk: you said you use vim for all your coding, i am curious what do you use for debugging intercface? or do you just command-line debug Zig with gdb ?
+
+1713251037
+ifreund!2940d10f8b@user/ifreund
+I think most if not all of the core team use gdb or lldb
+
+1713264589
+j`ey!~joey@user/jey/x-2681904
+alright, you cant pass ~ to CMAKE_INSTALL_PREFIX ($HOME was used in the docs, guess it goes without saying)
+
+1713264630
+j`ey!~joey@user/jey/x-2681904
+might be nice if cmake checked that
+
+1713273351
+j`ey!~joey@user/jey/x-2681904
+if I edit ~/.cache/zig/hash/file.zig, will it pick up the change when I rebuild the app that depends on that?
+
+1713273539
+ifreund!2940d10f8b@user/ifreund
+no, I dont except it would
+
+1713273551
+ifreund!2940d10f8b@user/ifreund
+*expect
+
+1713273580
+j`ey!~joey@user/jey/x-2681904
+I tried, turns out it does, that's good, can do some hacky editing of deps
+
+1713284047
+dliviu!~dliviu@dliviu.plus.com
+andrewrk: PR #19595 is ready from my PoV. The issues I had were due to me not cleaning up properly and also using -DZIG_TARGET_MCPU=cortex_a72 which *does* include SHA256 support on some of my test builds
+
+1713292552
+andrewrk!~andrewrk@mail.ziglang.org
+dliviu: does this only work with linux kernel 6.x and above?
+
+1713292975
+j`ey!~joey@user/jey/x-2681904
+at the end of my zig/cmake build, it said 'Install Debug configuration', I guess that means I built a debug/-O0 Zig compiler?
+
+1713296493
+j`ey!~joey@user/jey/x-2681904
+are there any flags that could remove /usr/include from a compile? Getting zlib.h not found, but it's there
+
+1713296688
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+setting a target (`-target ...`) or not linking libc (`-lc`)
+
+1713299177
+j`ey!~joey@user/jey/x-2681904
+so as I understand it lib.installHeadersDirectoryOptions() is for adding -I paths?
+
+1713299240
+j`ey!~joey@user/jey/x-2681904
+or maybe that's lib.addIncludePath() actually..
+
+1713299409
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+yeah just `lib.root_module.addIncludePath`, but using a native target and `lib.linkLibC();` should implicitly add `/usr/include`
+
+1713299436
+j`ey!~joey@user/jey/x-2681904
+turns out it's using a package zlib, so shouldn't be using the /usr/include one
+
+1713299494
+j`ey!~joey@user/jey/x-2681904
+I have: zlib = b.dependency("zlib"); lib.linkLibrary(zlib_dep.artifact("z"));, I wonder if linkLibrary should be adding the include path
+
+1713299617
+j`ey!~joey@user/jey/x-2681904
+I can see that linkLibraryOrObject iterates over installed_headers
+
+1713299646
+j`ey!~joey@user/jey/x-2681904
+but I dont know if that auto adds them as -I
+
+1713300616
+j`ey!~joey@user/jey/x-2681904
+do I need to actually build stage3? will zig2 have my changes?
+
+1713301543
+j`ey!~joey@user/jey/x-2681904
+there's a global and local cache, what's the difference?
+
+1713301887
+ifreund!2940d10f8b@user/ifreund
+one contains stuff applicable to anything built using zig (compiler-rt, etc) and one contains stuf applicable to only the local project
+
+1713301901
+ifreund!2940d10f8b@user/ifreund
+as one might guess...
+
+1713302021
+j`ey!~joey@user/jey/x-2681904
+for example I have a global/p/12207d353609d95cee9da7891919e6d9582e97b7aa2831bd50f33bf523a582a08547/ which is zlib
+
+1713302027
+j`ey!~joey@user/jey/x-2681904
+im not sure if that can be reused
+
+1713302056
+j`ey!~joey@user/jey/x-2681904
+and im not sure if the cache is only source, or build too, or if only a local cache can have build artifacts
+
+1713302164
+j`ey!~joey@user/jey/x-2681904
+Im getting something use -I local/i/5a558de6580b7a171e56cae409d8e7f6 and that path doesnt exist, so it feels like somehow a dep hassnt build yet
+
+1713304049
+j`ey!~joey@user/jey/x-2681904
+does std/Build/Step/InstallArtifact.zig have access to the hash used in the cache?
+
+1713304472
+andrewrk!~andrewrk@mail.ziglang.org
+there are a lot of working examples that already do what you're talking about. why not start with one of those?
+
+1713304525
+j`ey!~joey@user/jey/x-2681904
+the working example isn't working for me, I'm trying to understand why
+
+1713304706
+j`ey!~joey@user/jey/x-2681904
+something messed up in my setup, might be the global cache, I will probably start from scratch soon
+
+1713304854
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: every ring buffer implementation in the standard library has the wrong API
+
+1713304856
+andrewrk!~andrewrk@mail.ziglang.org
+lol
+
+1713304916
+andrewrk!~andrewrk@mail.ziglang.org
+ok wait LinearFifo has the correct one hiding inside of it, you can pass a slice
+
+1713305074
+ifreund!2940d10f8b@user/ifreund
+andrewrk: hah, I think they all have some good bits but really need someone with a unified vision to clean things up
+
+1713305093
+ifreund!2940d10f8b@user/ifreund
+which is what I hoped to facilitate by opening that issue
+
+1713305203
+andrewrk!~andrewrk@mail.ziglang.org
+yeah, good move. it's looking more and more like it will be me
+
+1713305455
+j`ey!~joey@user/jey/x-2681904
+does a zig build-lib have in its command line arguments where to write the output to, or does it calculate the hash itself?
+
+1713306333
+dliviu!~dliviu@dliviu.plus.com
+andrewrk: I'm going to add the check for HWCAP_CPID, like the kernel documentation sample code shows. IF that fails, I will fall back to the existing parse of /proc/cpuinfo
+
+1713307880
+j`ey!~joey@user/jey/x-2681904
+does zig build-lib install into the cache?
+
+1713307908
+j`ey!~joey@user/jey/x-2681904
+(I cant seem to find the docs for this stuff)
+
+1713308449
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/learn/build-system/
+
+1713308534
+j`ey!~joey@user/jey/x-2681904
+I'll read through it again, but I can't see an anwser for that particular question
+
+1713308663
+andrewrk!~andrewrk@mail.ziglang.org
+zig build-lib does not have anything to do with the zig build system
+
+1713308676
+andrewrk!~andrewrk@mail.ziglang.org
+it outputs to the current working directory
+
+1713308747
+andrewrk!~andrewrk@mail.ziglang.org
+it can be controlled via the -femit-bin argument as well as by a parent process with --listen
+
+1713308753
+j`ey!~joey@user/jey/x-2681904
+so something else puts them in the cache
+
+1713308773
+j`ey!~joey@user/jey/x-2681904
+them = the artifacts or whatever
+
+1713308973
+j`ey!~joey@user/jey/x-2681904
+this code uses installHeadersDirectoryOptions and b.installArtifact, but I dont see the headers installed anywhere, and I can't tell if build-lib is the step that should be doing that
+
+1713309202
+j`ey!~joey@user/jey/x-2681904
+sorry, im just frustrated because ive spent 8h trying to build this thing 
+
+1713311163
+andrewrk!~andrewrk@mail.ziglang.org
+what are you trying to build?
+
+1713311382
+j`ey!~joey@user/jey/x-2681904
+ghostty
+
+1713311426
+j`ey!~joey@user/jey/x-2681904
+but zlib doesnt seem to get built/installed
+
+1713311667
+andrewrk!~andrewrk@mail.ziglang.org
+I think you're going about this the wrong way
+
+1713311684
+andrewrk!~andrewrk@mail.ziglang.org
+the first thing you should do is follow the official instructions, and then if they don't work, file a bug report. did you do that first step yet?
+
+1713311692
+j`ey!~joey@user/jey/x-2681904
+yes
+
+1713311695
+andrewrk!~andrewrk@mail.ziglang.org
+link?
+
+1713311713
+j`ey!~joey@user/jey/x-2681904
+its a private repo
+
+1713311717
+andrewrk!~andrewrk@mail.ziglang.org
+I have access
+
+1713311742
+j`ey!~joey@user/jey/x-2681904
+then its whats in the readme, zig build
+
+1713311756
+andrewrk!~andrewrk@mail.ziglang.org
+so you didn't follow a bug report. you lied to my f ace
+
+1713311762
+j`ey!~joey@user/jey/x-2681904
+huh
+
+1713311815
+j`ey!~joey@user/jey/x-2681904
+oh the first step was following the official instructions
+
+1713311835
+j`ey!~joey@user/jey/x-2681904
+i thought the 2nd step was file a bug report
+
+1713311879
+j`ey!~joey@user/jey/x-2681904
+mitchell has seen my issues on discord, but I havent filed a bug report yet, that is true
+
+1713311901
+j`ey!~joey@user/jey/x-2681904
+ive been trying to debug it myself, since he probably cant repro it
+
+1713311931
+andrewrk!~andrewrk@mail.ziglang.org
+you're getting ahead of yourself. you have not reached step 2 yet
+
+1713311949
+andrewrk!~andrewrk@mail.ziglang.org
+suggest to do the steps in order unless you want to waste another 8 hours
+
+1713311970
+j`ey!~joey@user/jey/x-2681904
+sure i can raise a ticket
+
