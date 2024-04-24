@@ -1,0 +1,568 @@
+1713842013
+daurnimator!~daurnimat@vultr.daurnimator.com
+hmmm, is there a release-safe-small? I mainly think along the axis of small vs fast for release modes. adding safety in there seems like complecting things
+
+1713842042
+daurnimator!~daurnimat@vultr.daurnimator.com
+a release-safe-small would e.g. avoid unrolling loops; but still include all assertions
+
+1713842178
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: I think the break down in the conversation above is "once a piece of software is battle tested" => that doesn't happen with a new release, it happens with time. So e.g. a user/distro might run in release-safe for an extensive period of time and do fuzz testing; and that gives them the confidence to upgrade to release-fast. It doesn't involve a new release from upstream
+
+1713848807
+copygirl!~koppeh@copy.mcft.net
+Is there a way to get a function parameter's name? It's not part of the function type, which is understandable.
+
+1713848925
+grayhatter!~grayhatte@user/grayhatter
+copygirl: what are you trying to do?
+
+1713849069
+copygirl!~koppeh@copy.mcft.net
+I was hoping I could build a Flecs query from the parameters of a function, and if the parameter type was `Entity`, to look up the entity variable with the parameter's name.
+
+1713849273
+copygirl!~koppeh@copy.mcft.net
+Well, building a query just from the parameters is going to be very limiting so in many cases you'd have to supply the query string anyway.
+
+1713849349
+torque!~tachyon@user/torque
+no clue what the flecs api is like, but you can always have the user provide their arguments as fields of a struct which you can then use standard comptime type reflection to inspect
+
+1713849490
+torque!~tachyon@user/torque
+however, it would probably be better just to take a name argument rather than trying to magically introspect it
+
+1713849692
+copygirl!~koppeh@copy.mcft.net
+A struct is doable, though currently unsure how that'd work itself out when it comes to using the API..
+
+1713849775
+copygirl!~koppeh@copy.mcft.net
+I think the best I could do is have a `Variable("name")` type that holds the Entity value.
+
+1713859762
+ifreund!2940d10f8b@user/ifreund
+daurnimator: that's a good point
+
+1713869824
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: which one? release-safe-small or that "battle-tested" doesn't usually come with an upstream release
+
+1713869894
+ifreund!2940d10f8b@user/ifreund
+the point that it making sense to change the build mode doesn't necessarily coincide with an upstream release
+
+1713869934
+ifreund!2940d10f8b@user/ifreund
+release-safe-small dosen't exist currently, I don't know if it's been proposed or not...
+
+1713870026
+ifreund!2940d10f8b@user/ifreund
+I've been thinking about this more since last night and I think I'm coming around to the view that distros should force release-safe for everything by default and this use-case should be well supported by the zig build system
+
+1713870029
+daurnimator!~daurnimat@vultr.daurnimator.com
+I think it makes sense for the project to declare that unsafe is preferred/totally expected; but for the distro to pick small vs fast vs forcing-safe
+
+1713870089
+ifreund!2940d10f8b@user/ifreund
+would distros really want to build everything in release fast?
+
+1713870116
+daurnimator!~daurnimat@vultr.daurnimator.com
+I doubt it; but I can imagine a disto wanting to force safe
+
+1713870138
+daurnimator!~daurnimat@vultr.daurnimator.com
+and I can imagine distros wanting to always pick small over fast; or fast over small
+
+1713870147
+ifreund!2940d10f8b@user/ifreund
+true
+
+1713870205
+daurnimator!~daurnimat@vultr.daurnimator.com
+I can also imagine a *user* (not a distro) wanting to try out release-fast for some random project they download to see how much of a difference it makes
+
+1713870606
+ifreund!2940d10f8b@user/ifreund
+daurnimator: how do you think the upstream declaring that "unsafe is preferred/totally expected" should be handled by the distro?
+
+1713870732
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: I think the interface should be something like `zig build --optimise-for=small --safe` where: 1. --optimise-for takes either "small" or "fast". 2. `--safe` argument forces safe
+
+1713870766
+daurnimator!~daurnimat@vultr.daurnimator.com
+if `--safe` is not present then the safe vs unsafe access is selected by build.zig (defaulting to safe if not specified)
+
+1713870965
+ifreund!2940d10f8b@user/ifreund
+and intentionally no way to force unsafe?
+
+1713870992
+daurnimator!~daurnimat@vultr.daurnimator.com
+I think so: let people patch the build.zig for that (or upstream projects can make a special build-arg manually)
+
+1713871279
+ifreund!2940d10f8b@user/ifreund
+I agree, there's really no reason for people to run an unsafe build of river for example, it's not a CPU bound program so there's no meaningful performance gain
+
+1713875662
+bblack!~bblack@wikimedia/bblack-WMF
+FWIW, I tend to agree that safe-vs-unsafe should be separately specifiable from fast-vs-small.  And yeah, it would be nice for it to work out that it's easy for distro policy to build all distro-packaged zig stuff in safe-mode.
+
+1713875723
+bblack!~bblack@wikimedia/bblack-WMF
+honestly, I think safe should be the default, too (well, Debug I believe is the current default-default? which is ok as well.  But non-debug should default safe IMHO)
+
+1713875786
+bblack!~bblack@wikimedia/bblack-WMF
+I think from an end-user's POV, I'm not necessarily sure I even buy the earlier argument about developing "comfort" with a software to a level where you choose to run it unsafe.
+
+1713875917
+bblack!~bblack@wikimedia/bblack-WMF
+for me, I'd tend to pick running an important piece of zig-based software in unsafe mode based on the combination of (a) really caring about perf for this case + (b) really sure that there's no terrible (esp security) fallout if this thing fails in unsafe ways, which is kind of context dependent on what you're using it for.
+
+1713875971
+ifreund!2940d10f8b@user/ifreund
+Yeah, I agree
+
+1713875991
+bblack!~bblack@wikimedia/bblack-WMF
+but for a case where the unsafe failures would matter, there's no comfort level to reach I don't think.  No amount of fuzzing or experience with it is going to convince me enough, or if it finally did, by then there'd be a new release to start trusting all over agian.
+
+1713876055
+ifreund!2940d10f8b@user/ifreund
+If there's not a significant performance win that makes my user experience better in practice there's no reason to ever run an unsafe build
+
+1713876301
+Ayo!~Ayo@45.142.232.203
+But what about all my totally-irrelevant-in-practice benchmarks!?
+
+1713876336
+Earnestly!~earnest@user/earnestly
+ifreund: (I agree with daurnimator as well, unsafe should be explicit. Ada is like this, in that it gives you footguns but you have to load it and pull the trigger yourself)
+
+1713876419
+Ayo!~Ayo@45.142.232.203
+More seriously, I see the point, but I also believe there's plenty of cases where unsafe is perfectly fine. The zig compiler itself being a good example: if I compile zig code, there's a veeery good chance I'll also end up running it, a "safe" compiler wouldn't help me a whole lot, I'd rather take one that's a few ms faster :)
+
+1713876428
+Earnestly!~earnest@user/earnestly
+ifreund: But can you sort of explain why zig (or rust, or cmake, etc.) need these build targets at all? I.e. fast, release, debug, etc. Aren't these essentially aliases for a bunch of flags or is there some deeper meaning to them?
+
+1713876518
+Earnestly!~earnest@user/earnestly
+ifreund: E.g. I can imagine a gnumakefile creating variables that set a bunch of flags for a c compiler, fast := -O3 -funroll-loops, but I could also just set CFLAGS=-O3\ -funroll-loops myself and not bother with these synonyms
+
+1713876553
+Earnestly!~earnest@user/earnestly
+Likewise I don't need a "debug" target, I can just add -g (plus or minus additional debugging features on top of it)
+
+1713876560
+ifreund!2940d10f8b@user/ifreund
+Earnestly: in the case of zig, it's not "aliases for a bunch of flags." debug, release safe, release fast, and release small are currently the only 4 compilation options affection optimization level and runtime safety checks
+
+1713876586
+ifreund!2940d10f8b@user/ifreund
+note that "debug" here means "unoptimized," debug info is a separate option
+
+1713876609
+Earnestly!~earnest@user/earnestly
+Yeah that's what I'm curious about though. How does "release safe" translate to build options, or is "release safe" itself an option that is used to tune the compilation directly?
+
+1713876615
+bblack!~bblack@wikimedia/bblack-WMF
+Ayo: yeah, I can imagine e.g. if I was using some zig software to do offline batch processing of some data that takes hours, I'd run it in unsafe mode.  something like that.
+
+1713876624
+ifreund!2940d10f8b@user/ifreund
+Earnestly: realease safe is the build option
+
+1713876632
+Earnestly!~earnest@user/earnestly
+Hm, interesting okay
+
+1713876671
+Earnestly!~earnest@user/earnestly
+ifreund: So you could create a profile (in rust terms) that includes release-safe along with your other options just as you would use -O2 and co.
+
+1713876676
+bblack!~bblack@wikimedia/bblack-WMF
+but from a distro or naive user defaults perspective or whatever, it's safer to assume that safe is the best default choice.
+
+1713876736
+bblack!~bblack@wikimedia/bblack-WMF
+Earnestly: I think zig aims to eventually free itself from LLVM, for at least some cases.  So, it's not really tied to any specific notions from other softwares' flags, like "-O2".
+
+1713876749
+Earnestly!~earnest@user/earnestly
+ifreund: So you really have a matrix of bash -c 'echo {release,debug}-{small,fast}{-safe,}'
+
+1713876756
+bblack!~bblack@wikimedia/bblack-WMF
+these would be the native flags, the ones we're discussing
+
+1713876807
+Earnestly!~earnest@user/earnestly
+bblack: Don't get too caught up on the names of flags, I just just not sure if the build types were synonyms or flags themselves
+
+1713876815
+Earnestly!~earnest@user/earnestly
+or/for
+
+1713876818
+ifreund!2940d10f8b@user/ifreund
+Earnestly: not currently no, currently there are exactly 4 options: debug, release safe, release fast, release small
+
+1713876827
+ifreund!2940d10f8b@user/ifreund
+release fast and small are always unsafe
+
+1713876858
+Earnestly!~earnest@user/earnestly
+ifreund: Oh sorry, what I meant is that's what there could be, as to daurnimator's suggestion of --optimize-for and --safe
+
+1713876887
+bblack!~bblack@wikimedia/bblack-WMF
+technically there's also the option to strip the binary or not, kinda-related.
+
+1713876899
+bblack!~bblack@wikimedia/bblack-WMF
+but it's not a "standard" CLI arg for a stock build.zig
+
+1713876913
+daurnimator!~daurnimat@vultr.daurnimator.com
+bblack: most distros now split the debug symbols into separate objects
+
+1713876917
+Earnestly!~earnest@user/earnestly
+ifreund: So in that sense it might make more sense to split the two into their own options instead of encoding names like RelWithDebinfo
+
+1713876951
+Earnestly!~earnest@user/earnestly
+--optimize-for=fast|small --safe --debug
+
+1713876952
+bblack!~bblack@wikimedia/bblack-WMF
+yeah, I don't know if we have that option yet (separate symbols)
+
+1713876960
+daurnimator!~daurnimat@vultr.daurnimator.com
+bblack: IIRC that's done by taking the output elf and A. stripping debug symbols to make the normal package; B. stripping non-debug symbols to make a debug package
+
+1713876984
+daurnimator!~daurnimat@vultr.daurnimator.com
+bblack: with archlinux the packaging tooling does that automatically unless you opt out
+
+1713877023
+ifreund!2940d10f8b@user/ifreund
+yeah, that's how a lot of distros do it as it's easy to automate
+
+1713877079
+Earnestly!~earnest@user/earnestly
+makepkg specifically uses: -ffile-prefix-map=$srcdir=${DBGSRCDIR:-/usr/src/debug}/${pkgbase}
+
+1713877098
+ifreund!2940d10f8b@user/ifreund
+there are actually other flags that affect the output binary which aren't exposed by zig build by default. For example PIE, frame-pointers, etc
+
+1713877114
+ifreund!2940d10f8b@user/ifreund
+just to make things more complicated :/
+
+1713877116
+Earnestly!~earnest@user/earnestly
+Distros will tend to want PIE
+
+1713877124
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: I thought pie was exposed now?
+
+1713877129
+Earnestly!~earnest@user/earnestly
+And/or static-pie
+
+1713877142
+bblack!~bblack@wikimedia/bblack-WMF
+well, there's different levels of "exposed".
+
+1713877145
+ifreund!2940d10f8b@user/ifreund
+daurnimator: is it? I still have a manually added -Dpie option for river
+
+1713877170
+bblack!~bblack@wikimedia/bblack-WMF
+some of them are options that can be set by build.zig, and so the build.zig author could add a flag to control it
+
+1713877172
+ifreund!2940d10f8b@user/ifreund
+it's exposed in the std.Build API but not ond the `zig build` command line by default
+
+1713877187
+bblack!~bblack@wikimedia/bblack-WMF
+but it's not just available in a standard universal way.
+
+1713877207
+Earnestly!~earnest@user/earnestly
+Hm, why isn't -Dpie enough?
+
+1713877238
+Earnestly!~earnest@user/earnestly
+(That's sort of at the same level it's exposed everywhere else, perhaps zig wants it to be more friendly though)
+
+1713877251
+ifreund!2940d10f8b@user/ifreund
+Earnestly: the current problem is that every zig project needs to add a bit of code to manually expose it, and if they don't add that code distros will need to patch their build.zig
+
+1713877274
+Earnestly!~earnest@user/earnestly
+Oh I see what you mean, okay fair point
+
+1713877282
+bblack!~bblack@wikimedia/bblack-WMF
+probably some norms around that will congeal and eventually end up in the default build.zig template
+
+1713877304
+bblack!~bblack@wikimedia/bblack-WMF
+(around flags for these kinds of things that distros would often want)
+
+1713877315
+daurnimator!~daurnimat@vultr.daurnimator.com
+It's a problem if a new zig compiler comes out with an opt in feature; and we have to wait for *every* project to manually add support
+
+1713877325
+daurnimator!~daurnimat@vultr.daurnimator.com
+because most maintainers won't care
+
+1713877326
+ifreund!2940d10f8b@user/ifreund
+bblack: I think this kind of thing needs to be exposed by a `standardOptions()` function or similar
+
+1713877346
+Earnestly!~earnest@user/earnestly
+Yeah I thought -Dpie was usable everywhere, I looked at your build.zig and I understand now
+
+1713877371
+bblack!~bblack@wikimedia/bblack-WMF
+another related bit is setting all the paths that e.g. old school autoconf exposes with the many installdir fine-tuning variables.
+
+1713877386
+bblack!~bblack@wikimedia/bblack-WMF
+ --sharedstatedir=DIR    modifiable architecture-independent data [PREFIX/com]
+
+1713877386
+bblack!~bblack@wikimedia/bblack-WMF
+  --localstatedir=DIR     modifiable single-machine data [PREFIX/var]
+
+1713877390
+bblack!~bblack@wikimedia/bblack-WMF
+^ all that kind of thing
+
+1713877424
+bblack!~bblack@wikimedia/bblack-WMF
+you can do it in your build.zig as a one-off now, but probably some standard will congeal for how it usually looks for build.zig-driven projects
+
+1713877444
+Earnestly!~earnest@user/earnestly
+bblack: They're specified here https://www.gnu.org/prep/standards/html_node/Directory-Variables.html
+
+1713877470
+bblack!~bblack@wikimedia/bblack-WMF
+for my case, I wanted 3 of those exposed, so I added the options to my build.zig manually, which results in "zig build -h" output including:
+
+1713877473
+bblack!~bblack@wikimedia/bblack-WMF
+  -Drundir=[string]            The system rundir, default '/run', for autokey storage
+
+1713877476
+bblack!~bblack@wikimedia/bblack-WMF
+  -Dsbindir=[string]           Prefix-relative subpath for sbin dir, default 'sbin'
+
+1713877479
+bblack!~bblack@wikimedia/bblack-WMF
+  -Dman8dir=[string]           Prefix-relative subpath for man8 dir, default 'share/man/man8'
+
+1713877485
+Earnestly!~earnest@user/earnestly
+GNU has tried to make them more standard than just for automake btw
+
+1713877493
+ifreund!2940d10f8b@user/ifreund
+bblack: we do have --prefix-lib-dir, --prefix-exe-dir, and --prefix-include-dir fwiw
+
+1713877509
+bblack!~bblack@wikimedia/bblack-WMF
+yeah but not sbin or the other 3,672 path types :)
+
+1713877524
+ifreund!2940d10f8b@user/ifreund
+one issue here is that zig build is supposed to support MacOS and windows too
+
+1713877553
+ifreund!2940d10f8b@user/ifreund
+meson probably handles this in a mostly reasonable way, it support mac and windows right?
+
+1713877560
+Earnestly!~earnest@user/earnestly
+Adding gnu style dir options is easy enough
+
+1713877576
+bblack!~bblack@wikimedia/bblack-WMF
+probably on mac or windows, you have all the same dir options, just a lot of them happen to default to pointing at the same places
+
+1713877678
+Earnestly!~earnest@user/earnestly
+Ooh, gnu man supports .zst
+
+1713877696
+Earnestly!~earnest@user/earnestly
+ACTION recompresses all manuals as zst
+
+1713877778
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: that's what https://github.com/ziglang/zig/issues/7201 was trying to propose
+
+1713877797
+daurnimator!~daurnimat@vultr.daurnimator.com
+oh I see you already thumbs-upped it
+
+1713877824
+ifreund!2940d10f8b@user/ifreund
+yeah :/
+
+1713877919
+bblack!~bblack@wikimedia/bblack-WMF
+FWIW, this is how I did -Dsbindir with current build.zig stuff: https://github.com/blblack/tofurkey/blob/main/build.zig#L24
+
+1713878510
+Earnestly!~earnest@user/earnestly
+zstd (even -9) is larger than gzip -9 for man pages. 3.6M vs. 4-4.6M
+
+1713878721
+lf94!~lf94@user/lf94
+What stops Zig from using alternative compiler backends like GCC? Reason I ask is for SDKs provided by companies.
+
+1713878737
+lf94!~lf94@user/lf94
+There are sooo many C SDKs with their own GCC.
+
+1713878746
+lf94!~lf94@user/lf94
+It'd be really nice if Zig could consume them.
+
+1713878791
+lf94!~lf94@user/lf94
+(If a goal is to replace C, being able to use C SDKs from the past 30 years is part of that path)
+
+1713879158
+Earnestly!~earnest@user/earnestly
+daurnimator: Hm, why wouldn't ncdu benefit from pie?
+
+1713879159
+ifreund!2940d10f8b@user/ifreund
+lf94: Zig has a C backend...
+
+1713879220
+lf94!~lf94@user/lf94
+I know, but for example, it cannot compile ps2sdk
+
+1713879234
+ifreund!2940d10f8b@user/ifreund
+Why not?
+
+1713879242
+lf94!~lf94@user/lf94
+https://github.com/ps2dev/ps2sdk
+
+1713879269
+lf94!~lf94@user/lf94
+From what I understand, when I tried to compile it a couple years ago, is that LLVM cannot target the PS2 architecture.
+
+1713879302
+lf94!~lf94@user/lf94
+ps2sdk is usually compiled with some GCC variant that can.
+
+1713879328
+lf94!~lf94@user/lf94
+Why can't Zig use any arbitrary C backend? It'd be an amazing step toward the goal of replacing C.
+
+1713879344
+ifreund!2940d10f8b@user/ifreund
+lf94: if I understand the use-case correctly, both the ps2sdk and the C output of the zig compiler would be compiled with gcc
+
+1713879352
+ifreund!2940d10f8b@user/ifreund
+I don't see what the problem is
+
+1713879374
+ifreund!2940d10f8b@user/ifreund
+the output of Zig's C backend should be able to be compiled with any reasonable C compiler
+
+1713879383
+lf94!~lf94@user/lf94
+Oh! It sounds like to me then I was trying a difficult path of using the usual LLVM compilation process
+
+1713879384
+bblack!~bblack@wikimedia/bblack-WMF
+I think he means that ps2sdk uses some customized ancient gcc frozen in time, because the modern one doesn't work for it
+
+1713879406
+lf94!~lf94@user/lf94
+Maybe you're right ifreund, and I should try again.
+
+1713879427
+lf94!~lf94@user/lf94
+bblack: I presume the C it outputs is pretty universal (C89 or C99 at most)
+
+1713879433
+bblack!~bblack@wikimedia/bblack-WMF
+probably
+
+1713879447
+ifreund!2940d10f8b@user/ifreund
+Indeed, belive it is a goal for the output of Zig's C backed to be as portable as possible
+
+1713879476
+lf94!~lf94@user/lf94
+That should be perfect then :) Thank you for suggesting this advice!
+
+1713879520
+ifreund!2940d10f8b@user/ifreund
+one thing of note is that the output of zig's C backend is target-specific though (e.g. the bit size of a usize must be comptime know so that's unavoidable)
+
+1713879552
+ifreund!2940d10f8b@user/ifreund
+this could mean that your use-case requires adding a ps2 target to zig which is not supported by the llvm backend, only by the C backend
+
+1713879598
+ifreund!2940d10f8b@user/ifreund
+I'm not familar with ps2 though so it could also be that an existing target for whatever CPU + feature set that is exsists
+
+1713879887
+bblack!~bblack@wikimedia/bblack-WMF
+probably mips32 is close
+
+1713880038
+lf94!~lf94@user/lf94
+I got really, really close using the usual LLVM compilation process
+
+1713880052
+lf94!~lf94@user/lf94
+But I gave up. That was 2 years ago, so I can't say exactly what the issue was
+
+1713887642
+Ayo!~Ayo@45.142.232.203
+Earnestly: You got me curious how common zstd-compressed manpages are in distro packages. The answer is, none that I have indexed. https://p.blicky.net/29eGdA4TLnaS
+
+1713888089
+Earnestly!~earnest@user/earnestly
+I wasn't even aware it worked until randomly attempting it, but it seems for good reason
+
+1713909476
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, daurnimator: I reopened the issue for reconsideration and added a comment\
+
