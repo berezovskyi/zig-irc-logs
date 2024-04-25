@@ -1,0 +1,152 @@
+1713935112
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: thanks!
+
+1713935114
+daurnimator!~daurnimat@vultr.daurnimator.com
+>	Got a test failure on zig 0.12: http://sprunge.us/pnqGq5  "link_test_cases.glibc_compat" "run native-linux-gnu.2.38 failure"
+
+1713935119
+daurnimator!~daurnimat@vultr.daurnimator.com
+^ did anyone get a chance to look at that?
+
+1713935127
+daurnimator!~daurnimat@vultr.daurnimator.com
+or has it been reported already?
+
+1713974262
+shankar!~shankar@user/shankar
+var fancy_array = init: {
+
+1713974263
+shankar!~shankar@user/shankar
+    var initial_value: [10]Point = undefined;
+
+1713974263
+shankar!~shankar@user/shankar
+    for (&initial_value, 0..) |*pt, i| {
+
+1713974264
+shankar!~shankar@user/shankar
+        pt.* = Point{
+
+1713974264
+shankar!~shankar@user/shankar
+            .x = @intCast(i),
+
+1713974265
+shankar!~shankar@user/shankar
+            .y = @intCast(i * 2),
+
+1713974265
+shankar!~shankar@user/shankar
+        };
+
+1713974266
+shankar!~shankar@user/shankar
+    }
+
+1713974266
+shankar!~shankar@user/shankar
+    break :init initial_value;
+
+1713974267
+shankar!~shankar@user/shankar
+};
+
+1713974305
+shankar!~shankar@user/shankar
+can someone explain why pass the pointer to array to for loop
+
+1713974307
+shankar!~shankar@user/shankar
+please
+
+1713974425
+shankar!~shankar@user/shankar
+and will that pointer to array be a many item pointer or slice ? and how does the value of `pt` be a single item pointer ?
+
+1713974448
+shankar!~shankar@user/shankar
+please help me understand
+
+1713974949
+sp2!uid197664@user/meow/sp2
+if you pass an array to `for` by value, it'll copy the items it's iterating through. but if it's given a pointer to an array, it can give out pointers to each individual item instead, which (if it's not a const pointer) lets you modify the original array
+
+1713975095
+shankar!~shankar@user/shankar
+sp2 so passing the pointer to array will that make it a many item pointer ?
+
+1713975103
+sp2!uid197664@user/meow/sp2
+if `initial_value` is of type `[10]Point`, a pointer to it will be of type `*[10]Point` (a pointer to a statically-sized array) which implicitly coerces to `[]Point` (a slice, which is a pointer to a runtime-sized array)
+
+1713975134
+sp2!uid197664@user/meow/sp2
+although the in-between pointer-to-statically-sized-array can be considered an implementation detail in a lot of scenarios
+
+1713975146
+shankar!~shankar@user/shankar
+oh got it. thanks
+
+1713975208
+shankar!~shankar@user/shankar
+but how does the for loop over a slice produce a single item pointer ?
+
+1713975292
+shankar!~shankar@user/shankar
+is pointer arthmetic being done to the ptr in slice ?
+
+1713975308
+sp2!uid197664@user/meow/sp2
+yeah, the compiler does it for you
+
+1713975311
+shankar!~shankar@user/shankar
+i mean slice.ptr
+
+1713975322
+shankar!~shankar@user/shankar
+got it
+
+1713975327
+shankar!~shankar@user/shankar
+ thanks a lot
+
+1713975345
+shankar!~shankar@user/shankar
+it was difficult to wrap my head around it
+
+1713975381
+sp2!uid197664@user/meow/sp2
+a name in the captures list compiles to something like `const pt = initial_value[_index];` where `_index` is the inaccessible iterator index the compiler generates
+
+1713975482
+sp2!uid197664@user/meow/sp2
+if the capture has a `*` before it, it instead compiles to something like `const pt = &initial_value[_index];` (and although I don't know off the top of my head, I'm pretty sure it only lets you do this if you passed a pointer in the initial `for`)
+
+1713975577
+sp2!uid197664@user/meow/sp2
+a many item pointer (e.g. `[*]Point`) doesn't store a size, so it can't be put in a for loop without some other iterable setting the for loop's iteration count (like a range)
+
+1713975642
+shankar!~shankar@user/shankar
+i finally understood how it works . thank you for explaining patiently
+
+1713975685
+sp2!uid197664@user/meow/sp2
+you're welcome, and feel free to ask more questions! :)
+
+1713987423
+j`ey!~joey@user/jey/x-2681904
+when Zig is compiling C/C++ does it set the usual CLANG version macros?
+
+1713987602
+sp2!uid197664@user/meow/sp2
+seems like it -- `zig cc -dM -E -x c <() |& grep clang`
+
+1713987685
+j`ey!~joey@user/jey/x-2681904
+thanks, just realised that godbolt has zig cc for C files
+
