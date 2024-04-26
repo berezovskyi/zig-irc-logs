@@ -1,0 +1,232 @@
+1714014738
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+so I was thinking before that it would be cool to have async/await structure bultin inside Zig, but now leaning towards opinion that maybe Zig should be free of it
+
+1714014758
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+i wonder what are general opinions are now regarding this issue
+
+1714014770
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+its good to keep language as basic as possible
+
+1714014781
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+at same time, less stuff to work on before achieving 1.0 milestone
+
+1714040370
+j`ey!~joey@user/jey/x-2681904
+what exactly does std.Build.dependency() do, is it just a symbolic thing, or does it actually "look" for a library
+
+1714040438
+j`ey!~joey@user/jey/x-2681904
+Found this useful site https://ziglang.org/documentation/master/std/#std.Build.dependency
+
+1714040570
+j`ey!~joey@user/jey/x-2681904
+I see, the .zon files will download the source and put it in some hash for you, and then .dependency("foo") can grab that
+
+1714040838
+j`ey!~joey@user/jey/x-2681904
+https://zig.news/edyu/zig-package-manager-wtf-is-zon-558e was useful in understanding that too
+
+1714048597
+j`ey!~joey@user/jey/x-2681904
+any way to force a rebuild using zig build?
+
+1714048631
+ifreund!2940d10f8b@user/ifreund
+j`ey: this should never be necessary if the build system APi is used correctly
+
+1714048644
+ifreund!2940d10f8b@user/ifreund
+the answer is to delete zig-cache though
+
+1714048665
+j`ey!~joey@user/jey/x-2681904
+yeah.. I guess I should try do that (= use the API better)
+
+1714048680
+j`ey!~joey@user/jey/x-2681904
+I was trying to edit something in the global zig-cache and rebuild.. :/
+
+1714048752
+j`ey!~joey@user/jey/x-2681904
+(bu clearly I should figure out how to pass a path to dependency())
+
+1714048781
+ifreund!2940d10f8b@user/ifreund
+j`ey: you mean like use a local copy of a dependency rather than fetching the tarball from a url?
+
+1714048794
+j`ey!~joey@user/jey/x-2681904
+yeah
+
+1714048799
+ifreund!2940d10f8b@user/ifreund
+you can use a file:// URL in the build.zig.zon
+
+1714048819
+j`ey!~joey@user/jey/x-2681904
+ can it be to a directory?
+
+1714048825
+ifreund!2940d10f8b@user/ifreund
+yeah
+
+1714048830
+j`ey!~joey@user/jey/x-2681904
+awesome, thanks
+
+1714048836
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1714048859
+j`ey!~joey@user/jey/x-2681904
+trying to debug why a C++ dependcy has issues compiling with zig-cc
+
+1714049186
+j`ey!~joey@user/jey/x-2681904
+build.zig.zon:8:20: error: unknown file type: '/path/to/dep/'
+
+1714049295
+j`ey!~joey@user/jey/x-2681904
+relatively new build I think, 0.12.0-dev.3405+31791ae15
+
+1714049371
+ifreund!2940d10f8b@user/ifreund
+j`ey: maybe get rid of the trailing slash?
+
+1714049405
+j`ey!~joey@user/jey/x-2681904
+same error
+
+1714049443
+j`ey!~joey@user/jey/x-2681904
+url = "file:///path/to/dep", like that?
+
+1714049575
+j`ey!~joey@user/jey/x-2681904
+ah, there is a path option, I can try that instead of url
+
+1714049653
+j`ey!~joey@user/jey/x-2681904
+that works! (path, and removing the hash)
+
+1714049839
+ifreund!2940d10f8b@user/ifreund
+nice, must've changed since I last tried it :)
+
+1714049868
+j`ey!~joey@user/jey/x-2681904
+and I can repro my error!
+
+1714052821
+j`ey!~joey@user/jey/x-2681904
+can I set mcpu with std.Build? or add some cpu features?
+
+1714053008
+j`ey!~joey@user/jey/x-2681904
+I think that's what resolveTargetQuery() is for, but have to figure out how to use it
+
+1714054247
+ifreund!2940d10f8b@user/ifreund
+j`ey: standardTargetOptions() exposes a -Dcpu option
+
+1714054276
+j`ey!~joey@user/jey/x-2681904
+I want to set it programatically
+
+1714054281
+ifreund!2940d10f8b@user/ifreund
+cpu features are part of the target you pass to addExecutable() or whatever
+
+1714054308
+j`ey!~joey@user/jey/x-2681904
+I'm trying: const target = b.standardTargetOptions(.{ .default_target = .{ .cpu_model = .{ .explicit = &std.Target... 
+
+1714054394
+ifreund!2940d10f8b@user/ifreund
+you can use b.parseTargetQuery() to construct a Target
+
+1714054407
+ifreund!2940d10f8b@user/ifreund
+see the implementation of standardTargetOptions() for an example
+
+1714054483
+ifreund!2940d10f8b@user/ifreund
+I think the way you are attempting should work as well though it will probably be more verbose
+
+1714054530
+j`ey!~joey@user/jey/x-2681904
+annoyingly I still get mcpu=baseline in my output
+
+1714055658
+j`ey!~joey@user/jey/x-2681904
+I have: const target = b.standardTargetOptions(.{ .default_target = .{ .cpu_features_add = std.Target.aarch64.featureSet(&.{.sve}) } });
+
+1714055715
+j`ey!~joey@user/jey/x-2681904
+but I guess that adding -target aarch64.. to cross compile makes the default_target get overridden, because when I print target I have: .cpu_features_add = Target.Cpu.Feature.Set{ .ints = { ... } }
+
+1714056423
+j`ey!~joey@user/jey/x-2681904
+https://ziglang.org/documentation/master/std/#std.Build.standardTargetOptionsQueryOnly I feel like I want this to pass more of the args onto parseTargetQuery
+
+1714056640
+bblack!~bblack@wikimedia/bblack-WMF
+re: force rebuild earlier, it might be nice just to have a standard flag for "ignore existing cache entries for this execution" or something.  Sometimes you're just puzzling about something and want to be /sure/ that a cache entry wasn't the cause, and it's friendlier than "wipe the cache" (esp in that there's also a global cache, and it's not been clear to me as a user yet when/where that's used as well)
+
+1714056681
+j`ey!~joey@user/jey/x-2681904
+(ZIG_GLOBAL_CACHE_DIR is nice to set if you want a new cache)
+
+1714056793
+j`ey!~joey@user/jey/x-2681904
+(and _LOCAL_)
+
+1714081413
+bubuche87!~bubuche87@169.150.218.82
+Hello.
+
+1714081449
+bubuche87!~bubuche87@169.150.218.82
+I have a kinda weird question. Is it possible, in zig, to force the calling convention of a function.
+
+1714081451
+bubuche87!~bubuche87@169.150.218.82
+?
+
+1714081580
+ifreund!2940d10f8b@user/ifreund
+bubuche87: search for callconv in the docs
+
+1714081598
+ifreund!2940d10f8b@user/ifreund
+(yes)
+
+1714081758
+bubuche87!~bubuche87@169.150.218.82
+Ah, thanks :)
+
+1714081993
+andrewrk!~andrewrk@mail.ziglang.org
+and you can build your own syscalls with inline asm
+
+1714082004
+andrewrk!~andrewrk@mail.ziglang.org
+oops, I mean you can build your own calling conventions
+
+1714082012
+andrewrk!~andrewrk@mail.ziglang.org
+freudian slip :)
+
+1714082073
+bubuche87!~bubuche87@169.150.218.82
+I am looking for solution to allow a custom scripting language to interact with compiled function. Something else than the way Lua does it.
+
+1714082968
+andrewrk!~andrewrk@mail.ziglang.org
+there are a lot of ways to do that
+
