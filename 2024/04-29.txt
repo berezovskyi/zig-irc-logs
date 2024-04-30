@@ -1,0 +1,568 @@
+1714352303
+daurnimator!~daurnimat@vultr.daurnimator.com
+Anyone want to help me figure out this zig 0.12.0 failing test?
+
+1714352370
+freshcoffee!~fresh@user/freshcoffee
+if it involves windows, then no!
+
+1714352514
+daurnimator!~daurnimat@vultr.daurnimator.com
+http://sprunge.us/pnqGq5
+
+1714353190
+freshcoffee!~fresh@user/freshcoffee
+which distro/version ?
+
+1714353638
+daurnimator!~daurnimat@vultr.daurnimator.com
+freshcoffee: archlinux
+
+1714353647
+freshcoffee!~fresh@user/freshcoffee
+latest with 2.39 ?
+
+1714353812
+daurnimator!~daurnimat@vultr.daurnimator.com
+freshcoffee: yep
+
+1714353834
+freshcoffee!~fresh@user/freshcoffee
+something is just weird. the test passes for me. but .c code, I get == 14. wow.
+
+1714354434
+daurnimator!~daurnimat@vultr.daurnimator.com
+I haven't written any zig since 0.11... this is my first real time trying to work with 0.12 code. I'm really disliking the destructing assignment
+
+1714354470
+freshcoffee!~fresh@user/freshcoffee
+I feel like I'm getting undeterministic behavior on the test
+
+1714354481
+freshcoffee!~fresh@user/freshcoffee
+pretty sure the answer is 14.
+
+1714354486
+freshcoffee!~fresh@user/freshcoffee
+so the test should always fail
+
+1714354989
+daurnimator!~daurnimat@vultr.daurnimator.com
+From man page for strlcpy: > The strlcpy() and strlcat() functions return the total length of the string  they  tried  to  create
+
+1714355046
+daurnimator!~daurnimat@vultr.daurnimator.com
+It's not clear if that includes the nul byte :/
+
+1714355084
+freshcoffee!~fresh@user/freshcoffee
+i read it as length of string strlen(s) but yes they should be explicit
+
+1714355118
+freshcoffee!~fresh@user/freshcoffee
+fyi, .c code returns 14. and now I'm getting 14 on .zig code. and I am _positive_ the tests passed the first few times I tried.
+
+1714355144
+daurnimator!~daurnimat@vultr.daurnimator.com
+https://github.com/bminor/glibc/blob/b62928f9070c6f3c5cc43a4cb89b4bfb950d7406/string/strlcpy.c#L43C10-L43C20 this looks like it should always return 14
+
+1714355167
+freshcoffee!~fresh@user/freshcoffee
+just rebuilding a fresh master to see what this dang test does.
+
+1714355197
+freshcoffee!~fresh@user/freshcoffee
+like how is this passing on CI? 
+
+1714355224
+freshcoffee!~fresh@user/freshcoffee
+oh maybe CI doesn't have 2.38
+
+1714355233
+daurnimator!~daurnimat@vultr.daurnimator.com
+CI is probably not running >=2.38
+
+1714355345
+daurnimator!~daurnimat@vultr.daurnimator.com
+I left a comment: https://github.com/ziglang/zig/pull/17702/files#r1582479339
+
+1714355349
+daurnimator!~daurnimat@vultr.daurnimator.com
+I guess I'll have to patch it out?
+
+1714355412
+daurnimator!~daurnimat@vultr.daurnimator.com
+I'll send a PR
+
+1714355495
+freshcoffee!~fresh@user/freshcoffee
+yeah I am positive it should be 14.
+
+1714355521
+freshcoffee!~fresh@user/freshcoffee
+I'm going to pretend I don't remember the test passing for me on archlinux w/ 2.39
+
+1714355595
+daurnimator!~daurnimat@vultr.daurnimator.com
+https://github.com/ziglang/zig/pull/19800
+
+1714356929
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+ok so are async/await permanently dropped from Zig or still planned?
+
+1714356937
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+(missed answer before if it was given)
+
+1714357067
+daurnimator!~daurnimat@vultr.daurnimator.com
+R2COM: https://ziglang.org/download/0.12.0/release-notes.html#AsyncAwait-Feature-Status
+
+1714357226
+daurnimator!~daurnimat@vultr.daurnimator.com
+okay, next zig 0.12.0 packaging thing to fix: zig W: ELF file ('usr/bin/zig') lacks PIE.
+
+1714357288
+daurnimator!~daurnimat@vultr.daurnimator.com
+looks like there should be a ZIG_PIE to cmake
+
+1714357802
+freshcoffee!~fresh@user/freshcoffee
+there is a pie option
+
+1714357839
+freshcoffee!~fresh@user/freshcoffee
+-DZIG_PIE=ON
+
+1714357875
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+im thinking that its better to just drop async/await from the language and really keeping it basic
+
+1714357895
+freshcoffee!~fresh@user/freshcoffee
+ha. I added that ZIG_PIE almost exactly 365 days ago
+
+1714357909
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+thanks for link tho
+
+1714360498
+daurnimator!~daurnimat@vultr.daurnimator.com
+When compiling zig is there a way to set the linux/glibc version? `ZIG_TARGET_TRIPLE=native-linux.5.15-gnu.2.38` breaks some llvm detection stuff in cmake
+
+1714360579
+daurnimator!~daurnimat@vultr.daurnimator.com
+or maybe I just need ZIG_USE_LLVM_CONFIG?
+
+1714361561
+daurnimator!~daurnimat@vultr.daurnimator.com
+yep I think so
+
+1714368089
+daurnimator!~daurnimat@vultr.daurnimator.com
+and updated in arch
+
+1714368096
+daurnimator!~daurnimat@vultr.daurnimator.com
+now to figure out how to make use of --system ....
+
+1714368108
+daurnimator!~daurnimat@vultr.daurnimator.com
+is it documented that the system directory is the same as `p/` in global cache?
+
+1714368292
+daurnimator!~daurnimat@vultr.daurnimator.com
+We do already have `zig fetch` to add it to the global cache. So I think sometimes I just want to disable the ability for `zig build` to fetch
+
+1714368338
+daurnimator!~daurnimat@vultr.daurnimator.com
+i.e. should I: `mkdir dummypkgs; zig build --system dummypkgs` or should I: `zig build --system zig-global-cache/p`
+
+1714382120
+ifreund!2940d10f8b@user/ifreund
+daurnimator: I think something like /usr/share/zig/packages/ makes most sense
+
+1714382158
+ifreund!2940d10f8b@user/ifreund
+also, you'd probably be interested in this: https://github.com/chimera-linux/cports/pull/1395
+
+1714382488
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: I wasn't planning on packaging individual zig deps yet
+
+1714382509
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: I was just looking for a way to download all deps in one packaging step; then use that as a sole source for the `zig build` call
+
+1714382552
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: for now I ended up with https://gitlab.archlinux.org/archlinux/packaging/packages/zls/-/blob/0e1aa3cfb57a78e341528a521f2f8da7e9066aa7/PKGBUILD#L23-33
+
+1714382608
+ifreund!2940d10f8b@user/ifreund
+ah, I see
+
+1714382805
+daurnimator!~daurnimat@vultr.daurnimator.com
+to go further down that route I probably need to develop tooling for it
+
+1714382834
+daurnimator!~daurnimat@vultr.daurnimator.com
+I briefly considered hacking something together now; but the lack of .zon parsing in anything except zig itself made a bit of a bootstrapping problem
+
+1714383019
+ifreund!2940d10f8b@user/ifreund
+daurnimator: the basic cbuild tooling I wrote doesn't require any .zon parsing, I use zig fetch to convert zig packages to system packages
+
+1714383065
+daurnimator!~daurnimat@vultr.daurnimator.com
+reading now. your point number 2. is something I hit :)
+
+1714383100
+daurnimator!~daurnimat@vultr.daurnimator.com
+I don't understand the issue you say in 3.
+
+1714383121
+ifreund!2940d10f8b@user/ifreund
+2 and 3 were mostly me misunderstanding how to use zig fetch and what it did
+
+1714383176
+ifreund!2940d10f8b@user/ifreund
+this is the tooling to package zig packages: https://github.com/chimera-linux/cports/blob/dbdfb5be9daf5cdfe1cf0351de1cf4d81ae10205/src/cbuild/util/zig_package.py
+
+1714383177
+daurnimator!~daurnimat@vultr.daurnimator.com
+I think a `zig fetch --hash-only` or similar would be useful
+
+1714383247
+daurnimator!~daurnimat@vultr.daurnimator.com
+even if just as a tool to use in a downstream linting step
+
+1714383290
+ifreund!2940d10f8b@user/ifreund
+I think making it possible for distros to bump a zig package without needing to modify the build.zig.zon for all rdeps would likely require changes that obviate the need for --hash-only or similar
+
+1714383389
+daurnimator!~daurnimat@vultr.daurnimator.com
+I wouldn't expect needing to modify the build.zig.zon... just some way to do the same as what `lazy = true` does
+
+1714383439
+ifreund!2940d10f8b@user/ifreund
+what is `lazy = true`?
+
+1714383474
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: in build.zig.zon can't you add a `lazy = true` that makes the hashes more.... flexible?
+
+1714383548
+ifreund!2940d10f8b@user/ifreund
+daurnimator: as I understand, if the global_cache/p/<hash>/ exists the contents of that directory are not verified against the hash
+
+1714383587
+ifreund!2940d10f8b@user/ifreund
+the issue I see is that two or more zig projects may depend on the different versions of a zig package with different hashes
+
+1714383601
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: but also what I was vaguely thinking was that, if in the distro if `myziglib` was a symlink to `122abcdef123456789.....` and then in the `prepare()` step it set up a symlink `ln -s /usr/share/zig/packages/myziglib $(zig fetch --hash-only myziglib)` then you could substitute one version for another
+
+1714383645
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: and that's what goes against general disto policies (for good reasons!): so we can either package it like a vendored dep, which is *not recommend* but what I do now; or try and settle on one uniform version
+
+1714383719
+ifreund!2940d10f8b@user/ifreund
+yeah, I've considered exactly that symlink layout before... the problem is not getting the hash of the zig package being downloaded but rather getting the hashes expected by the consumer
+
+1714383776
+ifreund!2940d10f8b@user/ifreund
+or rather, the N different hashes expected by N different consumers depending on N versions of the same package
+
+1714383804
+ifreund!2940d10f8b@user/ifreund
+which should all become symlinks to the same /usr/share/zig/packages/myziglib directory
+
+1714383833
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: because they're compile-time consumer dependencies, you can put the logic in the consumer's `prepare()` step
+
+1714383867
+ifreund!2940d10f8b@user/ifreund
+ah, yeah good point
+
+1714383884
+ifreund!2940d10f8b@user/ifreund
+the symlinks don't need to be acutually included in any package
+
+1714383962
+ifreund!2940d10f8b@user/ifreund
+so we'd just need a way to parse the consumer's build.zig.zon and correlate those hashes to /usr/share/zig/packages/ directories
+
+1714384022
+daurnimator!~daurnimat@vultr.daurnimator.com
+I was suggesting that the library itself would create the /usr/share/zig/packages/myziglib => /usr/share/zig/p/122abcdef123456789... symlink. But the consumer would provide the fake hash => /usr/share/zig/packages/myziglib symlink ephemerally
+
+1714384057
+nikita!~nikita@netbsd/developer/nikita
+is that packages directory relative to the zig installation folder, where lib, bin etc are by default?
+
+1714384102
+daurnimator!~daurnimat@vultr.daurnimator.com
+nikita: I guess? but the idea would be that there's a system zig package store
+
+1714384195
+ifreund!2940d10f8b@user/ifreund
+daurnimator: why would the library need to provide that symlink?
+
+1714384227
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: other than an install-hook that creates the symlink; what else would create it? you need a lookup in a unified namespace
+
+1714384261
+daurnimator!~daurnimat@vultr.daurnimator.com
+by putting it in the library that provides the package, you also get conflict detection "for free" as the package manager would refuse to install 2 packages that both make a claim to /usr/share/zig/packages/myziglib
+
+1714384317
+ifreund!2940d10f8b@user/ifreund
+daurnimator: you don't need that symlink for anything though? All distro package consumers would access the package through their ephemeral fake hash symlinks based on the consumer's build.zig.zon
+
+1714384339
+daurnimator!~daurnimat@vultr.daurnimator.com
+ifreund: how do you know what to redirect the consumer to though?
+
+1714384368
+ifreund!2940d10f8b@user/ifreund
+You would redirect it to /usr/share/zig/packages/myziglib
+
+1714384376
+daurnimator!~daurnimat@vultr.daurnimator.com
+yes
+
+1714384396
+daurnimator!~daurnimat@vultr.daurnimator.com
+and I was then saying that /usr/share/zig/packages/myziglib would redirect to /usr/share/zig/p/123456. though I guess that would be optional
+
+1714384416
+daurnimator!~daurnimat@vultr.daurnimator.com
+I was thinking we'd want a system-level global cache that can be used directly when desired
+
+1714384465
+ifreund!2940d10f8b@user/ifreund
+I see, I think that's likely not very useful in practice without the fake hash infra for the consumer
+
+1714384492
+ifreund!2940d10f8b@user/ifreund
+zig builds that are not done for system packaging should not use the system zig packages IMO
+
+1714384519
+daurnimator!~daurnimat@vultr.daurnimator.com
+but if they just so happen to use the same package hash as the system library; why *not* let them use it
+
+1714384643
+ifreund!2940d10f8b@user/ifreund
+fair, I just think the UX of figuring out which system package to install, installing it, and setting --system properly is always going to be worse than just not setting --system for users that are not building system packages
+
+1714384663
+ifreund!2940d10f8b@user/ifreund
+so it doesn't seem very worthwhile to me, but it certainly wouldn't hurt or break anything
+
+1714384750
+nikita!~nikita@netbsd/developer/nikita
+not having catched up with the way things are handled, so far I'd try to handle it the way we do with go and rust packages, download the dependencies ahead of build-time to the global dist folder, copy to build location, adjust checksums in files where necessary, build, and not keep around what's not required. unless some .zig packages are required by bigger packages to be source available.
+
+1714384885
+ifreund!2940d10f8b@user/ifreund
+this is about individually packaging zig packages as system packages
+
+1714384961
+nikita!~nikita@netbsd/developer/nikita
+this is what I'd do if for example ncdu2 had dependencies it would pull in.
+
+1714385922
+daurnimator!~daurnimat@vultr.daurnimator.com
+nikita: as a distro one of the things we hate about rust and go is it's really hard to package dependencies as system packages
+
+1714387052
+nikita!~nikita@netbsd/developer/nikita
+we decided to not package thousands of go packages individually, but we can have different opinions about how to approach that.
+
+1714397725
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hello :) I’m new to Zig and playing around and was wondering; since there is no RAII support in Zig, is there something planned along the lines of linear types? (i.e. something that forces to use a value, so that we could force deallocating etc.)?
+
+1714399141
+tau-dev!~tau-dev@user/tau-dev
+hadronized Linear types are currently not considered for the language: https://github.com/ziglang/zig/issues/782#issuecomment-404989816
+
+1714399258
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thanks for sharing the thread; I’ll look around for alternatives
+
+1714399320
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ATS has a super general answer to that that I adore — proofs; when you allocate for instance, if the allocation was okay, it returns the poniter and a compile-time proof that needs to be consumed
+
+1714399338
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s so elegant and yet no language really explored using proofs like that
+
+1714399524
+tau-dev!~tau-dev@user/tau-dev
+ATS is neat, but Zig's philosophy is completely different.
+
+1714399563
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I wouldn’t say ATS is neat, it’s a hell of a mess, but it has very interesting ideas
+
+1714399571
+hadronized!~phaazon@2001:41d0:a:fe76::1
+> Zig's philosophy is completely different.
+
+1714399604
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, sure, I was just wondering whether such a usecase was thought of, but given the take of andrew (in the GH thread you linked), clearly that’s not being considered
+
+1714404464
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, is there a discussion open somewhere explaining why the language has and and or but not not (and instead uses !)?
+
+1714404722
+ifreund!2940d10f8b@user/ifreund
+hadronized: keywords branch, operators like ! don't
+
+1714404758
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what do you mean they branch?
+
+1714404760
+hadronized!~phaazon@2001:41d0:a:fe76::1
+oh
+
+1714404774
+hadronized!~phaazon@2001:41d0:a:fe76::1
+interesting
+
+1714404782
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thank you :)
+
+1714404790
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1714404811
+hadronized!~phaazon@2001:41d0:a:fe76::1
+just one final question and I’ll stop spamming stupid question… why the @… syntax and not keywords?
+
+1714404831
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for instance, @Vector3 sounds super weird to me… why not a simple type -> type comptime function?
+
+1714405428
+ifreund!2940d10f8b@user/ifreund
+hadronized: builtins may have special  behavior that cant be expressed by a normal function 
+
+1714405498
+ifreund!2940d10f8b@user/ifreund
+in the case of @Vector I believe the reasoning for it being a built is so that there can be a reasonable canonical way to print vector types in error messages and whatnot
+
+1714405572
+ifreund!2940d10f8b@user/ifreund
+see also how the return type of @intCast is determined
+
+1714422817
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, Zig doesn’t do lifetime / scope analysis?
+
+1714422845
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. I just tried to return a pointer to a stack-allocated variable in the frame of a function, and that’s perfectly fine for the compiler (it compiles into a UB basically)
+
+1714423667
+andrewrk!~andrewrk@mail.ziglang.org
+hadronized: it's legal to have a function whose entire body is just `unreachable;` if you don't call it
+
+1714423913
+hadronized!~phaazon@2001:41d0:a:fe76::1
+andrewrk: sure, the same stands in Rust with unreachable!(), panic!(), etc. but for unintended mistakes like returning a local address, that sounds a bit more concerning to me, no?
+
+1714423939
+andrewrk!~andrewrk@mail.ziglang.org
+it's only a mistake if you try to use the data
+
+1714423995
+andrewrk!~andrewrk@mail.ziglang.org
+if you want a challenge, try coming up with a way to specify your desired behavior into a language specification
+
+1714424005
+andrewrk!~andrewrk@mail.ziglang.org
+it starts to break down very quickly 
+
+1714424097
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m not sure to follow; I’m just use to Rust’s lifetimes which can track that kind of error (and statically prevent them)
+
+1714424130
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and I don’t see the value of making something you don’t use the data from
+
+1714425883
+andrewrk!~andrewrk@mail.ziglang.org
+I'm saying that your idea isn't actually coherent when scrutinized
+
+1714425900
+andrewrk!~andrewrk@mail.ziglang.org
+and coherency is a requirement for a programming language
+
+1714425960
+andrewrk!~andrewrk@mail.ziglang.org
+rust invokes undefined behavior if you so much as sneeze on a pointer... it's too brittle
+
+1714428757
+hadronized!~phaazon@2001:41d0:a:fe76::1
+andrewrk: I see and understand your point; mine is more in the sense that stating that “it’s only a mistake if you try to use it” advances the debate as much as stating that “having a gun pointed to your head is not safe as long as you don’t pull the trigger”
+
+1714428794
+andrewrk!~andrewrk@mail.ziglang.org
+I don't understand the framing as a debate
+
+1714428819
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and here, I have an example where I do use the function, and I just get a "s" printed out on my screen
+
+1714428880
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what I’m saying is that, I don’t understand your position regarding that very problem
+
+1714428890
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(i.e. catching at compile time that kind of error class)
+
+1714428923
+hadronized!~phaazon@2001:41d0:a:fe76::1
+you replied by « it’s fine if you don’t use the function », which is a pretty weird argument to me, because most of the runtime crashes people will have are due to the fact they will actually use the result of those functions
+
+1714428969
+hadronized!~phaazon@2001:41d0:a:fe76::1
+s/is not safe/is safe (couple of lines above)
+
+1714429013
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it was just a question about static analysis; I wasn’t talking about disallowing body having unreachable() in them
+
+1714432300
+andrewrk!~andrewrk@mail.ziglang.org
+I'll take you seriously if you have a concrete proposal, but you don't really have one
+
+1714432329
+andrewrk!~andrewrk@mail.ziglang.org
+note that dereferencing an invalid pointer is equivalent to `unreachable;`
+
+1714433284
+companion_cube!~simon@user/meow/companion-cube:68572
+hadronized: I think the idea is that, to bring rust's compile time safety, you'd have to add a lot of complexity to zig, and it still wouldn't jive well with allocators 
+
+1714433340
+companion_cube!~simon@user/meow/companion-cube:68572
+Zig tries to remain reasonably simple and flexible and there's no clear way of having that *and* rust guarantees 
+
