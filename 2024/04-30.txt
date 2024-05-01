@@ -1,0 +1,140 @@
+1714439553
+gcarlos8!~gcarlos@37.218.246.133
+what's the diff between pointer to N items *[N]T and slice []T? Both seems to be the exact same information and pointer to N items coerces to slice.
+
+1714440423
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+th
+
+1714440436
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+s/th//
+
+1714440531
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+gcarlos8: the pointer type needs to be defined at compile time to have the bounds checking (ie .len etc) iirc and going by https://ziglang.org/documentation/master/#Pointers and https://ziglang.org/documentation/master/#Slices
+
+1714440968
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+gcarlos8: https://zig.guide/language-basics/slices
+
+1714440987
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+"When these n and m values are both known at compile time, slicing will actually produce a pointer to an array. This is not an issue as a pointer to an array i.e. *[N]T will coerce to a []T."
+
+1714443560
+gcarlos8!~gcarlos@37.218.246.133
+so the only difference is that slice is when n and m are not known at compile time? 
+
+1714443572
+gcarlos8!~gcarlos@37.218.246.133
+I think I got the idea
+
+1714443661
+gcarlos8!~gcarlos@37.218.246.133
+for example, I can set array elements with pointer to N items like that: arr[1..3].* = [_]u8{'a', 'b'} but not with slices, as derreferencing it has no meaning
+
+1714443753
+andrewrk!~andrewrk@mail.ziglang.org
+that's correct, the key difference is the length being known at runtime vs compile time
+
+1714444076
+gcarlos8!~gcarlos@37.218.246.133
+thank you!
+
+1714450216
+sudw1n!~sudw1n@user/sudw1n
+Hi. Could someone help me figure out how to add options using -D flag in zig build from the build.zig file and use it in my program? Here's what I've tried: https://godbolt.org/z/M1YnfdW7a. But I can't @import("debug_options") in my source files.
+
+1714451003
+daurnimator!~daurnimat@vultr.daurnimator.com
+sudw1n: rather than `debug_options.addOptionPath("debug_options", exe.getEmittedBin());` I think you want `exe.addOptions("debug_options", debug_options)`
+
+1714491941
+zellyn!~zellyn@12.189.243.29
+Zig noob here. My curiosity about Zig vs Odin led me to the (surprising, to an outsider) revelation that zig doesn't (yet) support adding data to errors.
+
+1714491941
+zellyn!~zellyn@12.189.243.29
+I have a modest proposal: I believe the "parser error" use-case often brought up in the discussions is misleading, because it's a very good use-case for a custom enum.
+
+1714491942
+zellyn!~zellyn@12.189.243.29
+I think a better example would be a complex GUI app like a 3D studio or a DAW. Imagine getting a file access error for a particular texture while rendering a complex scene, and not knowing which file to check. Or getting an error writing to a MIDI interface and not knowing which one.
+
+1714491942
+zellyn!~zellyn@12.189.243.29
+You could argue that both of these cases lead to creating and using some kind of PresentableError enum, which is fair. But it seems a steep price to pay to either (a) plumb PresentableError all the way down the stack, even to the point where you're writing bytes to MIDI interfaces or opening files, or (b) create a side-channel to pass the filename
+
+1714491943
+zellyn!~zellyn@12.189.243.29
+or interface identifier up to the level where you translate into PresentableError. And once you switch into PresentableError-land, don't you forego `errdefer` and `try`? Or is the usual pattern to append a mutable PresentableError onto function args, then use normal error handling for signaling problems?
+
+1714491943
+zellyn!~zellyn@12.189.243.29
+btw, I deeply appreciate the "here's what we think so far but we could be convinced" tone of all the online discussions I've found about this topic :-)
+
+1714493384
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+the error enum is just used for control flow purposes, if you need data then yes you need to decide how and where to manage the lifetime of that data just like with other data
+
+1714493477
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+once you are on the path for presenting an error you aren't really on an error path anymore since presenting the error is going just fine so far, the error is the data you are manipulating
+
+1714493933
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+So yeah, in practice you would generally use a separate error for each "place" that a non-recoverable error would be stored (where recoverable errors just involve putting the error somewhere and continuing without using a zig error)
+
+1714494634
+dy!sid3438@user/dy
+The key thing is: Zig errors are not exceptions.
+
+1714494881
+dy!sid3438@user/dy
+One possible approach to "exceptions-lite" without the overhead of stack unwinding would be to reify a continuation-like thing that comprises a map of error handlers and pass it around (like you might with an allocator).
+
+1714494933
+dy!sid3438@user/dy
+That thing could then optionally consume whatever data is available about the error as added context.
+
+1714495743
+helene!~helene@user/helene
+the way i've perceived zig errors so far was that they were basically result types (and as far as i know they really are); they're very good at specific things like kernels, low-level code, and other things that should fail-fast
+
+1714495779
+helene!~helene@user/helene
+if you want resilient/softer error handling, they're not the right option IMO
+
+1714496601
+andrewrk!~andrewrk@mail.ziglang.org
+why not?
+
+1714496931
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I would say that zig errors are useful for far softer things than errors, anything that involves control flow past the caller
+
+1714496991
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+like I said, if you want to record and error and continue execution where you already are, then zig errors don't provide any utility
+
+1714498377
+helene!~helene@user/helene
+andrewrk: the try clause in zig is very much oriented towards fatal errors, for example; making the distinction is more complex and case-by-case error handling feels somewhat discouraged by the "unhappy path" (this is all personal opinion, including messages above)
+
+1714499020
+bblack!~bblack@wikimedia/bblack-WMF
+the zig error model works fine for non-fatal errors as well.  Even in the very-non-fatal cases like EAGAIN.
+
+1714504048
+andrewrk!~andrewrk@mail.ziglang.org
+helene: returning from a function is far from fatal
+
+1714504072
+andrewrk!~andrewrk@mail.ziglang.org
+typically when an error occurs you want to rewind state several functions deep, and then catch the error and do something (perhaps with the `catch` keyword)
+
+1714504116
+andrewrk!~andrewrk@mail.ziglang.org
+most code only wants to particpate in the "rewind state" process
+
