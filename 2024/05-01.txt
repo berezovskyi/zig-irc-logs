@@ -1,0 +1,372 @@
+1714523415
+torque!~tachyon@user/torque
+from an ergonomics standpoint, attaching a message or other data to an error would be extremely convenient. The options right now are basically to either have your function return a tagged union which may have an error payload but does not benefit from the compiler strictness around errors, including forced handling
+
+1714523445
+torque!~tachyon@user/torque
+or you have to create or accept some kind of external diagnostics object that the user can later access in case of an error
+
+1714523535
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+torque: what do you intend to do with the message?
+
+1714523673
+torque!~tachyon@user/torque
+I think the way hare does it is interesting, but there's a fundamental difference in hare's tagged unions versus zig's, which is that tagged unions in hare are implicitly tagged based on type rather than explicitly tagged as in zig. this lets hare recursively flatten tagged unions
+
+1714523748
+torque!~tachyon@user/torque
+rockorager, oftentimes present a formatted message to the user. However, there can be reasons for calling code to want to inspect details of an error where having 100 different error codes
+
+1714523763
+torque!~tachyon@user/torque
+would be cumbersome
+
+1714523828
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Your error can be arbitrarily long though, which lets you not have to parse the error message
+
+1714523881
+torque!~tachyon@user/torque
+some of the data would be runtime-known so you can't programmatically or otherwise generate a unique error tag for each case anyway
+
+1714524044
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+I think andrew once said in here that error types are for handling and not diagnostics
+
+1714524048
+torque!~tachyon@user/torque
+the error payload could be arbitrary data, such as a struct containing offsets into a buffer. it doesn't necessarily need to be "parsed" by calling code
+
+1714524048
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Or something to that effect
+
+1714524206
+torque!~tachyon@user/torque
+arguably producing diagnostics is a key component of error handling. anyway I'm not dying on the hill here but I have frequently found myself wishing that errors were more like tagged unions
+
+1714524237
+torque!~tachyon@user/torque
+there are some real technical issues with doing that, including the fact that it does not work with the flat error namespace
+
+1714532027
+grayhatter!~grayhatte@user/grayhatter
+the build docs on ziglang.org link to a package management section, which seems to be missing now. Was it deleted? or did it never exist?
+
+1714532527
+andrewrk!~andrewrk@mail.ziglang.org
+I had some skeleton drafted but didn't finish it
+
+1714532541
+andrewrk!~andrewrk@mail.ziglang.org
+I need to finish that and move it alongside the langref properly instead of having it be awkwardly on ziglang.org
+
+1714532571
+grayhatter!~grayhatte@user/grayhatter
+I've created a obs plugin library, what's the magic function calls I need to include it a downstream plugin?
+
+1714532616
+grayhatter!~grayhatte@user/grayhatter
+i.e. is there an exist project that uses a zig.zon for dependencies I could copy?
+
+1714532634
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: this build script has a lot of nice and modern examples: https://codeberg.org/andrewrk/player
+
+1714532650
+grayhatter!~grayhatte@user/grayhatter
+cheers andrewrk thank you :)
+
+1714532671
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps look at the parts pertaining to ffmpeg as it's used as a dependency and then linked against and it has bindings
+
+1714532756
+andrewrk!~andrewrk@mail.ziglang.org
+if you don't have bindings it's `foo.linkLibrary(dep.artifact("bar"))`
+
+1714532790
+andrewrk!~andrewrk@mail.ziglang.org
+there's a bunch of neat stuff you can do, let me know if you need more examples
+
+1714532797
+grayhatter!~grayhatte@user/grayhatter
+I'm trying to be a bit fancy, so I think I need both that and addImport
+
+1714532812
+andrewrk!~andrewrk@mail.ziglang.org
+addImport automatically links the library for you
+
+1714532844
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/andrewrk/ffmpeg/blob/4a1cdff5ee438e016853b4803ac40c3f8f0c3f53/build.zig#L939-L944
+
+1714532869
+andrewrk!~andrewrk@mail.ziglang.org
+here is where the module is exposed, you can see the module itself gets annotated as linking the library, so that's how zig knows the module comes with a lib
+
+1714534727
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I was able to get both my obs plugin working correctly, as well as the plugin creation lib! Thanks for the help :)
+
+1714535115
+andrewrk!~andrewrk@mail.ziglang.org
+great!
+
+1714535135
+andrewrk!~andrewrk@mail.ziglang.org
+did you notice in my example project that I have managed to package CPython using the zig build system? :D
+
+1714535171
+grayhatter!~grayhatte@user/grayhatter
+lol, I'd completely missed that
+
+1714535190
+andrewrk!~andrewrk@mail.ziglang.org
+why do this? great question. for running youtube-dl nightlies at runtime, of course
+
+1714535226
+grayhatter!~grayhatte@user/grayhatter
+I've exposed some Qt functions in mine...
+
+1714535253
+grayhatter!~grayhatte@user/grayhatter
+I **love** that
+
+1714535267
+grayhatter!~grayhatte@user/grayhatter
+I'm 100% gonna find a reason to embed cpython in a zig project now
+
+1714536246
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: can you verify the hash for cpython is valid?
+
+1714536280
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: oh, I figured out what happened here recently and I forgot to fix it
+
+1714536329
+andrewrk!~andrewrk@mail.ziglang.org
+so I tried to take advantage of `zig fetch .` and use that hash, which normally works, but there were a bunch of local .pyc files that ended up in the hash because the `paths` field of build.zig.zon does not allow globbing for extension (you either get the entire directory or not)
+
+1714536335
+andrewrk!~andrewrk@mail.ziglang.org
+one moment please
+
+1714536377
+andrewrk!~andrewrk@mail.ziglang.org
+fixed
+
+1714536448
+andrewrk!~andrewrk@mail.ziglang.org
+the nice thing about `zig fetch .` is that you avoid a network trip and can update packages locally and then later push everything to the network. it also means you don't have to trust the network. but we need some kind of globbing or something in `paths` otherwise it's too easy to unknowningly get garbage files in the package
+
+1714536500
+andrewrk!~andrewrk@mail.ziglang.org
+it happens with vim swap files, .DS_Store, etc
+
+1714536549
+grayhatter!~grayhatte@user/grayhatter
+lol, I tried to clone player via srctree, so I'm definitly not skipping the round trips lol
+
+1714536579
+andrewrk!~andrewrk@mail.ziglang.org
+earlier, I meant that you avoid the network when working on an update to your own dependencies
+
+1714536623
+grayhatter!~grayhatte@user/grayhatter
+ahh oops, i'd missed the ref to .pyc
+
+1714537253
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+What does `zig fetch .` do?
+
+1714539155
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: do you accept patches?
+
+1714552368
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1714552392
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: check out `zig fetch -h`
+
+1714558974
+ifreund!2940d10f8b@user/ifreund
+having posix.memfd_create() in my code after updating to 0.12.0 feels wrong
+
+1714559088
+ifreund!2940d10f8b@user/ifreund
+I think unix would have been a better choice than posix here
+
+1714568314
+bblack!~bblack@wikimedia/bblack-WMF
+ifreund: yeah I have a lot of thoughts about related bits too, but very little time to attack that stuff lately :(  I think when you look holistically at all of std.(c|os|posix), there's some design/intent issues to resolve for sure, nevermind naming.  There's a lot of perspectives and use-cases to consider as well.
+
+1714568358
+bblack!~bblack@wikimedia/bblack-WMF
+and I don't even have a clear picture of the whole thing myself, I don't think, much less a solid plan.
+
+1714568427
+bblack!~bblack@wikimedia/bblack-WMF
+but I have "thoughts", and I know we need to clear some things up at least for consistency and better experience for systems-level developers and future systems-level maintainers of the zig core code, etc.
+
+1714568507
+bblack!~bblack@wikimedia/bblack-WMF
+things that bug me with the status quo, in no particular order off the top of my head:
+
+1714568622
+bblack!~bblack@wikimedia/bblack-WMF
+1) That std.c ends up declaring a bunch of interfaces unconditionally, and they may not really exist in all targets' libcs, and the only way to find that out in the general case as an end-user is going to be link-time failure, or your own platform/target-conditionals that know the landscape.
+
+1714568823
+bblack!~bblack@wikimedia/bblack-WMF
+2) That std.os.{linux,...} are more like std.c than like "std.os", if that makes sense.  std.os.$target is syscalls rather than libc, but really the "layering" is more like std.(c|os) at the bottom, then std.posix a little higher up.  The bit that doesn't fit is the current lib/std/os.zig, because it's a very different layer than std.os.$target.  Sorry for the jumbled thinking here, but I think you get what 
+
+1714568828
+bblack!~bblack@wikimedia/bblack-WMF
+I'm getting at.
+
+1714568941
+bblack!~bblack@wikimedia/bblack-WMF
+3) std.posix - I can see the case being made that naming it "posix" implies Standards or something, which it won't be (it's not going to precisely cover all of some specific version of POSIX, it's not going to implement most of POSIX for any non-posix target, etc, etc.  For that matter, it's commonly going to contain a bunch of beyond-POSIX extensions only support by some subsets of targets, which are of a 
+
+1714568947
+bblack!~bblack@wikimedia/bblack-WMF
+POSIXy nature.
+
+1714568979
+bblack!~bblack@wikimedia/bblack-WMF
+I think the naming thing here is a bikeshed I could go either way on, though.  Calling it posix and calling them posixy isn't fundamentally much worse than unix or unixy.
+
+1714569105
+bblack!~bblack@wikimedia/bblack-WMF
+4) std.posix, as the lowest layer that really starts being Zig-ified a bit (in that it uses proper Zig errors, zig types vs C types, etc).... users that want "direct" access to posixy systems for systems-level programming in a Zig way will be using this, mostly as their base layer.  But it doesn't some beyond-basic-zig abstracting that may be limiting, too.
+
+1714569122
+bblack!~bblack@wikimedia/bblack-WMF
+s/doesn't/does/
+
+1714569238
+bblack!~bblack@wikimedia/bblack-WMF
+The key example in my mind is that many (all?) of them auto-retry EINTR internally.  I get that's convenient for many callers much of the time, but I've definitely written *nix-portable C code before where I wouldn't find that acceptable (need to handle EINTR with some app-specific, userland code between retries), and shouldn't have to jump back to the raw std.c/std.os layer with raw errno handling and C 
+
+1714569244
+bblack!~bblack@wikimedia/bblack-WMF
+types to do so.
+
+1714569308
+bblack!~bblack@wikimedia/bblack-WMF
+but also, at least a couple cases I've seen deviate significantly from the POSIX interface, beyond just Zig types and Error return.  Key example I recall is the current std.posix.nanosleep() (which is also a case entangled in the above about EINTR).
+
+1714569437
+bblack!~bblack@wikimedia/bblack-WMF
+5) Generally across both std.c and std.posix -level layers: how callers are supposed to detect platform support for various interfaces at compile and/or run time.
+
+1714569535
+bblack!~bblack@wikimedia/bblack-WMF
+thinking like a developer of somewhat-portable *nix software in C as an example: If you're targeting Linux and the BSDs and Darwin for your application, there are some interfaces you can, for simple-enough use-cases, just treat the same across them all.  For example, a basic read(3) call, you can just do unconditionally across those.
+
+1714569584
+bblack!~bblack@wikimedia/bblack-WMF
+but for some other interfaces, it's going to vary a bit.  In the C world you often end up with #ifdef blocks and such, although not always 1:1 with targets.
+
+1714569654
+bblack!~bblack@wikimedia/bblack-WMF
+#if defined this_one_thing {... use that interface, happens to work for 2 of the BSDs ... } #elif defined this_other_thing { ... use this other ~equiv interface on the other BSD ... } #else { ... use the Linux one ... }
+
+1714569730
+bblack!~bblack@wikimedia/bblack-WMF
+and sometimes at runtime as well, e.g. on app startup, if the interface is declared at all, you do a dummy call to the interface to see if it returns ENOSYS (because maybe it was in the headers on the runtime system, but the kernel was too old to support it yet), and do some runtime fallback between various possible interfaces
+
+1714569801
+bblack!~bblack@wikimedia/bblack-WMF
+the way std.c and .posix are right now, those layers have some platform-conditionals in their own implementations, but as a caller, if I want to wade through those compatibility issues, I'm gonna need some of the same conditionals in my code as well.  I guess that's possibly a design intent/choice to make, that it will just be that way.
+
+1714569866
+bblack!~bblack@wikimedia/bblack-WMF
+but the other alternative is we give the caller the ability to detect it without knowing the platforms, by only declaring them on targets they exist on, and also allowing at least std.posix's else-clause for unsupport platforms to be able to return a runtime error or something, equivalent to ENOSYS.
+
+1714569897
+bblack!~bblack@wikimedia/bblack-WMF
+(but this ends up looking pretty @hasDecl-y, and there's an open issue about not relying on @hasDecl for such purposes)
+
+1714570065
+bblack!~bblack@wikimedia/bblack-WMF
+an example case would be mlockall(3).  It's supported on Linux and *BSDs, not on Darwin or Solaris.  Do we make the user code handle that themselves (know the list of platforms supporting and do their own platform-conditional before calling)?  Or do we only expose the interface for it on supporting platforms so they can @hasDecl about it?  Or do we define it everywhere but have it return some generic 
+
+1714570071
+bblack!~bblack@wikimedia/bblack-WMF
+NotSupported error if the platform doesn't implement it (which can possibly even be a runtime check as well)
+
+1714570093
+bblack!~bblack@wikimedia/bblack-WMF
+it is part of POSIX, it's "standard" in some sense, but not even all *nixy targets will support it.
+
+1714570129
+bblack!~bblack@wikimedia/bblack-WMF
+--- end rambling thoughts, sorry for the high volume, I need to get back to $work
+
+1714571165
+ifreund!2940d10f8b@user/ifreund
+Yeah, I generally agree these thoughts. It's a complex topic and most of what currently exists has grown organically to support specific use-cases across many projects with a large variety of perspectives
+
+1714571221
+ifreund!2940d10f8b@user/ifreund
+there hasn't been as much top-down enforced structure for os abstraction yet
+
+1714571337
+ifreund!2940d10f8b@user/ifreund
+if I were doing this from scratch I wouldn't convert the errno enum into zig errorsets at the "posixy/unixy" cross-os abstraction layer
+
+1714571400
+ifreund!2940d10f8b@user/ifreund
+I think that opinonated conversion belongs at an abstraction layer similar to std.fs.File
+
+1714571457
+rzezeski!uid151901@id-151901.uxbridge.irccloud.com
+ bblack: Yes, I recently updates the illumos port to 0.12.0 and noticed that std.net was trying to use `posix.SO.REUSEPORT`. This is a problem because illumos does not have SO_REUSEPORT. It's also not specified in POSIX. And finally I notice its specified behavior is different between FreeBSD and Linux.
+
+1714597698
+j`ey!~joey@user/jey/x-2681904
+does fn foo() !void, that ! means it can return an error?
+
+1714597788
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+j`ey: yes
+
+1714597810
+j`ey!~joey@user/jey/x-2681904
+but of any type, or how does that work?
+
+1714597846
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+It returns an error or void
+
+1714597857
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+fn foo() !bool would return an error or a bool
+
+1714597859
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+etc
+
+1714597880
+j`ey!~joey@user/jey/x-2681904
+I mean the type of the error
+
+1714597897
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+Ah, the errorset is inferred
+
+1714597908
+j`ey!~joey@user/jey/x-2681904
+ah ok
+
+1714597927
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+fn foo() SomeErrorSet!void means it is an error from SomeErrorSet
+
