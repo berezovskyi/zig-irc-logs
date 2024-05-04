@@ -1,0 +1,160 @@
+1714712445
+tusf!cb6c78d75e@user/TUSF
+How do non-exhaustive enums work, exactly? Like, can you assign enum literals to a non-exhaustive enum field, using a literal not defined in the original declaration
+
+1714712594
+daurnimator!~daurnimat@vultr.daurnimator.com
+tusf: you can set it to a number
+
+1714712668
+tusf!cb6c78d75e@user/TUSF
+Right, but could I assign something like `.enum_literal` to one?
+
+1714712672
+daurnimator!~daurnimat@vultr.daurnimator.com
+tusf: so e.g. an api might say that some field is 1 for condition A, 2 for condition B; and that 3-255 are reserved for future use. You'd model that as a non-exhaustive enum where you set `A=1, B=2,` but can peek at what it is after expansions
+
+1714713033
+tusf!cb6c78d75e@user/TUSF
+Went ahead and tested. Nope. Can't use a random enum_literal with it. That's fine I guess.
+
+1714723332
+gastus_!~gastus@185.6.123.233
+Is there any parallel computing library like dividing an array into pieces and runnig the filtering on multiple cores ?
+
+1714731766
+cydox!~jan@user/cydox
+Is it intentional that all the syscalls in std.os.linux return a usize instead of the output being truncated and bitcasted to the correct integer type of that syscall?
+
+1714731828
+cydox!~jan@user/cydox
+For example std.os.linux.epoll_wait returns usize however the Linux kernel actually returns an int (i32)
+
+1714732188
+cydox!~jan@user/cydox
+Link to the definition of the epoll_wait syscall for reference: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/fs/eventpoll.c#n2435
+
+1714733097
+ifreund!2940d10f8b@user/ifreund
+cydox: yes its intentional, in the syscall ABI itself every argument and return value is a usize
+
+1714733344
+ifreund!2940d10f8b@user/ifreund
+one should use std.posix.errno to check if there is an error and then, after checking for an error, intCast the usize to the correct type
+
+1714733457
+cydox!~jan@user/cydox
+But the arguments to them are not usize, but the type that the kernel expects
+
+1714733503
+cydox!~jan@user/cydox
+https://github.com/ziglang/zig/blob/master/lib/std/os/linux.zig#L1912
+
+1714733565
+cydox!~jan@user/cydox
+And I believe the fact that the kernel returns an i32 and not a usize for a particular syscall is covered by the stability guarantee
+
+1714733868
+ifreund!2940d10f8b@user/ifreund
+this is how the syscall ABI is defined https://github.com/ziglang/zig/blob/44db92d1ca90c9cfdfb29fe46f04ff8f11c80901/lib/std/os/linux/x86.zig#L66
+
+1714733890
+ifreund!2940d10f8b@user/ifreund
+which corresponds to the syscall macros in the Linux source code
+
+1714733977
+ifreund!2940d10f8b@user/ifreund
+what you're probably used to is libc doing the syscall invocation and return value to errno conversion for you
+
+1714734018
+cydox!~jan@user/cydox
+I get that the syscalls5 uses usize. I'm talking about the wrapper around that
+
+1714734026
+ifreund!2940d10f8b@user/ifreund
+There are higher level wrappers for most syscalls in std.posix
+
+1714734103
+cydox!~jan@user/cydox
+Wait... epoll_wait is also in std.posix
+
+1714734128
+cydox!~jan@user/cydox
+Didn't expect that as epoll_wait is not part of the posix spec but linux specific
+
+1714734214
+cydox!~jan@user/cydox
+But in that case I'm going through the libc (if I'm linking against one). So I would prefer to use the lower level wrappers
+
+1714734313
+cydox!~jan@user/cydox
+I don't understand why the wrappers in std.os.linux (like: https://github.com/ziglang/zig/blob/master/lib/std/os/linux.zig#L1113) don't cast the return value. All the arguments are taken using the correct integer types and then cast. Why isn't this done for the return value?
+
+1714765102
+engler!~quassel@user/emilengler
+I have heard, that the zig binary is completely static, including a lack of linkage to libc. Is that correct?
+
+1714765125
+engler!~quassel@user/emilengler
+I am currently trying to create my own crt0 on Darwin and have thought to look into the Zig source code for this.
+
+1714765534
+andrewrk!~andrewrk@mail.ziglang.org
+engler: on linux that is the case. all other operating systems have some amount of dynamic linking involved in making syscalls
+
+1714765554
+andrewrk!~andrewrk@mail.ziglang.org
+zig does not require linking libc
+
+1714765604
+engler!~quassel@user/emilengler
+but how about crt0? does zig implement some sort of this on its own then?
+
+1714765691
+engler!~quassel@user/emilengler
+I hope this question is not misleading though, I have never digged myself so much into low-level code :^)
+
+1714765903
+andrewrk!~andrewrk@mail.ziglang.org
+crt0 is effectively provided by the libc you choose to link against. macos doesn't need one
+
+1714767306
+engler!~quassel@user/emilengler
+It still links against "/usr/lib/libSystem.B.dylib" though
+
+1714767340
+andrewrk!~andrewrk@mail.ziglang.org
+that's correct, because that is the stable syscall ABI on macOS
+
+1714767376
+cydox!~cydox@user/cydox
+sorry I logged off. Was there more on the syscall wrappers in std.os.linux?
+
+1714770088
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I lost your patches, can you link them again?
+
+1714770283
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+<grayhatter> andrewrk: https://srctree.gr.ht/repo/player.git/commit/7376286e.patch or https://srctree.gr.ht/repo/player.git/commit/7376286e (if that's too much work, I'll end up creating a codeberg account somewhat soon too)
+
+1714770316
+andrewrk!~andrewrk@mail.ziglang.org
+thanks
+
+1714770347
+andrewrk!~andrewrk@mail.ziglang.org
+fridays are my "work on a side project using zig" day :)
+
+1714770364
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+<grayhatter> last one, promise, I'll create a codeberg account and make a PR like a normal person for the next one lol https://srctree.gr.ht/repo/player.git/commit/537cbc51
+
+1714772577
+grayhatter!~grayhatte@user/grayhatter
+you should be able to git clone the repo url as a remote if that help
+
+1714772626
+grayhatter!~grayhatte@user/grayhatter
+I also have a codeberg account yet, and will push changes there here shortly (and can send them there in the future as well)
+
