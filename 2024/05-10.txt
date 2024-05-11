@@ -1,0 +1,164 @@
+1715328016
+ii8!~ii8@45.63.97.131
+Hello, I upgraded to zig 0.12 and now my project won't build anymore. I get this error: https://zigbin.io/554deb
+
+1715328057
+ii8!~ii8@45.63.97.131
+I wonder if anyone can tell me how to debug an error like this because it doesn't seem to say what exactly the problem is, just that the build command failed
+
+1715328091
+ii8!~ii8@45.63.97.131
+Building with different optimization options/target options or without linker script makes no difference
+
+1715350183
+gsalazar!~gsalazar@107.105.60.94.rev.vodafone.pt
+Hello, I am starting to learn zig and was trying to create a simple web client, following this example: https://cookbook.ziglang.cc/04-02-tcp-client.html. However I am not able to figure out the best way to convert a name into an ip address, similar to the behaviour of getaddrinfo in c. What should be the preferred way to do so in zig?
+
+1715350572
+bblack!~bblack@wikimedia/bblack-WMF
+gsalazar: you maybe want https://ziglang.org/documentation/master/std/#std.net.getAddressList
+
+1715350588
+bblack!~bblack@wikimedia/bblack-WMF
+this seems to be the stdlib portable wrapper around the equivalent of *nix getaddrinfo() and such.
+
+1715350613
+gsalazar!~gsalazar@107.105.60.94.rev.vodafone.pt
+bblack: thanks
+
+1715350780
+bblack!~bblack@wikimedia/bblack-WMF
+if you don't care about zig-level portabile higher-level interfaces, you can always reach in and call libc/posix stuff directly, too :)
+
+1715350819
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. calling directly into std.c.getaddrinfo() if linking libc
+
+1715350845
+bblack!~bblack@wikimedia/bblack-WMF
+but then you're on your own for handling the various $target platform diffs
+
+1715353330
+gsalazar!~gsalazar@107.105.60.94.rev.vodafone.pt
+thanks, I am trying to get the hang of the portable high level interfaces, otherwise I feel I would end up writing it all using the libc/posix directly :)
+
+1715356841
+ii8!~ii8@45.63.97.131
+How do I debug an error like this: https://zigbin.io/554deb, it's happening since upgrading to zig 0.12
+
+1715373649
+andrewrk!~andrewrk@mail.ziglang.org
+ii8: that is a compiler crash. you debug it by building zig from source in debug mode so that you can get a stack trace
+
+1715375361
+ii8!~ii8@45.63.97.131
+andrewrk: thanks, I managed to figure out that it's caused by creating unions using struct literal syntax: .{}
+
+1715375496
+ii8!~ii8@45.63.97.131
+https://zigbin.io/89b32e
+
+1715375522
+ii8!~ii8@45.63.97.131
+I guess this was a change from 0.11
+
+1715375622
+andrewrk!~andrewrk@mail.ziglang.org
+oh that's a lovely reduction
+
+1715375652
+andrewrk!~andrewrk@mail.ziglang.org
+let me pull latest zig and reproduce it
+
+1715375864
+jacobly!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+andrewrk, isn't that just 19832
+
+1715375982
+andrewrk!~andrewrk@mail.ziglang.org
+yep looks like it
+
+1715376071
+andrewrk!~andrewrk@mail.ziglang.org
+well there you go ii8 - subscribe to https://github.com/ziglang/zig/issues/19832 to find out when it is fixed, and learn about a workaround you can do in the meantime
+
+1715376121
+ii8!~ii8@45.63.97.131
+Nice ty, I do have a workaround by just not using the shorthand syntax
+
+1715380305
+ii8!~ii8@45.63.97.131
+I have another very strange error message related to unions: https://zigbin.io/e4f1ad
+
+1715380384
+ii8!~ii8@45.63.97.131
+error: incompatible types: '@typeInfo(example.U).Union.tag_type.?' and 'comptime_int'
+
+1715380458
+ii8!~ii8@45.63.97.131
+It can be fixed by explicitly specifying the type of `u` to be `U`
+
+1715380481
+ii8!~ii8@45.63.97.131
+I'm not sure if this is expected behaviour or if something isn't quite right with type inference
+
+1715381267
+andrewrk!~andrewrk@mail.ziglang.org
+btw you can drop the `U.` on the switch prongs
+
+1715381340
+andrewrk!~andrewrk@mail.ziglang.org
+in your example the type of `u` isn't what you think it is
+
+1715381371
+andrewrk!~andrewrk@mail.ziglang.org
+try changing it to `var u: U = .a;`
+
+1715381392
+andrewrk!~andrewrk@mail.ziglang.org
+ii8: ^
+
+1715381444
+ii8!~ii8@45.63.97.131
+Yes that is what I mean by specifying the type explicitly
+
+1715381451
+ii8!~ii8@45.63.97.131
+it does work that way
+
+1715381458
+ii8!~ii8@45.63.97.131
+I was just wondering if it should work without as well
+
+1715381627
+ii8!~ii8@45.63.97.131
+But it sounds like it's expected to be this way
+
+1715384919
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: do you have further plans for the http server/client?
+
+1715385011
+bubuche87!~bubuche87@169.150.218.136
+Does zig works with windows gdi ?
+
+1715385067
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: yes. I think the client API is pretty crap
+
+1715385094
+grayhatter!~grayhatte@user/grayhatter
+lol...I was gonna try to be a bit more diplomatic, but that's what I was thinking myself
+
+1715385148
+grayhatter!~grayhatte@user/grayhatter
+do you have a list of gripes written down anywhere?
+
+1715385176
+andrewrk!~andrewrk@mail.ziglang.org
+yes: https://github.com/ziglang/zig/pull/18955
+
+1715385232
+grayhatter!~grayhatte@user/grayhatter
+I don't hate the current client API, but it's painful. I'd like to remove a lot of the defaults, make the current API a little harder to use actually. And then expose an easy to use API so that it's 1 or 2 fn calls (3 max) to make a GET request to a string host.
+
