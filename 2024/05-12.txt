@@ -1,0 +1,168 @@
+1715478845
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: it's probably worth doing a "silent release" of 0.12.1 for the small slice of major distros that don't know how to, or don't want to ship various split versions
+
+1715478873
+grayhatter!~grayhatte@user/grayhatter
+arch's inability to ship llvm 16 (I think it wash 
+
+1715478914
+grayhatter!~grayhatte@user/grayhatter
+... (I think it was 16?) broke a number of other projects I needed to build... anything zig could do to help bad distros be less bad would be supper helpful to me
+
+1715493683
+HopelessHarold!~HopelessH@user/HopelessHarold
+Hello, is anybody there?
+
+1715493765
+HopelessHarold!~HopelessH@user/HopelessHarold
+I was struggling with finding proper documentation of the std, and wondered if there was a location that does it better than the one Zig offers.
+
+1715494007
+chamezard!~Thunderbi@user/chamezard
+Yes.
+
+1715494034
+chamezard!~Thunderbi@user/chamezard
+You've registered account, you can speak now but I don't know what zig is.
+
+1715517725
+Snetry!~snetry@87.122.225.25
+Hey, is there way to make `zig fetch` ignore the zig-cache?
+
+1715522695
+ifreund!2940d10f8b@user/ifreund
+Snetry: would --global-cache-dir be useful to you?
+
+1715523746
+Snetry!~snetry@87.122.225.25
+ifreund: kinda?
+
+1715523769
+Snetry!~snetry@87.122.225.25
+I've looked for a place where I can put the global cache when building an rpm package and there really isn't any place outside of the build folder
+
+1715523798
+Snetry!~snetry@87.122.225.25
+but zig fetch doesn't check if its trying to act on the cache itself
+
+1715523882
+Snetry!~snetry@87.122.225.25
+I'm currently trying to write a fix for that which would skip any path that is in the global cache 
+
+1715523958
+ifreund!2940d10f8b@user/ifreund
+Snetry: have you seen this: https://github.com/chimera-linux/cports/pull/1395
+
+1715524036
+Snetry!~snetry@87.122.225.25
+haven't seen it, but from a quick glance I seem to have done it exactly like you have
+
+1715524065
+Snetry!~snetry@87.122.225.25
++- some differences like the system packages path
+
+1715528465
+ii8!~ii8@45.63.97.131
+The gnu linker documentation says this about the location counter: "If . is used inside a section description, it refers to the byte offset from the start of that section, not an absolute address."
+
+1715528543
+ii8!~ii8@45.63.97.131
+But if I try to do something like `. = 0x1234;` inside a section description, the zig linker complains I'm trying to move the location counter backwards.
+
+1715528576
+ii8!~ii8@45.63.97.131
+Does the zig linker behave different from the gnu linker here? What is the right way to do this with zig?
+
+1715528655
+ii8!~ii8@45.63.97.131
+I'm talking about linker scripts by the way, I should have specified.
+
+1715541588
+sm2n!ae95cb1267@user/sm2n
+shouldn't you be setting the address of the section directly instead of assigning to . ?
+
+1715541596
+sm2n!ae95cb1267@user/sm2n
+like, with ADDR or whatever it was
+
+1715551247
+torque!~tachyon@user/torque
+hmm, I think I'm missing something
+
+1715551270
+torque!~tachyon@user/torque
+updating a few projects to the final 0.12 build system changes
+
+1715551346
+torque!~tachyon@user/torque
+I have a c library that installs a couple of headers that the sources include based on the installation directory. this works fine (--verbose-cc has -I [...]/zig-cache/o/cbb3185094f63802e2e40fdc4e1ad85d in the command line, which does include the insalled headers and their prefix directory)
+
+1715551384
+torque!~tachyon@user/torque
+however, when I try to use this as a dependency of another project, when it's being built, the c sources can no longer find those installed headers
+
+1715551411
+torque!~tachyon@user/torque
+although the cache directory gets created, the appropriate include line is missing from the compiler command
+
+1715551515
+torque!~tachyon@user/torque
+and instead, it has -I [...]/zig-cache/i/ce30fa12125997da3f34e437aeaba96e/include, which is a directory that doesn't actually exist?
+
+1715551660
+torque!~tachyon@user/torque
+it seems like I am doing something wrong here, but I am struggling to figure out what
+
+1715551710
+torque!~tachyon@user/torque
+this Just Worked before and the only change it seemed I needed to apply was wrapping the first arg to the `installHeader` calls in `Builder.path`
+
+1715552045
+torque!~tachyon@user/torque
+oh, hmm
+
+1715552465
+torque!~tachyon@user/torque
+nope, that didn't change anything.
+
+1715552494
+torque!~tachyon@user/torque
+the corresponding commits are https://github.com/epicyclic-dev/LibreSSL-portable/commit/50f4105ca019bfcde951415e8e4ece808efcece9 and https://github.com/epicyclic-dev/nats.zig/commit/a0557fda19f96e8a03c52c49bba62a454b98d6d9 if someone wants to take a look
+
+1715552561
+torque!~tachyon@user/torque
+building libressl-portable on its own (just with `zig build`) works fine (apparently), but trying to build nats.zig produces a lot of error: 'openssl/opensslconf.h' file not found while trying to build libressl-portable
+
+1715552626
+torque!~tachyon@user/torque
+I fully expect I am doing something stupid here but no clue what
+
+1715553456
+torque!~tachyon@user/torque
+well, it appears that it was working locally due to uncommitted files, so uh, that's one something stupid going on. Now I get to figure out what the other something stupid is
+
+1715553909
+torque!~tachyon@user/torque
+ok well, now that I've gotten that straightened out, the issue appears to be that the header installation is not happening prior to the corresponding C file compilation, since `[...]/zig-out/include` is listed as an include directory, but it is not created by the time the compilation fails
+
+1715555244
+leopoldek!~leopoldek@user/leopoldek
+Can I rely on std.mem.page_size when calling mprotect? Or should I probe the page size at runtime?
+
+1715555808
+braewoods!~braewoods@user/braewoods
+leopoldek, I would say do what POSIX expects. If that value doesn't "probe" it for you, you should probably just get it yourself.
+
+1715556292
+leopoldek!~leopoldek@user/leopoldek
+I looked into it further and std.Thread seems to use page_size. https://github.com/ziglang/zig/blob/e2ec54bb38eb7b157667f0a87c9eb929017c3710/lib/std/Thread.zig#L1237
+
+1715556355
+leopoldek!~leopoldek@user/leopoldek
+I'll probably try calling mprotect with page_size first. If it fails, probe the page size manually and try again.
+
+1715557767
+ii8!~ii8@45.63.97.131
+sm2n: I mean placing things at certain offsets within a section
+
