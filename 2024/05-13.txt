@@ -1,0 +1,96 @@
+1715568091
+torque!~tachyon@user/torque
+ok, well, I think I've traced this back to 0b7123f41d66bdda4da29d59623299d47b29aefb which was the obvious candidate. now to figure out why this didn't break any of my other projects that include installed c headers
+
+1715568140
+torque!~tachyon@user/torque
+is there a way to print the build dependency graph?
+
+1715570930
+torque!~tachyon@user/torque
+specficially the step dependencies
+
+1715573064
+torque!~tachyon@user/torque
+ok, well, adding an explicit install step for the header and depending on it obvious works, and is probably more correct anyway
+
+1715573111
+torque!~tachyon@user/torque
+I guess, according to the PR that commit was a part of, the old behavior was technically a bug
+
+1715578104
+Natris1979!~tristan@174-16-137-206.hlrn.qwest.net
+Hi! I'm trying run zig cc from inside a chrooted evnironment running pretty much just busybox and when I try to compile anyting with zig cc I get `error: unable to find zig self exe path: FileNotFound`
+
+1715578191
+Natris1979!~tristan@174-16-137-206.hlrn.qwest.net
+does it need supporting libraries I'm missing? I get this when I run zig directly from the place I tar -xf'd the linux binary archive to 
+
+1715579771
+torque!~tachyon@user/torque
+I think on linux it uses /proc/self or something like that?
+
+1715579856
+torque!~tachyon@user/torque
+you could look at the implementation of `std.fs.selfExePath` or possibly `std.fs.openSelfExe`
+
+1715579883
+torque!~tachyon@user/torque
+since /proc is a weird virtual filesystem on linux I have no clue how it interacts with chroot
+
+1715579985
+Natris1979!~tristan@174-16-137-206.hlrn.qwest.net
+torque: ah, yeah that seems likely. when you set up a chroot'd environment you have to mannually mount /dev, /proc etc and it looks like I missed that somewhere along the line while experimenting
+
+1715580348
+Natris1979!~tristan@174-16-137-206.hlrn.qwest.net
+torque: that was it! Thank you :D
+
+1715580391
+Natris1979!~tristan@174-16-137-206.hlrn.qwest.net
+had no idea, and because I couldn't run strace in the minimal environment I have set up I had no idea
+
+1715580401
+Natris1979!~tristan@174-16-137-206.hlrn.qwest.net
+er had no tools to see
+
+1715580407
+torque!~tachyon@user/torque
+nice, you're welcome
+
+1715628952
+txdv!~txdv@78.56.38.107
+Hi, I am trying to compile zig from source, however the current cmake .. && make -j4 compiles all stages. Is there a guide which skips all of that and just assumes that I have a working zig installation and just compiles it as fast as possible?
+
+1715628973
+txdv!~txdv@78.56.38.107
+Development cycles are bit long right now :D
+
+1715629014
+bblack!~bblack@wikimedia/bblack-WMF
+I used cmake+ninja, but I find that once you go through it all once, caching helps a lot, FWIW
+
+1715629030
+bblack!~bblack@wikimedia/bblack-WMF
+you pull new changes, re-run ninja, and it's not so terrible to rebuild from stage3 onwards
+
+1715629032
+ifreund!2940d10f8b@user/ifreund
+txdv: if you already have a zig binary of the correct version you can use zig build directly
+
+1715629213
+txdv!~txdv@78.56.38.107
+ifreund: eureka
+
+1715629321
+txdv!~txdv@78.56.38.107
+ok bootstrap is still useful because master did not compile with latest binary release :D 
+
+1715629469
+bblack!~bblack@wikimedia/bblack-WMF
+(although I hadn't done it in a week or so... just tried and I think the recent llvm-related merges broke something with using my llvm-18 from debian-testing, will have to dig on that a bit!)
+
+1715630817
+txdv!~txdv@78.56.38.107
+zig ld.lld --error-limit // this takes now minutes for each iteration, is there some faster linking? is it possible to use mold, maybe zig linkers is fast?
+
