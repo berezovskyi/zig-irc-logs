@@ -1,0 +1,108 @@
+1715993024
+barusu!~barusu@38.175.196.204
+Is there a cross-platform wrapper for pipes in Zig? Or do I simply using std.posix.pipe() for POSIX compliant kernels?
+
+1715998086
+grayhatter!~grayhatte@user/grayhatter
+barusu: I'm pretty sure that's the answer
+
+1715998322
+rockorager!2bbd732aa1@irc.pico.sh
+re: std.json - I don’t really understand why there are leaky and non leaky implementations. the non leaky ones all create an arena, and call into the leaky one anyways
+
+1715998491
+rockorager!2bbd732aa1@irc.pico.sh
+I guess I could *not* pass in an arena to the leaky version and in theory individual free parts of the result (as long as I check the source for how it was allocated)
+
+1715998726
+grayhatter!~grayhatte@user/grayhatter
+rockorager: are you sure the implementation doesn't leak internally? I.e. there might be calls that alloc but then never return something that you could free.
+
+1715999434
+barusu!~barusu@38.175.196.204
+grayhatter: thanks. I'm working with forks and pipes and the way zig is exposing their guts is pretty great.
+
+1715999441
+rockorager!2bbd732aa1@irc.pico.sh
+grayhatter: ah, that could be...
+
+1715999499
+rockorager!2bbd732aa1@irc.pico.sh
+I think I was thinking about the naming in reverse. My thought was "leaky" meant I should use an arena, and the non-leaky meant that allocations were made directly with my allocator (meaning I coudl free a random string)
+
+1715999517
+rockorager!2bbd732aa1@irc.pico.sh
+But yeah seems it's opposite that line of thinking. It's non-leaky because you can free the whole thing
+
+1715999529
+rockorager!2bbd732aa1@irc.pico.sh
+And it's leaky because you can't
+
+1716000234
+grayhatter!~grayhatte@user/grayhatter
+IIRC the leaky version is faster, so you can use it with an arena allocator to get better perf. But the non-leaky exists if you can't use an arena allocator. I'm pretty sure if you use the leaky version, with a custom allocator that tracks each of it's blocks of memory the way that arena does, your allocator could then free that memory. Where calling deinit on the returned object wouldn't free all the
+
+1716000236
+grayhatter!~grayhatte@user/grayhatter
+memory
+
+1716000404
+rockorager!2bbd732aa1@irc.pico.sh
+parseFromSlice -> parseFromTokenSource -> parseFromTokenSourceLeaky
+
+1716000415
+rockorager!2bbd732aa1@irc.pico.sh
+parseFromSliceLeaky -> parseFromTokenSourceLeaky
+
+1716000438
+rockorager!2bbd732aa1@irc.pico.sh
+so it saves you one function call, and all that function does is create an arena 
+
+1716000477
+rockorager!2bbd732aa1@irc.pico.sh
+But, I just thought of how I want to use this
+
+1716000492
+rockorager!2bbd732aa1@irc.pico.sh
+I've been calling the non-leaky but I see that I actually want the leaky
+
+1716047586
+smlavine!~smlavine@sourcehut/user/smlavine
+Hello, can anyone point me to a project with a build.zig that combines a C source file/header library and a main.zig that wraps it?
+
+1716049965
+txdv!~txdv@78.56.38.107
+smlavine: https://github.com/zigcc/awesome-zig search for wrapper like https://github.com/vrischmann/zig-sqlite
+
+1716050832
+smlavine!~smlavine@sourcehut/user/smlavine
+Ah, looks like addCSourceFiles is what I want -- thanks
+
+1716050907
+txdv!~txdv@78.56.38.107
+smlavine: https://ziglang.org/documentation/master/std/#std.Build.Step.Compile look in Fucntions
+
+1716050918
+smlavine!~smlavine@sourcehut/user/smlavine
+txdv: Yep, headed there -- thanks :)
+
+1716053887
+[0x1eef]!~0x1eef@al-quran.reflectslight.io
+awesome-zig is aptly awesome
+
+1716053975
+txdv!~txdv@78.56.38.107
+there awesome lists of most langauges etc
+
+1716054216
+[0x1eef]!~0x1eef@al-quran.reflectslight.io
+I found that list especially helpful for where I am with zig right now (which is a few steps past helloworld.zig) :) 
+
+1716059754
+grayhatter!~grayhatte@user/grayhatter
+why does zig build test execute wine?
+
+1716063015
+smlavine!~smlavine@sourcehut/user/smlavine
+Took me a half hour to realize that b.standardOptimizeOption(.{ .preferred_optimize_mode }) can't be Debug to work correctly lol
+
