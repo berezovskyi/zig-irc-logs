@@ -1,0 +1,236 @@
+1716168437
+unnick!~unnick@78.63.227.23
+tyge: i think using slices ([]Path) should work. you can then convert the output of genPath to an array with x[0..].*
+
+1716168640
+unnick!~unnick@78.63.227.23
+if you want to directly return an array then youll have a comptime function for computing the length, and then use it in the return type like fn genPath(...) [lenFn(inputs)]Path {...}
+
+1716168668
+unnick!~unnick@78.63.227.23
+personally id just wrap a function that returns slices
+
+1716168994
+unnick!~unnick@78.63.227.23
+like fn genPathArray(...) [genPathSlice(...).len]Path {return genPathSlice(...)[0..].*;}
+
+1716169391
+unnick!~unnick@78.63.227.23
+(i havent tested any of this and im not confident in my comptime array knowledge so i might be just talking nonsense)
+
+1716169973
+torque!~tachyon@user/torque
+if you have a function that can produce arrays of different sizes at comptime, returning a slice is usually the best way to do it
+
+1716170010
+torque!~tachyon@user/torque
+despite the langref describing slices as having length "known at runtime", that is an imprecise wording. comptime slices also exist and work just fine
+
+1716170028
+unnick!~unnick@78.63.227.23
+^
+
+1716170095
+torque!~tachyon@user/torque
+the key difference is that for a slice, the length is stored as part of the value, whereas for an array, it is stored as part of the type
+
+1716194698
+tyge!uid650967@user/tyge
+unnick: yeah I eventually went for slices once I figured out how to work with them without using an allocator
+
+1716211508
+gcarlos8!~gcarlos@37.218.246.133
+hi, I'm a bit confused about struct field access. O
+
+1716211533
+gcarlos8!~gcarlos@37.218.246.133
+I can't access vars and consts within the struct
+
+1716211581
+gcarlos8!~gcarlos@37.218.246.133
+I get "error: no field named "name of the var/const" in struct"
+
+1716211633
+gcarlos8!~gcarlos@37.218.246.133
+I'll send here a snippet of code that is causing error
+
+1716211778
+gcarlos8!~gcarlos@37.218.246.133
+http://0x0.st/XPt7.zig
+
+1716211806
+gcarlos8!~gcarlos@37.218.246.133
+in that case, I can't access MyS.b
+
+1716211888
+andrewrk!~andrewrk@mail.ziglang.org
+gcarlos8: https://ziglang.org/documentation/master/#struct
+
+1716212046
+andrewrk!~andrewrk@mail.ziglang.org
+in your code, b is a global constant, not a struct field
+
+1716212087
+gcarlos8!~gcarlos@37.218.246.133
+humm, ok, make sense
+
+1716212133
+gcarlos8!~gcarlos@37.218.246.133
+I couldn't find in the doc a place saying that I can't access things inside a struct from an instance
+
+1716212152
+gcarlos8!~gcarlos@37.218.246.133
+things that are not fields
+
+1716212831
+gcarlos8!~gcarlos@37.218.246.133
+also, how exactly calling a function inside a struct with "self" as first arg works? Does self have a special meaning or when you call a function from an instance it's always passed to the first arg independently?
+
+1716212833
+andrewrk!~andrewrk@mail.ziglang.org
+they are accessible via the type
+
+1716212863
+andrewrk!~andrewrk@mail.ziglang.org
+for example: `@TypeOf(instance).b` although it is uncommon to see that in practice since you could just do `T.b`
+
+1716212948
+gcarlos8!~gcarlos@37.218.246.133
+andrewrk: sure, I could see there, I just couldn't figure out why I can't access via an instance, but it's consistent with the statement "every decl inside a struct has no special meaning, they are just namespaced"
+
+1716215770
+smlavine!~smlavine@sourcehut/user/smlavine
+Hello -- wonder if this is known/could point to issue on it. I have a project that specifies ReleaseSafe as default in build.zig and I have a dependency (zigcli/simargs) that doesn't specify a default release mode. So when I build with `--release`, I get a message that "the project does not declare a preferred optimization mode."
+
+1716215791
+smlavine!~smlavine@sourcehut/user/smlavine
+I would expect that the behavior I specify in my project bubbles down to my dependencies
+
+1716215817
+smlavine!~smlavine@sourcehut/user/smlavine
+(on 0.12.0.)
+
+1716217737
+andrewrk!~andrewrk@mail.ziglang.org
+smlavine: suggest to pass `--release=safe` if that's the one you want
+
+1716217765
+smlavine!~smlavine@sourcehut/user/smlavine
+Yeah, that's what I'm doing now instead
+
+1716217780
+andrewrk!~andrewrk@mail.ziglang.org
+note that this still gives priority to the project; it only specifies the default when the project does not care
+
+1716217842
+andrewrk!~andrewrk@mail.ziglang.org
+another thing you can do is, in your build.zig script, you can work out the value to pass to your dependency
+
+1716217853
+smlavine!~smlavine@sourcehut/user/smlavine
+Right, the project could mandate an OptimizeMode to pass to the build step as opposed to using standardOptimizeOption, if I understand correctly
+
+1716217876
+andrewrk!~andrewrk@mail.ziglang.org
+for example, you can pass ReleaseFast to some dependencies, ReleaseSafe to others
+
+1716217901
+smlavine!~smlavine@sourcehut/user/smlavine
+Oh, am I able to do that in my b.dependency() call?
+
+1716217904
+andrewrk!~andrewrk@mail.ziglang.org
+this will enable --release with no default provided work for your users
+
+1716217907
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1716217952
+andrewrk!~andrewrk@mail.ziglang.org
+it's a bit verbose, but the flexibility really comes in handy when you need it
+
+1716217981
+andrewrk!~andrewrk@mail.ziglang.org
+for example, in my music player, I always pass ReleaseFast to ffmpeg
+
+1716218153
+smlavine!~smlavine@sourcehut/user/smlavine
+Where could I find that build.zig to look at?
+
+1716218169
+smlavine!~smlavine@sourcehut/user/smlavine
+I'm not quite sure how to pass along the OptimizeMode in dependency since it takes anytype
+
+1716218349
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps start with this page: https://ziglang.org/learn/build-system/
+
+1716218374
+andrewrk!~andrewrk@mail.ziglang.org
+I can link you to more complicated examples that aren't yet covered by this guide
+
+1716218429
+andrewrk!~andrewrk@mail.ziglang.org
+here's my music player project, which has several dependencies and shares code with a wasm application: https://codeberg.org/andrewrk/player
+
+1716218454
+andrewrk!~andrewrk@mail.ziglang.org
+it depends on a newer zig than 0.12.0 but all the build system stuff is compatible with 0.12.0
+
+1716218640
+andrewrk!~andrewrk@mail.ziglang.org
+the values to pass to b.dependency() are a bijection with the command line args that are offered by the dependency's build script
+
+1716218667
+andrewrk!~andrewrk@mail.ziglang.org
+so you could discover them by running `zig build -h` on the dependency. it might be nice to expose that in a handy way... (thinking)
+
+1716218700
+smlavine!~smlavine@sourcehut/user/smlavine
+Thanks for the links -- the syntax for passing .target and .optimize to the dependency was the piece I was missing. :)
+
+1716218926
+andrewrk!~andrewrk@mail.ziglang.org
+yeah and the key insight is that you can do logic to determine those values based on your own project's configuration
+
+1716231763
+susubub!~onlinetel@user/susubub
+hello
+
+1716232411
+andrewrk!~andrewrk@mail.ziglang.org
+hello
+
+1716232433
+susubub!~onlinetel@user/susubub
+hellooo
+
+1716232435
+susubub!~onlinetel@user/susubub
+mr andrewrk
+
+1716232458
+susubub!~onlinetel@user/susubub
+are you the andrewrk from the zig software foundation?
+
+1716232489
+susubub!~onlinetel@user/susubub
+keep the great work up! 
+
+1716232509
+andrewrk!~andrewrk@mail.ziglang.org
+at your service
+
+1716232531
+susubub!~onlinetel@user/susubub
+yoooo
+
+1716232553
+susubub!~onlinetel@user/susubub
+how are you doing today?
+
+1716232565
+susubub!~onlinetel@user/susubub
+this is the first day of the weeeeek
+
