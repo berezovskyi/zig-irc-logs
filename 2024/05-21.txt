@@ -1,0 +1,324 @@
+1716252411
+src!~src@user/src
+I'm a bit confused about how to leave enums unions uninitialized, is that possible?
+
+1716252457
+src!~src@user/src
+as in `const Num = union { /*...*/ };` `var n1 : Num = undefined;` and later set `n1` ?! Or do I simply always have to initialze them at point of declaration?
+
+1716252971
+src!~src@user/src
+(slightly tired so I might just be an idiot here; though granted, that's always a strong possibility in any case)
+
+1716253064
+gcarlos8!~gcarlos@37.218.246.133
+how can I reinterpret a slice of bytes to an type like integer? For example, I have a 2 elements u8 slice and wanna put it into an u16. I can use ptrCast and alignCast the slice to a u16 pointer and then derreference it. Is there a better way to do that?
+
+1716261101
+grayhatter!~grayhatte@user/grayhatter
+gcarlos8: https://ziglang.org/documentation/master/std/#std.mem.readInt probably?
+
+1716264325
+andrewrk!~andrewrk@mail.ziglang.org
+src: https://ziglang.org/documentation/master/#union
+
+1716265111
+barusu!~barusu@38.175.196.204
+Is there a way in zig I can mark struct fields as constant?
+
+1716265137
+barusu!~barusu@38.175.196.204
+something like `struct { foo: const u8 };`
+
+1716265218
+andrewrk!~andrewrk@mail.ziglang.org
+no
+
+1716265338
+barusu!~barusu@38.175.196.204
+Oh, okay, thanks
+
+1716265374
+barusu!~barusu@38.175.196.204
+Also, if I declare a sentinel array as undefined. Is it my responsibility to add the sentinel value at the end?
+
+1716265396
+barusu!~barusu@38.175.196.204
+const sentinel: [10:0]u8 = undefined;
+
+1716265420
+barusu!~barusu@38.175.196.204
+Is this necessary after that? `sentinel[sentinel.len] = 0;
+
+1716275945
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+is there a recommended docker container providing zig? asking for CI reasons
+
+1716276291
+torque!~tachyon@user/torque
+it's very straightforward to make a container by simply using tarballs from zig's website. they should run on any linux distribution
+
+1716276327
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+the manual way then
+
+1716276334
+torque!~tachyon@user/torque
+I don't think there are any official docker images
+
+1716276377
+torque!~tachyon@user/torque
+well, you can build the container once and push it to ghcr or whatever you're using to provide your CI.
+
+1716276389
+torque!~tachyon@user/torque
+it's pretty minimal effort, imo
+
+1716276516
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+i was just hoping someone did that for me already xP
+
+1716289718
+andrewrk!~andrewrk@mail.ziglang.org
+not sure why you would want a docker container dedicated to zig
+
+1716289728
+andrewrk!~andrewrk@mail.ziglang.org
+just slap zig into your docker container for whatever else you're doing
+
+1716289765
+andrewrk!~andrewrk@mail.ziglang.org
+what you're asking for is effectively to use a docker container as an additional way of distributing a tarball, which is madness
+
+1716290149
+susubub!~onlinetel@user/susubub
+hello everyone!
+
+1716290354
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+the larger context is that I'm working on https://github.com/orhun/linuxwave/pull/28 linuxwave port to 0.12, and the ci here uses an old container img that stopped updating at 0.10.1 and wanted a quick way to green :P
+
+1716290630
+Pistahh!~Pistahh@user/pistahh
+andrewrk: docker can be seen as an universal "language" to run tools when you do not care about installation details. Running something like `docker run -v "$PWD":/usr/src/myapp -w /usr/src/myapp zig:0.12.0 zig build` is much simpler than downloading the tarball and understanding how to make it work. It just targets other kind of people.
+
+1716291057
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think slaping a whole ass linux distribution on top of zig is worth it so that people don't have to learn how to type `tar xf`
+
+1716291383
+fuel!~fuel@pcbox/developer/fuel
+i just install zigup lmao
+
+1716291394
+fuel!~fuel@pcbox/developer/fuel
+it's in the aur :p
+
+1716291398
+companion_cube!~simon@user/meow/companion-cube:68572
+Not enough network boundaries! 
+
+1716291501
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+im definitely not above just downloading the tar, but I agree with Pistahh that writing enough github ci yamls makes it grow into the fingertips
+
+1716292002
+Pistahh!~Pistahh@user/pistahh
+andrewrk: it is not about learning it. When you already deal with docker containers anyways, you will eventually need and build a zig based one too. Without an official one many people will waste many hours building their own ones. The golang container on docker hub has 1B+ downloads. Imagine the time wasted if everyone in need would have to
+
+1716292002
+Pistahh!~Pistahh@user/pistahh
+develop their own.
+
+1716292147
+smeding!~roysmedin@167.71.77.228
+i thought the whole point of docker was to waste people's time
+
+1716292400
+andrewrk!~andrewrk@mail.ziglang.org
+imagine the time and computing resources wasted if people use zig  by downloading hundreds of unnecessary megabytes of docker containers
+
+1716292431
+ifreund!2940d10f8b@user/ifreund
+yeah, "need" is a very strong word when used in relation to zig and docker
+
+1716292464
+andrewrk!~andrewrk@mail.ziglang.org
+the best case scenario is to have zig cached in your CI system and use it without accessing the network
+
+1716292490
+ifreund!2940d10f8b@user/ifreund
+the steps are 1. download tarball 2. tar xf tarball 3. ./unpacked/zig build
+
+1716292603
+bblack!~bblack@wikimedia/bblack-WMF
+what might be more-interesting, would be for someone (separately from the zig source distribution) somehow use a container system to automate setting up the whole suite of tooling for building from source (the right versions of clang+llvm+all the other minor bits)
+
+1716292739
+bblack!~bblack@wikimedia/bblack-WMF
+have the container generate an output mount or tarball or whatever that you can stick in your $PATH to get going on building zig locally.
+
+1716292767
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What if the Zig compiler was shipped in a lighter Docker container?
+
+1716292767
+andrewrk!~andrewrk@mail.ziglang.org
+that's a pretty big waste too. what's the point of compiling LLVM every time? big waste of resources and time and you don't really gain anything since there is still the wasm blob
+
+1716292796
+ifreund!2940d10f8b@user/ifreund
+what could possibly be as light as no container?
+
+1716292823
+bblack!~bblack@wikimedia/bblack-WMF
+not every time, just anytime the build deps actually change
+
+1716292841
+clevor!sid649024@id-649024.hampstead.irccloud.com
+^
+
+1716292877
+andrewrk!~andrewrk@mail.ziglang.org
+the actual use case here is that people want to put up zig packages with a convenient way to run CI testing
+
+1716292932
+andrewrk!~andrewrk@mail.ziglang.org
+I've seen a lot of people use https://github.com/goto-bus-stop/setup-zig/ for github specifically. I'm not sure if I endorse it since I suspect the caching is not working, causing unnecessary bandwidth usage on ziglang.org, but something like this should suffice to solve the use case
+
+1716293070
+andrewrk!~andrewrk@mail.ziglang.org
+in any case, I think that eliminating docker from the equation is a good first step towards reducing global system complexity of CI testing for zig projects
+
+1716311720
+cydox!~jan@user/cydox
+Using a std.heap.ArenaAllocator ontop of std.heap.page_allocator, i'm observing a lot of mmap syscalls. I wish I could specify a minimum node size for the arena.
+
+1716311778
+cydox!~jan@user/cydox
+More specifically I'm using a std.heap.MemPool, which uses a std.heap.ArenaAllocator underneath.
+
+1716319212
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+on another note, since there doesn't seem to be any docs yet, what does `paths` do in build.zig.zon?
+
+1716319252
+j`ey!~joey@user/jey/x-2681904
+tranzystorekk: you can use a path to a dep
+
+1716319305
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+im not sure what you mean, like a path to the dependency cache?
+
+1716319336
+j`ey!~joey@user/jey/x-2681904
+no like: path: "/some/dir/with/code"
+
+1716319346
+rockorager!2bbd732aa1@irc.pico.sh
+tranzystorekk: I believe `paths` are what is included in the hash
+
+1716319439
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+im confused, it's a top level param, not a dependency param, and besides your explanation does not say what the field is for
+
+1716319561
+j`ey!~joey@user/jey/x-2681904
+oh paths, sorry, not path
+
+1716320275
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/blob/master/doc/build.zig.zon.md#paths
+
+1716320354
+torque!~tachyon@user/torque
+note that if you run `zig init` you will get a `build.zig.zon` commented with this documentation as well
+
+1716328911
+gcarlos8!~gcarlos@37.218.246.133
+does anyone know some lib that implements DES-CBC? Any I can find now is some implementation of the DES algorithm
+
+1716328988
+grayhatter!~grayhatte@user/grayhatter
+gcarlos8: I think you're probably implementing that yourself if you want it... I don't think anyone willingly uses any flavor of DES anymore
+
+1716329074
+gcarlos8!~gcarlos@37.218.246.133
+I know, I'm using it as part of a reverse engineering project of a game that use it but I'm not too confident in implementing it...
+
+1716329119
+gcarlos8!~gcarlos@37.218.246.133
+About the DES itself I did found some snippets, but nothing about CBC
+
+1716329141
+grayhatter!~grayhatte@user/grayhatter
+depending on how much time you wanna invest, might be worth it to grab a version written in C and using translate-c
+
+1716329228
+grayhatter!~grayhatte@user/grayhatter
+des is already a block cipher, so isn't DES-CBC just DES?
+
+1716329421
+grayhatter!~grayhatte@user/grayhatter
+gcarlos8: I'd assume that DES-CBC is AES-CBC with AES replaced by DES
+
+1716329488
+grayhatter!~grayhatte@user/grayhatter
+I just implemented AES-CBC it was pretty easy if you wanted to implement it (or you could possibly copy mine) and replace AES with DES
+
+1716329489
+gcarlos8!~gcarlos@37.218.246.133
+I discovered what DES is literally yesterday, I know nothing about crypto, but as far I can see CBC is a mode you deal with the chain of blocks, of various
+
+1716329526
+gcarlos8!~gcarlos@37.218.246.133
+can you point me to your implementation? 
+
+1716329550
+gcarlos8!~gcarlos@37.218.246.133
+I'll try it with the DES implementation I found here
+
+1716329649
+grayhatter!~grayhatte@user/grayhatter
+https://www.rfc-editor.org/rfc/rfc2451#section-2.1 CBC is defined as xor with the iv (Initialization Vector and/or nonce) for each block
+
+1716329777
+grayhatter!~grayhatte@user/grayhatter
+I've just been messing around, I wouldn't actually trust this implementation until I can fix it up (reader beware, it's super ugly) https://github.com/GrayHatter/nihssl/blob/main/src/cipher.zig#L49-L85
+
+1716329800
+grayhatter!~grayhatte@user/grayhatter
+but it agrees with openssl's implementation so it works for AES
+
+1716330004
+gcarlos8!~gcarlos@37.218.246.133
+thank you!
+
+1716330021
+gcarlos8!~gcarlos@37.218.246.133
+i'll take a look and try to understand
+
+1716330061
+grayhatter!~grayhatte@user/grayhatter
+I'm sure I got decrypt working... but this function is incomplete, so I'll have to find what I did with the working version of the decrypt function https://github.com/GrayHatter/nihssl/blob/main/src/cipher.zig#L393
+
+1716330071
+grayhatter!~grayhatte@user/grayhatter
+this on is missing the xor step in the decryption 
+
+1716330592
+gcarlos8!~gcarlos@37.218.246.133
+now I'm trying to port this https://github.com/schmee/zig/commit/8646bda5c31a012f12866fe4b3ef70eb5b281e23 to zig 0.12 :(
+
+1716332080
+aquamo4k!~mross@162.222.54.134
+just trying to rebuild zig from HEAD and cmake .. from build/ is chewing up 20-40% cpu and not completing, did something change?   running strace now to see what it is doing :-)
+
+1716332389
+aquamo4k!~mross@162.222.54.134
+err, I'm still on llvm 17 it appears, will fix that first
+
+1716333162
+aquamo4k!~mross@162.222.54.134
+yep, that was problem, sorry for noise
+
