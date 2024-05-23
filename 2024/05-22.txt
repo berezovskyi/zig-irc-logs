@@ -1,0 +1,444 @@
+1716369547
+j`ey!~joey@user/jey/x-2681904
+after a (probably too brief) google, I can't seem to find what the 'guard' keyword does
+
+1716369577
+j`ey!~joey@user/jey/x-2681904
+oops, this is a .swift file, no wonder I cant find info about zig then :D
+
+1716388412
+andrewrk!~andrewrk@mail.ziglang.org
+I'm planning to release 0.13.0 and 0.12.1 on Monday, primarily featuring the LLVM 18 upgrade and musl 1.2.5 upgrade. If there are any other impactful changes you want to land, you have one week to get them in. 0.12.1 will be the last release in the 0.12.x series.
+
+1716388578
+ifreund!2940d10f8b@user/ifreund
+That sounds very nice, I'll build master and check for regressions in my projects asap
+
+1716388589
+ifreund!2940d10f8b@user/ifreund
+I don't expect anything major though
+
+1716388627
+ifreund!2940d10f8b@user/ifreund
+andrewrk: by the way, I've happily switched away from git submodules to the zig package manager for all my projects, thanks for pushing that forward!
+
+1716388674
+andrewrk!~andrewrk@mail.ziglang.org
+happy to hear that! now we just need to finally solve that global variable pointer init thing for you :)
+
+1716388766
+ifreund!2940d10f8b@user/ifreund
+It's not a terrible pain point as I can use C code for that stuff pretty easily with Zig's build system
+
+1716388775
+ifreund!2940d10f8b@user/ifreund
+it will be nice to finally remove that wart eventually though
+
+1716389422
+rockorager!2bbd732aa1@irc.pico.sh
+ifreund: I saw river uses scdoc, I ported scdoc to zig and it's usable from build.zig - not that scdoc is a huge dependency but you could do the whole thing from build.zig without needing scdoc installed
+
+1716389469
+rockorager!2bbd732aa1@irc.pico.sh
+Now that you are on the zig package manager it might make it a bit easier
+
+1716389522
+andrewrk!~andrewrk@mail.ziglang.org
+and, it should be possible to still automatically use system scdoc in system mode
+
+1716389545
+rockorager!2bbd732aa1@irc.pico.sh
+Oh good point
+
+1716389560
+andrewrk!~andrewrk@mail.ziglang.org
+you get both with a little if-else block
+
+1716389581
+andrewrk!~andrewrk@mail.ziglang.org
+both use cases, I mean
+
+1716389632
+rockorager!2bbd732aa1@irc.pico.sh
+https://github.com/rockorager/zzdoc
+
+1716389677
+ifreund!2940d10f8b@user/ifreund
+neat!
+
+1716389703
+andrewrk!~andrewrk@mail.ziglang.org
+I need to do something about people using .paths = ""
+
+1716389741
+andrewrk!~andrewrk@mail.ziglang.org
+that makes the zig package hash brittle
+
+1716389762
+ifreund!2940d10f8b@user/ifreund
+I think I'll pass though for now, at this point in Zig's maturity it's highly advantageous for me to own all my dependencies in order to make updating to new zig releases easier
+
+1716389785
+rockorager!2bbd732aa1@irc.pico.sh
+andrewrk: It's unclear to me which files I should ever add to .paths
+
+1716389792
+rockorager!2bbd732aa1@irc.pico.sh
+Readme? license?
+
+1716389801
+ifreund!2940d10f8b@user/ifreund
+everything needed to build your package
+
+1716389804
+ifreund!2940d10f8b@user/ifreund
+license yes
+
+1716389807
+ifreund!2940d10f8b@user/ifreund
+readme up to you
+
+1716389827
+rockorager!2bbd732aa1@irc.pico.sh
+Got it
+
+1716389836
+andrewrk!~andrewrk@mail.ziglang.org
+it's the files you intend to be on the computer of the users of your package
+
+1716389839
+rockorager!2bbd732aa1@irc.pico.sh
+And definitely understand re: owning your dependencies :)
+
+1716389912
+ifreund!2940d10f8b@user/ifreund
+andrewrk: one thing that is unclear to me about `paths` is what to put there for e.g. river which is not intended to be consumed by other projects as a "package"
+
+1716389914
+andrewrk!~andrewrk@mail.ziglang.org
+for example by specifying the list of files, it means that if github adds .DS_Store, or other metadata entries into the tarball, the zig package hash will not change
+
+1716389947
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: yeah in that case it doesn't matter. perhaps it was a mistake to make the field mandatory
+
+1716389948
+ifreund!2940d10f8b@user/ifreund
+I currently have `.paths = .{""}` but am now unsure if that actually does what I intended and create an empty package...
+
+1716389983
+andrewrk!~andrewrk@mail.ziglang.org
+"" currently means "no filter, all files included". I believe .{} is empty which is what you are describing
+
+1716389992
+ifreund!2940d10f8b@user/ifreund
+iirc .{} was rejected
+
+1716389999
+ifreund!2940d10f8b@user/ifreund
+it is what I tried first though
+
+1716390002
+andrewrk!~andrewrk@mail.ziglang.org
+ah
+
+1716390023
+ifreund!2940d10f8b@user/ifreund
+yeah, "/home/ifreund/repos/river/build.zig.zon:4:15: error: expected paths expression to be a list of strings
+
+1716390061
+ifreund!2940d10f8b@user/ifreund
+if it's intended for .{} to be allowed that should be an easy fix though
+
+1716390065
+rockorager!2bbd732aa1@irc.pico.sh
+https://github.com/ziglang/zig/blob/ed75f62568f64c0d3859aab35aaf5289c3f07026/build.zig.zon#L14
+
+1716390111
+andrewrk!~andrewrk@mail.ziglang.org
+same as river, zig-the-compiler is not intended as a package
+
+1716390134
+andrewrk!~andrewrk@mail.ziglang.org
+maybe if you omit the paths field, zig prevents it from being used as a package
+
+1716390157
+andrewrk!~andrewrk@mail.ziglang.org
+this way, you don't have to think about it until you're about to test it as a dependency, then you realize that you have to set this field to make it viable
+
+1716390167
+ifreund!2940d10f8b@user/ifreund
+I think we should make ommitting the paths field and setting it to .{} equivalent
+
+1716390175
+andrewrk!~andrewrk@mail.ziglang.org
+agreed
+
+1716390176
+ifreund!2940d10f8b@user/ifreund
+both could forbid use as a backage
+
+1716390201
+andrewrk!~andrewrk@mail.ziglang.org
+and then if you get the error for not specifying paths, it can provide some guidance on how to populate the field in that error message
+
+1716390242
+rockorager!2bbd732aa1@irc.pico.sh
+Could there be a compile error if there are no paths and build.zig has b.addModule?
+
+1716390267
+andrewrk!~andrewrk@mail.ziglang.org
+there is one more relevant thing to solve here: 1. if you specify a directory, it includes all the files in the directory, including e.g. swap files and .pyc files (I think maybe like python-cache directories too or something like that)
+
+1716390288
+andrewrk!~andrewrk@mail.ziglang.org
+2. nobody including me wants to list out 100% of the source files in subdirectories in build.zig.zon
+
+1716390297
+ifreund!2940d10f8b@user/ifreund
+rockorager: I'm currently using addModule to expose some shared pieces of code to multiple compilations in river
+
+1716390302
+andrewrk!~andrewrk@mail.ziglang.org
+therefore I think we need at least some kind of globbing feature
+
+1716390332
+ifreund!2940d10f8b@user/ifreund
+I have a trivial globbing library I wrote for river
+
+1716390340
+ifreund!2940d10f8b@user/ifreund
+it's like 25-50 LoC
+
+1716390352
+rockorager!2bbd732aa1@irc.pico.sh
+What about an exclude list instead of an include list?
+
+1716390366
+ifreund!2940d10f8b@user/ifreund
+whitelisting is much more explicit
+
+1716390367
+andrewrk!~andrewrk@mail.ziglang.org
+no, that would fail to exclude a lot of garbage
+
+1716390392
+andrewrk!~andrewrk@mail.ziglang.org
+imagine a new editor invented next year, creates .my-editor-cache files, those files need to be excluded
+
+1716390402
+ifreund!2940d10f8b@user/ifreund
+mini glob library: https://codeberg.org/river/river/src/branch/master/common/globber.zig
+
+1716390411
+andrewrk!~andrewrk@mail.ziglang.org
+neat! thanks for sharing
+
+1716390419
+andrewrk!~andrewrk@mail.ziglang.org
+I've been enjoying playing with codeberg too
+
+1716390460
+ifreund!2940d10f8b@user/ifreund
+cool, I've been very happy with it so far
+
+1716390528
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: I think your idea about having different API for private (to the package) modules and exposed modules is an interesting one, which could save people time if it, like you said, notices the incompatibility between the build.zig script and the lack of paths field
+
+1716390563
+andrewrk!~andrewrk@mail.ziglang.org
+as it stands, addModule is designed so that people expose all the modules they create by default
+
+1716390645
+andrewrk!~andrewrk@mail.ziglang.org
+well, we already have addModule vs createModule but I suppose those names don't really communicate effectively
+
+1716390660
+andrewrk!~andrewrk@mail.ziglang.org
+the docs for createModule says "This function creates a private module, to be used by the current package, but not exposed to other packages depending on this one. addModule can be used instead to create a public module."
+
+1716390690
+andrewrk!~andrewrk@mail.ziglang.org
+they take the same args except addModule additionally takes a name which is how the module is exposed to dependendees
+
+1716390700
+andrewrk!~andrewrk@mail.ziglang.org
+*dependees
+
+1716390741
+andrewrk!~andrewrk@mail.ziglang.org
+argh, I got it backwards. my typo was resisting my error. the name is how the module is exposed to those depending on it
+
+1716390779
+ifreund!2940d10f8b@user/ifreund
+ah I lied, I actually do use createModule() for my river-internal modules
+
+1716390794
+ifreund!2940d10f8b@user/ifreund
+must've found those doc comments or something :)
+
+1716390812
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: I love how you actually bother to read docs and figure out intended API usage :D
+
+1716390830
+ifreund!2940d10f8b@user/ifreund
+thanks :)
+
+1716390869
+ifreund!2940d10f8b@user/ifreund
+the only think that stumped me with the switch to the package manager was this: https://codeberg.org/river/river/src/commit/7fdba05b8249b10d10a2c64c1175429539c01af1/build.zig#L148
+
+1716390892
+andrewrk!~andrewrk@mail.ziglang.org
+ah I saw you mention that somewhere else recently
+
+1716390907
+ifreund!2940d10f8b@user/ifreund
+I don't think that's the intended way to do this, but I don't think it makes sense for calling linkSystemLibrary() on a module to require me to opt out of target inheritence
+
+1716390934
+ifreund!2940d10f8b@user/ifreund
+yeah, I mentioned it on discord too a while back
+
+1716390941
+andrewrk!~andrewrk@mail.ziglang.org
+to be honest I don't fully understand the problem or the solution presently
+
+1716390963
+andrewrk!~andrewrk@mail.ziglang.org
+seems like you found a problem that deserves some scrutiny
+
+1716390991
+andrewrk!~andrewrk@mail.ziglang.org
+I will dig in at some point
+
+1716391014
+ifreund!2940d10f8b@user/ifreund
+I should probably open an issue and explain what I understand about the situation
+
+1716391534
+rockorager!2bbd732aa1@irc.pico.sh
+It would be nice if the build.zig.zon from zig init included the "correct" files in .paths
+
+1716391538
+rockorager!2bbd732aa1@irc.pico.sh
+That would be helpful
+
+1716391631
+ifreund!2940d10f8b@user/ifreund
+there are no "correct" files, it depends on the project
+
+1716391647
+ifreund!2940d10f8b@user/ifreund
+oh, you mean from the auto created zig init project, I see
+
+1716391671
+rockorager!2bbd732aa1@irc.pico.sh
+yeah, from the init'd project
+
+1716391738
+rockorager!2bbd732aa1@irc.pico.sh
+The default of "" means everything just works if i don't change it and I also don't understand it very well so I never touch it haha
+
+1716391786
+ifreund!2940d10f8b@user/ifreund
+I don't know why "" means everything is even supported tbh
+
+1716391794
+ifreund!2940d10f8b@user/ifreund
+it seems like an anti-feature to me personally
+
+1716391836
+rockorager!2bbd732aa1@irc.pico.sh
+Yeah, it incentivizes leaving it as is
+
+1716392006
+rockorager!2bbd732aa1@irc.pico.sh
+Say I have lib.zig which has some tests in it. The tests reference tests/data.csv - should that csv file be included in .paths?
+
+1716392037
+rockorager!2bbd732aa1@irc.pico.sh
+I'm guessing no
+
+1716392647
+andrewrk!~andrewrk@mail.ziglang.org
+typically you don't expose the tests to users of the package, so it's nice to save their disk space by excluding them
+
+1716392717
+andrewrk!~andrewrk@mail.ziglang.org
+as a rule of thumb: include nothing except that which is needed to prevent compilation failures, with the exception of the license which is distributed for legal reasons
+
+1716392736
+rockorager!2bbd732aa1@irc.pico.sh
+Perfect
+
+1716392744
+rockorager!2bbd732aa1@irc.pico.sh
+Put that in the comment above .paths ;)
+
+1716392749
+andrewrk!~andrewrk@mail.ziglang.org
+good idea
+
+1716392771
+rockorager!2bbd732aa1@irc.pico.sh
+So the package manager downloads a tarball of the repo then deletes *anything* not listed in paths?
+
+1716392777
+andrewrk!~andrewrk@mail.ziglang.org
+correct
+
+1716392793
+andrewrk!~andrewrk@mail.ziglang.org
+if you wish you could create a tarball of only those files in paths to make a smaller tarball
+
+1716392817
+andrewrk!~andrewrk@mail.ziglang.org
+however it is often convenient to leech from e.g. GitHub's storage and bandwidth
+
+1716392830
+grayhatter!~grayhatte@user/grayhatter
+zig packagetarball
+
+1716392870
+rockorager!2bbd732aa1@irc.pico.sh
+is build.zig.zon required to be on disc?
+
+1716392933
+andrewrk!~andrewrk@mail.ziglang.org
+it would violate the design constraints for that file to not be covered by the package hash. I'm not sure if this is currently enforced
+
+1716392995
+andrewrk!~andrewrk@mail.ziglang.org
+if it's not done already, it will be an error in the future to not include that file
+
+1716394043
+rockorager!2bbd732aa1@irc.pico.sh
+A super lazy way to make this easier would be to have a command which spits out a formatted `.paths = .{ "..." },` with a recursive list of all files in .
+
+1716394057
+rockorager!2bbd732aa1@irc.pico.sh
+Copy, paste, delete lines I don't want to include
+
+1716394316
+ifreund!2940d10f8b@user/ifreund
+sounds like a feature for tooling such as zls
+
+1716395138
+bblack!~bblack@wikimedia/bblack-WMF
+FWIW I rebuilt my stage3 zig on latest master w/ Debian's llvm/clang-18, and rebuilt my little zig test project using that stage3/bin/zig, and everything seemed fine other than one expected 0.12 -> 0.13 compat transition issue in my build.zig (the b.path() vs .{ .path = ... } stuff)
+
+1716396587
+rockorager!2bbd732aa1@irc.pico.sh
+ifreund: yeah that would make sense
+
+1716398874
+rockorager!2bbd732aa1@irc.pico.sh
+ifreund: quick and dirty: https://rockorager.pastes.sh/1716398854507035055
+
+1716401221
+rockorager!2bbd732aa1@irc.pico.sh
+I saved that one as `git-ls-zig` so I can just git ls-zig | wl-copy
+
