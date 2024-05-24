@@ -1,0 +1,396 @@
+1716432547
+src!~src@user/src
+can someone explain this https://dpaste.com/5BQ25V62T
+
+1716432624
+src!~src@user/src
+I'm trying to print the memory addresses of struct fields; the values for a normal struct make sense to me; the values for a packed struct don't; I get the same address for three consecutive struct fields (32 bit, 12 bit, 12 bit width)
+
+1716433594
+bblack!~bblack@wikimedia/bblack-WMF
+I agree it's a little counter-intuitive, but I could guess that the u32+u12+u12 basically occupying 7 bytes of a u64, and the final u16 is the 8th byte of that u64 plus one more.  I'm not sure address-of (which is implicitly 8-bit byte offsets) even makes sense for bit widths that aren't even bytes, though...
+
+1716433671
+bblack!~bblack@wikimedia/bblack-WMF
+if you imagined a packed struct with 32x "u2" fields, I bet they'd all share an address in this sense too (the address of the u64 that contains them)
+
+1716433714
+src!~src@user/src
+for comparison: https://dpaste.com/F857Y6TBP
+
+1716433818
+bblack!~bblack@wikimedia/bblack-WMF
+yeah but the C version is all made of types that align on whole-byte boundaries, while "u12" does not.
+
+1716433847
+bblack!~bblack@wikimedia/bblack-WMF
+although I think C23 allows odd bit widths IIRC
+
+1716433923
+bblack!~bblack@wikimedia/bblack-WMF
+yeah, via _BitInt
+
+1716433929
+src!~src@user/src
+Zig's memory address output still seems non-sensical to me though? if first field is a u32, how can the second field start at the same memory address (seemingly)?
+
+1716434047
+bblack!~bblack@wikimedia/bblack-WMF
+I could see arguments for various logical layout choices there.  u64,u8 or u32,u32,u8 or even u32,u8,u8,u8,u16 maybe?
+
+1716434082
+bblack!~bblack@wikimedia/bblack-WMF
+but any way you look at it, the /second/ u12 can't have a sensible address-of.  It doesn't even start on a whole-byte boundary.
+
+1716434093
+bblack!~bblack@wikimedia/bblack-WMF
+arguably the first one does, but still: it's not even a whole-byte type
+
+1716434131
+src!~src@user/src
+obv I was prepared to for ths misalignment of hex to the field bit width
+
+1716434149
+src!~src@user/src
+but as you pointed out, and as I'm wondering, it doesn't even make sense taking this into account
+
+1716434190
+bblack!~bblack@wikimedia/bblack-WMF
+I suspect you're just seeing implementation details, which could even differ across versions of zig or cpu targets.
+
+1716434219
+bblack!~bblack@wikimedia/bblack-WMF
+and it internally implemented it as "u64,u8", with the final u16 stretching across the last byte of the u64 and that final u8.
+
+1716434256
+bblack!~bblack@wikimedia/bblack-WMF
+and so it considers all of the first 3 fields to have the address-of the underlying u64
+
+1716434297
+bblack!~bblack@wikimedia/bblack-WMF
+but I donno, I'm just guessing
+
+1716434308
+src!~src@user/src
+Sorry for taking a bit
+
+1716434313
+src!~src@user/src
+I get what you mean now
+
+1716434328
+src!~src@user/src
+that seems plausible to me
+
+1716434401
+bblack!~bblack@wikimedia/bblack-WMF
+oh also, if you really want to make some code that handles this more-portably
+
+1716434411
+bblack!~bblack@wikimedia/bblack-WMF
+I think you could use @offsetOf + @bitOffsetOf
+
+1716434444
+bblack!~bblack@wikimedia/bblack-WMF
+https://ziglang.org/documentation/0.12.0/#toc-bitOffsetOf
+
+1716434467
+src!~src@user/src
+already there :)
+
+1716434839
+src!~src@user/src
+bblack: https://dpaste.com/9PEGB8ZJ6 :)
+
+1716435320
+src!~src@user/src
+(and btw, thanks again bblack; very nice of you to chip in and help me out here)
+
+1716441544
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+    const sharedLib = b.addSharedLibrary(.{
+
+1716441546
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+        .name = "cosimLib",
+
+1716441548
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+        .root_source_file = .{ .path = "src/entry.zig" },
+
+1716441550
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+        .target = target,
+
+1716441552
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+        .optimize = optimize,
+
+1716441554
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+    });
+
+1716441557
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+^
+
+1716441564
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+above worked for me before, not sure why its broken now
+
+1716441573
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+it says theres no .path in LazyPath
+
+1716441597
+grayhatter!~grayhatte@user/grayhatter
+R2COM: have you tried reading the std docs?
+
+1716441751
+grayhatter!~grayhatte@user/grayhatter
+it doesn't work because .root_source_file is a LazyPath{} but LazyPath changed recently, and LazyPath.path no longer exists. it's now called something else. I don't remember which but searching the stdlib docs for path will give you Build.LazyPath, and the new feild you have to use now
+
+1716442461
+andrewrk!~andrewrk@mail.ziglang.org
+https://asciinema.org/a/is5cv9aQzEyE9Zx0HmzefrBwb
+
+1716442519
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+        .root_source_file = .{
+
+1716442520
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+            .src_path = .{
+
+1716442522
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+                .owner = b,
+
+1716442524
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+                .sub_path = "src/entry.zig",
+
+1716442526
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+            },
+
+1716442528
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+        },
+
+1716442532
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+ok this one worked.
+
+1716448208
+torque!~tachyon@user/torque
+src, zig's packed structs are basically a bit of sugar around integers. for "packed" c-style data you want an `extern struct` with all field types specified as `align(1)`
+
+1716464492
+rockorager!2bbd732aa1@irc.pico.sh
+andrewrk: looks great
+
+1716478229
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: thanks for your help!
+
+1716478237
+andrewrk!~andrewrk@mail.ziglang.org
+next up: IPC
+
+1716478283
+andrewrk!~andrewrk@mail.ziglang.org
+as a parent, plugging into this will be as easy as passing a std.Progress.Node to std.process.Child.spawn 
+
+1716478308
+andrewrk!~andrewrk@mail.ziglang.org
+and then the child has zero API difference as it will react to an environment variable that indicates a particular file descriptor is a progress IPC pipe
+
+1716478380
+andrewrk!~andrewrk@mail.ziglang.org
+so, you can imagine running `zig build` and all computations will be progress aware, including any tools written in zig that happen to use std.Progress API
+
+1716478441
+andrewrk!~andrewrk@mail.ziglang.org
+tools like ZLS can pass this env var to the zig compiler itself and convert the progress information into vscode UI if that's possible
+
+1716478514
+rockorager!2bbd732aa1@irc.pico.sh
+The Progress.Node api is pretty nice, I am using it in the zzdoc build step to indicate manpage progress
+
+1716478545
+rockorager!2bbd732aa1@irc.pico.sh
+Which is ridiculous because it takes probably 1ms to build a manpage but seemed nice to do
+
+1716478549
+andrewrk!~andrewrk@mail.ziglang.org
+I was able to remove the activate() function - no longer necessary in my branch
+
+1716478597
+rockorager!2bbd732aa1@irc.pico.sh
+It's implicitly started?
+
+1716478649
+andrewrk!~andrewrk@mail.ziglang.org
+before, that function was basically working around the fact that you want a pointer to the return value
+
+1716478685
+andrewrk!~andrewrk@mail.ziglang.org
+my solution to making the progress nodes lock-free ended up solving that as well
+
+1716478745
+andrewrk!~andrewrk@mail.ziglang.org
+after we see this for `zig build` I think it will become obvious how zig is missing a similar env var / ipc solution for thread pools when sometimes too many threads are used causing too much progress output
+
+1716478769
+andrewrk!~andrewrk@mail.ziglang.org
+i.e. you'll typically expect maximum 1 line per CPU core
+
+1716478908
+andrewrk!~andrewrk@mail.ziglang.org
+I think I opened an issue for that. anyway the plan is to adhere to the make job server standard so that zig build plays nicely with make, cargo, etc
+
+1716483703
+smlavine!~smlavine@sourcehut/user/smlavine
+Hi, stdlib doc question -- where can I see the fields for a Type Function documented? For instance, I see in examples that an .items field is a key part of the ArrayListAligned type, but on here https://ziglang.org/documentation/master/std/#std.array_list.ArrayListAligned I can't see that field actually mentioned. Only methods that refer to it in their documentation
+
+1716483943
+smlavine!~smlavine@sourcehut/user/smlavine
+zls is able to see these fields so I can get it through there at least, lol
+
+1716484574
+rockorager!2bbd732aa1@irc.pico.sh
+smlavine: it's not shown on the main page, but if you click [src] you can see it there
+
+1716484649
+rockorager!2bbd732aa1@irc.pico.sh
+Those docs should probably have a Fields section?
+
+1716484897
+smlavine!~smlavine@sourcehut/user/smlavine
+I would assume it is difficult because different struct layouts could be returned depending on the args
+
+1716484913
+smlavine!~smlavine@sourcehut/user/smlavine
+Though I guess the same applies to the methods :p
+
+1716486025
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/19386
+
+1716490921
+andrewrk!~andrewrk@mail.ziglang.org
+I think it's nearly time for me to make another "idiomatic zig" post. I've noticed a pattern that I want to discourage in favor of a better alternative, and I have at least 2 real world examples now, both from the std lib
+
+1716492213
+rockorager!2bbd732aa1@irc.pico.sh
+which pattern?
+
+1716492727
+andrewrk!~andrewrk@mail.ziglang.org
+minimizing how long a field has the value "undefined" by making more struct types that live for shorter lifetimes
+
+1716492787
+andrewrk!~andrewrk@mail.ziglang.org
+for example instead of initializing a child process struct, and then calling spawn() on it, you call spawn and pass an options struct to it. the child struct is only valid between spawn and wait, rather than additionally between init() and spawn()
+
+1716492817
+andrewrk!~andrewrk@mail.ziglang.org
+other example is illustrated by my semi-recent changes to std.http.Server
+
+1716492841
+andrewrk!~andrewrk@mail.ziglang.org
+the previous API had fewer types with more states. my implementation has more types with fewer states
+
+1716496425
+andrewrk!~andrewrk@mail.ziglang.org
+is there a UDP equivalent of pipes? i.e. instead of buffering additional messages, buffer only the last message in the queue
+
+1716496505
+jemius!~imperator@2001:9e8:32c3:3a00:4ac1:4f65:bef5:8d81
+Well, in all the years reading about UNIX and Posix I've never heard of such a thing
+
+1716496531
+grayhatter!~grayhatte@user/grayhatter
+last is ambigious here, but yeah I've never heard anything like that
+
+1716496571
+jemius!~imperator@2001:9e8:32c3:3a00:4ac1:4f65:bef5:8d81
+I guess you could build that with shared mem that can just store 1 item
+
+1716496590
+grayhatter!~grayhatte@user/grayhatter
+but, that's also not how I understand pipes to work....
+
+1716496615
+jemius!~imperator@2001:9e8:32c3:3a00:4ac1:4f65:bef5:8d81
+ACTION is afraid of what andrew is up to
+
+1716496685
+andrewrk!~andrewrk@mail.ziglang.org
+waiting for `zig build` while watching your terminal is about to get a lot more interesting...
+
+1716496993
+jemius!~imperator@2001:9e8:32c3:3a00:4ac1:4f65:bef5:8d81
+message queues btw seem very broken. Never heard of anyone using them. Hanging them into a poll() is not portable, so you can just as well use sockets
+
+1716497110
+andrewrk!~andrewrk@mail.ziglang.org
+I'm just shooting progress updates across a pipe from child to parent, that's all
+
+1716499599
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+andrewrk: what do you mean by "buffer"
+
+1716499745
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I mean a unix datagram socket is udp for local connections, maybe that's what you mean
+
+1716499790
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0: I think I can get decent semantics out of O_NONBLOCK on a pipe
+
+1716499807
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+oh there's also message pipes, didn't know that
+
+1716499830
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+err packet pipes
+
+1716499950
+andrewrk!~andrewrk@mail.ziglang.org
+writer (child) will send updates with O_NONBLOCK, and stop trying silently when the buffer fills up. reader (parent) will read all data from the pipe and take the last full complete message as the progress status for that sub-tree. it will rely on kernel buffering for memory rather than trying to keep a copy of all the child processes' data
+
+1716500018
+andrewrk!~andrewrk@mail.ziglang.org
+mmm that doesn't quite work. I do need a copy of the full tree's serialized data for computing children and siblings
+
+1716500042
+andrewrk!~andrewrk@mail.ziglang.org
+I can rely on a statically allocated buffer though. if it would exceed typical terminal width/height it's not super useful anyway
+
+1716505006
+freshcoffee!~fresh@user/freshcoffee
+does it simplify things if each child had a pipe direct to the root-parent?
+
+1716505081
+freshcoffee!~fresh@user/freshcoffee
+separate pipes for each child
+
+1716505680
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think so
+
+1716508020
+andrewrk!~andrewrk@mail.ziglang.org
+peek() ability for pipes would be handy
+
+1716508530
+andrewrk!~andrewrk@mail.ziglang.org
+https://gist.github.com/andrewrk/b22b4f663cef6b4672d7097de95ea343 IPC working
+
+1716508557
+andrewrk!~andrewrk@mail.ziglang.org
+it flickers though because I need to keep the data from the pipe rather than only using it on updates when it happens to be available
+
