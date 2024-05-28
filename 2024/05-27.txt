@@ -1,0 +1,316 @@
+1716781640
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://paste.gentoo.zip/giIhnTxZ 🤔
+
+1716783033
+andrewrk!~andrewrk@mail.ziglang.org
+you seem to have truncated the error notes that point out where those things are differently declared
+
+1716795462
+src!~src@user/src
+can valgrind be used w/ a Zig executable?
+
+1716795790
+src!~src@user/src
+it should right? in this example https://dpaste.com/5GYWDQX7N (which granted, maybe it's incorrect, I'm learning), valgrind tells me no memory leaks no matter if I do nps.deinit(); at the end or comment that line out ?!
+
+1716796051
+torque!~tachyon@user/torque
+I think valgrind instruments malloc/calloc specifically. the default gpa uses the page allocator which may not be instrumented
+
+1716796077
+torque!~tachyon@user/torque
+however, for debug builds, gpa.deinit should print any leaks you have
+
+1716796123
+torque!~tachyon@user/torque
+so you may want to add a `defer gpa.deinit()` after you set it up
+
+1716796154
+torque!~tachyon@user/torque
+actually it returns a boolean if there were leaks so you have to do `defer { _ = gpa.deinit(); } if you don't care about the result
+
+1716796225
+torque!~tachyon@user/torque
+oh i guess it technically returns an enum not a boolean
+
+1716796555
+src!~src@user/src
+omfg yes :)
+
+1716796661
+src!~src@user/src
+torque: https://dpaste.com/CC9EWK39J :) If I run it now it says Ok at the end, if I uncomment the nps.deinit() call then I get a detected Leak and error output
+
+1716796723
+src!~src@user/src
+do you know by any chance which allocator is equivalent to C alloc/dealloc then? (on Linux, if that makes a diff) (might be useful for learning, debugging w/ valgrind etc)
+
+1716796757
+torque!~tachyon@user/torque
+there is std.heap.c_allocator which I believe also requires linking libc
+
+1716796809
+src!~src@user/src
+Ah thanks
+
+1716811973
+daurnimator!~daurnimat@vultr.daurnimator.com
+I thought the zig allocator interface hooked up to valgrind in general when compiling with debug mode?
+
+1716812059
+daurnimator!~daurnimat@vultr.daurnimator.com
+welp, looks like I imagined https://github.com/ziglang/zig/issues/1837 being implemented
+
+1716812173
+ifreund!2940d10f8b@user/ifreund
+we have @inComptime() now, so I think it would make sense to simply use that to disable the valgrind integration at comptime
+
+1716812236
+daurnimator!~daurnimat@vultr.daurnimator.com
+At some point my commit https://github.com/ziglang/zig/pull/1863/commits/7bbccfc7f363611fda1b4a7ac155ad5dd735760e must have got backed out?
+
+1716812297
+daurnimator!~daurnimat@vultr.daurnimator.com
+hmmmm. https://github.com/ziglang/zig/commit/d633dcd07a053d76942217ca845ff2735a0ce6a2 ? the commit message points me back at the issue
+
+1716812371
+daurnimator!~daurnimat@vultr.daurnimator.com
+oh I should use my eyes better. https://github.com/ziglang/zig/issues/1837#issuecomment-471647274 says he removed it and points to the comptime allocator issue
+
+1716813041
+ifreund!2940d10f8b@user/ifreund
+exactly, and using @inComptime() to guard the valgrind API calls would allow adding back your commit without regressing progress towards comptime allocator stuff
+
+1716815018
+daurnimator!~daurnimat@vultr.daurnimator.com
+heh. I just saw that the zen gained a new item back in 2020: "Resource allocation may fail; resource deallocation must succeed." I recall several places that the linux syscall ABI doesn't do this :/
+
+1716815246
+daurnimator!~daurnimat@vultr.daurnimator.com
+many for good reasons; but terrible for us users of linux. e.g. if you have a contiguous memory mapping, and you unmap something in the middle, then now you have two mappings. which you might not have the resources to track. IIRC this can result in a munmap failing with ENOMEM
+
+1716815535
+daurnimator!~daurnimat@vultr.daurnimator.com
+and that's ignoring fun things like network/fuse filesystems that may make close() error...
+
+1716817965
+companion_cube!~simon@user/meow/companion-cube:68572
+unmapping in the middle sounds just as wrong as free()ing the middle of an array
+
+1716818038
+daurnimator!~daurnimat@vultr.daurnimator.com
+companion_cube: you might not know its the middle! e.g. if you happen to allocate three pages next to each other the kernel is allowed to merge them....
+
+1716818591
+companion_cube!~simon@user/meow/companion-cube:68572
+but then you still should have kept track of the two other pages 
+
+1716818603
+companion_cube!~simon@user/meow/companion-cube:68572
+I mean I assume that you can munmap them separately in that case
+
+1716818611
+companion_cube!~simon@user/meow/companion-cube:68572
+(else it sounds very broken :D)
+
+1716821570
+jeang3nie!~jeang3nie@syn-173-088-042-017.res.spectrum.com
+quit
+
+1716827039
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: https://ziglang.org/documentation/master/std/#std.debug.inValgrind
+
+1716827063
+andrewrk!~andrewrk@mail.ziglang.org
+this is a nice demo of the main purpose of `inline`
+
+1716830841
+ifreund!2940d10f8b@user/ifreund
+neat!
+
+1716831335
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+andrewrk: so as of today is there any decision on how async/await will be in final version or not yet?
+
+1716831638
+txdv!~txdv@78.56.38.107
+R2COM: no
+
+1716831656
+txdv!~txdv@78.56.38.107
+async/await will be released together with hl3
+
+1716832660
+siaal!~Siaal@user/Siaal
+txdv, sorry, what's hl3?
+
+1716832766
+src!~src@user/src
+(half life 3 I assume? computer game that would have followed half life 2 (a very successful fps); many fans would have loved to have seen it released, but that never made it past rumours, so it became a 'meme')
+
+1716832814
+src!~src@user/src
+so the reference is casting doubt that async/await will ever be released basically
+
+1716834715
+drakonis!drakonis@user/meow/drakonis
+half life 3 is a game that was going to happen at some point and then steam happened to valve i suppose
+
+1716834729
+drakonis!drakonis@user/meow/drakonis
+as well as team fortress 2 and portal
+
+1716834793
+drakonis!drakonis@user/meow/drakonis
+we did eventually get half life alyx
+
+1716834796
+src!~src@user/src
+I always tell myself a new f-zero or hl3 would get me back into it, but besides some casual gaming or revisiting old games for a week here or there I haven't gamed in so many years... I doubt I'd even care at this point if they released it
+
+1716834824
+drakonis!drakonis@user/meow/drakonis
+the issue is getting it right in a way that isnt a repeat of previous entries
+
+1716834845
+drakonis!drakonis@user/meow/drakonis
+plus the hype surrounding it
+
+1716834862
+src!~src@user/src
+they could absolutely nail it and I think I wouldn't care is what I'm saying
+
+1716834900
+fuel!~fuel@pcbox/developer/fuel
+FELIX DRIP????????
+
+1716835683
+src!~src@user/src
+can someone put the syntax on line 8 in words such that I understand its logic? https://dpaste.com/25MXK8TTS
+
+1716835722
+src!~src@user/src
+I know .{} is an anonymous struct, its type is deduced from the fields I use with it; self is allocated on the heap, so its a pointer to heap memory; via `*` we deallocate, but why is it `self.*` (the dot throws me off)
+
+1716835745
+src!~src@user/src
+via * we DEREFERENCE (is what I wanted to say)
+
+1716836030
+src!~src@user/src
+alright, sorry I'm just an idiot
+
+1716836056
+src!~src@user/src
+`.*` is pointer dereference, simple as that, I thought the dot had something to do w/ field access but it doesn't
+
+1716836116
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+ok so no async await then
+
+1716836166
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+it would be nice to have some determinism
+
+1716836194
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+like for example Odin lang creater firmly said No to coroutines, so at least some yes/no in plans would be good to have
+
+1716836294
+src!~src@user/src
+R2COM: I get where you're coming from, but Zig isn't a finished lang and far from 1.0, I don't think it has a clear and obvious roadmap, though the vision what it is and what space it's for is clearly visible
+
+1716836388
+src!~src@user/src
+R2COM: (Odin is cool btw, had a close look at this one as well, but decided to pick up Zig because I'm have some ideas for embedded stuff)
+
+1716836448
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+as of now im just thinking that if someone needs coroutine support in his project Go is a best thing to use (of course its not suitable for metal or low level or OS level as Zig can be ); for example I recently experimented with c++20 coroutines and it was tremendous amount of boilerplate for organizing code... in Go it was like 20 lines of code or so...
+
+1716836519
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+i dont think Odin is as supported on embedded as Zig is (although it might be doable) also I dont quite like the fact that Odin lang creater packed complex numbers as part of language types or something like that... i mean language should be simple and all things should be in std lib
+
+1716836610
+src!~src@user/src
+? why is that a problem I wonder? If you don't use them you don't? for some they might be extremely helpful
+
+1716836706
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+it was probably something what employers of odin lang creator asked him to do (embergen or whatever thing was done with it), although the lang creator himself if im correct wanted to be a "sole dictator" of language and not being influenced by some corps/companies
+
+1716836730
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+and no, language should be simple, complex number is just one thing...theres so much more..now what? you gonna put it inside language? No - we have std lib for that
+
+1716836739
+src!~src@user/src
+(anyways, this isn't the place to discuss this; also I should do more productive things than engaging in an OT discussion on a lang I haven't used)
+
+1716836741
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+or not std, but maybe some other specialized libs
+
+1716836767
+src!~src@user/src
+discuss it in Odin's channel, create your own lang, let people who create create what they want to create :)
+
+1716836793
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+anyway, back to topic is... I think Zig being simple always would be plus... so honestly I myself dunno whether or not Zig should or should not have coroutines
+
+1716836797
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+unsure
+
+1716837130
+companion_cube!~simon@user/meow/companion-cube:68572
+if you want to put complex numbers in the stdlib and still have them be ergonomic… you need overloading
+
+1716837138
+companion_cube!~simon@user/meow/companion-cube:68572
+something neither odin nor zig wants
+
+1716837146
+companion_cube!~simon@user/meow/companion-cube:68572
+(same for vector types, simd, etc)
+
+1716837207
+R2COM!~r2com@ip98-177-189-79.ph.ph.cox.net
+hmm ok
+
+1716838934
+torque!~tachyon@user/torque
+I don't think asking in here if async/await will be in 1.0 every single week is a very productive discussion
+
+1716838967
+torque!~tachyon@user/torque
+there are other core focuses for development right now, that design decision will be revisited as development proceeds
+
+1716851658
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+03:47 <The_Buhs> https://paste.gentoo.zip/giIhnTxZ
+
+1716851658
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+04:10 <andrewrk> you seem to have truncated the error notes that point out where those things are differently declared
+
+1716851659
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://paste.gentoo.zip/zUWCWhpy I still don't get it unless the "opaque declared here" bit is just there twice for no reason
+
+1716851868
+torque!~tachyon@user/torque
+it's being pulled from two different places in your cache which implies that you're trying to build against two different versions of this library simultaneously
+
+1716851954
+andrewrk!~andrewrk@mail.ziglang.org
+that's a use case that is not handled well, currently. to work around it you have to ensure that your entire dependency tree gets the same version of that package everywhere, and configures it the same way (pass the same options to dependency() )
+
+1716852276
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Gotcha thanks
+
