@@ -1,0 +1,148 @@
+1716865625
+smlavine!~smlavine@sourcehut/user/smlavine
+Can functions go inside anonymous structs? If so what is the syntax for it?
+
+1716866087
+smlavine!~smlavine@sourcehut/user/smlavine
+Am I misunderstanding what makes an anonymous struct a tuple? I'm getting this error with this code: https://paste.sr.ht/~smlavine/6c83384bfd07da64347a2bb9d9a0360e1691fd40
+
+1716867254
+rockorager!2bbd732aa1@irc.pico.sh
+smlavine: you are defining those fields wrong. do something like:
+
+1716867276
+rockorager!2bbd732aa1@irc.pico.sh
+foo: []const u8 = “foo”,
+
+1716867622
+smlavine!~smlavine@sourcehut/user/smlavine
+rockorager: I see, thanks. Though this won't work with the .{} anonymous struct syntax
+
+1716867682
+rockorager!2bbd732aa1@irc.pico.sh
+const context: struct { … } = .{};
+
+1716867737
+rockorager!2bbd732aa1@irc.pico.sh
+Is that what you mean?
+
+1716867884
+smlavine!~smlavine@sourcehut/user/smlavine
+rockorager: I mean, does this work/is intended to work: https://paste.sr.ht/~smlavine/789452041784d47da7ae1360e8bbdef96900cfc2
+
+1716867900
+smlavine!~smlavine@sourcehut/user/smlavine
+(I mean, obviously it doesn't work but I wonder why. :) )
+
+1716867988
+smlavine!~smlavine@sourcehut/user/smlavine
+That syntax works fine without declaring the function so i assume that (intentionally or not) functions can't be part of struct objects created with the .{} syntax
+
+1716868152
+smlavine!~smlavine@sourcehut/user/smlavine
+Mm, trying to do that inline in a while loop produces another error message I don't understand: https://paste.sr.ht/~smlavine/5e0dd017d1129e0b52fa9e3e0a04527649d62394
+
+1716868166
+smlavine!~smlavine@sourcehut/user/smlavine
+So I think I just don't quite understand how .{} are supposed to be used exactly or the rules around them
+
+1716868327
+rockorager!2bbd732aa1@irc.pico.sh
+https://ziglang.org/documentation/0.12.0/#Anonymous-Union-Literals
+
+1716868384
+rockorager!2bbd732aa1@irc.pico.sh
+hmm
+
+1716868488
+smlavine!~smlavine@sourcehut/user/smlavine
+I was referring to https://zig.guide/language-basics/anonymous-structs
+
+1716868495
+rockorager!2bbd732aa1@irc.pico.sh
+I think your second error is because the type of context.val is probably comptjme_int
+
+1716868561
+smlavine!~smlavine@sourcehut/user/smlavine
+I tried sprinkling @as throughout but that didn't seem to change things
+
+1716868676
+rockorager!2bbd732aa1@irc.pico.sh
+I don’t think you can modify a comptime_int at runtime 
+
+1716868687
+andrewrk!~andrewrk@mail.ziglang.org
+that's correct
+
+1716868695
+rockorager!2bbd732aa1@irc.pico.sh
+Maybe if you put that whole thing in a comptime block it would work?
+
+1716868937
+smlavine!~smlavine@sourcehut/user/smlavine
+Thanks for the help so far but I think the lesson I've learned is to Not Do This
+
+1716869034
+rockorager!2bbd732aa1@irc.pico.sh
+Yeah, I wouldn’t do it that way. I’m not sure what your trying to do but I’d at least define that struct with types
+
+1716869069
+rockorager!2bbd732aa1@irc.pico.sh
+you can define the struct in the function to keep its scope limited
+
+1716869097
+rockorager!2bbd732aa1@irc.pico.sh
+const Context = struct { … };
+
+1716869119
+rockorager!2bbd732aa1@irc.pico.sh
+var context: Context = .{};
+
+1716870710
+torque!~tachyon@user/torque
+<smlavine> That syntax works fine without declaring the function so i assume that (intentionally or not) functions can't be part of struct objects created with the .{} syntax
+
+1716870724
+torque!~tachyon@user/torque
+from a technical perspective, the compiler is inferring the type of the struct you declared
+
+1716870746
+torque!~tachyon@user/torque
+since functions are part of the struct type, not the instantiation, you can't put them there
+
+1716870842
+torque!~tachyon@user/torque
+when it infers the type of a struct that you have not declared a specific type for, it creates a new, anonymous type automatically. that's why you would have to explicitly declare a struct type in order to be able to define functions for it
+
+1716903893
+smlavine!~smlavine@sourcehut/user/smlavine
+torque: I see, that makes sense.
+
+1716934011
+rockorager!2bbd732aa1@irc.pico.sh
+when should I use GenericWriter vs AnyWriter?
+
+1716934182
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: AnyWriter keeps your functions non-generic and are nicer from an API perspective, other than that they use anyerror
+
+1716934207
+andrewrk!~andrewrk@mail.ziglang.org
+GenericWriter might optimize better, and preserves error set information, but requires using anytype parameters
+
+1716934222
+andrewrk!~andrewrk@mail.ziglang.org
+I've been experimenting with preferring AnyWriter lately
+
+1716934684
+rockorager!2bbd732aa1@irc.pico.sh
+andrewrk: thanks. i have been using AnyWriter mostly but not for any reason other than it seemed nicer to instantiate:/
+
+1716934721
+andrewrk!~andrewrk@mail.ziglang.org
+AnyWriter is also relatively new
+
+1716934736
+andrewrk!~andrewrk@mail.ziglang.org
+less than a year old I think, while the other one has been there since pretty much the beginning
+
