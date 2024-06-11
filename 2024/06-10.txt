@@ -1,0 +1,276 @@
+1717988214
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is there any sort of (very rough) estimate for when 1.0 will be? Or just whenever you think it’s ready 
+
+1717991407
+squeek502!~squeek502@user/squeek502
+The_Buhs, on the order of years imo
+
+1717991415
+squeek502!~squeek502@user/squeek502
+some links you might find interesting:
+
+1717991416
+squeek502!~squeek502@user/squeek502
+https://www.youtube.com/watch?v=5eL_LcxwwHg
+
+1717991437
+squeek502!~squeek502@user/squeek502
+https://github.com/ziglang/zig/milestones (note that there will likely be more versions between 0.16.0 and 1.0.0)
+
+1718006347
+txdv!~txdv@78.56.38.107
+LazyPath changed significantly :>
+
+1718006392
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/download/0.12.0/release-notes.html#introduce-bpath-deprecate-LazyPathrelative
+
+1718006671
+txdv!~txdv@78.56.38.107
+andrewrk amazing documentation work <3
+
+1718006707
+txdv!~txdv@78.56.38.107
+I like to figure out stuff through source code, but it takes time :) this hastens things significantly
+
+1718014813
+midipix!~midipix@mail.culturestrings.org
+.vo.
+
+1718019347
+txdv!~txdv@78.56.38.107
+What is the best way to access https://github.com/search?q=repo%3Allvm%2Fllvm-project%20__externref_t&type=code externref_t, I am able to compile with reference types support on, but when I import a header file with "typedef __externref_t externref;", i get a pub const __externref_t = @compileError("unable to resolve typedef child type");
+
+1718028987
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+squeek502: cool thanks! Yeah, I figured it wouldn't be soon at all, just wasn't sure if andrew had any sort of idea or not. I didn't know about the milestones though so nice to see what needs to be done
+
+1718035382
+andrewrk!~andrewrk@mail.ziglang.org
+txdv: you can always augment auto translated bindings with manually constructed ones
+
+1718037176
+txdv!~txdv@78.56.38.107
+I don't know how to manually construct this one :) https://github.com/llvm/llvm-project/blob/d63ade63b661e09cb1379d48cb3e49851fdf2509/clang/include/clang/Basic/WebAssemblyReferenceTypes.def#L37
+
+1718037402
+ifreund!2940d10f8b@user/ifreund
+seems like it's a pointer type from glancing at the macros
+
+1718037427
+ifreund!2940d10f8b@user/ifreund
+using an opaque pointer on the zig side is probably fine
+
+1718037455
+ifreund!2940d10f8b@user/ifreund
+though I know nothing about whatever wasm feature this is related to
+
+1718037635
+txdv!~txdv@78.56.38.107
+reference types, basically and opaque pointer since you can't do much with it except pass those to other methods
+
+1718037803
+txdv!~txdv@78.56.38.107
+https://github.com/llvm/llvm-project/blob/4b1fef6e8a036b184481284432d8cb7856012924/clang/lib/CodeGen/CodeGenTypes.cpp#L530 but it looks like LLVM has a special mechanism for it
+
+1718038074
+txdv!~txdv@78.56.38.107
+with opaque types you mean opaque {} ?
+
+1718038082
+ifreund!2940d10f8b@user/ifreund
+yeah I don't understand whats going on with these duplicate macro definitions all over the place well enough to say for sure
+
+1718038088
+ifreund!2940d10f8b@user/ifreund
+yes, I meant opaque {}
+
+1718038098
+ifreund!2940d10f8b@user/ifreund
+macros are so bad when used this way
+
+1718038106
+txdv!~txdv@78.56.38.107
+I guess this is the mapping that I need to do, tell zig to map opaque {} on the wasm target to this builtin type 
+
+1718038117
+ifreund!2940d10f8b@user/ifreund
+no?
+
+1718038140
+ifreund!2940d10f8b@user/ifreund
+wait, are you asking about modifying the Zig compiler?
+
+1718038335
+txdv!~txdv@78.56.38.107
+I assume I can't access this special builtin externref without modifying the compiler
+
+1718038453
+ifreund!2940d10f8b@user/ifreund
+this thing seems to be a clang internal implementation detail
+
+1718038460
+ifreund!2940d10f8b@user/ifreund
+excatly what is your end goal?
+
+1718038535
+Gliptic!~glip@irc.glip.cc
+he wants to use wasm reference types
+
+1718038592
+Gliptic!~glip@irc.glip.cc
+it's not an implementation detail, it's a special type in the wasm machine
+
+1718038673
+ifreund!2940d10f8b@user/ifreund
+the macro specifically seems to be a clang internal implementation detail unless I'm missing some public header where it's exposed
+
+1718038703
+ifreund!2940d10f8b@user/ifreund
+as for how to use wasm reference types in Zig, I think the first step is indeed "implement wasm reference types in the zig compiler"
+
+1718038705
+Gliptic!~glip@irc.glip.cc
+it's exposed by the name, __externref_t
+
+1718038818
+ifreund!2940d10f8b@user/ifreund
+this seems relevant: https://discourse.llvm.org/t/rfc-webassembly-reference-types-in-clang/66939
+
+1718038880
+ifreund!2940d10f8b@user/ifreund
+To use them from Zig code, I believe you would need to add some builtin or similar to create such a type in Zig and teach Zig's llvm backend to emit the llvm IR described there
+
+1718038911
+Gliptic!~glip@irc.glip.cc
+you need builtins for creating null values at least
+
+1718038916
+ifreund!2940d10f8b@user/ifreund
+along with some way to invoke the related llvm intrinsics
+
+1718038928
+txdv!~txdv@78.56.38.107
+but zig already has opaque {} and if my target is wasm I could map to it? 
+
+1718038952
+ifreund!2940d10f8b@user/ifreund
+no
+
+1718038983
+txdv!~txdv@78.56.38.107
+ill try then to create a zig builtin
+
+1718039006
+txdv!~txdv@78.56.38.107
+btw on wasm opaque{} fails to compile now
+
+1718039008
+Gliptic!~glip@irc.glip.cc
+this would have to be a specific instance of an opaque {} in that case, not just all opaque {}
+
+1718039051
+ifreund!2940d10f8b@user/ifreund
+fails to compile how?
+
+1718039053
+Gliptic!~glip@irc.glip.cc
+hm, why would that fail to compile
+
+1718039086
+ifreund!2940d10f8b@user/ifreund
+I think that implementing wasm reference types properly in Zig would first require some design work to determine how best to fit them into Zig's type system
+
+1718039126
+ifreund!2940d10f8b@user/ifreund
+from the post I linked they decided to add a new type to C, as Gliptic mentioned, though they took a different approach for function references and instead added a new keyword
+
+1718039159
+Gliptic!~glip@irc.glip.cc
+you can't store these in structs, or have pointers to them etc.
+
+1718039166
+ifreund!2940d10f8b@user/ifreund
+I don't personally have the time to dig into this in detail and write up a proposal
+
+1718039167
+Gliptic!~glip@irc.glip.cc
+a bunch of design considerations indeed
+
+1718039178
+txdv!~txdv@78.56.38.107
+src/lib.zig:8:25: error: parameter of opaque type 'lib.create_string__opaque_1262' not allowed: extern fn create_string(offset: opaque {}, len: usize) void; //c.__externref_t;
+
+1718039191
+ifreund!2940d10f8b@user/ifreund
+yeah, you can't use opaque like that
+
+1718039208
+Gliptic!~glip@irc.glip.cc
+how would anything be able to use that
+
+1718039213
+txdv!~txdv@78.56.38.107
+ifreund: its ok you don't need to write a proposal, a discussion could help me get on track and i could try it myself
+
+1718039214
+ifreund!2940d10f8b@user/ifreund
+that has nothing to do with wasm though
+
+1718039256
+ifreund!2940d10f8b@user/ifreund
+passing an opaque type by value is nonsense as "opaque" means that it is unknown how large the value is
+
+1718039281
+ifreund!2940d10f8b@user/ifreund
+you can of course pass pointers to opaque types as the size of the value does not need to be known to do that
+
+1718039330
+ifreund!2940d10f8b@user/ifreund
+txdv: If you intend to go down this path, I would suggest first reading and understanding how the implementation works in LLVM and Clang
+
+1718039358
+ifreund!2940d10f8b@user/ifreund
+and then you can come up with some ideas of how it could work in zig and compare tradeoffs
+
+1718039390
+ifreund!2940d10f8b@user/ifreund
+consider starting with the llvm discourse post I linked if you haven't read it yet
+
+1718039455
+ifreund!2940d10f8b@user/ifreund
+alternatively, if you just want to get your project working with minimal effort, it seems like you could probably use C code to interact with wasm reference types and expose an API without reference types to the Zig code in your project
+
+1718039533
+txdv!~txdv@78.56.38.107
+I think this alternative will not succeed because the autogenerated zig translations will fail here since the type is differenty https://github.com/ziglang/zig/blob/master/src/translate_c.zig#L2763
+
+1718039539
+txdv!~txdv@78.56.38.107
+this is currently what I am seeing
+
+1718039589
+ifreund!2940d10f8b@user/ifreund
+1. you don't need to use translate-C to interface between C and Zig
+
+1718039642
+ifreund!2940d10f8b@user/ifreund
+2. I suggested not exposing wasm reference types from C to Zig, but rather handling them entirely in C which means translate-c would still work anyways
+
+1718039662
+txdv!~txdv@78.56.38.107
+well I guess I could store it in the an externref table then use integer offsets to point to the value that I need 
+
+1718039762
+ifreund!2940d10f8b@user/ifreund
+there may be no good way to do this, I'm not familiar with all the restrictions placed on wasm reference types but not being able to have pointers to them sounds quite limiting
+
+1718039773
+ifreund!2940d10f8b@user/ifreund
+anyhow, best of luck :)
+
+1718039830
+txdv!~txdv@78.56.38.107
+Thanks for the advice and links! I'll dig into it now 
+
