@@ -1,0 +1,288 @@
+1718419849
+psyleft!~psyleft@static-198-54-130-124.cust.tzulo.com
+Can anyone help me with a maybe dumb question about structs inside arrays/slices?
+
+1718438141
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+https://dontasktoask.com/
+
+1718464627
+cydox!~jan@user/cydox
+Hey guys, I have an issue with some linux specific stuff being under std.posix. For example timerfd and epoll related syscalls. A program including those will build without issues on FreeBSD but fail at runtime with "Bad system call (core dumped)". The program will just try to do the syscall with the syscall number for those syscalls from linux.
+
+1718464676
+cydox!~jan@user/cydox
+It also cross-compiles for macOS and I assume the behavior will be like FreeBSD (don't have a machine here to test).
+
+1718466470
+cydox!~jan@user/cydox
+The behavior I'm expecting is compiler error.
+
+1718466746
+ifreund!2940d10f8b@user/ifreund
+cydox: I would expect a compile error too and from glancing at the source code don't see how using e.g. std.posix.epoll() and compiling for FreeBSD wouldn't give a compile error
+
+1718466796
+ifreund!2940d10f8b@user/ifreund
+how are you building your program? are you sure you aren't accidentally testing a binary built targeting linux or something?
+
+1718466824
+cydox!~jan@user/cydox
+I am compiling on FreeBSD
+
+1718466916
+ifreund!2940d10f8b@user/ifreund
+and you are using one of epoll_foo() functions in std.posix?
+
+1718466932
+cydox!~jan@user/cydox
+I'll put a simple example onto codeberg, one sec
+
+1718466949
+ifreund!2940d10f8b@user/ifreund
+ah, timerfd does look sus actually, epoll stuff looks fine though
+
+1718466981
+ifreund!2940d10f8b@user/ifreund
+the timerfd functions should use e.g. system.timerfd_create() rather than linux.timerfd_create()
+
+1718467123
+cydox!~jan@user/cydox
+https://codeberg.org/cydox/status/src/branch/master/src/main.zig
+
+1718467132
+cydox!~jan@user/cydox
+This example uses timerfd not epoll
+
+1718467158
+cydox!~jan@user/cydox
+Compiles on zig 0.13 on FreeBSD 14.1, but crashes at runtime because of the bad syscall
+
+1718467178
+ifreund!2940d10f8b@user/ifreund
+yeah, I see why timer fd compiles but is broken at runtime, will send a patch to fix it
+
+1718467189
+ifreund!2940d10f8b@user/ifreund
+epoll should correctly compile error fwiw
+
+1718467310
+cydox!~jan@user/cydox
+const epoll_fd: i32 = @bitCast(@as(u32, (@truncate(linux.epoll_create1(0)))));
+
+1718467317
+cydox!~jan@user/cydox
+That line will also compile on FreeBSD
+
+1718467371
+ifreund!2940d10f8b@user/ifreund
+hmm, am I looking at an outdated commit?
+
+1718467394
+cydox!~jan@user/cydox
+No, that's not in that file
+
+1718467398
+cydox!~jan@user/cydox
+I'
+
+1718467400
+cydox!~jan@user/cydox
+ll update
+
+1718467497
+cydox!~jan@user/cydox
+https://codeberg.org/cydox/status/src/commit/1dbcfada93bc2d350969d35448aaece8d61cf43a/src/main.zig
+
+1718467518
+cydox!~jan@user/cydox
+That commit uses epoll on the timerfd and also compiles on FreeBSD 14.1 with zig 0.13
+
+1718467583
+cydox!~jan@user/cydox
+And also cross compiles to macos from FreeBSD (don't have a macos machine to test it right now though)
+
+1718467609
+ifreund!2940d10f8b@user/ifreund
+cydox: yeah, if you ask zig to issue a linux syscall it will issue a linux syscall regardless of the target OS
+
+1718467656
+ifreund!2940d10f8b@user/ifreund
+the only problem here is if you use an API layer that's supposed to be "cross-platform" like std.posix and it compiles for the target despite the target not supporting the feature
+
+1718467705
+cydox!~jan@user/cydox
+Alright, with the stuff under std.os.linux, I get that although I guess a compiler error would still be preferred.
+
+1718467781
+ifreund!2940d10f8b@user/ifreund
+I know some people use std.os.linux for their osdev projects while targeting freestanding or whatever
+
+1718467880
+cydox!~jan@user/cydox
+Interesting
+
+1718468006
+cydox!~jan@user/cydox
+IMO it is a little confusing that the "simple" syscall wrappers for epoll and co are in std.linux yet the higher level wrappers are in std.posix even though epoll is not part of posix.
+
+1718468027
+ifreund!2940d10f8b@user/ifreund
+yeah, I agree
+
+1718468039
+ifreund!2940d10f8b@user/ifreund
+I think "unix" would have been a better name for this reason
+
+1718468053
+ifreund!2940d10f8b@user/ifreund
+(it used to just be "std.os" which was far too generic)
+
+1718468087
+ifreund!2940d10f8b@user/ifreund
+anyhow, this should improve things a bit: https://github.com/ziglang/zig/pull/20303
+
+1718468117
+cydox!~jan@user/cydox
+Awesome, that's a quick turnaround
+
+1718468302
+ifreund!2940d10f8b@user/ifreund
+:)
+
+1718468354
+cydox!~jan@user/cydox
+Tested and works! Getting an appropriate error now
+
+1718468669
+ifreund!2940d10f8b@user/ifreund
+perfect
+
+1718468721
+cydox!~jan@user/cydox
+Thx a lot for the help
+
+1718469074
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1718472415
+Earnestly!~earnest@user/earnestly
+timerfd_create is posix?
+
+1718472479
+triallax!f378378b91@lacerte/triallax
+not as far as i know
+
+1718472483
+Earnestly!~earnest@user/earnestly
+I wondered if it was added in the 2024 release but it seems not
+
+1718472697
+Earnestly!~earnest@user/earnestly
+ifreund: Is it possible to share implementations under different names? E.g. os.linux os.unix os.openbsd etc. where say getentropy (which is not posix) could be shared under os.linux.getentropy and os.openbsd.getentropy, etc?
+
+1718472710
+Earnestly!~earnest@user/earnestly
+which is now posix***
+
+1718472785
+Earnestly!~earnest@user/earnestly
+> https://www.austingroupbugs.net/view.php?id=1134 (came in issue 8)
+
+1718473313
+cydox!~jan@user/cydox
+timerfd is not posix, however there is a FreeBSD native implementation in FreeBSD 14 from the looks of things. https://man.freebsd.org/cgi/man.cgi?query=timerfd_create&sektion=2&n=1
+
+1718473364
+cydox!~jan@user/cydox
+Supporting this should go through the libc though
+
+1718473385
+cydox!~jan@user/cydox
+https://www.freebsd.org/status/report-2023-01-2023-03/timerfd/
+
+1718473692
+Earnestly!~earnest@user/earnestly
+cydox: That's a point, didn't openbsd move to have everything go through libc and bar usage of syscalls entirely?
+
+1718473884
+cydox!~jan@user/cydox
+Earnestly: I don't know about openbsd. I believe for FreeBSD it's not "illegal", but there is not a strong compatiblity guarantee as you have on Linux.
+
+1718474162
+cydox!~jan@user/cydox
+https://github.com/ziglang/zig/issues/16590
+
+1718474307
+cydox!~jan@user/cydox
+I'm not sure, I'm mostly a Linux person...
+
+1718485423
+sentry!~snetry@87.122.105.37
+Hey, quick question: Does Zig have a way of specifying the Ordinal of an export in a DLL?
+
+1718486051
+cydox!~jan@user/cydox
+ifreund: timerfd_create, timerfd_settime, timerfd_gettime, are also in the libc on FreeBSD (at least on version 14). I just tested adding the definitions to lib/std/c/freebsd.zig in the same way you added them to lib/std/c/linux.zig in your force-push and this makes my example run on FreeBSD.
+
+1718486124
+cydox!~jan@user/cydox
+I can make a PR to add those. Am I correct in thinking that right now zig does not do any direct syscalls on FreeBSD and always uses libc?
+
+1718486285
+Earnestly!~earnest@user/earnestly
+cydox: Ah, that was it; openbsd removed syscall(2)
+
+1718486451
+cydox!~jan@user/cydox
+Earnestly: Why did they do that?
+
+1718486473
+cydox!~jan@user/cydox
+I assume you can still do a syscall from e.g. inline assembly, right?
+
+1718486615
+Earnestly!~earnest@user/earnestly
+cydox: Nope, it's entirely gatekept via libc now
+
+1718486633
+Earnestly!~earnest@user/earnestly
+cydox: https://marc.info/?l=openbsd-tech&m=169841790407370&w=2
+
+1718486788
+_0x1eef!~user@al-quran.reflectslight.io
+I don't think they've removed it entirely yet, just option 0. I'm on OpenBSD, and syscall man page is still intact.
+
+1718486941
+Earnestly!~earnest@user/earnestly
+_0x1eef: https://man.openbsd.org/syscall.2
+
+1718486984
+Earnestly!~earnest@user/earnestly
+May not be released yet
+
+1718487026
+_0x1eef!~user@al-quran.reflectslight.io
+Possibly yeah, it's where they're headed either way
+
+1718487029
+cydox!~jan@user/cydox
+This is quite interesting. I think I'm missing a little bit of the context of what attack vector they are talking about. Is it in a "roundabout" way similar to seccomp? He's talking about preventing execve.
+
+1718487099
+Earnestly!~earnest@user/earnestly
+cydox: return-to-libc or other return oriented methods iirc
+
+1718487481
+cydox!~jan@user/cydox
+Ok, so different from what seccomp is achieving. They are preventing people from exploiting buffer overflows from performing syscalls, while seccomp will prevent a set of syscalls also for you own "legitimate" code.
+
+1718487502
+cydox!~jan@user/cydox
+*your
+
+1718492993
+cydox!~jan@user/cydox
+ifreund: I opened https://github.com/ziglang/zig/pull/20308 on top of your PR to add timerfd support on FreeBSD.
+
