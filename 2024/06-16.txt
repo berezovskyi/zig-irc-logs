@@ -1,0 +1,332 @@
+1718506695
+freshcoffee!~fresh@user/freshcoffee
+dirent. what a shit show.
+
+1718540732
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i'm going through this great series: https://www.openmymind.net/learning_zig/stack_memory/
+
+1718540772
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+the series is really good but this sections leaves me with one question which bugs me:  where is content of a slice stored?
+
+1718540826
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+sure, if slice = pointer + length, then those two things are easy to imagine on the stack, but what about the rest?
+
+1718540849
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+it can't be heap, since we haven't allocated any
+
+1718540927
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+in my mind it can't be stack either, because it's unknonwn lenght, right?  (also in the track of examples, which starts in earlier part,  it's actually shared between functions)
+
+1718540984
+ifreund!2940d10f8b@user/ifreund
+the memory pointed to by a slice can be on either the stack or the heap
+
+1718541001
+ifreund!2940d10f8b@user/ifreund
+(in fact at the OS level, there is not really any difference between the two, it's all just memory)
+
+1718541030
+tranzystorekk!tranzystor@2607:5300:60:8796::108
+depends on the string, static strings are stored in the data section of the binary itself
+
+1718541034
+ifreund!2940d10f8b@user/ifreund
+slices don't have an "unknown length", they have a runtime-known length
+
+1718541067
+ifreund!2940d10f8b@user/ifreund
+which is also "just memory" to the OS, but happens to be in a page mapped as read-only :P
+
+1718541067
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+"slices don't have an "unknown length", they have a runtime-known length"  i need to repat this 1000x times :)
+
+1718541178
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+so if i just create `var foo = []u8;` and on the next line, fill it with some bytes on the next line, it (and the bytes) are now on stack, right? 
+
+1718541242
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+ie. it's 100% invalidated once we leave the function, and i can't reasonably expect `return foo` to work, ever, right?
+
+1718541281
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+(sorry i can see how my own questions are confusing :D)
+
+1718541405
+ifreund!2940d10f8b@user/ifreund
+it would be `var foo: []u8 = undefined; var bytes = [2]u8{ 4, 2 }; foo = &bytes; return foo;`
+
+1718541438
+ifreund!2940d10f8b@user/ifreund
+this would compile, and foo would be a dangling pointer to the stack of the function after the return statement
+
+1718541445
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i see
+
+1718541462
+ifreund!2940d10f8b@user/ifreund
+it's only illegal behavior if you actually dereference the dangling pointer though
+
+1718541483
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+well why have a pointer and not reference it?
+
+1718541489
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i mean deref
+
+1718541525
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+or you mean that compiler would detect it only if i dereferenced it?
+
+1718541567
+ifreund!2940d10f8b@user/ifreund
+in C++ for example it's common to use a pointer that points to memory one element past the end of an array or other data structure as a sentinel
+
+1718541633
+ifreund!2940d10f8b@user/ifreund
+Zig has IMO much better iteration patterns but there are probably some edge cases where it's a reasonable thing to do
+
+1718541717
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i see .. so back to my stack/heap dilemma, if we just replaced the middle of your example with something which allocates the mem using allocator...
+
+1718541743
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+...then now `return foo` would be fine, right ?   (as long as it has not been freed yet)
+
+1718541752
+ifreund!2940d10f8b@user/ifreund
+yes
+
+1718541755
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+ooooh
+
+1718541782
+ifreund!2940d10f8b@user/ifreund
+assuming the allocator allocates the memory somewhere other than the stack that is
+
+1718541810
+ifreund!2940d10f8b@user/ifreund
+(an allocator could be backed by a fixed-size array on the stack for example)
+
+1718541841
+ifreund!2940d10f8b@user/ifreund
+usually the allocator is backed by something that uses mmap() syscalls to request more memory from the OS though
+
+1718541853
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i assume that's sort of an advanced case, right?  using basic allocators i can always assume it's heap?
+
+1718541855
+ifreund!2940d10f8b@user/ifreund
+(which is what people usually mean when they say heap)
+
+1718541866
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i see
+
+1718541889
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+it all makes sense now
+
+1718541995
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+thanks a lot, i need to go understand why i'm really getting segfaults now :)
+
+1718542004
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1718542024
+ifreund!2940d10f8b@user/ifreund
+I can recommend this talk if you want to continue building your mental model of what allocators are and what they do: https://www.youtube.com/watch?v=vHWiDx_l4V0
+
+1718542045
+netvor_!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+great, i'm happy to check out more resources
+
+1718554542
+fleischie!~fleischie@vm069.de
+Hello. Has anybody ever used zig as the build system for native Windows Apps or knows of appropriate projects? (I mean for C/CPP projects, not necessarily zig projects.)
+
+1718554569
+fleischie!~fleischie@vm069.de
+I am curious as to how I would go about setting the include paths and such for Window's C runtime.
+
+1718565984
+andrewrk!~andrewrk@mail.ziglang.org
+fleischie: it should work fine with no special treatment needed. are you hitting a particular error?
+
+1718567658
+_0x1eef!~user@al-quran.reflectslight.io
+netvor: Thanks a lot for sharing that link (re openmymind.net)
+
+1718571018
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+np
+
+1718571033
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i've learned a lot today but i'ms still stuck
+
+1718571046
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+but maybe i can ask better now
+
+1718571049
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+:
+
+1718571087
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+is it not safe to pass ArrayList ref out from a function?
+
+1718571158
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i'm trying to create a function like this: fn cmd_stdout(allocator: Allocator, args...) !CmdResult { ... var out = ArrayList(u8).init(allocator); .. collect stdout ...
+
+1718571186
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+... and eventually ... return CmdResult{ .out = &out }; }
+
+1718571211
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+where CmdResult is a struct with { out: *ArrayList(u8) }
+
+1718571254
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+problem is, that when i look at the returned result, the pointer to `.out` field is actually identical, but the content is corrupted (`.items` is nonsense)
+
+1718571272
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+(within the function the .out can be read and contains data)
+
+1718571303
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+but i have not deallocated the `out` arraylist .. why is it corrupted?
+
+1718571320
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+(eventually i'm getting segfault from a test)
+
+1718572234
+dutchie!~dutchie@user/dutchie
+netvor: passing ArrayList objects around is not a thing you tend to do. Normally I'd build up an intermediate result locally with an ArrayList and then use toOwnedSlice to return a slice
+
+1718572250
+dutchie!~dutchie@user/dutchie
+the caller can always use fromOwnedSlice to turn it back into an ArrayList if they want
+
+1718572311
+dutchie!~dutchie@user/dutchie
+in the case above, again &out is a pointer to stack memory which will end up being nonsense
+
+1718572391
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+ahhh
+
+1718572452
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+# ( ungodly time spent debugging this, i need to remember this lesson :D)
+
+1718572467
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+thanks dutchie !
+
+1718572622
+dutchie!~dutchie@user/dutchie
+you could also just put the ArrayList (or more likely an ArrayListUnmanaged) into your CmdResult struct rather than a pointer
+
+1718572631
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+.... but anyway, so the caller will get back slice, which is a ptr to ... not a stack? 
+
+1718572642
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i might be already answering my q in my mind
+
+1718572653
+dutchie!~dutchie@user/dutchie
+the arraylist will allocate using the allocator you give it, which will generally mean the heap
+
+1718572658
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+... ownedSlice is on heap (or wherever alloc put it)
+
+1718572710
+dutchie!~dutchie@user/dutchie
+yeah
+
+1718572722
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+great, thanks a lot
+
+1718572792
+dutchie!~dutchie@user/dutchie
+the stdlib source code is very readable and often worth a look
+
+1718572808
+dutchie!~dutchie@user/dutchie
+https://github.com/ziglang/zig/blob/master/lib/std/array_list.zig#L36-L44 you can see an ArrayList just consists of a slice, capacity and allocator
+
+1718572821
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i actually spent some time trying to understand that part exactly
+
+1718572835
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+i kinda did, but also kinda kept missing the point
+
+1718572837
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+:)
+
+1718572865
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+(given that i'm still learning the syntax and alll...)
+
+1718573179
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+oh i get it, need to repeat this 100 times: "`out: ArrayList(u8)` was on stack".  i kept ignoring the fallacy of thinking that "it's arraylist, it's on heap" but not, the variable that hold it is not!.
+
+1718573233
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+it took me a long time to actually learn how to debug it properly, i kept sending things to utility debug functions and being confused even more :D
+
+1718573293
+netvor!~netvor@2a00:ca8:a1f:cd0:6c5d:5abd:d95a:7414
+finally i was able to confirm that the pointer is the same pointer -- heck that was still confusing -- until you reminded me that `&out` is pointing to STACK :)
+
+1718575684
+vespakoen!~vespakoen@user/vespakoen
+Hi there! I just started learning zig using ziglings.org, and I am having a blast! I tried porting a project of mine to zig and run into an issue with std.fmt.parseInt, I am using it on a [20]u8 array, which contains a shorter (than 20) character string, basically only a single number and then a bunch of null bytes, std.fmt.parseInt doesn't seem to
+
+1718575685
+vespakoen!~vespakoen@user/vespakoen
+like that and throws a "error.InvalidCharacter", any idea how I can do this correctly? here is my code: std.fmt.parseInt(i32, &value, 10); and value is var value: [20]u8 = std.mem.zeroes([20]u8); and which is filled by another function with basically: value[0] = '2';
+
+1718575875
+ifreund!2940d10f8b@user/ifreund
+vespakoen: use std.mem.sliceTo(&value, 0) instead
+
+1718575919
+ifreund!2940d10f8b@user/ifreund
+or otherwise refactor to use slices rather than sentinel termination
+
+1718575974
+vespakoen!~vespakoen@user/vespakoen
+That worked, thanks a lot, off to reading more about slices ;)
+
+1718576068
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
