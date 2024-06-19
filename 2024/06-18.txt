@@ -1,0 +1,540 @@
+1718683644
+motiejus!~motiejus@88.223.107.21
+andrewrk: would it be enough of a signal to understand that the pipe is closed? on linux iirc you can poll a pipe and see if there is something on the other end
+
+1718684997
+andrewrk!~andrewrk@mail.ziglang.org
+motiejus: the challenge there is that the parent would not know how many thread tokens were held. it could be 0, 1, 2, or any number
+
+1718685035
+andrewrk!~andrewrk@mail.ziglang.org
+the basic primitive needed is a semaphore that is auto-released by the OS when the process dies
+
+1718685723
+motiejus!~motiejus@88.223.107.21
+I am not aware of such primitive. How about tracking who requested the tokens? Is there a reason why all child processes are sharing the same pipe (I haven't checked the code, but assuming they are)? Can each child thread get a different pipe?
+
+1718685732
+motiejus!~motiejus@88.223.107.21
+(to ease accounting)
+
+1718685836
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+well they have to be the same pipe for the semantics of all sharing the same pool
+
+1718686049
+motiejus!~motiejus@88.223.107.21
+sorry, not following. all pipes could end up pointing to the same zig process? I feel like I am missing something simple, but don't know what yet
+
+1718686110
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+the point is each byte in the pipe represents an available thread, if you write half the threads to one pipe and half to another pipe you aren't accomplishing the goal of having all children share all available threads
+
+1718686520
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+if you weren't trying to be compatible with an existing protocol you would probably just use multiple pipes and have explicit requests that travel up the pipes so that when a parent waits for a child it would just know how many weren't yet released and insert extra releases
+
+1718686579
+andrewrk!~andrewrk@mail.ziglang.org
+it would be unfortunate to have N event loops, however. lots of overhead
+
+1718686733
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I mean you could probably do it with one, but it still requires a different protocol
+
+1718686941
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I guess that's why it says to use a signal handler, there's only like one unusual way to crash that doesn't invoke some signal handler
+
+1718687071
+andrewrk!~andrewrk@mail.ziglang.org
+but if you get the signal, how do you know how many tokens to recover?
+
+1718687690
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+you can track it to some accuracy but not perfectly, showing yet more flaws in the protocol
+
+1718687794
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+all I've been able to come up with is an optional side channel, where you interact with the legacy pipe to be compatible with legacy processes, but you use the side channel for the actual protocol that tracks which process has which tokens
+
+1718687833
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+although I'm still using linux-specific features to be 100% accurate
+
+1718687949
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+maybe you can accept the lower accuracy on non-linux posix, idk
+
+1718688013
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+although I believe windows could do more or less the same thing, use make's legacy protocol with a side channel
+
+1718688058
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+where I believe windows has the features to also be 100% accurate for tokens requested by children that make use of the side channel
+
+1718688310
+andrewrk!~andrewrk@mail.ziglang.org
+at this point I think the move is to ignore the previous protocol, and declare that we are starting a new standard that others should follow
+
+1718688332
+andrewrk!~andrewrk@mail.ziglang.org
+the whole point of the zig project is to fix things like this. otherwise we could just keep using C
+
+1718688889
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+I also realize that my idea wouldn't work with a qemu child process anyway
+
+1718688947
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+or maybe it does? not sure how good user mode is
+
+1718689600
+freshcoffee!~fresh@user/freshcoffee
+maybe wrap each child with a reaper which proxies the protocol, and track jobs. if child dies, return the jobs and terminate self. This feels like it will work with existing protocol.
+
+1718689639
+freshcoffee!~fresh@user/freshcoffee
+the reaper is so tiny, it stands very little chance to get OOM'd compared to any real job procs
+
+1718689687
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+the problem is you can't really proxy this protocol
+
+1718690031
+freshcoffee!~fresh@user/freshcoffee
+reaper launches foo; foo grabs 3 jobs from reaper:jobserver, which in turn grabbed them from it's client jobserver pipe. kill -9 foo. reaper gets signal, knows count is 3, pushes 3 back onto its client job server pipe then dies
+
+1718690126
+freshcoffee!~fresh@user/freshcoffee
+it won't help with say a sub-make that launches 5 jobs, and 2 of them OOM. those 2 are lost, but only temporarily. when the sub-make ends, the reaper knows the missing count, pushes them back to pipe.
+
+1718690177
+freshcoffee!~fresh@user/freshcoffee
+so /wont/helps/ with sub-make too
+
+1718690281
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+how does "foo grabs 3 jobs from reaper" work
+
+1718690333
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+(that's the part that doesn't proxy)
+
+1718690384
+torque!~tachyon@user/torque
+I'm updating some of my projects for 0.13 and is there a better way of adding the install directory of a subproject as a c header include path than doing `.{ .cwd_relative = b.getInstallPath(.header, "") }`
+
+1718690403
+torque!~tachyon@user/torque
+this seems kind of janky but the install path isn't necessarily relative to the build root
+
+1718690520
+torque!~tachyon@user/torque
+this build system copies an arch-specific header to a standard name (based on the target architecture) and the other source files include it by the name it is copied to
+
+1718690765
+freshcoffee!~fresh@user/freshcoffee
+jacobly0: if POLLOUT is set the proxy then needs to read a byte from upstream, and write one downstream ?
+
+1718690793
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+POLLOUT doesn't mean someone is trying to read, it just means there is buffer space available
+
+1718690834
+jacobly0!~jacob@2600:1f18:1fb:6300:1d52:d474:9e12:db33
+so you would immediately steal all tokens and leave them in a different buffer
+
+1718690869
+freshcoffee!~fresh@user/freshcoffee
+yeah no if we can't do byte at a time that nerfs the idea of staying with same protocol
+
+1718691766
+andrewrk!~andrewrk@mail.ziglang.org
+torque: yeah, cwd_relative is probably wrong. have you tried looking at the release notes yet? https://ziglang.org/download/0.12.0/release-notes.html#introduce-bpath-deprecate-LazyPathrelative
+
+1718692221
+torque!~tachyon@user/torque
+hmm
+
+1718692408
+torque!~tachyon@user/torque
+I read through that yeah, but it doesn't seem to address what I'm seeing. the specific thing I'm running into is: https://github.com/epicyclic-dev/LibreSSL-portable/blob/zig-3.8.2/build.zig#L232-L242 header gets installed based on target arch here, but if I don't add https://github.com/epicyclic-dev/LibreSSL-portable/blob/zig-3.8.2/build.zig#L295, I get a ton of errors when compiling that say
+
+1718692410
+torque!~tachyon@user/torque
+<openssl/opensslconf.h> cannot be found
+
+1718692489
+torque!~tachyon@user/torque
+maybe there is a different way to solve this, but it seems like the install directory doesn't get implicitly get added as an include path? In 0.11.0 I did not need to explicitly add the install directory as an include path
+
+1718692633
+andrewrk!~andrewrk@mail.ziglang.org
+I've solved that problem a dozen times, never needed the workaround you're talking about
+
+1718692737
+andrewrk!~andrewrk@mail.ziglang.org
+I suggest to look at some of my build.zig files for inspiration
+
+1718692762
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/andrewrk/ffmpeg or one of https://github.com/orgs/allyourcodebase/repositories that is maintained by me
+
+1718692799
+andrewrk!~andrewrk@mail.ziglang.org
+you probably need something simple like lib.installHeader 
+
+1718693327
+torque!~tachyon@user/torque
+I do call lib.installHeader. sampling the allyourcodebase repos, it looks like most of them use lib.installHeadersDirectory. also, looking at quick perusal, the sources in e.g. SDL do not appear to reference the as-installed SDL headers (i.e. nothing in that source tree does #include <SDL2/SDL.h>)
+
+1718693431
+andrewrk!~andrewrk@mail.ziglang.org
+the install directory is not really supposed to be observed during the build process
+
+1718693444
+andrewrk!~andrewrk@mail.ziglang.org
+the idea is to annotate your static libs with the headers that they depend on
+
+1718693613
+torque!~tachyon@user/torque
+in this case, the source files depend on a header that only exists in the install directory
+
+1718693678
+torque!~tachyon@user/torque
+my original port of this build system copied the header around in the source tree, but that was a big hack, and installing it seemed to work better (and also works with the cache better)
+
+1718693851
+wiikifox!~wiikifox@user/wiikifox
+hello
+
+1718693878
+wiikifox!~wiikifox@user/wiikifox
+i've been struggling with signal handling in zig :P
+
+1718693901
+torque!~tachyon@user/torque
+actually, looking at the verbose CC I am even more confused, since the compiler path has an include directory in the cache that appears to have the installed header in it
+
+1718693957
+torque!~tachyon@user/torque
+I wonder if the header is somehow not ending up in the cache directory until after the compile command is issued? I will take another look since it seems like theoretically the right thing is being done
+
+1718694030
+wiikifox!~wiikifox@user/wiikifox
+so, i've been trying to setup a custom handler for SIG.CHLD to reap children in a tcp server, yet i can't manage to get the callback function actually called
+
+1718694052
+wiikifox!~wiikifox@user/wiikifox
+i'm trying to use os.linux.sigaction for seting up the handler
+
+1718694070
+wiikifox!~wiikifox@user/wiikifox
+there doesn't seem to be clear documentation on the subject
+
+1718694093
+andrewrk!~andrewrk@mail.ziglang.org
+torque: depending on the installation directory during build time certainly works with the cache worse
+
+1718694125
+andrewrk!~andrewrk@mail.ziglang.org
+the steps will all race with each other
+
+1718694196
+wiikifox!~wiikifox@user/wiikifox
+i'm pretty sure the part i'm messing up is populating the os.Sigaction struct
+
+1718694215
+andrewrk!~andrewrk@mail.ziglang.org
+wiikifox: the standard library installs a signal handler in a couple places. you could look there for inspiration
+
+1718694230
+wiikifox!~wiikifox@user/wiikifox
+hmm, i'll check
+
+1718694257
+wiikifox!~wiikifox@user/wiikifox
+any specific functions that you know handle signals well?
+
+1718694282
+andrewrk!~andrewrk@mail.ziglang.org
+the source code listed here has an example: https://ziglang.org/documentation/0.13.0/std/#std.Progress.start 
+
+1718694298
+wiikifox!~wiikifox@user/wiikifox
+thanks :3
+
+1718694526
+wiikifox!~wiikifox@user/wiikifox
+ok, so the code there seems to be using std.posix instead of std.os, is that the idiomatic way to work? it seems like std.os(.linux) has slightly higher lever code
+
+1718694811
+wiikifox!~wiikifox@user/wiikifox
+my code rn is pretty much step by step what i do with c, save the population of os.linux.Sigaction, where i'm betting is the problem
+
+1718694866
+wiikifox!~wiikifox@user/wiikifox
+in C there's sigemtpyset(), which i normally use on the sigaction's mask, but i don't find that function in the zig std
+
+1718694961
+wiikifox!~wiikifox@user/wiikifox
+with linux.empty_sigset compiles but doesn't seem to call my function
+
+1718695160
+wiikifox!~wiikifox@user/wiikifox
+aaand, nevermind, seems like the handling was correct after all, the error was when actually killing the child process :P
+
+1718695167
+wiikifox!~wiikifox@user/wiikifox
+thx for the pointers tho
+
+1718731761
+robertgzr!5db90f0c51@user/robertgzr
+hey, what would be the correct way to accept a slice of string literals as a parameter (or the correct way to pass one)
+
+1718731819
+robertgzr!5db90f0c51@user/robertgzr
+i feel like accepting `[]const []const u8` and passing like `&.{"a", "b", "c"}` should work
+
+1718731832
+robertgzr!5db90f0c51@user/robertgzr
+but i get: expected type '[]const []const u8', found '[]const u8'
+
+1718731867
+robertgzr!5db90f0c51@user/robertgzr
+what am i missing here :P
+
+1718732182
+sp2!uid197664@user/meow/sp2
+that should work, yeah
+
+1718732216
+sp2!uid197664@user/meow/sp2
+total guess: maybe you're using single quotes? (this sounds very unlikely, but it would cause the issue you're seeing)
+
+1718733940
+netvor!~netvor@2a00:ca8:a1f:cd0:ea9e:e93a:150a:e4b5
+so i learned in this zig article (https://www.openmymind.net/learning_zig/) that fn arguments are passed by copying.  does that also apply to returning, though?
+
+1718734065
+netvor!~netvor@2a00:ca8:a1f:cd0:ea9e:e93a:150a:e4b5
+ie. if i have fn wrap(foo: usize) Foo { const wrapped = Foo{.foo=foo}; return wrapped; };  var wrap_42 = wrap(42);   is the whole memory (all fields) ocuppied by Foo copied?
+
+1718734172
+netvor!~netvor@2a00:ca8:a1f:cd0:ea9e:e93a:150a:e4b5
+it has to be, right?  because, initially `wrapped` is on stack, right? so one would never be able to return a stuct  --  or is there some trickery?
+
+1718734286
+netvor!~netvor@2a00:ca8:a1f:cd0:ea9e:e93a:150a:e4b5
+(i mean occupied by `wrapped`, not `Foo`) 
+
+1718736042
+geon!~geon@user/geon
+Anyone good with multi threading?
+
+1718736085
+geon!~geon@user/geon
+I mostly work in typescript, where concurrency is single threaded.
+
+1718736353
+torque!~tachyon@user/torque
+do you have a specific question?
+
+1718736392
+torque!~tachyon@user/torque
+a lot of the types of problems you can run into with multithreading can also occur with asynchronous code
+
+1718736467
+geon!~geon@user/geon
+Not really. I want to communicate between threads. I have no idea what is idiomatic. I read about mutex and semaphore, but they don't deal with data. I managed to whip up something like a queue, but I don't know if the concepts are already well established.
+
+1718736730
+geon!~geon@user/geon
+I wrote this as an experiment: https://gist.github.com/geon/5e2dff0a76926ec79695ee722caa21f4
+
+1718736740
+torque!~tachyon@user/torque
+there are a couple of different queues in the standard library, but I don't know if any of them are specialized for multithreading scenarios
+
+1718736882
+geon!~geon@user/geon
+I actually wanted just asynchronous code, but async is scrapped, so threads seemed like they might be an alternative.
+
+1718736924
+rockorager!2bbd732aa1@irc.pico.sh
+geon: this is the one I use: https://zigbin.io/21d48a
+
+1718737097
+torque!~tachyon@user/torque
+you can do async with callbacks still, but indeed the language-level features are currently retired. you would also need to use a third-party library (e.g. libuv or libxev) for good cross-platform async support
+
+1718737160
+geon!~geon@user/geon
+I have a recursive min-max for a reversi game. I want to have multiple bots compete against each other like Sebastian Lague in https://www.youtube.com/watch?v=_vqlIPDR2TU . For that to work, I need the algorithm to continously refine the result until the time is out. My current code just searches to a set depth, no matter how long that takes. I
+
+1718737161
+geon!~geon@user/geon
+tried rewriting it with iterators, but that was really hard.
+
+1718737843
+geon!~geon@user/geon
+@rockorager That looks promising. the one I wrote was basically the same, but with a fixed size of 1, and only push and poll.
+
+1718741096
+ifreund!2940d10f8b@user/ifreund
+geon you might be better off using an event loop like libxev
+
+1718741187
+ifreund!2940d10f8b@user/ifreund
+ah, I have now read farther, Im not sure that problem maps well to an event loop
+
+1718741416
+ifreund!2940d10f8b@user/ifreund
+so you want to do the expensive calculation on a thread and continuously send results to your main thread.
+
+1718741443
+ifreund!2940d10f8b@user/ifreund
+and your main thread runs a timer and submits the most recent result when the time runs out
+
+1718741549
+rockorager!2bbd732aa1@irc.pico.sh
+Oh, if it's always the most recent then I wouldn't use a queue...that will be ordered and you could throw out stale results probably
+
+1718741588
+ifreund!2940d10f8b@user/ifreund
+Yeah, a global variable guarded by a mutex seems sufficient to me
+
+1718741633
+rockorager!2bbd732aa1@irc.pico.sh
+Throw in a mutex guarded bool `is_updated` if you want to only do something if the value was updated
+
+1718741653
+rockorager!2bbd732aa1@irc.pico.sh
+Or a timestamp on the data struct
+
+1718741723
+ifreund!2940d10f8b@user/ifreund
+you could probably use a lock-free queue if you wanted to get fancier
+
+1718741738
+ifreund!2940d10f8b@user/ifreund
+dont know if we have one in the standard library though
+
+1718741886
+andrewrk!~andrewrk@mail.ziglang.org
+we don't
+
+1718741892
+andrewrk!~andrewrk@mail.ziglang.org
+I tried to write one one time; gave up
+
+1718742008
+ifreund!2940d10f8b@user/ifreund
+protty surely has 3 or 4 excellent ones in random pastebins somewhere :D
+
+1718742095
+andrewrk!~andrewrk@mail.ziglang.org
+lol that's so true
+
+1718750502
+cydox!~jan@user/cydox
+Can someone please approve the ci workflow for https://github.com/ziglang/zig/pull/20311 ?
+
+1718750897
+ifreund!2940d10f8b@user/ifreund
+done :)
+
+1718750991
+cydox!~jan@user/cydox
+thanks
+
+1718752405
+cydox!~jan@user/cydox
+ifreund: Well, looks like I messed that up. Was only running "test-std" locally, should've usedd "test" I guess. Which command do you use to test locally?
+
+1718752463
+cydox!~jan@user/cydox
+zig build test-cli -Dskip-release -Dskip-non-native ?
+
+1718752473
+cydox!~jan@user/cydox
+* zig build test -Dskip-release -Dskip-non-native
+
+1718752476
+cydox!~jan@user/cydox
+?
+
+1718753327
+andrewrk!~andrewrk@mail.ziglang.org
+I mean you can use `zig build test` if you are willing to wait for a while
+
+1718753335
+andrewrk!~andrewrk@mail.ziglang.org
+the only reason to do anything besides that is to save time
+
+1718753352
+andrewrk!~andrewrk@mail.ziglang.org
+so then it's just a matter of picking something that pinpoints the areas you changed
+
+1718753404
+andrewrk!~andrewrk@mail.ziglang.org
+cydox: I suggest to rebase your branch. just the other day I improved this workflow for contributors so you would have gotten a more complete build summary that mentioned the zig fmt issue but also ran the rest of the test suite
+
+1718753446
+andrewrk!~andrewrk@mail.ziglang.org
+also if you rebase, there is `zig build test-fmt` which will complete near instantly and make sure not to fail this particular check
+
+1718753522
+cydox!~jan@user/cydox
+I'll rebase that's nice. Already found the mistake that caused this failure. But before I go again I want to make sure there's not another issue lurking somewhere.
+
+1718753551
+andrewrk!~andrewrk@mail.ziglang.org
+well, at least this time you should get a full build summary so likely at most one more test cycle after that
+
+1718753571
+cydox!~jan@user/cydox
+When I do "zig build test", I get some wine errors, so I at least want to exclude all the wine and qemu type tests
+
+1718753591
+cydox!~jan@user/cydox
+I got wine 9.5
+
+1718753603
+andrewrk!~andrewrk@mail.ziglang.org
+I think what's happening there is that you have binfmt_misc installed so that your computer automatically runs .exe files with wine
+
+1718753612
+andrewrk!~andrewrk@mail.ziglang.org
+so that's working as intended
+
+1718753637
+andrewrk!~andrewrk@mail.ziglang.org
+it's not going to actually invoke the wine binary unless you pass -fwine
+
+1718753649
+andrewrk!~andrewrk@mail.ziglang.org
+same deal with qemu
+
+1718753783
+cydox!~jan@user/cydox
+I'm getting a gui popup with something about "The program test.exe has encountered a serious problem..." and so on
+
+1718754306
+cydox!~jan@user/cydox
+Yeah, I can execute a .exe directly without invoking the wine binary
+
+1718754694
+andrewrk!~andrewrk@mail.ziglang.org
+I wouldn't really call this a problem with zig since it's generating a valid windows binary that passes tests when run on Windows, and your system is acting as if it can execute said binary, but then failing to do that. perhaps it is something that can be reported and fixed upstream in the wine project
+
+1718754707
+andrewrk!~andrewrk@mail.ziglang.org
+we have gotten wine bugs fixed before
+
+1718754878
+cydox!~jan@user/cydox
+I don't really care about wine, just got rid of it. Looks like 9.5 is a development release.
+
