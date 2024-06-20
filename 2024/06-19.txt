@@ -1,0 +1,172 @@
+1718755465
+cydox!~jan@user/cydox
+Ok, fedora uses systemd-binfmt.service to register additional binary formats and both the wine and qemu packages put files into /usr/lib/binfmt.d/ to register.
+
+1718755516
+cydox!~jan@user/cydox
+didn't wanne remove qemu, so I disabled systemd-binfmt.service
+
+1718756082
+cydox!~jan@user/cydox
+Alright, updated the PR. All tests are passing on my machine now (except for the io_uring stuff from #20224, I'm on kernel 6.9.4). Can someone with permissions kick off the CI? https://github.com/ziglang/zig/pull/20311
+
+1718758919
+andrewrk!~andrewrk@mail.ziglang.org
+jacobly0: I thought of an idea for the jobserver protocol: https://github.com/ziglang/zig/issues/20274#issuecomment-2177328130
+
+1718758990
+andrewrk!~andrewrk@mail.ziglang.org
+cydox: done. btw all zig tests pass in qemu for me
+
+1718760327
+cydox!~jan@user/cydox
+andrewrk: The issue was qemu not finding ld.so for the respective architecture. So I'm pretty sure it's specific to how it's setup on my machine in combination with the binfmt stuff.
+
+1718761962
+andrewrk!~andrewrk@mail.ziglang.org
+cydox: I see. IMO binfmt_misc should reject running such binaries when ld.so is missing for that target, because it will not be able to run it
+
+1718762011
+andrewrk!~andrewrk@mail.ziglang.org
+on my computer I don't have binfmt_misc but I do have glibc compiled for all the architectures, so when I pass -fqemu and --glibc-runtimes [path], it runs the tests on all those targets including cross compiled glibc targets
+
+1718762485
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: IIRC binfmt_misc can only look at a few bytes in static locations (e.g. does file start with "MD") and then send it to the relevant interpreter
+
+1718762977
+cydox!~jan@user/cydox
+In this case the formats are registered using systemd-binfmt.service. So I believe that could implement logic to not register the format in the first place. Although I guess there might be usecases for having the binfmt registered without having the ld.so for that target.
+
+1718811306
+freshcoffee!~fresh@user/freshcoffee
+andrewrk: re: jobserver protocol can you clarify, when the client connects, it is _Sending_ a request right? that is, not just "connect" but "connect" and do something.
+
+1718811332
+freshcoffee!~fresh@user/freshcoffee
+this is in regards to your unix domain socket comment
+
+1718816637
+andrewrk!~andrewrk@mail.ziglang.org
+freshcoffee: no, it's just connect
+
+1718816679
+andrewrk!~andrewrk@mail.ziglang.org
+sending anything would be pure overhead
+
+1718817174
+freshcoffee!~fresh@user/freshcoffee
+so couple of things, how does that work? clients can connect and connect without the server... sync'ing on it
+
+1718817221
+freshcoffee!~fresh@user/freshcoffee
+and the inherited domain socket, what can the client do with that? just connect? it doesn't translate to the server seeing a different client handle for connection
+
+1718817231
+freshcoffee!~fresh@user/freshcoffee
+I'm not at al clear on how this could work
+
+1718817529
+andrewrk!~andrewrk@mail.ziglang.org
+freshcoffee: each process that wands to do work blocks on connect(). when the connection is established, the process owns that resource until it releases it by disconnecting
+
+1718817586
+andrewrk!~andrewrk@mail.ziglang.org
+the root server limits to accepting N simultaneous connections
+
+1718817777
+freshcoffee!~fresh@user/freshcoffee
+SOCK_STREAM ? I am seeing client connect succeeds and doesn't block. Even without server doing listen which is before accept
+
+1718817838
+freshcoffee!~fresh@user/freshcoffee
+anywho I might not have the right sock/options/setup just sayin
+
+1718818124
+andrewrk!~andrewrk@mail.ziglang.org
+can I see your code?
+
+1718818142
+freshcoffee!~fresh@user/freshcoffee
+you'll shoot me. it's .c code
+
+1718818188
+freshcoffee!~fresh@user/freshcoffee
+opne sec
+
+1718818520
+freshcoffee!~fresh@user/freshcoffee
+https://gist.github.com/mikdusan/9a0ba0420eceb17a1220e37ed9606950 - hack uds.c to sleep after bind, client connects just fine; also each run of server just rm "jobs" pathname because I don't unlink it anywhere.
+
+1718821560
+andrewrk!~andrewrk@mail.ziglang.org
+freshcoffee: thanks, I can reproduce your results
+
+1718821597
+pcarrier!~pcarrier@horse.pcarrier.com
+hi! trying to compile a cgo program with zig and running into issues building for mac from mac…
+
+1718821611
+pcarrier!~pcarrier@horse.pcarrier.com
+$ env GOARCH=arm64 GOOS=darwin CGO_ENABLED=1 'CC=zig cc -target aarch64-macos -isysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -iwithsysroot /usr/include' 'CGO_LDFLAGS=--sysroot /Library/Developer/CommandLineTools/SDKs/MacOSX.sdk -F/Library/Developer/CommandLineTools/SDKs/MacOSX.sdk/System/Library/Frameworks -L/usr/lib' go build -o bin/yas-darwin-arm64 .
+
+1718821613
+pcarrier!~pcarrier@horse.pcarrier.com
+[…]error: symbol _runtime.covctrs not attached to any (sub)section
+
+1718821687
+pcarrier!~pcarrier@horse.pcarrier.com
+the build logic should be reasonably easy to follow: https://github.com/yas-tools/yas/blob/golua/build.lua
+
+1718825106
+andrewrk!~andrewrk@mail.ziglang.org
+freshcoffee: here's a zig version, also with poll(). still not achieving blocking behavior. https://gist.github.com/andrewrk/d8014959638ff67ff87a183b639304e2
+
+1718825873
+rockorager!2bbd732aa1@irc.pico.sh
+Are there any prebuilt structs to make a tls client into an io.AnyReader in stdlib? If not, would this be something that would be accepted?
+
+1718825901
+rockorager!2bbd732aa1@irc.pico.sh
+I've handrolled my own a few times now and seems like it must be in there somewhere...
+
+1718825927
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: oh, I was thinking of making the breaking change to convert std tls to use anyreader
+
+1718825944
+rockorager!2bbd732aa1@irc.pico.sh
+instead of stream: anytype?
+
+1718825964
+andrewrk!~andrewrk@mail.ziglang.org
+right
+
+1718826005
+rockorager!2bbd732aa1@irc.pico.sh
+That sounds good
+
+1718826016
+rockorager!2bbd732aa1@irc.pico.sh
+I'm looking for a tls.Client.anyReader() and tls.Client.anyWriter()
+
+1718826096
+andrewrk!~andrewrk@mail.ziglang.org
+std.crypto.tls was my primary motivation for making std.io.AnyReader
+
+1718827129
+rockorager!2bbd732aa1@irc.pico.sh
+This is essentially what I find myself writing: https://zigbin.io/22293c
+
+1718827480
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: that looks like a good workaround for the meantime
+
+1718833874
+freshcoffee!~fresh@user/freshcoffee
+33C. Humid. Not enough breeze. I'll hold your beer.
+
+1718836157
+andrewrk!~andrewrk@mail.ziglang.org
+freshcoffee: with the server strategy, I can make it work with the server sending 1 byte after accepting, and having the client poll(POLLIN) after connecting
+
