@@ -1,0 +1,84 @@
+1719362218
+rockorager!2bbd732aa1@irc.pico.sh
+gcarlos8: see setsockopt and man 7 socket for option SO_RCVTIMEO
+
+1719362522
+gcarlos8!~gcarlos@37.218.246.133
+rockorager: do you mean I should set it that option on the fly for force closing the connection?
+
+1719362554
+gcarlos8!~gcarlos@37.218.246.133
+or should I set it to a reasonable value so that when there's no data it automatically closes?
+
+1719362555
+rockorager!2bbd732aa1@irc.pico.sh
+gcarlos: No, I would set it at the beginning. And when the function timesout, check if you should exit or not
+
+1719362691
+gcarlos8!~gcarlos@37.218.246.133
+rockorager: hummm, good idea
+
+1719362706
+gcarlos8!~gcarlos@37.218.246.133
+I'll try that
+
+1719362712
+gcarlos8!~gcarlos@37.218.246.133
+very thank you!
+
+1719362777
+gcarlos8!~gcarlos@37.218.246.133
+btw, can someone explain why the read call keeps blocking even when its stream was already closed?
+
+1719362900
+gcarlos8!~gcarlos@37.218.246.133
+say, I have a thread A blocked trying to read the tcp stream and B just closes it. What seems intuitive to me would be if the read call actually read 0 bytes (meaning that there's no more data to read)
+
+1719368066
+gcarlos8!~gcarlos@37.218.246.133
+rockorager: I did what you said and it worked, thank you again!
+
+1719368735
+taylan!~taylan@user/taylan
+gcarlos8: TCP generally does its best to finish things off cleanly. Perhaps the "close" operation you're using just initiates the shutdown process, which is sending the other side a FIN packet. It's still possible to read data after that, if the other side was still sending data and hasn't processed the FIN yet.
+
+1719368863
+taylan!~taylan@user/taylan
+https://en.wikipedia.org/wiki/Transmission_Control_Protocol#Connection_termination
+
+1719368922
+taylan!~taylan@user/taylan
+ACTION goes to sleep
+
+1719417697
+gpanders!5ac6a0797e@user/gpanders
+I noticed that TokenIterator's peek() function mutates the iterator state. This was surprising to me as generally speaking I expect "peek()" to not modify the iterator (this is the case for other peek() functions in Zig's stdlib). Changing this would be simple enough, but before I open a PR I wanted to ask if this was already known and intentional?
+
+1719417841
+grayhatter!~grayhatte@user/grayhatter
+gpanders: anything suspicious is a bug unless otherwise documented, if it's intentional, adding docs would be a nice thing to do for others. But I agree with you, sounds more like a bug and a PR would be quite kind :)
+
+1719418331
+gpanders!5ac6a0797e@user/gpanders
+grayhatter: thanks, will submit one shortly
+
+1719418527
+gpanders!5ac6a0797e@user/gpanders
+oh wow looks like someone else noticed the dame thing only 5 days ago https://github.com/ziglang/zig/pull/20379
+
+1719419087
+gpanders!5ac6a0797e@user/gpanders
+I opened https://github.com/ziglang/zig/pull/20427 (and referenced the other PR) so it can at least be discussed
+
+1719419402
+gcarlos8!~gcarlos@37.218.246.133
+Hi guys, what should be the canonical way to map a C function receiving a void pointer + data lenght in zig? Taking a function as example (std.posix.setsockopt), it maps the setsockopt syscall, which set an option to a socket, and the value set is passed as an void pointer. The way stdlib mapped it in posix.setsockopt() is: option value is an
+
+1719419402
+gcarlos8!~gcarlos@37.218.246.133
+slice. Personally, I think its okay but it didn't express the semantic in the zig way, which would be the use of anytype in my opnion. What do you guys think about it?
+
+1719419499
+gcarlos8!~gcarlos@37.218.246.133
+as far I can see, every place that calls this function need to convert the option value to an slice (aka. calling &mem.toBytes(option)), so I think it could be handled by the function instead of the caller, which would be just passing the correct value for that socket option
+
