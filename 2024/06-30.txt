@@ -1,0 +1,168 @@
+1719720203
+rockorager!2bbd732aa1@irc.pico.sh
+af: are you linking in build.zig?
+
+1719720228
+rockorager!2bbd732aa1@irc.pico.sh
+something like `step.linkSystemLibrary("gtk4")
+
+1719720899
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+So since there's not a std.os.freebsd.sigaddset, how do I actually do that if I want to build for freebsd? 
+
+1719721768
+rockorager!2bbd732aa1@irc.pico.sh
+The_Buhs: can you directly use std.os.linux or std.c.darwin?
+
+1719721825
+rockorager!2bbd732aa1@irc.pico.sh
+Or PR adding it to std.c.freebsd?
+
+1719721902
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Yeah, I was going to just use std.os.linux's sigaddset, but I just wasn't really sure. Might just get rid of (well, not implement in the first place) freebsd support in this project for now xD
+
+1719722037
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+FWIW, I'm literally just trying to copy dnkl's wbg but in zig and I don't totally understand all this signal business lol, I was just trying to copy how it is. Trying to read through man pages and what not to learn atm
+
+1719722769
+torque!~tachyon@user/torque
+you can always just define the interface for the function in your zig code
+
+1719723064
+torque!~tachyon@user/torque
+sigaddset etc are defined by posix according to my manpage so it would probably make sense to add them to std.posix
+
+1719746815
+af!~af@user/afk
+rockorager: Yes, I had that. In the end I had to manually append flags like "-isystem /usr/include/gtk-4.0 -isystem /usr/include/glib-2.0". I am not sure why the -I equivalents of them did not have any effect. Even stracing the `zig build-exe` command showed that it did not even try to traverse those directories.
+
+1719756646
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque: makes sense, thanks! Yeah, I'll probably try just adding it myself at some point and possibly look into making a PR if it's not garbage code :P
+
+1719758107
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+In other news, how would I go about converting this to zig? https://paste.gentoo.zip/AtJzVUQn I'm not sure since posix.read takes a []u8 but I want the signalfd_siginfo information
+
+1719768337
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+The_Buhs: you'd need to read it and then convert it, I suspect; I'd look for the siginfo type in Zig's stdlib somewhere?
+
+1719768401
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+A bitcast to std.os.linux.signalfd_siginfo ?
+
+1719774237
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+@noam ahh yeah bitcast I think is what I was missing thank you 
+
+1719777754
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Yup, got it working by reading into a [128]u8 then bitCasting to std.os.linux.signalfd_siginfo, thanks!
+
+1719785487
+gcarlos8!~gcarlos@37.218.246.133
+I have an union and each of its members are structs with a format method. I would like to provide a format method for that union that is basically just call the format of the active member. The way I could achieve that was by switching the union on the format function and then printing it, as the program will know what it the function it must call
+
+1719785487
+gcarlos8!~gcarlos@37.218.246.133
+by knowing the active member
+
+1719785529
+gcarlos8!~gcarlos@37.218.246.133
+but, idk if it's the correct way to do that, doesn't look too good for me
+
+1719788325
+torque!~tachyon@user/torque
+there's a common pattern for this, which is using `inline else` in the switch to forward a method to the child object
+
+1719788948
+torque!~tachyon@user/torque
+I thought this showed up a few times in std but it appears not to be in there much
+
+1719788969
+torque!~tachyon@user/torque
+basic example: https://zig.godbolt.org/z/sqTaGdbYz
+
+1719789205
+gcarlos8!~gcarlos@37.218.246.133
+torque: thank you!
+
+1719789308
+gcarlos8!~gcarlos@37.218.246.133
+is also there a common pattern for doing something similar but without switching the union, but the enum instead?
+
+1719789374
+gcarlos8!~gcarlos@37.218.246.133
+for example, I would like to have an init methodt that recieve an enum as arg and then call the init method of the field corresponding that enum
+
+1719789589
+torque!~tachyon@user/torque
+assuming you have a standard init method that returns the type, you would need to use metaprogramming to get the correct type, but `std.meta.FieldType` should work well with an explicitly tagged union
+
+1719789948
+gcarlos8!~gcarlos@37.218.246.133
+torque: what's the diff between using FieldType and TagPayload?
+
+1719789964
+gcarlos8!~gcarlos@37.218.246.133
+both seems to do the same
+
+1719790068
+torque!~tachyon@user/torque
+TagPayload is more specific to tagged unions and probably works better under some weird edge cases
+
+1719790112
+torque!~tachyon@user/torque
+technically FieldType operates on an enum of field names that may not actually be the same as the union's underlying tag type
+
+1719790179
+gcarlos8!~gcarlos@37.218.246.133
+I think I misunderstood what TagPayload does
+
+1719790195
+gcarlos8!~gcarlos@37.218.246.133
+It returns a union type
+
+1719790231
+gcarlos8!~gcarlos@37.218.246.133
+like union(SomeEnum)
+
+1719790283
+gcarlos8!~gcarlos@37.218.246.133
+but thank you again, I think that FieldType will work here
+
+1719790302
+torque!~tachyon@user/torque
+doesn't look like that to me
+
+1719790321
+torque!~tachyon@user/torque
+it just calls TagPayloadByName which does the simple field string comparison using `inline for`
+
+1719790358
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/GKfGEqc5s this seems to work as I would expect
+
+1719790571
+gcarlos8!~gcarlos@37.218.246.133
+hummm, ok. To me TagPayload will do what I want
+
+1719790660
+gcarlos8!~gcarlos@37.218.246.133
+ using FieldType I can't switch over a variable of the enum type I used in my union
+
+1719790699
+gcarlos8!~gcarlos@37.218.246.133
+as it expect an enum of the type "meta.FieldEnum(MyUnion)"
+
+1719790710
+torque!~tachyon@user/torque
+yeah I think TagPayload is better for this use case, I didn't know about it before
+
+1719790818
+gcarlos8!~gcarlos@37.218.246.133
+sure, I have just tested here and it worked fine, thanks
+
