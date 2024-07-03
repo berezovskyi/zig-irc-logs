@@ -1,0 +1,184 @@
+1719898788
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I know flexible array members are not supported as a language feature. Is there a recommendation for the best way to implement them within userspace? I'm currently doing a zero-length array at the end of an `extern struct` and slicing it with `@setRuntimeSafety(false);`.
+
+1719899874
+torque!~tachyon@user/torque
+are you trying to wrap C code that uses them, or what?
+
+1719900450
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+No, I'm writing a toy kernel which is structured like seL4. I want to pass the boot info from kernel space to user space by mapping the pages for that structure into the initialization task. I would prefer to limit the physical-virtual memory translations that I have to do in the kernel. So, I want it to be located in contiguous memory with the pointer/length to be implied by other fields within the boot info.
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+```
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+/// A description of all capabilities available at boot.
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+pub const BootInfo = extern struct {
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    /// Handles to the memory within with the `BootInfo` allocated.
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    boot_info: HandleRange,
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    /// Handles to untyped memory.
+
+1719900551
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    memory: HandleRange,
+
+1719900552
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    /// Handles to empty capability slots allocated within the `ROOT_CAPABILITY_CSPACE`.
+
+1719900552
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    empty: HandleRange,
+
+1719900553
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    /// The page ranges for each handle in `memory` range.
+
+1719900553
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    memory_ranges: [0]PageRange,
+
+1719900554
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+    /// Convenience function for getting the appended slice of `memory_ranges`.
+
+1719900577
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Uh, IRC apparently doesn't handle newlines well... Sorry.
+
+1719900695
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Using @setRuntimeSafety(false) feels wrong, but compiler explorer seems to work well with it: https://zig.godbolt.org/z/c3PG84eYE
+
+1719901079
+torque!~tachyon@user/torque
+that's a pretty specialized usecase and I suspect there's not really a better way to handle that. Seems like the sort of reason that @setRuntimeSafety exists in the first place
+
+1719901197
+torque!~tachyon@user/torque
+I mean you could cast the whole struct to an appropriately-sized many pointer and then slice that I guess
+
+1719901230
+torque!~tachyon@user/torque
+either way it's a weird memory fiddling hack
+
+1719901269
+torque!~tachyon@user/torque
+er s/appropriately-sized//
+
+1719901431
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Agreed on this case being specialized. I just think it seems to be something which is useful sometimes, but it's not obvious how this C-language feature should be done in Zig.
+
+1719901501
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I wish there was a "Coming to Zig from {C,Python,etc}" section in the manual.
+
+1719901674
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/hY3a6MGsP appears to generate the same assembly
+
+1719901818
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Oh, I like that better... Sorry, I get more pedantic the later it gets, apparently.
+
+1719902660
+ifreund!2940d10f8b@user/ifreund
+@setRuntimeSafety() should only ever be used for performance reasons
+
+1719902703
+ifreund!2940d10f8b@user/ifreund
+if code only works with runtime safety disabled it is invoking illegal behavior and is invalid code
+
+1719902873
+torque!~tachyon@user/torque
+I guess that's why it's scheduled to be renamed
+
+1719902966
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+This wouldn't be illegal behavior though, right? `@as([*]const PageRange, &self.memory_ranges)[0..len]` where `memory_ranges: [0]PageRange`
+
+1719903045
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+This would: `self.memory_ranges[0..len]`. At least compiler explorer will emit an unconditional panic.
+
+1719903282
+ifreund!2940d10f8b@user/ifreund
+gcoakes: yes thats correct
+
+1719903356
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Aha, pedantic rabbit holes win again.
+
+1719903507
+ifreund!2940d10f8b@user/ifreund
+one can also model this as a slice of opaque bytes plus a function to cast the first N bytes into the "header" struct and a function to slice and cast the rest of the slice into a slice of the element type
+
+1719903621
+ifreund!2940d10f8b@user/ifreund
+which can be written in a way that you keep the runtime bounds checking
+
+1719903753
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+In my case, the length is implied by the subtraction of two other fields. Also, I want this file to be mostly declarative since it is the data model for kernel-userspace interaction. I don't want to make function implementations a part of the ABI because that would require mapping a dynamic library into every userspace (Linux-like not Windows or BSDs).
+
+1719903807
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+s/subtraction of/difference between/
+
+1719957881
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+is the goal to replace zls with zig's compiler? https://kristoff.it/blog/improving-your-zls-experience/
+
+1719958744
+ifreund!2940d10f8b@user/ifreund
+fengshaun: not exactly, the zig compiler has no plans to speak Language Server Protocl directly
+
+1719958771
+ifreund!2940d10f8b@user/ifreund
+zls will almost certainly stick around, at the very minimum as a translator between the zig compiler and LSP
+
+1719958782
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+oh alright, so editor<->zls<->cc
+
+1719958790
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+fair enough, thanks
+
+1719958815
+ifreund!2940d10f8b@user/ifreund
+or perhaps editor<->zig compiler for some cases poorly supported by lsp...
+
+1719958830
+ifreund!2940d10f8b@user/ifreund
+(think comptime debugging)
+
+1719959152
+fengshaun!~fengshaun@d75-155-79-139.abhsia.telus.net
+just as well. as long as tooling keeps improving
+
+1719960474
+andrewrk!~andrewrk@mail.ziglang.org
+generally, the approach I've been taking is to prioritize long-term tooling capabilities while making them flexible enough to extend to interop with contemporary third party tooling
+
+1719960495
+andrewrk!~andrewrk@mail.ziglang.org
+the compiler server as ifreund described it just now is a good example of this philosophy
+
