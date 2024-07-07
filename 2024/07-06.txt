@@ -1,0 +1,144 @@
+1720255783
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+anyone doing benchmarking and the like using zig as the framework? Specifically benchmarking blackbox binaries. So for example something written in Rust, or C++ etc where it's not easy or preferable to edit the source code for any benchmarking data dumps
+
+1720255830
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+valgrind, heaptrace, and hyperfine look like the options at play here, with hyperfine being called as a CLI since it's not a library (and even if it was not a library with a C ABI for Zig to use)
+
+1720255842
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+0.11 -> 0.12 is a sludge, but at least 0.12 -> 0.13 was a breeze for me
+
+1720257038
+torque!~tachyon@user/torque
+tsujp, there's https://github.com/andrewrk/poop though this is mostly comparable to hyperfine (i.e. a cli tool, not a framework)
+
+1720257146
+torque!~tachyon@user/torque
+I think it largely depends on what sort of information you want to get out of profiling, but for blackbox binaries I would assume htings like detailed flamegraphs are not the goal
+
+1720258481
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: oo poop looks interesting, i'll be starting with linux only too eventually macOS support would be nice... could port some stuff from (what I just found) samply (https://github.com/mstange/samply)
+
+1720258517
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: yeah the goal here is there are N implementations of a thing in an ecosystem and to showcase the difference in time/memory/other-resource usage of those N implementations with different programs
+
+1720258575
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: one implementation might happen to be in Rust, another in C++, another in C and so forth. I don't _think_ flamegraphs are applicable here since that's more for improving performance per-project whereas my goal is to help people understand when and why to use one of N implementations over another
+
+1720258608
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I can elaborate with a concrete example if it'd help
+
+1720264556
+moksh!~moksh@user/moksh
+yo folks!
+
+1720271108
+smlavine!~smlavine@sourcehut/user/smlavine
+Hello, is it possible to download/view the stdlib documentation page <https://ziglang.org/documentation/master/std/> locally?
+
+1720271449
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+smlavine: `zig std`
+
+1720271561
+smlavine!~smlavine@sourcehut/user/smlavine
+Oh woah lol. Thanks!
+
+1720277258
+cve!~quassel@user/cve
+how do I create an empty std.DoublyLinkedList(T)?
+
+1720277460
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+see tests in source: https://ziglang.org/documentation/0.13.0/std/#src/std/linked_list.zig
+
+1720277690
+cve!~quassel@user/cve
+thank you
+
+1720286690
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+Can I define a custom address space? Specifically, I want to be able to tag physical memory pointers as `*addrspace(.physical) allowzero align(std.mem.page_size) [std.mem.page_size]u8`.
+
+1720287766
+cve!~quassel@user/cve
+how do rawAlloc and rawFree in std.mem.Allocator work?
+
+1720287779
+cve!~quassel@user/cve
+I am currently writing a garbage collector for fun and have to do some raw allocations
+
+1720287792
+cve!~quassel@user/cve
+I have  a hard time understanding the alignment and ret address parameters
+
+1720287896
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+Alignment would just mean that you must guarantee the resulting pointer is exactly divisible by that alignment (i.e.: `std.debug.assert(@intFromPtr(result) % alignment == 0)`).
+
+1720287980
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+If I'm not totally mistaken, the return address is for tracking allocations for debug purposes. I could be totally wrong on that one though. I would look at the source for `std.heap.GeneralPurposeAllocator` for more concrete information.
+
+1720288049
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+https://ziglang.org/documentation/master/#Alignment
+
+1720288340
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+Now that I think about it, you wouldn't need an assertion like that. Just need to `@alignCast` or `@ptrFromInt` since both of those should add runtime safety checks for alignment.
+
+1720288507
+cve!~quassel@user/cve
+same with log2_buf_align in rawFree?
+
+1720288730
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+Just judging by the name, I would assume you get the actual alignment by `1 << lo2_buf_align` and the assumption that all valid alignments are a power of two.
+
+1720288766
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+It also looks like `std.heap.FixedBufferAllocator` just ignores that parameter. Presumably, this means it is necessary for some allocators but not generally necessary: https://ziglang.org/documentation/master/std/#std.heap.FixedBufferAllocator.free
+
+1720288817
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+I don't know just making guesses here.
+
+1720288975
+cve!~quassel@user/cve
+How can I "try" on a `?[*]u8`? In other words, I would like the function to take the errdefer path, when a pointer returns null
+
+1720289165
+gcoakes!~Thunderbi@2603:8082:2000:72:b29c:9227:76a:3774
+I would probably read up on optionals: https://ziglang.org/documentation/master/#Optionals Specifically, the `orelse` keyword.
+
+1720289567
+cve!~quassel@user/cve
+thank you
+
+1720289603
+APic!apic@apic.name
+CAPTAIN: MOVE 'ZIG'.
+
+1720289603
+APic!apic@apic.name
+CAPTAIN: FOR GREAT JUSTICE.
+
+1720290907
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/allyourcodebase/
+
+1720292614
+grayhatter!~grayhatte@user/grayhatter
+this may be the best thing I've seen this month
+
+1720292624
+grayhatter!~grayhatte@user/grayhatter
+(and last month too)
+
