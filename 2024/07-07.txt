@@ -1,0 +1,128 @@
+1720321071
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+How should I handle a scenario where I need `f64 = c_int / (u31 * u31)`. Do I need to do `numerator: f64 = @floatFromInt(c_int)` and `denominator: f64 = @floatFromInt(u31 * u31)`? 
+
+1720321089
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+and then my actual result = the two f64 variables?
+
+1720327212
+torque!~tachyon@user/torque
+you can use @as to create result location types inline, so e.g. `@as(f64, @floatFromInt(c_int))`. But you can also do `@as(f64, c_int)` apparently and I'm not sure what the difference is vs the more verbose version
+
+1720327232
+torque!~tachyon@user/torque
+if you promote the numerator to an f64 manually, the denominator will be promoted automatically
+
+1720327239
+torque!~tachyon@user/torque
+it seems
+
+1720327296
+torque!~tachyon@user/torque
+I don't know if the peer type resolution results are fully documented
+
+1720336707
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+when zig eventually ditches LLVM what does that mean for cross-compilation and being able to compile C and all that? AFAIK the reason zig is so good as a replacement C toolchain is because it preconfigures using LLVM and co for that very reason
+
+1720336962
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+hopefully we'll be able to still produce a c/c++ frontend that can use zig's future codegen, but writing those is its own can of worms
+
+1720338516
+squeek502!~squeek502@user/squeek502
+tsujp, https://github.com/ziglang/zig/issues/16270#issuecomment-1616115039
+
+1720340205
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+cheers
+
+1720364316
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque cool, thanks!! 
+
+1720376276
+monkeyd108!~user@dhcp-138-246-3-10.dynamic.eduroam.mwn.de
+Hi! I am new to zig and after doing some ziglings, im trying to do some AOC (2015). 
+
+1720376460
+monkeyd108!~user@dhcp-138-246-3-10.dynamic.eduroam.mwn.de
+When reading a file, I stumbled across std.io.reader.readEnum(). Is it possible to read a file containing instructions (such as '(())()))()') into an array of enum values using this? Sorry if this is the wrong place to ask. Its hard to find examples of these functions ^^
+
+1720376974
+smlavine!~smlavine@sourcehut/user/smlavine
+Hi -- can someone point me to an example of proper error handling from using GenericReader's readByte? I see the NoEofError which contains EndOfStream, but not sure what to `switch` on to find the other read errors. Reading from a file, through a buffered reader's generic reader `io.bufferedReader(f.reader()).reader()`
+
+1720377365
+torque!~tachyon@user/torque
+if you switch on an error set but don't have prongs for each error, the compiler will tell you what errors you're missing
+
+1720377435
+torque!~tachyon@user/torque
+I don't really understand the question though
+
+1720377490
+torque!~tachyon@user/torque
+monkeyd108, you could use reader.readEnum to read bytes from a file and interpret them as enum values. there are lots of other ways to achieve that as well
+
+1720377509
+torque!~tachyon@user/torque
+readEnum reads a single value, so you will need some other mechanism, like ArrayList, to aggregate vales into an array
+
+1720377979
+smlavine!~smlavine@sourcehut/user/smlavine
+torque: Partially I guess my problem is that it's hard to find out from the documentation exactly what errors I should be matching against
+
+1720378254
+smlavine!~smlavine@sourcehut/user/smlavine
+Separately but similarly, is it possible to switch on an error set instead of just an error type? like matching against `fs.File.ReadError` as opposed to all of the constituent members within the set?
+
+1720379612
+torque!~tachyon@user/torque
+I mean if you do `read() catch |err| switch (err) { ... }` the switch is on the error set returned by that function
+
+1720379666
+torque!~tachyon@user/torque
+but switch prongs cannot themselves be error sets, they have to be individual error values
+
+1720379861
+torque!~tachyon@user/torque
+since errors are global, an error can belong to several different declared error sets, so trying to handle aggregates of errors is of dubious correctness
+
+1720380170
+torque!~tachyon@user/torque
+you could use comptime type reflection to loop and check if a given error belongs to a named set
+
+1720380477
+torque!~tachyon@user/torque
+anyway, the lazy/easy way to tell what errors can be returned is to get the compiler to tell you. however, since GenericReaders all take an explicit error set, you can look it up for a given type of reader in the source code... slowly
+
+1720380515
+torque!~tachyon@user/torque
+e.g. https://github.com/ziglang/zig/blob/master/lib/std/fs/File.zig#L1129 -> https://github.com/ziglang/zig/blob/master/lib/std/posix.zig#L762-L780 -> https://github.com/ziglang/zig/blob/master/lib/std/posix.zig#L7310-L7320
+
+1720380529
+torque!~tachyon@user/torque
+plus the errors added by GenericReader on some of its functions
+
+1720382526
+smlavine!~smlavine@sourcehut/user/smlavine
+Thanks for the advice, seems a bit tedious though
+
+1720382657
+smlavine!~smlavine@sourcehut/user/smlavine
+For context I'm writing an init() function for a programming language interpreter's state, taking a file name to open. I want to return InitError!void with InitError containing fs.File.OpenError || fs.File.ReadError || error{ProgramImbalanced}
+
+1720382732
+smlavine!~smlavine@sourcehut/user/smlavine
+Should I be thinking about this a different way? It seems like a lot of programs at this scale I can find just give up and have main return !void instead of handling all the possible errors directly
+
+1720389687
+squeek502!~squeek502@user/squeek502
+smlavine & torque, there is an accepted proposal for error sets in switch cases: https://github.com/ziglang/zig/issues/2473
+
+1720389872
+torque!~tachyon@user/torque
+interesting to see a proposal with no comments on it
+
