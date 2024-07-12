@@ -1,0 +1,560 @@
+1720660192
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+okay, as I'm trying to do some clean up in zig packaging for void linux, should I report a bug that zig won't find c files with --sysroot <sysroot> --search-prefix /usr (search prefix needs to include <sysroot> path to work)?
+
+1720660247
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+(specifically for cross builds)
+
+1720661060
+daurnimator!~daurnimat@vultr.daurnimator.com
+tranzystorekk: what do you mean by "find C files"?
+
+1720661075
+daurnimator!~daurnimat@vultr.daurnimator.com
+are you #include-ing .c files and it's not finding them?
+
+1720661825
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+e.g. the c header imports when building river
+
+1720661868
+tranzystorekk!86175ff574@2a03:6000:1812:100::13a5
+i dont have the build log atm unfortunately
+
+1720667134
+adigitoleo!52beb218ab@2a03:6000:1812:100::3b5
+Anyone know where std.ChildProcess.exec went in 0.13? Tried std.process.Child.exec but no luck
+
+1720667746
+torque!~tachyon@user/torque
+it's std.process.Child.run now
+
+1720667874
+adigitoleo!52beb218ab@2a03:6000:1812:100::3b5
+cheers, just found it in the docs too
+
+1720689258
+hadronized!~phaazon@2001:41d0:a:fe76::1
+sorry, not sure if someone replied, but what is std.gpu meant for? and also, is there an idiomatic way to write interface code like what you’d do in Java with interface, traits in Rust, etc. etc.?
+
+1720689275
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m not sure what to think of just having a anytype and writing the interface in the doc
+
+1720689631
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, composing fns in struct is probably the regular way (like C)
+
+1720689651
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I saw that HashMap has a « Context » type, which is probably similar
+
+1720690389
+hadronized!~phaazon@2001:41d0:a:fe76::1
+actually, I wonder whether there’s a way to simulate traits using comptime functions
+
+1720690404
+hadronized!~phaazon@2001:41d0:a:fe76::1
+something using @hasField can checks for fields, but it’d be super nice to be able to have a @hasFn
+
+1720690411
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that would basically solve the whole problem to me
+
+1720690516
+hadronized!~phaazon@2001:41d0:a:fe76::1
+pub fn add(comptime t: type, a: t, b: t) t {}
+
+1720690517
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that compiles
+
+1720690542
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so I guess we could introduce the comptime constraints on t
+
+1720690652
+hadronized!~phaazon@2001:41d0:a:fe76::1
+pub fn add(comptime t: _Add(type), a: t, b: t) t {
+
+1720690654
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah that works
+
+1720690656
+hadronized!~phaazon@2001:41d0:a:fe76::1
+interesting :)
+
+1720690665
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn _Add(comptime a: type) type {
+
+1720690674
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and now, yeah, checking whether type has some properties and done
+
+1720699252
+rockorager!2bbd732aa1@irc.pico.sh
+hadronized: There are lots of ways to do interfaces, I think the nicest to use is something like std.io.AnyWriter...uses a *const anyopaque and function pointer(s)
+
+1720699278
+rockorager!2bbd732aa1@irc.pico.sh
+That - or if you only have a small amount of types implementing and you know them all at comptime, a tagged union
+
+1720699378
+hadronized!~phaazon@2001:41d0:a:fe76::1
+rockorager: but *const anyopaque doesn’t provide the interface contract in the signature, does it?
+
+1720699384
+hadronized!~phaazon@2001:41d0:a:fe76::1
+you have to document the interface in the comment
+
+1720699562
+ifreund!2940d10f8b@user/ifreund
+hadronized: *const anyopaque is an internal implementation detail in that case
+
+1720699574
+ifreund!2940d10f8b@user/ifreund
+you have e.g. std.mem.Allocator in the signature
+
+1720699620
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, so the idea is to use a struct, and then in your impl, you have a function that adapts your struct to the expected struct?
+
+1720699629
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that’s dynamic dispatch though, no?
+
+1720699659
+ifreund!2940d10f8b@user/ifreund
+yes, function pointers are dynamic dispatch
+
+1720699665
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what I suggested above doesn’t work for static dispatch?
+
+1720699670
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I need to test but I guess it should work 
+
+1720699676
+ifreund!2940d10f8b@user/ifreund
+though llvm can inline them if you're lucky
+
+1720699689
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s not very nice to use but I guess a type wrapper should work, at least for specific implementations
+
+1720699703
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I haven’t found a way to test that something can be called with an operator
+
+1720699716
+hadronized!~phaazon@2001:41d0:a:fe76::1
+like if you want to write a static polymorphic function that does addition
+
+1720699751
+ifreund!2940d10f8b@user/ifreund
+you can indeed use comptime to "validate" types for static dispatch, see e.g. verifyContext() for the std HashMap impl
+
+1720699765
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn add (comptime t: type, a: Addable(t), b: Addable(t))
+
+1720699767
+hadronized!~phaazon@2001:41d0:a:fe76::1
+or something like that
+
+1720699796
+ifreund!2940d10f8b@user/ifreund
+I personally would not consider this to be idiomatic though, I haven't found that that extra complexity is a good tradeoff in practice
+
+1720699830
+hadronized!~phaazon@2001:41d0:a:fe76::1
+well, having the contract in the type signature is pretty good I find
+
+1720699833
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it tells people what they can do
+
+1720699841
+hadronized!~phaazon@2001:41d0:a:fe76::1
+if you have just type, it could be anything
+
+1720699847
+ifreund!2940d10f8b@user/ifreund
+so do doc comments and the compile errors when they get it wrong
+
+1720699852
+hadronized!~phaazon@2001:41d0:a:fe76::1
+even though, yes, the compiler will reject the code if you pass something that is wrong
+
+1720699852
+ifreund!2940d10f8b@user/ifreund
+it's a tradeoff
+
+1720699867
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, I’m not sure what to think about that
+
+1720699870
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s duck typing
+
+1720699874
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m not a huge fan
+
+1720699895
+ifreund!2940d10f8b@user/ifreund
+comptime duck typing, where you get a compile error not a runtime panic on screwing up
+
+1720699896
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s going to be hard for me to move away from this mindset because Rust / Haskell can show you implementors of an interface, etc.
+
+1720699900
+hadronized!~phaazon@2001:41d0:a:fe76::1
+which is a pretty nice thing to have
+
+1720699905
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: yeah yeah
+
+1720699909
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that’s pretty good honestly
+
+1720699911
+ifreund!2940d10f8b@user/ifreund
+yeah, the alternative is haskelly type classes
+
+1720699913
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m happily surprised by comptime
+
+1720699920
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’ve been looking for something like that for a long time
+
+1720699925
+ifreund!2940d10f8b@user/ifreund
+which is a whole different ballgame
+
+1720699930
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess that could almost allow to write EDSL in comptime functions
+
+1720699932
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(I have some ideas)
+
+1720699950
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Haskell type classes are the best things to me in terms of abstraction, but they have a huge runtime impact
+
+1720699954
+hadronized!~phaazon@2001:41d0:a:fe76::1
+dictionary passing, etc.
+
+1720699964
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Rust’s traits allow you to pick static or dynamic dispatch
+
+1720699972
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but the ABI using them is me
+
+1720699974
+hadronized!~phaazon@2001:41d0:a:fe76::1
+h
+
+1720699976
+hadronized!~phaazon@2001:41d0:a:fe76::1
+meh* sorry
+
+1720700039
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but maybe you’re right, I’m too attached to those super high level abstractions
+
+1720700068
+hadronized!~phaazon@2001:41d0:a:fe76::1
+maybe just documenting the interfacing in the code would be enough, but I can’t help myself thinking “yeah but when I want to implement it, I don’t have the nice LSP auto-complete things, etc.”
+
+1720700122
+ifreund!2940d10f8b@user/ifreund
+that is indeed a downside of ducktyping, I have hopes that the tooling will evolve to eliminate that pain point eventually though
+
+1720700151
+hadronized!~phaazon@2001:41d0:a:fe76::1
+from what I understand from the philosophy, Zig doesn’t want to get into too complicated
+
+1720700165
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so I don’t think we will ever get an interface{} thing because it would mean many things behind the scene
+
+1720700184
+ifreund!2940d10f8b@user/ifreund
+yeah, I wouldn't expect the current Zig status quo to change significantly at this point 
+
+1720700188
+hadronized!~phaazon@2001:41d0:a:fe76::1
+you mention idiomatic code ifreund; what is idiomatic for interfaces then?
+
+1720700197
+hadronized!~phaazon@2001:41d0:a:fe76::1
+“context” types?
+
+1720700209
+hadronized!~phaazon@2001:41d0:a:fe76::1
+or just
+
+1720700224
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn add(a: type, b: type) type … // a and b must have the + operator defined on them
+
+1720700235
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, I’m not sure what can have + defined on them now that I think about it :D
+
+1720700279
+ifreund!2940d10f8b@user/ifreund
+hadronized: I think the std.mem.Allocator and std.io.AnyWriter pattern is the most idiomatic in general
+
+1720700315
+ifreund!2940d10f8b@user/ifreund
+if you want static dispatch then I indeed believe that doc comments + anytype are the best tradeoff
+
+1720700351
+hadronized!~phaazon@2001:41d0:a:fe76::1
+anytype is like opaque right?
+
+1720700368
+ifreund!2940d10f8b@user/ifreund
+rather than "must have the + operator defined" you usually see stuff like "must have a swap() function with the following signature"
+
+1720700401
+ifreund!2940d10f8b@user/ifreund
+anytype is comptime ducktyping, it causes a generic instantiation of the function per unique type passed
+
+1720700412
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah yeah I’m stupid
+
+1720700419
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I thought like add(a: type, b: type) would work
+
+1720700428
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but it’s add(comptime t: type, a: t, b: t)
+
+1720700431
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but I have to pass the type
+
+1720700439
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so anytype is the same
+
+1720700459
+hadronized!~phaazon@2001:41d0:a:fe76::1
+though with my solution, I have only one type, while add(a: anytype, b: anytype) could potentially have two different things
+
+1720700472
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thanks for the explanation ifreund 
+
+1720700474
+ifreund!2940d10f8b@user/ifreund
+one can also do stuff like `add(a: anytype, b: @TypeOf(a)) @TypeOf(a)`
+
+1720700483
+hadronized!~phaazon@2001:41d0:a:fe76::1
+oh, yeah
+
+1720700486
+hadronized!~phaazon@2001:41d0:a:fe76::1
+pretty good
+
+1720700491
+hadronized!~phaazon@2001:41d0:a:fe76::1
+doesn’t look good, but okay :D
+
+1720700496
+ifreund!2940d10f8b@user/ifreund
+no problem! enjoy your zig journey :)
+
+1720700520
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and so *anytype is a pointer to a comptime static dispatched argument, while *opaque is monomorphized, right?
+
+1720700530
+ifreund!2940d10f8b@user/ifreund
+*anytype isn't valid zig
+
+1720700543
+hadronized!~phaazon@2001:41d0:a:fe76::1
+okay
+
+1720700579
+ifreund!2940d10f8b@user/ifreund
+*opaque {} is a pointer to a specific opaque type of unknown size, opaque {} is mostly used for C API interop with other langauges
+
+1720700612
+ifreund!2940d10f8b@user/ifreund
+*anyopaque is a type-erased pointer, all pointer coerce to *anyopaque
+
+1720700641
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, so anyopaque is not a thing?
+
+1720700645
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s only *anyopaque
+
+1720700666
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s a bit confusing to me, but I’ve found most Zig’s pointers / arrays / slices pretty confusing so far so I’ll probably get used to it
+
+1720700667
+ifreund!2940d10f8b@user/ifreund
+indeed, an anyopaque value would make no sense
+
+1720700687
+ifreund!2940d10f8b@user/ifreund
+*anyopaque is pretty similar to a void pointer in C fwiw
+
+1720700690
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hmmmm, but can you do something like this:
+
+1720700725
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn Foo(comptime t: type) *type { return *t; } const myAnyOpaque = Foo(anyopaque);
+
+1720700800
+ifreund!2940d10f8b@user/ifreund
+if you change *type in the return type to just `*type` I think that would compile fine yes
+
+1720700814
+ifreund!2940d10f8b@user/ifreund
+whoops, "just `type`" i mean
+
+1720700832
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah yeah indeed sorry
+
+1720700874
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I need to write more code now to have a better idea whether I like the whole thing or not
+
+1720701936
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, converting from *const anyopaque to my own thing can be done via @castPtr(@alignPtr(p)), right?
+
+1720701939
+hadronized!~phaazon@2001:41d0:a:fe76::1
+or am I missing something
+
+1720702274
+hadronized!~phaazon@2001:41d0:a:fe76::1
+https://zigbin.io/a3cb2c
+
+1720702277
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah it’s not that bad actually
+
+1720702415
+ifreund!2940d10f8b@user/ifreund
+yep, pretty much
+
+1720702436
+ifreund!2940d10f8b@user/ifreund
+see std.mem.Allocator for the exact pattern the standard library has landed on if you like
+
+1720703153
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah I will, thanks
+
+1720707816
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+19:42 <The_Buhs> https://paste.gentoo.zip/InsZ562e I'm trying to use zig-pixman but I've got a segfault when calling pixman.Image.composite32(), but there's not a full stack trace. How can I try debugging this?
+
+1720707850
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+ifreund: any chance you know how to help with this (only pinging you specifically since you maintain zig-pixman :P )
+
+1720708246
+ifreund!2940d10f8b@user/ifreund
+The_Buhs: does gdb give you more info?
+
+1720708340
+ifreund!2940d10f8b@user/ifreund
+are you passing pixman valid pointers?
+
+1720708500
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+to gdb, I don't think so, I think it just showed some pixman functions in the backtrace but still said stuff similar to ???:?:?: 0x7f1d176d096b in ??? (libpixman-1.so.0). For the second part, I mean I think but probably not lol. I'll try check that I actually am
+
+1720709247
+ifreund!2940d10f8b@user/ifreund
+The_Buhs: gdb is very useful, you can use it to inspect the pointers you are passing to pixman
+
+1720709274
+ifreund!2940d10f8b@user/ifreund
+you can also use it to see exactly where pixman dereferences an invalid pointer and segfaults
+
+1720709312
+ifreund!2940d10f8b@user/ifreund
+valgrind is also quite helpful for tracking down memory corruption
+
+1720709353
+ifreund!2940d10f8b@user/ifreund
+These are the core debugging tools to empower you to tackle this kind of thing on your own
+
+1720712664
+symb0l!~symb0l@user/symb0l
+Is using an `extern struct` the correct way to read / write say a file header to/from disk? struct on their own aren't guaranteed layout? 
+
+1720716621
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m probably being dumb there but if I have a struct with a i32, @sizeOf(Foo) == 4; if I add a function pointer in it, @sizeOf(foo) == 4 still
+
+1720716624
+hadronized!~phaazon@2001:41d0:a:fe76::1
+how is that possible?
+
+1720716637
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I would expect a pointer function to raise the size to 12 bytes, no?
+
+1720717333
+Gliptic!~glip@irc.glip.cc
+hadronized, 16 bytes most likely, how does it actually look like?
+
+1720717399
+Gliptic!~glip@irc.glip.cc
+are you sure you're running the code you think you're running
+
+1720718152
+symb0l!~symb0l@user/symb0l
+hadronized: https://godbolt.org/z/9996nzWxv it is most definitely 16
+
+1720732243
+KitsuWhooa!~tatokis@devnull.tasossah.com
+I'm trying to build zig on i686 based on the Arch package and it fails with error: sub-compilation of zig_libc failed note: unable to load '/build/zig/src/zig-0.13.0/lib/std/std.zig': FileTooBig
+
+1720732267
+KitsuWhooa!~tatokis@devnull.tasossah.com
+I tried playing with CMAKE_BUILD_TYPE and CFGLAGS but I got nowhere. Is there something that can be done to work around that?
+
+1720732274
+KitsuWhooa!~tatokis@devnull.tasossah.com
+*CFLAGS
+
+1720732294
+KitsuWhooa!~tatokis@devnull.tasossah.com
+full log https://tasossah.com/zig-0.13.0-1-i686-build.log
+
