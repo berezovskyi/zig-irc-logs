@@ -1,0 +1,180 @@
+1720743000
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Is there somewhere I can look to find all the root module hooks besides just grepping for `@hasDecl(root, "os")`? I just discovered `std.heap.page_allocator` and `root.os.heap.page_allocator`.
+
+1720745541
+torque!~tachyon@user/torque
+grep probably works well. grepping for `@import("root");` in std will show all files that try to access stuff from the root module
+
+1720745587
+torque!~tachyon@user/torque
+a variety of the customization options for the stdlib are in the std.Options struct, but some things are still spread out
+
+1720747426
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Probably could be documented in the language reference.
+
+1720748050
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Ah, there's already TODOs for that.
+
+1720748701
+torque!~tachyon@user/torque
+language reference seems like an odd place to put documentation on stdlib hooks.
+
+1720748740
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Uh, where should it be documented? https://ziglang.org/documentation/master/#Root-Source-File
+
+1720748766
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I just started writing some stuff in langref.html.in, but I can move it else where.
+
+1720748806
+torque!~tachyon@user/torque
+the root source file is a magic import, which makes sense to document in the langref, but documenting how the standard library uses it should go in the standard library documentation
+
+1720748855
+torque!~tachyon@user/torque
+as std moves away from @hasDecl, that scattered usage should probably be consolidated in std.Options and things should pull overridden defaults from that, I think
+
+1720748874
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+`pub fn main` and `pub fn panic` are not part of the stdlib? I'm pretty sure I saw the _start implementation referencing them in the standard library.
+
+1720748922
+torque!~tachyon@user/torque
+yes, the TODOS listed there seem fairly appropriate for the langref
+
+1720749020
+torque!~tachyon@user/torque
+but stuff like root.os.heap.page_allocator does not belong in langref imo, which was your initial example
+
+1720749435
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Would a patch moving the `@hasDecl` stuff to `root.std_options.os.heap.page_allocator`? That would be a breaking change, but I don't think the project has been particularly shy about it for things like this.
+
+1720749439
+torque!~tachyon@user/torque
+although start.zig is technically part of std, so you could even argue about that, though for practical purposes I think putting main and panic in the langref is reasonable
+
+1720749768
+torque!~tachyon@user/torque
+someone who is one of the core team would have to chime in on the @hasDecl stuff. It makes sense to me based on other changes I have seen eliminating usage of @hasDecl as a code smell, but there may be a reason things are the way they are beyond inertia
+
+1720750927
+grayhatter!~grayhatte@user/grayhatter
+why are some posix's calls in std.posix, vs some which are in std.os.linux?
+
+1720751185
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Which ones in particular?
+
+1720751194
+grayhatter!~grayhatte@user/grayhatter
+getuid
+
+1720751256
+torque!~tachyon@user/torque
+looks like that is a linux-specific implementation
+
+1720751270
+torque!~tachyon@user/torque
+so probably because nobody implemented the posix/C version
+
+1720751460
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+My man page for getuid indicates there's a `getuid32` and looking at the `std.os.linux.getuid` implementation it has a `@hasDecl(SYS, "getuid32")`. 
+
+1720751499
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+So, like torque said, it's seemingly a Linux specific implementation that takes into account the improved version from Linux.
+
+1720810256
+Krajina!~Krajina@user/Krajina
+I am new and going through ziglings.org.  I note that in zig, 0.1 + 0.2 = 3.0000000000000000000000000000000004e-1 (similar to JS and Python).  I wonder, is there an idiomatic way to do rational arithmetic?
+
+1720810361
+Gliptic!~glip@irc.glip.cc
+Krajina: https://ziglang.org/documentation/master/std/#std.math.big.rational.Rational
+
+1720812011
+Krajina!~Krajina@user/Krajina
+Thanks Gliptic I've got that working.  Had to introduce myself to allocators first :^) 
+
+1720819047
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is there a syntax to build a ?t out of a t for testing purposes?
+
+1720819078
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for instance, if I have foo() ?i32, and I want to state that it must be 32
+
+1720819320
+ifreund!2940d10f8b@user/ifreund
+hadronized: perhaps @as(?i32, 32) is what you are looking for
+
+1720819332
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: ah yeah nice
+
+1720819349
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I see in some guides that people do things like try expect(foo().?, 32);
+
+1720819361
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for tests, I think it’s fine, but the way I usually do that (at least in Rust) would be
+
+1720819367
+hadronized!~phaazon@2001:41d0:a:fe76::1
+assert_eq!(foo(), Some(32));
+
+1720819376
+hadronized!~phaazon@2001:41d0:a:fe76::1
+which is closer to how I think the equality is
+
+1720819388
+hadronized!~phaazon@2001:41d0:a:fe76::1
+“I expect some 32”
+
+1720819394
+rockorager!2bbd732aa1@irc.pico.sh
+i usually do the double test on those...try expect(foo() != null); try expect(foo().?, 32);
+
+1720819410
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the @as() thing is nice though
+
+1720819419
+rockorager!2bbd732aa1@irc.pico.sh
+Yeah
+
+1720819427
+ifreund!2940d10f8b@user/ifreund
+I think expectEqual(@as(?i32, 32), foo()) is the most idiomatic
+
+1720819449
+ifreund!2940d10f8b@user/ifreund
+tests should never invoke illegal behavior even if they fail
+
+1720819473
+ifreund!2940d10f8b@user/ifreund
+and I find spliting the test into two separate expect()s ugly
+
+1720826701
+wilsonjholmes!2f7d977fd5@2a03:6000:1812:100::1055
+Anyone on here do embedded zig?
+
+1720826716
+hanna!4f7baf9d56@user/hanna
+does esp32 count? 
+
+1720826720
+wilsonjholmes!2f7d977fd5@2a03:6000:1812:100::1055
+yea
+
+1720827213
+hanna!4f7baf9d56@user/hanna
+i do some risc-v esp32 stuff occasionally, zig also has microzig.
+
