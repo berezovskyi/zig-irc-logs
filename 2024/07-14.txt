@@ -1,0 +1,236 @@
+1720915487
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I kinda just want to play with vectors right now and overengineer my kernel... I'm creating an allocator with a bitset indicating status of each page in a buffer. A few questions: (1) Is there a limit to the size of a @Vector? (2) Is there a name for an algorithm that identifies the shortest span of zero-bits greater than some arbitrary length? For #2, I'm thinking something like `vec == @splat(0)` to identify fully empty regions and @
+
+1720951050
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is it wanted that a function that can run at comptime is not marked comptime?
+
+1720951065
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(also, why inline for / inline while, and not comptime for / comptime while?)
+
+1720951867
+squeek502!~squeek502@user/squeek502
+hadronized, are you asking why the function definition doesn't need to be marked comptime or the function call?
+
+1720951881
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the function definition
+
+1720951896
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m asking this because I wonder how I know when I can use something at comptime
+
+1720951903
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess it needs to have all of its argument marked comptime
+
+1720951912
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but it could make side effects too, so that’s a bit unclear
+
+1720951921
+squeek502!~squeek502@user/squeek502
+most functions can be run at comptime or runtime, the only functions that won't work are things that do I/O or heap allocation
+
+1720951970
+squeek502!~squeek502@user/squeek502
+e.g. many of the tests in `std.math` explicitly test that the function can be run at either comptime or runtime: https://github.com/ziglang/zig/blob/bd7b2cc4b49127474a028e6726fce33c5db3df12/lib/std/math.zig#L908-L911
+
+1720952052
+squeek502!~squeek502@user/squeek502
+about inline vs comptime, my guess is that its because an inline loop doesn't exactly run at comptime, but instead it unrolls the loop
+
+1720952069
+squeek502!~squeek502@user/squeek502
+you can stick a loop in a comptime block though to get the loop to actually run at comptime
+
+1720952108
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah yeah, interesting
+
+1720952285
+squeek502!~squeek502@user/squeek502
+as for how to tell if something can run at comptime, my suggestion would be (1) look for an Allocator parameter, that will exclude it from being run at comptime, (2) if it prints to stdout/stderr or deals with the filesystem, that excludes it from being run at comptime, (3) otherwise, just try to call it and see if it gives you a compile error, most of the time it'll probably just work
+
+1720960869
+hadronized!~phaazon@2001:41d0:a:fe76::1
+squeek502: cool, thank you
+
+1720960876
+hadronized!~phaazon@2001:41d0:a:fe76::1
+why can’t allocators be used at comptime?
+
+1720967105
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is there a way to change the settins of zig fmt?
+
+1720967386
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, there’s no comptime_bool? :(
+
+1720967392
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(for true / false literals)
+
+1720967614
+Gliptic!~glip@irc.glip.cc
+there's no need for that
+
+1720967697
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what do you mean?
+
+1720967716
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, completely idiomatic question; not sure what’s best to use as union’s variant case
+
+1720967730
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I saw that @typeInfo returns something PascalCase
+
+1720967730
+Gliptic!~glip@irc.glip.cc
+comptime_int is only there because it's an int that doesn't have a specified size
+
+1720967736
+hadronized!~phaazon@2001:41d0:a:fe76::1
+while I see snake_case in some other places
+
+1720967739
+Gliptic!~glip@irc.glip.cc
+but bool only has two values
+
+1720967755
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah, so I can evaluate a fn (_: bool) bool at comptime?
+
+1720967760
+Gliptic!~glip@irc.glip.cc
+of courseu
+
+1720967763
+Gliptic!~glip@irc.glip.cc
+-u
+
+1720967763
+hadronized!~phaazon@2001:41d0:a:fe76::1
+nice
+
+1720967792
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m doing some experiments to see whether I can move my projects from Rust to Zig, given that what I want to do in Rust is barely impossible 
+
+1720967796
+DFP!~DFP@109.72.102.214
+Hm. Does bool have a specified size?
+
+1720967798
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(not elegantly, at least)
+
+1720967802
+hadronized!~phaazon@2001:41d0:a:fe76::1
+DFP: u1?
+
+1720967817
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think it should be 1 byte but also 1 bit for packed structs
+
+1720967820
+hadronized!~phaazon@2001:41d0:a:fe76::1
+from what I understand 
+
+1720967846
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but yeah, I’m not sure about cases
+
+1720967870
+hadronized!~phaazon@2001:41d0:a:fe76::1
+functions: camlCase, types: PascalCase (even though u8, etc. are exceptions); variables: snake_cases
+
+1720967875
+hadronized!~phaazon@2001:41d0:a:fe76::1
+then union’s variants… not sure
+
+1720967916
+Gliptic!~glip@irc.glip.cc
+the camelCase ones were going to be changed to snake_case, but that change was reconsidered for now
+
+1720967930
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah?
+
+1720967970
+Gliptic!~glip@irc.glip.cc
+https://github.com/ziglang/zig/issues/1097#issuecomment-1989400538
+
+1720970281
+Gliptic!~glip@irc.glip.cc
+hadronized: union variants are snake_case
+
+1720991610
+sewn!f6c66e284f@irc.pico.sh
+hi, I'm really new to zig and I have a stupid question:
+
+1720991615
+sewn!f6c66e284f@irc.pico.sh
+> When @This() is used at file scope, it returns a reference to the struct that corresponds to the current file.
+
+1720991627
+sewn!f6c66e284f@irc.pico.sh
+for variables this seems to be true, but what about methods?
+
+1720991646
+sewn!f6c66e284f@irc.pico.sh
+are all functions in the file included as part of the struct?
+
+1720991743
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+To your second question, yes, everything declared within a file is a declaration of that file's struct.
+
+1720991817
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+But, that quoted information seems inaccurate. @This() gives you the type of the inner most type declaration scope. This may or may not be the current file.
+
+1720991862
+sewn!f6c66e284f@irc.pico.sh
+its from the standard reference
+
+1720991892
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I wasn't saying your quoting of it is inaccurate.
+
+1720991913
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I'll put together a paste of what I mean.
+
+1720991942
+sewn!f6c66e284f@irc.pico.sh
+I assume my quoting is wrong not the place where it came from
+
+1720991943
+Gliptic!~glip@irc.glip.cc
+it says "at file scope" though
+
+1720991963
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Ah, missed that part.
+
+1720992171
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+https://paste.sr.ht/~gcoakes/a876cfe4385759aa6a4902cbf42778f5bb73f139
+
+1720992176
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+That test should pass.
+
+1720992494
+sewn!f6c66e284f@irc.pico.sh
+yipie
+
+1720999923
+squeek502!~squeek502@user/squeek502
+hadronized, no comptime Allocator is a current limitation, might be made to work in the future: https://github.com/ziglang/zig/issues/1291
+
