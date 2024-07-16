@@ -1,0 +1,900 @@
+1721021620
+hadronized!~phaazon@2001:41d0:a:fe76::1
+squeek502: re comptime allocators; yeah, I’m asking this because I might require them; I want to build a small expression at comptime and let users provide comptime-compatible functions to evaluate the expressions
+
+1721021630
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess it might be hard / impossible to do without an allocator
+
+1721021668
+hadronized!~phaazon@2001:41d0:a:fe76::1
+because the expression has things like add: struct { lhs: *const Expr, rhs: *const Expr }
+
+1721022276
+torque!~tachyon@user/torque
+you can directly concatenate (type compatible) slices at comptime, which you can't do at runtime
+
+1721022295
+torque!~tachyon@user/torque
+which allows you to build arbitrarily-sized objects
+
+1721027458
+hadronized!~phaazon@2001:41d0:a:fe76::1
+torque: yeah, I think I’ll need to do that
+
+1721027467
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for instance, turning an expressions into a []u8
+
+1721027473
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the problem is that I don’t think I can’t do that
+
+1721027475
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it needs to be sized
+
+1721027686
+Gliptic!~glip@irc.glip.cc
+hadronized: at comptime they don't need to be sized, with ++
+
+1721028197
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah the problem was different
+
+1721028203
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I was returning a []u8
+
+1721028209
+hadronized!~phaazon@2001:41d0:a:fe76::1
+while I should be returning a []const u8
+
+1721028223
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I keep forgetting mut slices vs. immutables :P
+
+1721028286
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, what is the idiom for union’s variants?
+
+1721028294
+hadronized!~phaazon@2001:41d0:a:fe76::1
+maybe someone replied yesterday but I didn’t see
+
+1721028297
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ACTION searches the backlog
+
+1721028314
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah Gliptic replied
+
+1721028316
+hadronized!~phaazon@2001:41d0:a:fe76::1
+snake_case then
+
+1721028318
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thanks
+
+1721028325
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I don’t get why TypeInfo uses PascalCase
+
+1721028379
+Gliptic!~glip@irc.glip.cc
+it doesn't?
+
+1721028383
+Gliptic!~glip@irc.glip.cc
+@typeInfo
+
+1721028434
+Gliptic!~glip@irc.glip.cc
+@TypeOf is PascalCase because it returns a type
+
+1721028467
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah yeah @typeInfo sorry
+
+1721028476
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, there’s something that bothers me a bit
+
+1721028482
+hadronized!~phaazon@2001:41d0:a:fe76::1
+const x = foo();
+
+1721028497
+hadronized!~phaazon@2001:41d0:a:fe76::1
+there’s no way to tell that foo should be preferred running at comptime
+
+1721028503
+hadronized!~phaazon@2001:41d0:a:fe76::1
+const x = comptime foo(); // does the trick
+
+1721028506
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but it’s super verbose :(
+
+1721028513
+Gliptic!~glip@irc.glip.cc
+you call that verbose?
+
+1721028518
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yes
+
+1721028520
+hadronized!~phaazon@2001:41d0:a:fe76::1
+because 
+
+1721028523
+Gliptic!~glip@irc.glip.cc
+it's one extra keyword
+
+1721028527
+hadronized!~phaazon@2001:41d0:a:fe76::1
+const a = comptime Expr.lit(10);
+
+1721028529
+hadronized!~phaazon@2001:41d0:a:fe76::1
+vs.
+
+1721028537
+Gliptic!~glip@irc.glip.cc
+and it's not preferred, it's forced comptime
+
+1721028538
+hadronized!~phaazon@2001:41d0:a:fe76::1
+const a = Expr{ .lit_expr = 10 }; // no need for comptime here
+
+1721028559
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess it’s the same dilemma as in Rust with constructors vs. const fn
+
+1721028568
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but const fn are marked const 
+
+1721028588
+Gliptic!~glip@irc.glip.cc
+zig prefers to be more explicit
+
+1721028751
+hadronized!~phaazon@2001:41d0:a:fe76::1
+damn
+
+1721028754
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I can’t believe it works
+
+1721028797
+hadronized!~phaazon@2001:41d0:a:fe76::1
+https://zigbin.io/328c52
+
+1721028812
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it probably means I should be able to do what I want with my projects and move them from Rust
+
+1721028889
+hadronized!~phaazon@2001:41d0:a:fe76::1
+comptime is definitely one of the most impressive aspects of Zig
+
+1721028913
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and it has some kind of DT (at compile time)
+
+1721029060
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, I can omit the comptime on interpret_expr
+
+1721029289
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Gliptic: if we have to annotate functions calls with comptime, what’s the benefit of marking a function type parameter with comptime?
+
+1721029296
+hadronized!~phaazon@2001:41d0:a:fe76::1
+to be able to run it in the top-level container?
+
+1721029625
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, it’s way less verbose by adding a comptime {} around it
+
+1721029733
+Gliptic!~glip@irc.glip.cc
+to tell the compiler that the parameter is known at comptime
+
+1721029780
+Gliptic!~glip@irc.glip.cc
+the function itself doesn't need to be comptime for that to be the case
+
+1721029785
+Gliptic!~glip@irc.glip.cc
+it's two different things
+
+1721029817
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so in my little example, what is the benefit?
+
+1721029830
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is it to tell that we must know the parameter at compile time?
+
+1721029837
+hadronized!~phaazon@2001:41d0:a:fe76::1
+to prevent using the function at runtime, maybe?
+
+1721029844
+Gliptic!~glip@irc.glip.cc
+none, the e parameter doesn't have to be comptime as far as I can tell
+
+1721029859
+Gliptic!~glip@irc.glip.cc
+ok, maybe for comptimePrint
+
+1721029908
+Gliptic!~glip@irc.glip.cc
+hadronized: it prevents you from passing anything but comptime-known values as the e-parameter, yes
+
+1721029919
+hadronized!~phaazon@2001:41d0:a:fe76::1
+okay, that’s what I want then
+
+1721029923
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that’s pretty good honestly
+
+1721029929
+Gliptic!~glip@irc.glip.cc
+and because that's the only parameter, it also has the consequence that you can't call it at runtime
+
+1721029934
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess I can build something decent already without allocating
+
+1721029943
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but something like inline literals won’t be possible
+
+1721029955
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Expr.add(Expr.lit(12), Expr.lit(21)) // won’t work
+
+1721033086
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm
+
+1721033107
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn foo(comptime a: u32) *const Expr { return Expr{ .lit_expr = a }; }
+
+1721033111
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that’s safe, right?
+
+1721033135
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s allowed to return the address of a comptime thing, IIRC
+
+1721033221
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it should be return &Expr…
+
+1721033892
+ifreund!2940d10f8b@user/ifreund
+hadronized: at comptime its fine to return references to stack variables yes
+
+1721033992
+hadronized!~phaazon@2001:41d0:a:fe76::1
+okay, then I have all the ingredients for what I need
+
+1721033994
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I tried and it works
+
+1721034013
+hadronized!~phaazon@2001:41d0:a:fe76::1
+const a = Expr.add(Expr.lit(1), Expr.add(Expr.lit(2), Expr.lit(3)));
+
+1721034021
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(in a comptime {} block)
+
+1721034616
+ifreund!2940d10f8b@user/ifreund
+hadronized: by the way, you can't actually do side effects in functions run at comptime
+
+1721034643
+ifreund!2940d10f8b@user/ifreund
+that is, you can't mutate memory not explicitly passed as an argument
+
+1721034682
+ifreund!2940d10f8b@user/ifreund
+which keeps things much more sane
+
+1721034702
+ifreund!2940d10f8b@user/ifreund
+(not related to what you just sent but rather an older message)
+
+1721035766
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: yeah, that makes sense and I don’t need mutation anyway
+
+1721035781
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what I have on my mind is basically just building ASTs and interpreting them at compile-time
+
+1721035789
+hadronized!~phaazon@2001:41d0:a:fe76::1
+given my little tests, I think I can do that just fine
+
+1721035798
+hadronized!~phaazon@2001:41d0:a:fe76::1
+which makes Zig very promising to me
+
+1721035816
+hadronized!~phaazon@2001:41d0:a:fe76::1
+because doing that in Rust is something I’ve been trying for a long time and was never able to do it completely (my stuff currently runs at runtime)
+
+1721035830
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s crazy to think that such a low-level language has such a high-level feature
+
+1721036695
+ifreund!2940d10f8b@user/ifreund
+well, it's a very useful feature for doing low level things it turns out
+
+1721036769
+ifreund!2940d10f8b@user/ifreund
+it's also very general, it replaces C's preprocessor and macros entirely, allows generic data structures and conditional compilation, complex static asserts, and more
+
+1721036796
+ifreund!2940d10f8b@user/ifreund
+the type introspection features are also very handy
+
+1721040183
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: indeed
+
+1721040204
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess it allows to write things like JSON serializer without needing to introduce complex abstrations (i.e. Rust’s serde and proc-macros)
+
+1721040216
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s really good honestly
+
+1721040232
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’ll start moving my work from Rust to Zig and will closely watch Zig development
+
+1721040475
+ifreund!2940d10f8b@user/ifreund
+yeah, the type introspection is a far simpler alternative to things like serde and proc-macros
+
+1721043313
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: yeah, and it scales better since you can do tons of things with it
+
+1721046849
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is there an idiomatic strategy to have a type that I can push strings into to concatenate at runtime?
+
+1721046865
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m thinking of having a big []u8, and when it goes out of space, I just alloc.realloc it
+
+1721046877
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but that looks like something that should already be in std, isn’t it?
+
+1721046878
+ifreund!2940d10f8b@user/ifreund
+hadronized: std.ArrayList.appendSlice()
+
+1721046893
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah, ArrayList with u8
+
+1721046896
+hadronized!~phaazon@2001:41d0:a:fe76::1
+of course :D
+
+1721046902
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m too used to old habits
+
+1721046904
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thanks
+
+1721046912
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1721046976
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, can I leak an array list?
+
+1721046986
+hadronized!~phaazon@2001:41d0:a:fe76::1
+like get the underlying pointer and let the user deallocate that?
+
+1721046997
+hadronized!~phaazon@2001:41d0:a:fe76::1
+or maybe I should simply return the ArrayList directly
+
+1721046999
+hadronized!~phaazon@2001:41d0:a:fe76::1
+sounds probably saner
+
+1721047411
+ifreund!2940d10f8b@user/ifreund
+hadronized: I think you're looking for toOwnedSlice()
+
+1721047454
+ifreund!2940d10f8b@user/ifreund
+returing it directly is fine too though of course
+
+1721048792
+hadronized!~phaazon@2001:41d0:a:fe76::1
+woah what’s that syntax
+
+1721048794
+hadronized!~phaazon@2001:41d0:a:fe76::1
+pub const Slice = if (alignment) |a| ([]align(a) T) else []T
+
+1721048808
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah okay, it comes from a type function
+
+1721048812
+hadronized!~phaazon@2001:41d0:a:fe76::1
+a bit misleading :D
+
+1721049044
+ifreund!2940d10f8b@user/ifreund
+it's a totally normal if statement, it just looks weird cause you don't ususally use types as values
+
+1721052316
+hadronized!~phaazon@2001:41d0:a:fe76::1
+there’s no higher order functions, right?
+
+1721052334
+daurnimator!~daurnimat@vultr.daurnimator.com
+hadronized: what do you mean by that?
+
+1721052362
+daurnimator!~daurnimat@vultr.daurnimator.com
+You can pass functions to functions... that's callbacks.
+
+1721052407
+ifreund!2940d10f8b@user/ifreund
+passing and returning function pointers is indeed fine
+
+1721052439
+ifreund!2940d10f8b@user/ifreund
+ususally people expect closures or similar when talking about higher order functions though
+
+1721052561
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, I guess for the closure I’d need two arguments, right?
+
+1721052610
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn my_map(self: *const Self, payload: *anyopaque, f: *const fn(*anyopaque) t) …
+
+1721052632
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but yeah it makes sense that closures are not first-citizen concepts in the language
+
+1721052637
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I can still simulate them
+
+1721052646
+hadronized!~phaazon@2001:41d0:a:fe76::1
+in the end, a closure is just a small object associated with a function
+
+1721052652
+ifreund!2940d10f8b@user/ifreund
+yeap
+
+1721052676
+hadronized!~phaazon@2001:41d0:a:fe76::1
+anonymous functions would be nice to have though
+
+1721052682
+ifreund!2940d10f8b@user/ifreund
+note that you don't need *anyopaque for that my_map example, you can make it type safe
+
+1721052685
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for instance, if no captures / state is required
+
+1721052707
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: how? the capture environment is unknown when defining my_mapp
+
+1721052709
+hadronized!~phaazon@2001:41d0:a:fe76::1
+-p
+
+1721052728
+ifreund!2940d10f8b@user/ifreund
+fn my_map(comptime T: type, payload: T, f: *const fn (T) void)
+
+1721052748
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm
+
+1721052755
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m not a huge fan of that way of passing types like that
+
+1721052774
+hadronized!~phaazon@2001:41d0:a:fe76::1
+fn my_map(payload: anytpe, f: *const fn(@TypeOf(payload)) void)
+
+1721052776
+hadronized!~phaazon@2001:41d0:a:fe76::1
+would that work?
+
+1721052807
+ifreund!2940d10f8b@user/ifreund
+I haven't tried it, perhaps
+
+1721052820
+ifreund!2940d10f8b@user/ifreund
+I prefer the explict type at the callsite though
+
+1721052826
+hadronized!~phaazon@2001:41d0:a:fe76::1
+any reason? :)
+
+1721052837
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I need to read a bit more on the guts of the compiler, especially phases
+
+1721052852
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. what gets executed first (I guess builtins, then comptime, then regular AST analysis, then… )
+
+1721052969
+daurnimator!~daurnimat@vultr.daurnimator.com
+hadronized: why does it matter?
+
+1721052978
+ifreund!2940d10f8b@user/ifreund
+It's roughly source -> AST -> untyped IR (ZIR) -> typed IR (AIR) -> backend (LLVM IR or other)
+
+1721052993
+hadronized!~phaazon@2001:41d0:a:fe76::1
+curiosity, to know whether wy example above with @TypeOf would work
+
+1721052999
+ifreund!2940d10f8b@user/ifreund
+comptime execution is part of the conversion from untyped IR to type IR
+
+1721053094
+hadronized!~phaazon@2001:41d0:a:fe76::1
+nice, thank you
+
+1721063092
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is there a way to get an integer representation of a type?
+
+1721063106
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I thought I would find something like that in Type, but there’s none
+
+1721063112
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I thought about using @typeName + hashing
+
+1721063116
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but not sure how robust that is
+
+1721063162
+freshcoffee!~fresh@user/freshcoffee
+there is a proposal: https://github.com/ziglang/zig/issues/19858
+
+1721063212
+hadronized!~phaazon@2001:41d0:a:fe76::1
+nice
+
+1721063215
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thank you
+
+1721063885
+ifreund!2940d10f8b@user/ifreund
+the proposal also lists a hack to implement this in userland if you didn't see :D
+
+1721063896
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah I saw it :P
+
+1721063913
+ashie!~ashie@user/ashie
+hadronized: > anonymous functions would be nice to have... I saw a proposal for that and I think the reason it was not accepted is that ultimately there are no anonymous functions in binaries
+
+1721063930
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, is it normal that on an ArrayListAligned, I don’t see the items field?
+
+1721063939
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(it took me a while to find out how many items are in my list :D)
+
+1721063963
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ashie: what does that mean in binaries?
+
+1721064025
+ifreund!2940d10f8b@user/ifreund
+hadronized: dont see as in the docs website generator is buggy?
+
+1721064085
+ifreund!2940d10f8b@user/ifreund
+I personally stick to reading the source code, but Ive also been around since before the docs website was at all usable so I'm pretty used to it
+
+1721064237
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: yeah the doc doesn’t show it
+
+1721064251
+ashie!~ashie@user/ashie
+hadronized: if you have a function that you want to call it needs to have an identifier because there is no such thing as an anonymous function in the executable format
+
+1721064274
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ashie: ah yeah that makes sense
+
+1721064282
+hadronized!~phaazon@2001:41d0:a:fe76::1
+though the compiler could generate the name
+
+1721064290
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(based on filename.line.column or something like that)
+
+1721064296
+ToxicFrog!~ToxicFrog@172-97-218-179.cpe.distributel.net
+Do you need an identifier, or do you just need an address (assuming no dynamic linking shenanigans, etc)?
+
+1721064349
+ToxicFrog!~ToxicFrog@172-97-218-179.cpe.distributel.net
+And yeah, in languages that do have anonymous functions, if you end up with a stack trace or something that includes them they usually have autogenerated names like "anon_modulename_line_address" or "fn$address" or something.
+
+1721064369
+ToxicFrog!~ToxicFrog@172-97-218-179.cpe.distributel.net
+(although clojure lets you give them names, which is not the same as binding them to a symbol, but does make stack traces much more readable)
+
+1721064629
+ashie!~ashie@user/ashie
+> though the compiler could generate the name... I am trying to find the issue that mentioned this, cause I am pretty sure this was discussed
+
+1721064738
+ifreund!2940d10f8b@user/ifreund
+#1717
+
+1721064884
+ashie!~ashie@user/ashie
+yeah that one
+
+1721064952
+ashie!~ashie@user/ashie
+and andrew's reply that closed that issue is here:
+
+1721064960
+ashie!~ashie@user/ashie
+https://github.com/ziglang/zig/issues/1717#issuecomment-1627790251
+
+1721065011
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, is there a nice way to test pointees equality?
+
+1721065040
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah wait, nevermind
+
+1721065998
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so basically, @intFromPtr(@typeName(T)) should be enough?
+
+1721066023
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(I assign @typeName(T) to a const before; I’m not sure what it does behind the scenes)
+
+1721066305
+ifreund!2940d10f8b@user/ifreund
+hadronized: there's a better hack based on anyerror in a comment there
+
+1721066342
+hadronized!~phaazon@2001:41d0:a:fe76::1
+better in what sense?
+
+1721066359
+ifreund!2940d10f8b@user/ifreund
+@intFromError(@field(anyerror, @typeName(T)))
+
+1721066368
+ifreund!2940d10f8b@user/ifreund
+works at comptime, simpler
+
+1721066459
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that looks so cryptic to me :D
+
+1721066617
+ifreund!2940d10f8b@user/ifreund
+@field(anyerror, "Foo") is equivalent to error.Foo
+
+1721066622
+ifreund!2940d10f8b@user/ifreund
+does that help?
+
+1721066636
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah yeah
+
+1721066671
+ifreund!2940d10f8b@user/ifreund
+@field() is in general equivalent to foo.bar syntax, but is more flexible
+
+1721067336
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, I used it already in some code of mine
+
+1721067344
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(for my compilet-time EDSL, IIRC)
+
+1721067424
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, let’s say I want to add more errors to an already existing set
+
+1721067432
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is it more idiomatic to separate the union from my own lib type
+
+1721067453
+hadronized!~phaazon@2001:41d0:a:fe76::1
+or just something like const Error = Allocator.Error || error.Err1 || error.Err2 || …;
+
+1721067461
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess having a proper type is probably better
+
+1721067775
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm
+
+1721067778
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what is A!A?
+
+1721067787
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I was able to write it without zls complain
+
+1721067794
+hadronized!~phaazon@2001:41d0:a:fe76::1
+return it is not an error then?
+
+1721067905
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess A!A = A
+
+1721083564
+hadronized!~phaazon@2001:41d0:a:fe76::1
+https://i.imgur.com/cBSd2gk.png
+
+1721083566
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that kind of error <3
+
+1721086096
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, since Zig can do tagged unions, why can’t it do tagged union error sets?
+
+1721086107
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it would probably be valuable to be able to set a payload on errors, no?
+
+1721086233
+torque!~tachyon@user/torque
+while I personally agree with you that having error payloads would be nice (I believe there is an unresolved proposal for this), it does interfere with some aspects of the current error handling
+
+1721086256
+torque!~tachyon@user/torque
+anyerror would not really be able to exist, because the global error set could not exist
+
+1721086316
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, yeah
+
+1721086347
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess it makes sense and catching errors can probably provide the payload in most cases anyway
+
+1721086378
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(unless the payload would need to be captured inside the function call that errors out… but then it means we might need to deallocate the error etc. yeah probably too complex for the failure path)
+
+1721086405
+squeek502!~squeek502@user/squeek502
+hadronized, the relevant proposal is https://github.com/ziglang/zig/issues/2647
+
+1721086433
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thanks for the link :)
+
+1721086461
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I wrote tons of Zig to get started and I already have merged some important code from my Rust codebase
+
+1721086481
+hadronized!~phaazon@2001:41d0:a:fe76::1
+no memory issue, but the « hey it’s lazy, until you write a test, you won’t see the errors » is really annoying
+
+1721086554
+torque!~tachyon@user/torque
+I find the lazy analysis to be quite nice. basically, don't pay for what you don't use
+
+1721086571
+torque!~tachyon@user/torque
+I guess it has a bigger impact on libraries than on executables
+
+1721086608
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah I mean, a non-pub fn not used? yeah don’t compile it, I’m fine with it
+
+1721086616
+hadronized!~phaazon@2001:41d0:a:fe76::1
+a pub fn? please always compile it even if not used currently
+
+1721086619
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that should be the semantics to me
+
+1721086654
+torque!~tachyon@user/torque
+greedy analysis/compilation doesn't really work with the comptime concept
+
+1721086675
+torque!~tachyon@user/torque
+since there are scenarios where a given function is invalid for some set of platform target or other compile time information
+
+1721086675
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what do you mean?
+
+1721086703
+torque!~tachyon@user/torque
+so e.g. if you have a function that calls linux specific stuff, but you're compiling for windows, analysis would fail on that function always
+
+1721086748
+torque!~tachyon@user/torque
+which you would want if your code was taking a linux-only codepath in a windows build, but you don't want if the linux-only code is vestigial in the windows build
+
+1721087048
+hadronized!~phaazon@2001:41d0:a:fe76::1
+solid argument
+
+1721087058
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I read somewhere that there’s a trick to force evaluation
+
+1721087066
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I need to find it again :D
+
+1721087230
+torque!~tachyon@user/torque
+you could look at how std.testing.refAllDecls works
+
