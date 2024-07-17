@@ -1,0 +1,860 @@
+1721088807
+companion_cube!~simon@user/meow/companion-cube:68572
+torque: I guess there could be toplevel blocks that are conditional, and contain eager definitions! 
+
+1721088819
+companion_cube!~simon@user/meow/companion-cube:68572
+Like ifdef in a way, but comptime based
+
+1721088945
+torque!~tachyon@user/torque
+you can do interesting things in top-level comptime blocks
+
+1721088958
+torque!~tachyon@user/torque
+I use them heavily in my command line argument parsing library
+
+1721088967
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: I was thinking about your "what about a zig interpreter written in lua" idea and it occurred to me that your idea is quite feasible, with just one tiny additional observation: the interpreter can assume -target wasm32-wasi. then you just have to be able to interpret a handful of wasi function calls to do e.g. file system operations
+
+1721089120
+companion_cube!~simon@user/meow/companion-cube:68572
+torque: but can you add field to the surrounding (implicit) struct? To define functions conditionally? Cause if so I don't see the need for laziness
+
+1721089164
+torque!~tachyon@user/torque
+you can add a decl, not a field
+
+1721089304
+torque!~tachyon@user/torque
+andrewrk, is there a reason the 0.12.1 links on the download page don't follow the same pattern as the other release versions?
+
+1721089321
+torque!~tachyon@user/torque
+e.g. https://ziglang.org/download/0.12.0/zig-linux-x86_64-0.12.0.tar.xz
+
+1721089323
+torque!~tachyon@user/torque
+vs https://ziglang.org/builds/zig-linux-x86_64-0.12.1.tar.xz
+
+1721089346
+companion_cube!~simon@user/meow/companion-cube:68572
+Yeah so, my point is, if you could declare fields this way, you could avoid laziness :) 
+
+1721089378
+torque!~tachyon@user/torque
+ok, looks like it is still accessible through the more standard location
+
+1721089405
+andrewrk!~andrewrk@mail.ziglang.org
+torque: just an issue with the website data, thanks for letting me know
+
+1721089430
+torque!~tachyon@user/torque
+np, I was working on getting godbolt updated and thought I should double check my links were right
+
+1721089544
+andrewrk!~andrewrk@mail.ziglang.org
+fixed
+
+1721089736
+torque!~tachyon@user/torque
+thanks
+
+1721097370
+ih8u!~Thunderbi@194.114.136.6
+what's the current wisdom regarding oop with zig?
+
+1721097636
+torque!~tachyon@user/torque
+use it when appropriate but don't use it when not appropriate
+
+1721097652
+torque!~tachyon@user/torque
+the question is kind of vague
+
+1721097679
+torque!~tachyon@user/torque
+zig doesn't have much in the way of language level OOP, but you can write oop-ish stuff in it similar to the way you can in C
+
+1721099539
+daurnimator!~daurnimat@vultr.daurnimator.com
+torque: sure it does: `foo.bar()` passing foo as a first parameter is a major language level OOP thing
+
+1721099588
+torque!~tachyon@user/torque
+that's not really "OOP" by itself at all, imo
+
+1721099620
+torque!~tachyon@user/torque
+to me, OOP is more about inheritance, interfaces, and polymorphism being language level features
+
+1721099640
+torque!~tachyon@user/torque
+foo.bar() is much close to being (extremely convenient) syntactic sugar
+
+1721101972
+ih8u!~Thunderbi@194.114.136.6
+yeah, sorry, it was kind of vague
+
+1721101995
+ih8u!~Thunderbi@194.114.136.6
+i'm interested mostly in classes and common class-related functionality
+
+1721102016
+ih8u!~Thunderbi@194.114.136.6
+i.e. methods, (single) inheritance, and polymorphism
+
+1721102408
+torque!~tachyon@user/torque
+there's no language level support for OOP-style inheritance or polymorphism and there won't be
+
+1721102463
+torque!~tachyon@user/torque
+you can manually do these things if you really want to, but it's not encouraged by the language
+
+1721102537
+torque!~tachyon@user/torque
+as was mentioned, functions can explicitly take a "self" parameter of their own type (sort of python-esque) which will be automatically be passed in by the compiler when appropriate
+
+1721102601
+torque!~tachyon@user/torque
+which is sort of method-ish, but I think of it more as syntax sugar for the extremely common pattern of having a lot of functions that operate on a struct
+
+1721102661
+torque!~tachyon@user/torque
+i.e. `foo.bar()`, if `foo` is of type `Foo` is the same as `Foo.bar(foo)`, except that the compiler is also smart enough to make this work for pointers automatically as well
+
+1721102831
+ih8u!~Thunderbi@194.114.136.6
+hm. yeah, i remember that from the last time i played with zig
+
+1721102856
+ih8u!~Thunderbi@194.114.136.6
+i like inheritance and polymorphism
+
+1721102863
+ih8u!~Thunderbi@194.114.136.6
+especially polymorphism
+
+1721102886
+ih8u!~Thunderbi@194.114.136.6
+do you know of any working examples of an oop style implemented in zig?
+
+1721102915
+ih8u!~Thunderbi@194.114.136.6
+call me closed-minded, but not having objects is a non-starter for me
+
+1721102947
+ih8u!~Thunderbi@194.114.136.6
+also, ziglings does not build with zig 0.14.0-dev.318
+
+1721102952
+ih8u!~Thunderbi@194.114.136.6
+maybe i should report that
+
+1721103066
+ih8u!~Thunderbi@194.114.136.6
+hm, seems someone already has
+
+1721103072
+ih8u!~Thunderbi@194.114.136.6
+just bad timing for me, i guess
+
+1721103094
+ih8u!~Thunderbi@194.114.136.6
+oh well, i'll take it as a sign and leave zig in the oven for now
+
+1721115960
+ashie!~ashie@user/ashie
+ih8u: use the 0.13 version of ziglings, the master branch is bound to break whenever zig changes something and ziglings has to catch up
+
+1721116023
+ashie!~ashie@user/ashie
+as far as oop-style goes, wouldn't the allocators fit that category?
+
+1721117984
+ifreund!2940d10f8b@user/ifreund
+andrewrk: ah, neat idea. one could probably avoid implementating inline asm entirely then :)
+
+1721118011
+ifreund!2940d10f8b@user/ifreund
+ugh, phone keyboard
+
+1721118739
+ih8u!~Thunderbi@194.114.136.6
+ashie: but if i use 0.13, then `zig build` fails with the message `Ziglings requires development build 0.14.0-dev.42 or higher. Please download a development ("master") build from https://ziglang.org/download/
+
+1721118746
+ih8u!~Thunderbi@194.114.136.6
+which is where i'm at now
+
+1721119120
+Gliptic!~glip@irc.glip.cc
+ih8u, use the 0.13.0 tag for ziglings as well
+
+1721121538
+ih8u!~Thunderbi@194.114.136.14
+what does "use 13 flag in ziglings" mean?
+
+1721122428
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ih8u, tag, not flag, https://codeberg.org/ziglings/exercises/src/tag/v0.13.0
+
+1721122445
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+use git to check out the tag
+
+1721122502
+ih8u!~Thunderbi@194.114.136.14
+but what does that mean?
+
+1721122519
+ih8u!~Thunderbi@194.114.136.14
+i don't use git, so i don't know what "check out the tag" means
+
+1721122539
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, you will have to use git
+
+1721122563
+ih8u!~Thunderbi@194.114.136.14
+sure, to get ziglings
+
+1721122574
+ih8u!~Thunderbi@194.114.136.14
+but what does "check out the tag" mean?
+
+1721122601
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it means "git checkout v0.13.0"
+
+1721122656
+ih8u!~Thunderbi@194.114.136.14
+how does that work with `git clone https://ziglings.org` from the readme?
+
+1721122670
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you do it after clone
+
+1721122689
+ih8u!~Thunderbi@194.114.136.14
+should i be inside the folder?
+
+1721122692
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1721122697
+ih8u!~Thunderbi@194.114.136.14
+or in the parent directory?
+
+1721122712
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the folder with ziglings in it
+
+1721122771
+ih8u!~Thunderbi@194.114.136.14
+okay, it appears to be working now
+
+1721122772
+ih8u!~Thunderbi@194.114.136.14
+thank you
+
+1721122779
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+np
+
+1721122790
+ih8u!~Thunderbi@194.114.136.14
+i think zig is too hip for me
+
+1721123077
+DFP!~DFP@109.72.102.214
+I think I just downloaded prebuilt binary of the compiler, so I didn't have to use Git. I wonder if there is ability to do that with source releases as well..
+
+1721123111
+DFP!~DFP@109.72.102.214
+Might've been a bit less overwhelming than using Git, if so.
+
+1721123192
+DFP!~DFP@109.72.102.214
+Though checking out a tag seems like a relatively straightforward operation if one has used source control before.
+
+1721123352
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ziglings for 0.13 is not packaged as a release though
+
+1721123460
+ifreund!2940d10f8b@user/ifreund
+you can download a tarball for any tag (or commit): https://codeberg.org/ziglings/exercises/archive/v0.13.0.tar.gz
+
+1721123490
+ifreund!2940d10f8b@user/ifreund
+from my perspective, time would be better spent learning how to use git than how to use zig though
+
+1721123506
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yep
+
+1721123596
+DFP!~DFP@109.72.102.214
+Ziglings just seems weird, suggesting to install the latest development version of the compiler..
+
+1721123633
+DFP!~DFP@109.72.102.214
+Didn't work out in this particular case, and I am guessing it will not work relatively frequently.
+
+1721123667
+ifreund!2940d10f8b@user/ifreund
+Yeah, it's not the decision I would have made personally, sticking with the latest zig release saves a lot of headache for users
+
+1721123716
+DFP!~DFP@109.72.102.214
+Not sure about learning Git specifically. Learning source control maybe, but Git particularly seems to have a needlessly painful interface.
+
+1721124925
+ih8u!~Thunderbi@194.114.136.14
+git rubs me the wrong way
+
+1721124938
+ih8u!~Thunderbi@194.114.136.14
+i don't like it so i don't use it
+
+1721126090
+ifreund!2940d10f8b@user/ifreund
+I must say, having my editor hang when ever zig fmt is run with a cold cache is pretty annoying
+
+1721126123
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I'm not sure the "JIT" approach for zig fmt is worth the tradeoff...
+
+1721126208
+ifreund!2940d10f8b@user/ifreund
+ih8u: I don't particularly *like* git either, but doing open source software development without it would be shooting myself in the foot
+
+1721126261
+ifreund!2940d10f8b@user/ifreund
+sure, there are other version control systems that seem to have better UX and whatnot but the network effect is very strong
+
+1721126270
+ifreund!2940d10f8b@user/ifreund
+and not using a proper VCS is not an option
+
+1721126644
+ih8u!~Thunderbi@194.114.136.14
+half the reason i don't contribute as much to open source as i'd like is because of git
+
+1721126689
+ifreund!2940d10f8b@user/ifreund
+sounds like it would be worth your time to learn git then
+
+1721126756
+ih8u!~Thunderbi@194.114.136.14
+no, i just limit my contributions to non-code things
+
+1721126762
+ih8u!~Thunderbi@194.114.136.14
+keeps programming fun
+
+1721126777
+ih8u!~Thunderbi@194.114.136.14
+what's the timeline on a stable zig release?
+
+1721126800
+ifreund!2940d10f8b@user/ifreund
+as in 1.0? years probably
+
+1721126860
+jan0sch!~jan0sch@user/jan0sch
+ih8u: What kind of VCS are you using? Just interested, because I'm using git if I have to but for example prefer darcs on most other cases.
+
+1721127060
+ih8u!~Thunderbi@194.114.136.14
+i use something i homebrewed that's more appropriate for the scope of the things i tend to work on
+
+1721127098
+ih8u!~Thunderbi@194.114.136.14
+or i use automatic version control via my ide like a civilised person
+
+1721127112
+ih8u!~Thunderbi@194.114.136.14
+lol
+
+1721127152
+ih8u!~Thunderbi@194.114.136.14
+i'm sure i could learn to love git if only i tried
+
+1721127165
+ih8u!~Thunderbi@194.114.136.14
+but i find it to be a complete waste of time for most things
+
+1721127208
+ih8u!~Thunderbi@194.114.136.14
+though it also bears mentioning that my hobbies and work both almost exclusively entails solo dev
+
+1721127420
+jan0sch!~jan0sch@user/jan0sch
+Thanks for the info. Once I switched away from git for most things I came to realise just how much unconditional work was/is done by my brain to not mess things up with git. It has come a long way though. Nowadays it is okay but it's user interface remains somewhere between inconvenient, inconsistent and outright horrible. ;-)
+
+1721127521
+jan0sch!~jan0sch@user/jan0sch
+Too bad that it outright killed all of the competition because of "hey, it is fast"
+
+1721127644
+Pistahh!~Pistahh@user/pistahh
+jan0sch: it wasn't just "it is fast". Having all the history locally and the distributed nature also helped a lot. I still remember, after a few months using git I had to do something with svn.. I felt physical pain.
+
+1721127662
+ifreund!2940d10f8b@user/ifreund
+I've been meaning to give jj a try, it's an alternative git compatible frontend: https://github.com/martinvonz/jj
+
+1721127733
+ifreund!2940d10f8b@user/ifreund
+Pistahh: "it is fast" is why git beat darcs, which arguably is much more intuitive and powerful
+
+1721127776
+jan0sch!~jan0sch@user/jan0sch
+ifreund: jj is also on my "check it out list" but time is a limiting factor as one grows old. :-D
+
+1721127793
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+pijul has kind of tapered of again sadly
+
+1721127810
+Pistahh!~Pistahh@user/pistahh
+ifreund: sure, but when git was created, svn was the real competitor, not darcs.
+
+1721127834
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+mainly because there's no clear documented workflow for it in my experience of trying it
+
+1721127836
+ifreund!2940d10f8b@user/ifreund
+Pistahh: pretty sure darcs is older than git, why didn't it take over?
+
+1721127851
+ifreund!2940d10f8b@user/ifreund
+(answer: because darcs was too slow)
+
+1721127935
+Pistahh!~Pistahh@user/pistahh
+ifreund: I personally found really difficult to grasp the darcs concepts and workflow (skill issue..) and the basics of git just clicked..
+
+1721128003
+ifreund!2940d10f8b@user/ifreund
+fair, I do think darcs has a bit of a haskelly academic vibe
+
+1721128007
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+I think pijul might have had more success if the dev had been a phd in eg Germany instead (and gotten similar backing as the typst people)
+
+1721128025
+ifreund!2940d10f8b@user/ifreund
+it typst going places?
+
+1721128037
+ifreund!2940d10f8b@user/ifreund
+displacing latex is quite ambitious
+
+1721128041
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+definetly more than pijul at least
+
+1721128077
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+ifreund: it seems to have a possiblity to corner the market in mass-pdf generation at least
+
+1721128089
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+(much faster than (la)tex)
+
+1721128098
+ifreund!2940d10f8b@user/ifreund
+neat
+
+1721128099
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+https://zerodha.tech/blog/1-5-million-pdfs-in-25-minutes/
+
+1721128120
+jan0sch!~jan0sch@user/jan0sch
+So we will soon see billions of ai generated pdf "papers" ;-)
+
+1721128122
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+(linked as a success story on https://typst.app/pricing/)
+
+1721128304
+ifreund!2940d10f8b@user/ifreund
+So looks like an open-core business model, I wonder how long the compiler will stay open source...
+
+1721128510
+waleee!~waleee@h-176-10-144-38.NA.cust.bahnhof.se
+well. Can't the same be asked about _a lot_ of projects?
+
+1721128663
+jan0sch!~jan0sch@user/jan0sch
+Pistahh: It was the opposite for me: darcs or pijul just match my natural flow of work while git always feels clunky. However since we have `git add -p` and `diff.algorithm = histogram` I can make it behave more "darcs like" :)
+
+1721135019
+aquamo4k!~mross@162.222.54.134
+my first revision control system was RCS, then I was a build-meister for a company that used CVS; took a couple hours to cut a branch back then :-)
+
+1721135052
+aquamo4k!~mross@162.222.54.134
+svn was pretty good but still had the centralized server architecture
+
+1721135079
+aquamo4k!~mross@162.222.54.134
+I looked at and played with the sqlite3's project called fossil-scm - it's interesting, I could adapt to it.
+
+1721135094
+aquamo4k!~mross@162.222.54.134
+but as you say, git has the network effect and so it wins
+
+1721150066
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: re: zig fmt, I feel the same way. it's a nice idea in theory, but the first run is brutal
+
+1721150527
+ifreund!2940d10f8b@user/ifreund
+andrewrk: yeah... I haven't gotten annoyed enough to actually write a PR yet though :D
+
+1721150571
+ifreund!2940d10f8b@user/ifreund
+unrelated, I just read the "validation of existing bindings" part of the "move translate-c to std.Build" proposal...
+
+1721150580
+ifreund!2940d10f8b@user/ifreund
+that's something I've been wanting for a very long time.
+
+1721150610
+ifreund!2940d10f8b@user/ifreund
+if it were made clear where that code belongs I would write it
+
+1721150683
+ifreund!2940d10f8b@user/ifreund
+I guess it probably wouldn't use translate-c exactly but could likely share some code with the implementation
+
+1721150722
+ifreund!2940d10f8b@user/ifreund
+what I want is something that looks at all the extern function declarations in zig-wlroots and checks that they match the ABI of the functions in the C headers
+
+1721150748
+ifreund!2940d10f8b@user/ifreund
+and then recursively checks that the ABI of all structs and whatever used in the arguments match ABI as well
+
+1721150801
+ifreund!2940d10f8b@user/ifreund
+the idiomatic, manually written bindings are much nicer to use and have better type safety than what translate-c puts out, but every now and then I make a typo and get a random crash that's tricky to debug
+
+1721151601
+ifreund!2940d10f8b@user/ifreund
+I suppose it would need the sema results for the zig code as well to work properly in the presence of comptime
+
+1721151659
+ifreund!2940d10f8b@user/ifreund
+so either it belongs in the compiler binary or it should wait until there is a compiler protocol that exposes sema results to tooling
+
+1721158494
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: hmm, that's a good question. let me think about that over lunch and see if I have any ideas
+
+1721159784
+andrewrk!~andrewrk@mail.ziglang.org
+I have emerged from lunch, not only with ideas, but with a fully realized vision for how this functionality should work and how it can be implemented. I am typing up a proposal
+
+1721160261
+ifreund!2940d10f8b@user/ifreund
+nice, I look forward to reading it :)
+
+1721161017
+zayd!wanderer@user/zayd
+What would be the best TUI solution for Zig? I might learn it so I can write a SSH BBS on it
+
+1721161349
+andrewrk!~andrewrk@mail.ziglang.org
+zayd: rockorager has some expertise about that
+
+1721161384
+rockorager!2bbd732aa1@irc.pico.sh
+zayd: https://github.com/rockorager/libvaxis ;)
+
+1721161410
+zayd!wanderer@user/zayd
+rockorager: I'll check it out, thanks
+
+1721161429
+rockorager!2bbd732aa1@irc.pico.sh
+zayd: np, if you have questions feel free to email or take it to #vaxis
+
+1721161450
+zayd!wanderer@user/zayd
+alright
+
+1721165389
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: you still awake? https://github.com/ziglang/zig/issues/20654 🙂
+
+1721165525
+ifreund!2940d10f8b@user/ifreund
+andrewrk: yes, for a little longer :D
+
+1721165665
+ifreund!2940d10f8b@user/ifreund
+andrewrk: your example seems to suggest that the .abi file will encode pointer metadata like ?* or [*] which is not really part of the C ABI
+
+1721165678
+ifreund!2940d10f8b@user/ifreund
+is this intentional or not fully thought out?
+
+1721165709
+ifreund!2940d10f8b@user/ifreund
+I would think that the .abi file should encode only the least-common-denominator information of the C ABI
+
+1721165808
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: intentional. It would be capable of describing "unknown" which would match the information C provides, but also support encoding more information
+
+1721165826
+andrewrk!~andrewrk@mail.ziglang.org
+the primitive would be compatibility checking, rather than strict equality
+
+1721165889
+ifreund!2940d10f8b@user/ifreund
+I think that leans towards making this format rather zig-specific if we're not careful
+
+1721165896
+andrewrk!~andrewrk@mail.ziglang.org
+part of the idea here is that distributing an ABI file would be strictly superior to distributing a .h file
+
+1721165906
+ifreund!2940d10f8b@user/ifreund
+I quite like the idea
+
+1721165937
+andrewrk!~andrewrk@mail.ziglang.org
+well, consider that some fairly popular projects already do something similar. for example vulkan's ABI is in an xml file and indeed has these pointer properties, and then they lower it to .h
+
+1721165939
+ifreund!2940d10f8b@user/ifreund
+I wonder if anyone has already written a spec for such a file format
+
+1721165981
+andrewrk!~andrewrk@mail.ziglang.org
+that's a good question, we should look into that first
+
+1721165986
+ifreund!2940d10f8b@user/ifreund
+yeah, I've quickly come around to the perspective that encoding as much information as possible is good
+
+1721166026
+andrewrk!~andrewrk@mail.ziglang.org
+yeah as much information as possible ... that is about the ABI and not anything zig-specific
+
+1721166035
+ifreund!2940d10f8b@user/ifreund
+yep
+
+1721166062
+andrewrk!~andrewrk@mail.ziglang.org
+I thought you might kinda like the documentation string idea briefly mentioned in the open questions section
+
+1721166134
+ifreund!2940d10f8b@user/ifreund
+that is an interesting idea
+
+1721166152
+ifreund!2940d10f8b@user/ifreund
+I'd need to think a bit about the UX and practical use-cases
+
+1721166232
+ifreund!2940d10f8b@user/ifreund
+andrewrk: I'm not sure abi-check (compare 2 .abi files for compatibility with lots of options) should be part of the zig compiler binary
+
+1721166249
+ifreund!2940d10f8b@user/ifreund
+only emitting the .abi file for zig objects needs to be part of the zig compiler
+
+1721166277
+ifreund!2940d10f8b@user/ifreund
+abi-check could have a similar status as what we are moving towards for translate-c
+
+1721166287
+andrewrk!~andrewrk@mail.ziglang.org
+yeah I mean that's kinda why I suggested putting it in lib/compiler/* and lazily built
+
+1721166357
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose the two main points of consideration are: how beneficial is it to be maintained separately and how much pain is it to fetch as opposed to being included with a compiler distribution
+
+1721166429
+andrewrk!~andrewrk@mail.ziglang.org
+if it lowers to .zig source code, there is value in distributing it with the compiler since it will always be in sync with regards to syntax
+
+1721166451
+andrewrk!~andrewrk@mail.ziglang.org
+that's also true for translate-c, but translate-c has that nasty clang dependency
+
+1721166494
+ifreund!2940d10f8b@user/ifreund
+yeah, I guess if it's pure zig code it doesn't matter too much
+
+1721166515
+ifreund!2940d10f8b@user/ifreund
+this seems interesting to take a closer look at: https://lvc.github.io/abi-compliance-checker/
+
+1721166566
+ifreund!2940d10f8b@user/ifreund
+(probably more complex than we need cause C++, but similar problem space)
+
+1721166620
+ifreund!2940d10f8b@user/ifreund
+interesting, this thing reads dwarf debug info to dump abi of elf binaries: https://github.com/lvc/abi-dumper
+
+1721166643
+ifreund!2940d10f8b@user/ifreund
+in only 6k lines of perl
+
+1721166691
+andrewrk!~andrewrk@mail.ziglang.org
+lol
+
+1721166714
+andrewrk!~andrewrk@mail.ziglang.org
+you could be very well joking or not joking with that comment
+
+1721166780
+andrewrk!~andrewrk@mail.ziglang.org
+oh yeah I forgot about the dwarf info trick
+
+1721166807
+andrewrk!~andrewrk@mail.ziglang.org
+well, I think there's value in not depending on debug info. for example, the .abi file proposal would work identically on Windows, which does not use dwarf
+
+1721166830
+andrewrk!~andrewrk@mail.ziglang.org
+there's also the use case of stripping debug info while keeping ABI information
+
+1721166854
+ifreund!2940d10f8b@user/ifreund
+yeah, the compiler has strictly more information available about the ABI than the dwarf emitted by the compiler
+
+1721166879
+ifreund!2940d10f8b@user/ifreund
+I don't know if dwarf would make encoding optional/many/0-terminated pointers possible/nice
+
+1721166998
+ifreund!2940d10f8b@user/ifreund
+anyhow, that tool does seem to work. I got a 34958 line file describing the ABI of wlroots
+
+1721167057
+andrewrk!~andrewrk@mail.ziglang.org
+that is quite a few lines
+
+1721167110
+ifreund!2940d10f8b@user/ifreund
+it's a pretty noisy data format with a lot of indirection
+
+1721167166
+ifreund!2940d10f8b@user/ifreund
+anyhow, I think the general direction of the proposal is great
+
+1721167182
+ifreund!2940d10f8b@user/ifreund
+I will keep thinking about what exactly the .abi file should look like
+
+1721167212
+andrewrk!~andrewrk@mail.ziglang.org
+sounds good. I think you have the skills to drive the subproject all the way home if you decide you want to take it on
+
+1721167246
+andrewrk!~andrewrk@mail.ziglang.org
+happy to brainstorm more, but otherwise, I'll leave it in your capable hands
+
+1721167284
+ifreund!2940d10f8b@user/ifreund
+yeah, it has a nice tight scope. I suspect my motivation will bounce between this, river, and other things :)
+
+1721167336
+viashimo!~viashimo@user/viashimo
+andrewrk: ifreund: this might be way off base since I haven't read thourgh the full conversation but libabigail might be something in the direction of having a schema for abi
+
+1721167356
+ifreund!2940d10f8b@user/ifreund
+love the name :)
+
+1721167364
+andrewrk!~andrewrk@mail.ziglang.org
+well, no rush! I don't think this feature even blocks 1.0
+
+1721167463
+ifreund!2940d10f8b@user/ifreund
+andrewrk: another use case is checking in the .abi file of your libraries 1.0 release and having CI make sure you don't break ABI compatibility
+
+1721167486
+ifreund!2940d10f8b@user/ifreund
+(this is the use-case most of the existing tools seem to focus on, rather than cross language interop)
+
+1721167498
+andrewrk!~andrewrk@mail.ziglang.org
+oh that's a nice use case
+
+1721167590
+viashimo!~viashimo@user/viashimo
+re: abi breaking in CI: iirc google does something similar with android, vague recollection that it came from this talk: https://www.youtube.com/watch?v=_299mcYiu3U
+
+1721167698
+ifreund!2940d10f8b@user/ifreund
+abidiff from the libabigail project viashimo linked does seem quite similar to what we want: https://sourceware.org/libabigail/manual/abidiff.html
+
+1721167727
+andrewrk!~andrewrk@mail.ziglang.org
+neat!
+
+1721167744
+ifreund!2940d10f8b@user/ifreund
+as far as I can tell it, like all other existing tooling, does not support the extra pointer metadata that the zig compiler knows about
+
+1721167773
+ifreund!2940d10f8b@user/ifreund
+it seems to be dwarf based as well
+
+1721167780
+andrewrk!~andrewrk@mail.ziglang.org
+my opinion about existing standards is: if they have major shortcomings, ignore them and make a new standard
+
+1721167818
+andrewrk!~andrewrk@mail.ziglang.org
+and then win
+
+1721167837
+ashie!~ashie@user/ashie
+sounds like that one xkcd :P
+
+1721167981
+ifreund!2940d10f8b@user/ifreund
+andrewrk: yeah, these existing things I've found aren't even standards really, just tooling to work with elf and dwarf
+
+1721168016
+ifreund!2940d10f8b@user/ifreund
+I think I will play with an ABI file format standard and see what I come up with
+
+1721168031
+ifreund!2940d10f8b@user/ifreund
+but first, bedtime :)
+
+1721168084
+viashimo!~viashimo@user/viashimo
+(googles abi middleware: https://android.googlesource.com/platform/external/stg/)
+
+1721168100
+viashimo!~viashimo@user/viashimo
+ifreund: good night!
+
+1721168155
+ifreund!2940d10f8b@user/ifreund
+viashimo: thanks for the links!
+
