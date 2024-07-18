@@ -1,0 +1,852 @@
+1721184167
+mla!44a8097191@2a03:6000:1812:100::1342
+would someone be able to look at this pr? https://github.com/ziglang/zig/pull/20556
+
+1721184211
+mla!44a8097191@2a03:6000:1812:100::1342
+curious how likely it would be to get merged? afaik there's no way in stdlib to access/set pgid when spawning processes otherwise?
+
+1721200549
+GreaseMonkey!greaser@user/greasemonkey
+i suspect someone's done this before but i managed to come up with a neat way of doing a general callback mechanism w/o having to manually @ptrCast+@alignCast an *anyopaque: https://gist.github.com/iamgreaser/6ab3afe65d9f5f3047a2af00a93f11f0
+
+1721200570
+GreaseMonkey!greaser@user/greasemonkey
+this is on 0.13.0
+
+1721201132
+ifreund!2940d10f8b@user/ifreund
+GreaseMonkey: this is the pattern I use if you're curious: https://codeberg.org/ifreund/zig-wlroots/src/commit/ae6151f22ceb4ccd7efb1291dea573785918a7ec/src/types/scene.zig#L53
+
+1721201681
+GreaseMonkey!greaser@user/greasemonkey
+ifreund: ok, that's pretty cheeky and i like it
+
+1721223440
+hadronized!~phaazon@2001:41d0:a:fe76::1
+random question: is there a feature to have linear things?
+
+1721223464
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. a way to assert something can be consumed only once, and then is destroyed
+
+1721223479
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. it would require the compiler to error out if we try to read the same binding again
+
+1721223500
+hadronized!~phaazon@2001:41d0:a:fe76::1
+like, var x = foo(); bar(x); var y = x; // error; x not available anymore
+
+1721223524
+hadronized!~phaazon@2001:41d0:a:fe76::1
+if not, would a (good enough) proposal be accepted for such a feature?
+
+1721223741
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+sounds like rust lifetimes with fewer steps
+
+1721223766
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, it’s not really lifetimes
+
+1721223774
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s just tracking at compile-time the handle
+
+1721223776
+hadronized!~phaazon@2001:41d0:a:fe76::1
+we don’t need lifetimes
+
+1721223783
+hadronized!~phaazon@2001:41d0:a:fe76::1
+just the identifier 
+
+1721223791
+hadronized!~phaazon@2001:41d0:a:fe76::1
+if it croses something that “consumes”, it gets invalidated
+
+1721223834
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i thought zig in its c-heritage doesn't track a property like "consuming handles"
+
+1721223844
+hadronized!~phaazon@2001:41d0:a:fe76::1
+something that would be even more useful would be to require to consume the thing
+
+1721223849
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. linear
+
+1721223867
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so if you doo var x = foo();, it’s as if you were doing _ = foo();
+
+1721223874
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but it’s a compile-time error this type
+
+1721223876
+hadronized!~phaazon@2001:41d0:a:fe76::1
+time*
+
+1721223893
+hadronized!~phaazon@2001:41d0:a:fe76::1
+woah that’s so badly put, since it’s already the case
+
+1721223902
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I meant, consume once + ensure it’s used
+
+1721223905
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. it must be consumed
+
+1721223934
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think it might be too complex to add, but I have some ideas
+
+1721223970
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what I basically want to achieve is to simplify a lot the ATS proofs to make them into Zig
+
+1721223979
+hadronized!~phaazon@2001:41d0:a:fe76::1
+because I think it’s the only missing ingredient to make Zig completely memory safe
+
+1721224013
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s not only about allocation; if you wrap your allocator in your type, like what ArrayList(T) does, and you forget to deinit() it, you get into leaks
+
+1721224062
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think instead of modifying how variables work, we could add an annotation-like thing to variables, with a way to invalidate them
+
+1721224070
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I should probably write a design doc because I think it could work
+
+1721224299
+ifreund!2940d10f8b@user/ifreund
+hadronized: it sounds like you are describing linear types
+
+1721224327
+hadronized!~phaazon@2001:41d0:a:fe76::1
+not completelyCo I think
+
+1721224332
+hadronized!~phaazon@2001:41d0:a:fe76::1
+completely*
+
+1721224344
+hadronized!~phaazon@2001:41d0:a:fe76::1
+my idea is to tag types with some specific information
+
+1721224366
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and allow to use that stuff as long as I want
+
+1721224378
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but as soon as it passes a specifically tagged function, it’s consumed
+
+1721224389
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’ll write a small doc to explain my thoughts :)
+
+1721224396
+ifreund!2940d10f8b@user/ifreund
+I'm 99% sure this has been proposed multiple times already
+
+1721224409
+ifreund!2940d10f8b@user/ifreund
+I dont have the issue links memorized though
+
+1721225710
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: so let’s use the linear name (even though I don’t think it’s really linear but not important for my explanation). I function can tie its return value with its argument and a tag (typically the function name). For instance, fn create(self: *Self, comptime T: type) !*T | self@create { /* … */ }. The return pointer is linear and must eventually be consumed by a function taking a
+
+1721225712
+hadronized!~phaazon@2001:41d0:a:fe76::1
+tagged argument with the same proof. For instance, fn destroy(*s: *Self, ptr: *const T | s@create) void { … }.
+
+1721225716
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I should probably write all that down
+
+1721225782
+hadronized!~phaazon@2001:41d0:a:fe76::1
+s/I function/A function
+
+1721225957
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, fn destroy(s: …)
+
+1721227092
+ifreund!2940d10f8b@user/ifreund
+hadronized: like I said, very similar proposal have been considered and rejected in the past
+
+1721227143
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m looking for them
+
+1721227148
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think it could be very valuable
+
+1721227148
+ifreund!2940d10f8b@user/ifreund
+I think this kind of feature belongs at the heart of a language's design, I think zig is too mature at this point to change drastically and I don't think solutions that feel bolted-on are worth their weight
+
+1721227151
+hadronized!~phaazon@2001:41d0:a:fe76::1
+especially if it’s gradual
+
+1721227155
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. do not do that in std lib
+
+1721227172
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: I don’t think it should be in the core
+
+1721227178
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for instance, Linear types in Haskell are not part of core
+
+1721227193
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(they even wrote a dedicated linear-base — base is Haskell’s std)
+
+1721227212
+hadronized!~phaazon@2001:41d0:a:fe76::1
+at least, if I could do that stuff for my own projects, I would be super happy
+
+1721227223
+ifreund!2940d10f8b@user/ifreund
+haskell is so far beyond zig's language complexity budget that I don't think comparing them is meaningful
+
+1721227243
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I don’t compare the language, I compare the choice of adding a feature not in the core of the language
+
+1721227274
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Been working on writing a wallpaper app to learn zig/Wayland and got my first issue today xD even though the app literally can only show a hardcoded color as the wallpaper that's it (well the latest commit on codeberg at least)
+
+1721227276
+ifreund!2940d10f8b@user/ifreund
+for an example of a language that I think is in a similar complexity ballpark as zig with linear types see Austral
+
+1721227278
+hadronized!~phaazon@2001:41d0:a:fe76::1
+maybe I could introduce that in a more subtle way with a comptime var?
+
+1721227296
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah I saw Austral, I need to have a look
+
+1721227453
+ifreund!2940d10f8b@user/ifreund
+I'll start posting some similar, rejected proposals I find, this will probably be an incomplete list
+
+1721227454
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/issues/782
+
+1721227459
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/issues/494
+
+1721227735
+ifreund!2940d10f8b@user/ifreund
+this one's not directly related though you might find the discussion interesting as well: https://github.com/ziglang/zig/issues/2301
+
+1721228018
+hadronized!~phaazon@2001:41d0:a:fe76::1
+thank you
+
+1721228509
+hadronized!~phaazon@2001:41d0:a:fe76::1
+there’s no comptime var?
+
+1721228729
+ifreund!2940d10f8b@user/ifreund
+hadronized: what makes you think that? (comptime var is valid zig)
+
+1721228747
+hadronized!~phaazon@2001:41d0:a:fe76::1
+more like a global
+
+1721228759
+ifreund!2940d10f8b@user/ifreund
+you mean globally mutable comptime memory?
+
+1721228762
+ifreund!2940d10f8b@user/ifreund
+that's not allowed
+
+1721228764
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. have a comptime function that can tap into a mutable global
+
+1721228766
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah
+
+1721228779
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I tried with the local struct trick, it doesn’t work either
+
+1721228788
+ifreund!2940d10f8b@user/ifreund
+yes, this is intentional
+
+1721228792
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so I can’t implement my linear engine :D
+
+1721228794
+hadronized!~phaazon@2001:41d0:a:fe76::1
+dammit!
+
+1721228928
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, I’m looking for the builtin to get the current filename / line / column
+
+1721228960
+hadronized!~phaazon@2001:41d0:a:fe76::1
+@src
+
+1721229024
+ashie!~ashie@user/ashie
+ifreund: if something like https://codeberg.org/ifreund/zig-wlroots/src/commit/ae6151f22ceb4ccd7efb1291dea573785918a7ec/src/types/scene.zig#L53 is allowed then why no anonymous functions tho? won't this generate an anonymous struct so instead of a weird_fn_name you now have weird_struct_name.wrapper?
+
+1721229071
+ifreund!2940d10f8b@user/ifreund
+ashie: "no anonymous functions" is not my decision
+
+1721229083
+ifreund!2940d10f8b@user/ifreund
+I personally wouldn't mind them but also just don't care very much
+
+1721229089
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think naming is the biggest issue with anonymous functions
+
+1721229176
+ashie!~ashie@user/ashie
+yes I know, I am just asking if this isn't the same as having them just with extra steps? sorry if I sounded like it was your decision to not include them
+
+1721229247
+ashie!~ashie@user/ashie
+what I wanna know is if the struct is there to just generate that function, does the output contain just the function since the struct is not really important?
+
+1721229323
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the struct itself doesn't generate any code
+
+1721229383
+ashie!~ashie@user/ashie
+so if I have an empty struct and then hold a reference to Struct.my_fn (assuming the struct is otherwise completely empty) and have normally defined my_fn as its own thing, they would be logically identical?
+
+1721229403
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as far as I can tell, yes
+
+1721229456
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and neither are pub
+
+1721229711
+ashie!~ashie@user/ashie
+so structs, pub/private, enums and stuff like that are just ways to tell compiler how to represent chunks of memory, but are not actually present in the binary, they are just a language feature to guide the compiler?
+
+1721229787
+ifreund!2940d10f8b@user/ifreund
+put a different way, such high-level concepts do not exist in machine code
+
+1721229814
+ashie!~ashie@user/ashie
+I see, thanks
+
+1721229817
+ifreund!2940d10f8b@user/ifreund
+they may technically be "present in the binary" in a way if you enable debug info
+
+1721229847
+ifreund!2940d10f8b@user/ifreund
+which will tell your debugger how to interpret the memory back into a form recognizable from your source code
+
+1721229873
+ashie!~ashie@user/ashie
+P.S.: sorry if my questions are a bit dumb, I'm just a bit fascinated by low level programming and trying to figure stuff out :3
+
+1721229899
+ifreund!2940d10f8b@user/ifreund
+no worries at all! questions are a large part of what this channel is for :)
+
+1721229922
+ifreund!2940d10f8b@user/ifreund
+there's no way to learn without asking questions
+
+1721230459
+grayhatter!~grayhatte@user/grayhatter
+didn't if (nullable) |*thing| used to be *Thing? now it's only *const Thing... or am I confused?
+
+1721230499
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that doesn't sound right
+
+1721230500
+ifreund!2940d10f8b@user/ifreund
+grayhatter: what exactly is the type of nullable?
+
+1721230548
+ifreund!2940d10f8b@user/ifreund
+and most importantly, is it a mutable variable?
+
+1721230790
+grayhatter!~grayhatte@user/grayhatter
+ifreund: thank you for asking the question my brain couldn't 
+
+1721230805
+ifreund!2940d10f8b@user/ifreund
+:)
+
+1721230832
+grayhatter!~grayhatte@user/grayhatter
+I was returning *const Thing... on the plus side, I found the last file I forgot to fix in my last commit :D
+
+1721235026
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what does a comptime field means?
+
+1721235084
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah it’s a constant thing that is computed at comptime
+
+1721235101
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+The value of the parameter has to be known at compile time when the function is called.  For example, `std.ArrayList` has a `comptime T: type` parameter, which is a `type` that has to be known at compile time as in `std.ArrayList(u8)`
+
+1721235126
+tsmanner!~tsmanner@pool-100-40-210-203.pghkny.fios.verizon.net
+Yup, exactly
+
+1721235201
+hadronized!~phaazon@2001:41d0:a:fe76::1
+no I understand comptime arguments
+
+1721235205
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I was wondering about comptime field
+
+1721235213
+hadronized!~phaazon@2001:41d0:a:fe76::1
+struct { comptime a: f32 = 0.0 };
+
+1721235215
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that stuff
+
+1721235242
+hadronized!~phaazon@2001:41d0:a:fe76::1
+> Generally, one should use a global const instead of a comptime field. The reason for using a comptime field is when you want reflection over struct fields to find the data as a field. 
+
+1721235245
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(from Andrew)
+
+1721235251
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that’s probably something I won’t need for now
+
+1721235879
+ifreund!2940d10f8b@user/ifreund
+comptime fields are a pretty weird feature that I hope we find a way to remove
+
+1721235947
+ifreund!2940d10f8b@user/ifreund
+might not be feasible to get rid of them though
+
+1721237277
+hadronized!~phaazon@2001:41d0:a:fe76::1
+> Thank you for your interest in improving the Zig language. However, we are not accepting new proposals to change the language at this time.
+
+1721237279
+hadronized!~phaazon@2001:41d0:a:fe76::1
+:(
+
+1721237283
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’ll write a blog post then
+
+1721241458
+hadronized!~phaazon@2001:41d0:a:fe76::1
+https://www.reddit.com/r/Zig/comments/1e5pqd2/zig_linearity_and_pwtp/ here I am :D
+
+1721241466
+hadronized!~phaazon@2001:41d0:a:fe76::1
+at least I have a blog article about it now haha
+
+1721241609
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I know that andrewrk will probably not even read the proposal since the language doesn’t accept proposals, but at least I have some thoughts written down 
+
+1721243348
+ifreund!2940d10f8b@user/ifreund
+hadronized: I don't see how this improves the case where a resource isn't created and destroyed in the same scope
+
+1721243463
+ifreund!2940d10f8b@user/ifreund
+it only seems to address creation and destruction within a scope, which is where we already have defer
+
+1721243630
+ifreund!2940d10f8b@user/ifreund
+or if you intend that this works no matter where/when the resource is destroyed then this proposal does not address how this is possible to implement as a compile time check
+
+1721243637
+ifreund!2940d10f8b@user/ifreund
+(the actually hard part)
+
+1721243981
+grayhatter!~grayhatte@user/grayhatter
+it also makes some unexplained assumptions about "resource leakage"
+
+1721244696
+grayhatter!~grayhatte@user/grayhatter
+to ifreund's point, there's nothing in here about how to actaully create this proof, only that we should create one somehow? 
+
+1721244767
+hadronized!~phaazon@2001:41d0:a:fe76::1
+grayhatter: it’s created when you return something from a function
+
+1721244788
+hadronized!~phaazon@2001:41d0:a:fe76::1
+const x = foo(); // if the return type of foo() is proof-marked, then x has a proof in its type
+
+1721244805
+hadronized!~phaazon@2001:41d0:a:fe76::1
+you can then move x out of the function etc., it will have to be passed to something with a proof-marked argument
+
+1721245082
+grayhatter!~grayhatte@user/grayhatter
+how does the compiler prove the proof is consumed/closed/destoryed/etc?
+
+1721245300
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the proof is attached to the value / variable, so if the variable is passed to a function that accepts the proof, the proof is considered consumed and not dangling anymore
+
+1721246868
+grayhatter!~grayhatte@user/grayhatter
+so, it wouldn't be allowed to change/leave a given scope?
+
+1721246890
+grayhatter!~grayhatte@user/grayhatter
+the scope where it's created?
+
+1721246919
+hadronized!~phaazon@2001:41d0:a:fe76::1
+no it would be allowed
+
+1721246994
+hadronized!~phaazon@2001:41d0:a:fe76::1
+if you decide to return the object along with its proof, you probably also need to return the variables tied with the proof, otherwise you can’t express the proof in the return type
+
+1721247008
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and it makes sense
+
+1721247021
+hadronized!~phaazon@2001:41d0:a:fe76::1
+unless the tying variables were introduced before the scope
+
+1721247029
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. it’s likely that the allocator comes from the parent call
+
+1721247039
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so you can express the proof easily with it
+
+1721247103
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think that if we end up interested in such a thing, it requires a bit more investigation, like proof-passing (i.e. transferring a proof to another thing, like a struct, etc.)
+
+1721247121
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the other option is going full explicit like what ATS does
+
+1721247139
+hadronized!~phaazon@2001:41d0:a:fe76::1
+their malloc function returns the pointer and the proof
+
+1721247140
+grayhatter!~grayhatte@user/grayhatter
+so, it's interesting... but does it improve the language? 
+
+1721247147
+hadronized!~phaazon@2001:41d0:a:fe76::1
+grayhatter: I think it does a lot
+
+1721247155
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it allows to prove that you properly deallocate something
+
+1721247167
+grayhatter!~grayhatte@user/grayhatter
+only at comptime though
+
+1721247168
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it removes a subclass (maybe the whole class?) of UAF
+
+1721247175
+grayhatter!~grayhatte@user/grayhatter
+if (random_
+
+1721247186
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yes but that’s already a pretty good assumption, no?
+
+1721247223
+grayhatter!~grayhatte@user/grayhatter
+which means it couldn't be used if the proof ever entered runtime scope e.g. `if (random_int() > 4) destroy(proof);`
+
+1721247262
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, I think that requires more attention, yes, but we could state that the if « partially consumes » the proof here
+
+1721247271
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and that we need to do something with it in the else?
+
+1721247273
+hadronized!~phaazon@2001:41d0:a:fe76::1
+not sure about that
+
+1721247290
+grayhatter!~grayhatte@user/grayhatter
+wouldn't you need to solve that if you wanted someone to implement it?
+
+1721247291
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I wonder how ATS deals with that
+
+1721247297
+hadronized!~phaazon@2001:41d0:a:fe76::1
+oh definitely
+
+1721247315
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but as far as I have understood, the language doesn’t accept proposal
+
+1721247328
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I was just brainstorming on my blog about it and thinking how it would be if it was in the language
+
+1721247337
+grayhatter!~grayhatte@user/grayhatter
+so, it might be an idea that improves the language, but as an idea it isn't ready to be a proposal yet?
+
+1721247340
+hadronized!~phaazon@2001:41d0:a:fe76::1
+in the end, I think I agree that Rust’s lifetimes are probably not the right option
+
+1721247369
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yes I think it requires more digging to make it a proper RFC / proposal
+
+1721247383
+grayhatter!~grayhatte@user/grayhatter
+ahhh, ok, so it is just an idea, and not a full proposal yet. In that case, it would be cool if you could solve it, even rust would love to adopt something like that
+
+1721247398
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm
+
+1721247408
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Rust doesn’t have proofs but it has sub-linearity
+
+1721247410
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(i.e. affine)
+
+1721247418
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I don’t see why it would need that since it has destructors, too
+
+1721247453
+hadronized!~phaazon@2001:41d0:a:fe76::1
+now that I think about it, moving something in an if does consume
+
+1721247466
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, wait, no, not completely actually
+
+1721247491
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think they segment the code in such case; inside the if body, it’s consumed, but outside of it, if we can’t statically prove unreachable, the proof would still linger
+
+1721247627
+grayhatter!~grayhatte@user/grayhatter
+yeah, you might wanna give it some more thought, super hard problem and I would be interested to read the full solution once it's figured out
+
+1721249237
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, the try keyword prevent chaining, doesn’t it?
+
+1721249465
+andrewrk!~andrewrk@mail.ziglang.org
+indeed. another way to think of it is that the possibility of failure prevents chaining
+
+1721249496
+andrewrk!~andrewrk@mail.ziglang.org
+also, chaining prevents debuggability. it's useful to step one line at a time and look at intermediates
+
+1721251042
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is there a way to concatenate an array of strings at compile time?
+
+1721251058
+hadronized!~phaazon@2001:41d0:a:fe76::1
+for instance, iterating on an enum’s variants and building a string by using all of its names
+
+1721251136
+grayhatter!~grayhatte@user/grayhatter
+zig doesn't have strings, but you can concat bytes. look for ++ in the language reference 
+
+1721251143
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah I know
+
+1721251150
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but I mean, I’m not sure I can do that with a comptime var
+
+1721251176
+hadronized!~phaazon@2001:41d0:a:fe76::1
+like comptime var names = ""; inlife for … names = names ++ ", " ++ f.name;
+
+1721251207
+grayhatter!~grayhatte@user/grayhatter
+you should read the language reference... Array Concatenation    a ++ b Only available when the lengths of both a and b are compile-time known
+
+1721251226
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yes… and both are known at compile-time here
+
+1721251399
+ifreund!2940d10f8b@user/ifreund
+hadronized: use `var names: []const u8 = "";`
+
+1721251449
+ifreund!2940d10f8b@user/ifreund
+currently it's a *const [0:0]u8
+
+1721251463
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, and I can return the address of that?
+
+1721251466
+ifreund!2940d10f8b@user/ifreund
+which means your attempt to reassign it tries changes the type and is a compile error
+
+1721251493
+ifreund!2940d10f8b@user/ifreund
+you can return a slice yes
+
+1721251532
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that doesn’t work
+
+1721251565
+ifreund!2940d10f8b@user/ifreund
+please share exactly what you are trying with the compile error you get then
+
+1721251566
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: https://zigbin.io/49292b
+
+1721251610
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s called printNames because so far I was doing the print inside of it, but now I want to return the string directly
+
+1721251673
+ifreund!2940d10f8b@user/ifreund
+hadronized: your loop is not at comptime
+
+1721251678
+ifreund!2940d10f8b@user/ifreund
+this only works at comptime
+
+1721251734
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what do you mean it’s not a comptime?
+
+1721251736
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s inline
+
+1721251792
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah, yes I need to call the function with comptime, right?
+
+1721251837
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ah yeah it works
+
+1721251839
+hadronized!~phaazon@2001:41d0:a:fe76::1
+nvm then
+
+1721251944
+hadronized!~phaazon@2001:41d0:a:fe76::1
+https://zigbin.io/f9930b
+
+1721251946
+hadronized!~phaazon@2001:41d0:a:fe76::1
+\o
+
+1721252524
+hadronized!~phaazon@2001:41d0:a:fe76::1
+andrewrk: yeah, I don’t care that much honestly
+
+1721252544
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it surprised me because I wrote the code line by line and some kind of reflex I have from Rust thought “hey, let’s chain that”
+
+1721252554
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and then I realized it adds absolutely zero value :D
+
+1721256024
+AlxFG!4bfde49863@user/AlxFG
+hi I'm currently following through https://viewsourcecode.org/snaptoken/kilo/index.html in zig and was wondering which of these would be the recommended way to read from stdin in this instance, I've currently found 4 ways to do it and am unsure what the differences between them https://zigbin.io/4fc856
+
+1721256370
+rockorager!2bbd732aa1@irc.pico.sh
+AlxFG: any of those are valid, but I would not use any type when you know the type and opt for one that has the arg passed in (instead of write1)
+
+1721256503
+rockorager!2bbd732aa1@irc.pico.sh
+Well, none would work very well as written since you’ll lose your buffer. didn’t read close enough 
+
+1721256654
+rockorager!2bbd732aa1@irc.pico.sh
+Write1 and 2 are the same, write 3 is a File read (which is a wrapper of 1 and 2), write4 is a generic reader, which is an interface ultimately calling into the same calls as 1 and 2
+
+1721256805
+AlxFG!4bfde49863@user/AlxFG
+losing the buffer was because it was just sample code
+
+1721256854
+AlxFG!4bfde49863@user/AlxFG
+thanks for the reply
+
+1721257080
+AlxFG!4bfde49863@user/AlxFG
+I'm currently thinking write3 is probably going to be the best option but changing anytype to std.fs.File for the paramater 
+
