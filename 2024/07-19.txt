@@ -1,0 +1,352 @@
+1721353925
+GreaseMonkey!greaser@user/greasemonkey
+well, this was kinda horrible to work out: switch (@as(ti.tag_type.?, @enumFromInt(tagint))) { inline else => |ct_tag| { return @unionInit(T, @tagName(ct_tag), try unpack(reader, allocator, @TypeOf(@field(@as(*allowzero T, @ptrFromInt(0)).*, @tagName(ct_tag))))); } }
+
+1721353942
+GreaseMonkey!greaser@user/greasemonkey
+automatically reading a union from a data stream with the power of metaprogramming
+
+1721354532
+torque!~tachyon@user/torque
+it would probably be much more readable if you used `std.meta.TagPayload` instead of the weird 0 address deref to get the field type
+
+1721354819
+torque!~tachyon@user/torque
+also you could do @as(T, undefined) instead
+
+1721401015
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+So I have this code (https://zigbin.io/bfe5be) but if I deinit the new_pixels ArrayList in the function I get a segfault because I use the pixman image that's returned later. What's the idiomatic way to handle this so it's not a memory leak. Pass in an empty arraylist? Return the arraylist, too? 
+
+1721401469
+Ayo!~Ayo@45.142.232.203
+The_Buhs: Not entirely sure which is best, but one possible approach is to wrap pixman.Image in a custom struct that "owns" both the arraylist and the Image, thus returning those as a single value that can be deinit()'ed later
+
+1721401522
+Ayo!~Ayo@45.142.232.203
+Alternatively, take an Allocator and let the caller pass an arena allocator that it can free whenever it's done with the Image; but that may be more error-prone
+
+1721401696
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Ahh, the wrapper struct idea is probably best. I actually already have the Image in a struct, just didn't think to put the ArrayList in it, too. 🤦 Thanks!
+
+1721402446
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hm, I’m a bit surprised
+
+1721402475
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I have a function fn getPtr() *i32 that basically put a var x: i32 = 0; on the stack, iterates it, and returns its address
+
+1721402482
+hadronized!~phaazon@2001:41d0:a:fe76::1
+then, trying to print that in the caller just works
+
+1721402495
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I thought that would be an illegal detectable behavior, no?
+
+1721402512
+hadronized!~phaazon@2001:41d0:a:fe76::1
+there is no compile warning, no runtime check
+
+1721402526
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so that’s basically a UB in disguise waiting to bite me, no?
+
+1721402532
+hadronized!~phaazon@2001:41d0:a:fe76::1
+or there’s something I don’t get 
+
+1721402644
+ifreund!2940d10f8b@user/ifreund
+hadronized: referencing free'd stack memory is indeed illegal behavior (unless done at comptime)
+
+1721402668
+ifreund!2940d10f8b@user/ifreund
+there are plans to add runtime checks for this eventually, but it's a bit trickier than e.g. integer overflow or whatnot
+
+1721402707
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I was thinking about my linear things from yesterday, and was thinking about stack UAF (which are not solved by linear types)
+
+1721402819
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: that’s a bit concerning, because it means it’s fairly easy to introduce memory bugs in Zig :(
+
+1721402875
+ifreund!2940d10f8b@user/ifreund
+that is true, stack use-after-free isn't something I personally hit with any regularity in practice though
+
+1721402887
+ifreund!2940d10f8b@user/ifreund
+valgrind should also catch it fwiw
+
+1721402907
+ifreund!2940d10f8b@user/ifreund
+zig doesn't have temporal memory safety and probably never will
+
+1721402925
+ifreund!2940d10f8b@user/ifreund
+this is a tradeoff, it's a significantly simpler language than e.g. rust
+
+1721402973
+ifreund!2940d10f8b@user/ifreund
+hadronized: you might be interested in reading this blog post: https://www.scattered-thoughts.net/writing/how-safe-is-zig/
+
+1721403189
+Ayo!~Ayo@45.142.232.203
+Heh, that reminds me. I rewrote a significant chunk of ncdu in the past few days (14 files changed, 1850 insertions(+), 1204 deletions(-)), touching upon some threaded code as well. I was totally expecting to introduce a bunch of memory safety bugs, but oddly enough haven't run into any yet despite intensive testing with valgrind.
+
+1721403310
+Ayo!~Ayo@45.142.232.203
+Zig does appear to make it easier to write correct code, even if it's got plenty of scary parts left
+
+1721403711
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is still-reachable memory in valgrind bad
+
+1721403748
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Like I know it just means unfreed memory when the program exited but I still have a reference I *could've* used to free it, but is it bad to have?
+
+1721403836
+ifreund!2940d10f8b@user/ifreund
+Ayo: yeah, that pretty much matches my experience working on my zig projects. Its easier to get things right than it was with C or (god forbid) C++
+
+1721403878
+ifreund!2940d10f8b@user/ifreund
+The_Buhs: its not bad, it just makes the valgrind output noisier 
+
+1721403966
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Cool, thanks
+
+1721403999
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+exiting the process is a valid memory reclamation method
+
+1721404023
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: yeah I’ve read that somewhere else too (that Zig makes the life of people easier to write good code)
+
+1721404033
+hadronized!~phaazon@2001:41d0:a:fe76::1
+however, coming from Rust, I’m now a bit skeptical
+
+1721404044
+hadronized!~phaazon@2001:41d0:a:fe76::1
+UAFs, stack UAFs, double-free, etc. etc.
+
+1721404049
+hadronized!~phaazon@2001:41d0:a:fe76::1
+all of that is pretty scary TBH
+
+1721404063
+hadronized!~phaazon@2001:41d0:a:fe76::1
+especially since we know that many bugs occur because of that
+
+1721404086
+Ayo!~Ayo@45.142.232.203
+You definitely can't code in Zig with half of your brain turned off, that's true
+
+1721404097
+Ayo!~Ayo@45.142.232.203
+and even with brain turned on I'm expecting to write bugs
+
+1721404142
+hadronized!~phaazon@2001:41d0:a:fe76::1
+which is exactly why it’s important that the compiler catches as many bugs as possible before the code even gets to be run, no?
+
+1721404214
+Ayo!~Ayo@45.142.232.203
+as many bugs as possible without interrupting my coding flow, that is
+
+1721404267
+paperManu!~paperManu@107.159.227.119
+ah oui c'est rapide
+
+1721404276
+paperManu!~paperManu@107.159.227.119
+ah sorry, wrong channel
+
+1721404291
+Ayo!~Ayo@45.142.232.203
+That's what I struggled with a lot in Rust, the compiler is forcing so much bureaucracy on me that I can't seem to make any progress at all. It was... demotivating :(
+
+1721407900
+devjev!~halloy502@76b7-862d-4f07-b9d6-4180-81c6-07d0-2001.dyn.estpak.ee
+Hi everyone! Does anybody have an example for zig build, how to @import("../foo.zig")? I know that the way to go is via addModule, but my problem is that I also want to link in a system library and if I go the addModule route, my @cImport fails saying it can't find the header files. If I just put everything into src/ and just @import("foo.zig"), then everything works. Did anybody run into a similar problem or did a simi
+
+1721408696
+goldenhairdafo!~goldenhai@user/goldenhairdafo
+hello, is this the right place if have a question about ziglings? Thanks
+
+1721409671
+cve!~quassel@user/cve
+Hi, I am currently working on a garbage collector in Zig, implementing it as an allocator.
+
+1721409686
+cve!~quassel@user/cve
+I am bit confused about the ptr_align parameter. Is there an upper bound as a system constant?
+
+1721409721
+cve!~quassel@user/cve
+Asking because the GC should operate on an area of memory where each block is composed by a number of subsequenct cells, with each cell being N bytes (maybe 16?) long
+
+1721409872
+cve!~quassel@user/cve
+technically, @sizeOf(u65535) would be an upper limit, but working with 8192 byte cells as a primitive seems to be overkill :|
+
+1721412413
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+How can I get a CLI argument as a []const u8?
+
+1721412531
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: https://ziglang.org/documentation/master/std/#std.process.args
+
+1721412567
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+oops, was only looking at std.os.argv. Thanks :)
+
+1721426830
+hadronized!~phaazon@2001:41d0:a:fe76::1
+what is the most idiomatic « 0-element array » literal?
+
+1721426833
+hadronized!~phaazon@2001:41d0:a:fe76::1
+[].{}?
+
+1721426841
+hadronized!~phaazon@2001:41d0:a:fe76::1
+well, slice, not array
+
+1721426941
+torque!~tachyon@user/torque
+&.{}
+
+1721426976
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m not sure I understand
+
+1721426987
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that’s a *const _, no?
+
+1721427095
+torque!~tachyon@user/torque
+it has no elements, so the element constness does not matter
+
+1721427105
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yes but I mean
+
+1721427107
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s not as lice
+
+1721427109
+hadronized!~phaazon@2001:41d0:a:fe76::1
+a slice*
+
+1721427111
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s a pointer to a slice
+
+1721427115
+hadronized!~phaazon@2001:41d0:a:fe76::1
+there’s no way to create a slice directly?
+
+1721427140
+torque!~tachyon@user/torque
+technically, it's a pointer to a tuple of 0 elements, which resolves to a pointer to an array of 0 elements, which decays to a slice
+
+1721427162
+torque!~tachyon@user/torque
+*[123]u8{} can be implicitly converted to a slice
+
+1721427173
+torque!~tachyon@user/torque
+note that string literals are actually pointers to arrays
+
+1721427215
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so there’s no way to create a slice right off the gates
+
+1721427223
+torque!~tachyon@user/torque
+????
+
+1721427225
+hadronized!~phaazon@2001:41d0:a:fe76::1
+[0]T{}
+
+1721427266
+torque!~tachyon@user/torque
+a slice is effectively a pointer, it needs to point at something
+
+1721427267
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the equivalent of Rust’s &[]
+
+1721427290
+rockorager!2bbd732aa1@irc.pico.sh
+hadronized: what do you want to do with it?
+
+1721427293
+hadronized!~phaazon@2001:41d0:a:fe76::1
+torque: well, pointing at something is irrelevant if the size is 0, no?
+
+1721427303
+torque!~tachyon@user/torque
+yes, that's why &.{} works
+
+1721427312
+hadronized!~phaazon@2001:41d0:a:fe76::1
+rockorager: just passing it a to a function
+
+1721427324
+hadronized!~phaazon@2001:41d0:a:fe76::1
+torque: yeah, okay, that works, but I was wondering why I have to go via a weird syntax like that
+
+1721427403
+torque!~tachyon@user/torque
+&.{x, y, z} is basically the idiomatic way to statically initialize a slice of const values
+
+1721427414
+torque!~tachyon@user/torque
+so I don't consider &.{} to be weird syntax, I guess
+
+1721427437
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so, that could also be assigned to a *const [3]T, right?
+
+1721427445
+torque!~tachyon@user/torque
+yes
+
+1721427483
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, I’m not used to that, since in Rust can you completely create slices without going via arrays
+
+1721427593
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hadronized: as far as I know, that's not the case, &[1, 2, 3] is a reference to an array that coerces into a slice
+
+1721427706
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I think you are right indeed, it’s a &[i32; 3]
+
+1721427762
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it's completely equivalent to the zig version
+
+1721427780
+hadronized!~phaazon@2001:41d0:a:fe76::1
+indeed
+
+1721427783
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I was confused
+
