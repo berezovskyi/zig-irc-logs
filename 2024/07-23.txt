@@ -1,0 +1,776 @@
+1721706071
+ashie!~ashie@user/ashie
+how could I read f32 from binary to f32? the representation is exactly the same as in zig, I am just having trouble taking 4 bytes from a buffer and combining them into a single float
+
+1721708839
+andrewrk!~andrewrk@mail.ziglang.org
+ashie: read a u32 and then bitcast
+
+1721727248
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m giving a try to emulate Rust’s traits
+
+1721727252
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and so far so good, it’s pretty fun
+
+1721727264
+hadronized!~phaazon@2001:41d0:a:fe76::1
+https://zigbin.io/0c2bef
+
+1721733360
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+managed to force dynlink by patching in .linkage = dynamic, but I'm perplexed why it's necessary only for musl or why e.g. river automatically dynlinks without any such tricks
+
+1721734646
+ifreund!2940d10f8b@user/ifreund
+tranzystorekk: iirc zig defaults to static if targeting musl and not linking any system libraries 
+
+1721734760
+ifreund!2940d10f8b@user/ifreund
+why link libc at all for zls though?
+
+1721741277
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+typically binaries in system packages are linked, why do you think they shouldnt? ifreund
+
+1721741538
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+or does zls not use libc at all?
+
+1721742182
+ifreund!2940d10f8b@user/ifreund
+tranzystorekk: zls has no need to link libc at all, the zig standard library can directly make syscalls on linux
+
+1721745582
+hadronized!~phaazon@2001:41d0:a:fe76::1
+is there a way to configure ZLS?
+
+1721745591
+hadronized!~phaazon@2001:41d0:a:fe76::1
+like the default 4-space indent is something I really dislike; can I set it to 2?
+
+1721745777
+rockorager!d72cfa7d05@2a03:6000:1812:100::3ff
+hadronized: the formatting is passed through from zig fmt, and it's not configurable
+
+1721746899
+hadronized!~phaazon@2001:41d0:a:fe76::1
+:/ 
+
+1721755174
+zayd!wanderer@user/zayd
+new to this, what does ".{}" mean at the end of a std.debug.print() call mean?
+
+1721755187
+hadronized!~phaazon@2001:41d0:a:fe76::1
+zayd: it’s a tuple
+
+1721755203
+hadronized!~phaazon@2001:41d0:a:fe76::1
+print takes two arguments; the format string, and the format arguments that are lied in the tuple
+
+1721755222
+zayd!wanderer@user/zayd
+i've never seen anything uses that as mandatory to a print statement
+
+1721755225
+zayd!wanderer@user/zayd
+hadronized: ah
+
+1721755241
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Zig doesn’t have default values
+
+1721755260
+zayd!wanderer@user/zayd
+is it kind of like c's printf()?
+
+1721755266
+hadronized!~phaazon@2001:41d0:a:fe76::1
+“kind of”
+
+1721755276
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but there’s no magic behind the scenes though
+
+1721755282
+hadronized!~phaazon@2001:41d0:a:fe76::1
+well, besides comptime
+
+1721755309
+zayd!wanderer@user/zayd
+i see
+
+1721755311
+zayd!wanderer@user/zayd
+thanks
+
+1721755312
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the argument string is parsed at comptime and the content of the tuple is checked at comptime too to ensure you pass the right amount of things to display
+
+1721755355
+zayd!wanderer@user/zayd
+so the tuple argument is for safety?
+
+1721755477
+hadronized!~phaazon@2001:41d0:a:fe76::1
+no it’s for providing the values to format
+
+1721755487
+hadronized!~phaazon@2001:41d0:a:fe76::1
+print("{d} {s}", .{age, name});
+
+1721755513
+zayd!wanderer@user/zayd
+no i mean the requirement for it to be there even if there are no values to format
+
+1721755513
+hadronized!~phaazon@2001:41d0:a:fe76::1
+if you omit name, you’ll get a compile error stating that you have more formatting args than actual values in the tuple
+
+1721755532
+hadronized!~phaazon@2001:41d0:a:fe76::1
+well, it’s because Zig doesn’t have either variadic nor default argument
+
+1721755563
+hadronized!~phaazon@2001:41d0:a:fe76::1
+so when you define the print function, you can define it like print(fmt_str: []const u8, fmt_args: anytype)
+
+1721755572
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but fmt_args still needs to be something
+
+1721755605
+hadronized!~phaazon@2001:41d0:a:fe76::1
+honestly, it would probably make more sense to just have a print(msg: []const u8]
+
+1721755613
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and then use std.fmt.* functions to format your string the way you want
+
+1721755625
+hadronized!~phaazon@2001:41d0:a:fe76::1
+the problem is that returning the string would now probably need to allocate
+
+1721755649
+zayd!wanderer@user/zayd
+is it possible to use default arguments in your own functions?
+
+1721755670
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I don’t think so
+
+1721755689
+hadronized!~phaazon@2001:41d0:a:fe76::1
+you can have default values for fields, but I don’t think you can do it for function arguments
+
+1721755745
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I guess they could relax that rule by stating that if @TypeOf(fmt_args) == void, then the argument can be completely omitted
+
+1721755750
+hadronized!~phaazon@2001:41d0:a:fe76::1
+but again, that’s not currently the case
+
+1721755761
+hadronized!~phaazon@2001:41d0:a:fe76::1
+zayd: what language do you come from?
+
+1721755782
+zayd!wanderer@user/zayd
+hadronized: i've messed around in a few languages but i've mostly used ruby
+
+1721755791
+hadronized!~phaazon@2001:41d0:a:fe76::1
+oh, ruby
+
+1721755799
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s probably the only language I haven’t spent time with
+
+1721755818
+zayd!wanderer@user/zayd
+i do know a little bit of c++, which i also have to learn more for a new project
+
+1721756215
+zayd!wanderer@user/zayd
+also, is zig statically linked only?
+
+1721756337
+ifreund!2940d10f8b@user/ifreund
+no, dynamic linking is fine
+
+1721756398
+zayd!wanderer@user/zayd
+ifreund: ah, i'm assuming that it's just on by default as the bins seem to be pretty big, at least compared to c ones
+
+1721756424
+hadronized!~phaazon@2001:41d0:a:fe76::1
+zayd: yeah I compared the size with Rust (which is statically linked)
+
+1721756427
+zayd!wanderer@user/zayd
+static linking is on by default*
+
+1721756430
+hadronized!~phaazon@2001:41d0:a:fe76::1
+and even then it’s bigger in Zig
+
+1721756465
+ifreund!2940d10f8b@user/ifreund
+non trivial zig binaries are smaller than equivalent rust ones in my experience
+
+1721756516
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I just compared the regular Hello World
+
+1721756525
+zayd!wanderer@user/zayd
+yeah i'd guess the gap gets a bit smaller as the codebases grow
+
+1721756544
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m not sure why
+
+1721756553
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Rust doesn’t have a runtime either
+
+1721756560
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(but it does link dynamically against libc)
+
+1721756565
+ifreund!2940d10f8b@user/ifreund
+also, make sure to strip debug info, build in release small, etc if you want to talk about binary size in a meaningful way
+
+1721756608
+ifreund!2940d10f8b@user/ifreund
+the numbers for rewriting waylock from rust to zig might be interesting: https://isaacfreund.com/blog/2022-05/
+
+1721756636
+zayd!wanderer@user/zayd
+i was just comparing `zig build-exe` and `gcc` (with no options)
+
+1721756644
+ifreund!2940d10f8b@user/ifreund
+1.5MiB rust vs 69KiB zig
+
+1721756693
+zayd!wanderer@user/zayd
+oh that's why your nick is familiar, you're the one who made riverwm
+
+1721756707
+hadronized!~phaazon@2001:41d0:a:fe76::1
+RiiZ
+
+1721756731
+ifreund!2940d10f8b@user/ifreund
+if you want to see zig win a silly hello world binary size benchmark, see https://drewdevault.com/2020/01/04/Slow.html
+
+1721756746
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: real, genuine question; have you not been eaten by memory corruption etc. in Zig? how do you feel about those?
+
+1721756749
+ifreund!2940d10f8b@user/ifreund
+(old, but funnily where I first heard about zig)
+
+1721756758
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I’m pretty scared of completely switching some Rust projects of mine to Zig because of that
+
+1721756768
+hadronized!~phaazon@2001:41d0:a:fe76::1
+even though those Rust projects do interact with the FFI quite a lot (Vulkan, mostly)
+
+1721756790
+zayd!wanderer@user/zayd
+i first heard about zig when i was talking in arch offtopic on matrix a year ago
+
+1721756802
+ifreund!2940d10f8b@user/ifreund
+hadronized: honestly hasn't been a major issue at all for me, Ive been doing manual memory management as long as Ive been programming though, (C++ and C before Zig)
+
+1721756830
+ifreund!2940d10f8b@user/ifreund
+my biggest tip would be learn to love valgrind, gdb, and your other tooling
+
+1721756840
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah, I have a similar path
+
+1721756856
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(C, C++, D, Haskell, Rust; many other languages parallel to that, mainly)
+
+1721756858
+zayd!wanderer@user/zayd
+ifreund: how did ruby beat java in speed lmao
+
+1721756866
+zayd!wanderer@user/zayd
+gdb scares me
+
+1721756875
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I use lldb other gdb
+
+1721756879
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s pretty powerful and simple to use
+
+1721756884
+ifreund!2940d10f8b@user/ifreund
+zayd: hello world is a silly, meaningless benchmark
+
+1721756886
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, I used to use rr (even in Rust)
+
+1721756889
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s incredible
+
+1721756892
+ifreund!2940d10f8b@user/ifreund
+probably the reason is VM startup time
+
+1721756899
+zayd!wanderer@user/zayd
+true
+
+1721756930
+hadronized!~phaazon@2001:41d0:a:fe76::1
+that benchmarks doesn’t have Zig in fast mode though, no?
+
+1721756963
+hadronized!~phaazon@2001:41d0:a:fe76::1
+Python 3 taking 0.7s to display a hello world
+
+1721756966
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ACTION smh my head
+
+1721756972
+zayd!wanderer@user/zayd
+why did the zig one get written like that instead of using std.debug.print?
+
+1721756989
+hadronized!~phaazon@2001:41d0:a:fe76::1
+stderr, zayd 
+
+1721757007
+hadronized!~phaazon@2001:41d0:a:fe76::1
+also, I guess that std.debug.print is a best-effort implementation
+
+1721757012
+zayd!wanderer@user/zayd
+oh right that goes to stderr
+
+1721757015
+hadronized!~phaazon@2001:41d0:a:fe76::1
+i.e. if stderr was closed for whatever reason, you just don’t get anything
+
+1721757024
+hadronized!~phaazon@2001:41d0:a:fe76::1
+while with that implementation using getStdOut(), you get an error
+
+1721757100
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah I knew about riverwm, nice work on that ifreund (I’ll read that article too!)
+
+1721757151
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+bit behind, but in ddevaults post, why does ReleaseSafe make an extra syscall?
+
+1721757168
+zayd!wanderer@user/zayd
+i might try out river sometime, currently i just run hyprland on my laptop and kde on my desktop
+
+1721757170
+hadronized!~phaazon@2001:41d0:a:fe76::1
+to what? 
+
+1721757190
+hadronized!~phaazon@2001:41d0:a:fe76::1
+zayd: oh my… a friend (alacritty’s author) sent me some stuff from Drew about hyprland
+
+1721757196
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I will probably never look at that thing ever again :D
+
+1721757231
+zayd!wanderer@user/zayd
+hadronized: i've seen, vaxry isn't really a great person, but i tend to not really care who made the software i use as long as it's good
+
+1721757287
+hadronized!~phaazon@2001:41d0:a:fe76::1
+> The only real answer I have to this question is that the Rust version and its dependencies do a lot of abstraction, and that abstractions are seldom “zero cost” in practice despite what people may tell you.
+
+1721757294
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: have you been able to know more about that ^
+
+1721757301
+zayd!wanderer@user/zayd
+i wouldn't consider rms a good person either, but i still use emacs, gcc, gnu coreutils, etc
+
+1721757305
+hadronized!~phaazon@2001:41d0:a:fe76::1
+zayd: okay, at least you know
+
+1721757317
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yeah but I don’t think RMS have anything to do with emacs anymore
+
+1721757329
+ifreund!2940d10f8b@user/ifreund
+for me personally, using Foss software involves interacting with its community which I would not want to do in the case of hyperland 
+
+1721757338
+ifreund!2940d10f8b@user/ifreund
+this is offtopic for this channel though
+
+1721757361
+zayd!wanderer@user/zayd
+i can't even do that, i refuse to give my phone number to discord so i can't talk in their server
+
+1721757386
+hadronized!~phaazon@2001:41d0:a:fe76::1
+ifreund: you mentioned valgrind, etc. is there a way to have asan support for Zig?
+
+1721757473
+zayd!wanderer@user/zayd
+also i'd assume that zig is somewhat better than c in terms of memory safety? i'm learning it mainly because i want to make a bbs and i don't trust myself to use c for server stuff yet
+
+1721757527
+zayd!wanderer@user/zayd
+and that zig has the ability to use c headers if needed
+
+1721757544
+hadronized!~phaazon@2001:41d0:a:fe76::1
+zayd: I’d say mostly yes, and is par for some other things
+
+1721757554
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(i.e. returning a reference to a stack-allocated variable, for instance)
+
+1721757637
+zayd!wanderer@user/zayd
+I would consider simply adding what I need (password hashing, mainly) to Synchronet, but I've heard that its codebase is a mess
+
+1721759171
+rezenee!~rezenee@user/rezenee
+i just learned how to use irc to join this
+
+1721759216
+rezenee!~rezenee@user/rezenee
+can anyone hear me?
+
+1721759389
+andrewrk!~andrewrk@mail.ziglang.org
+welcome, rezenee
+
+1721759431
+rezenee!~rezenee@user/rezenee
+hello andrew, i am a big fan of your blog
+
+1721759457
+andrewrk!~andrewrk@mail.ziglang.org
+thank you for the kind words
+
+1721759543
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hello rezenee 
+
+1721759556
+rezenee!~rezenee@user/rezenee
+hello hadronized :) 
+
+1721759590
+rezenee!~rezenee@user/rezenee
+irc is cool :o
+
+1721759593
+hadronized!~phaazon@2001:41d0:a:fe76::1
+andrewrk: would you have an advice for me to hack on the compiler since I want to try out an experiment with linear types? I started to have a look but I’m not entirely sure where to start (the codebase is big!)
+
+1721759628
+andrewrk!~andrewrk@mail.ziglang.org
+rezenee: there are a lot of other interesting channels here too. your IRC client probably supports showing you a list, and you can sort by how many users are in each channel
+
+1721759677
+rezenee!~rezenee@user/rezenee
+andrewrk: i am mostly interested in learning more about zig right now. thank you for the information
+
+1721760820
+ifreund!2940d10f8b@user/ifreund
+hadronized: there's no real way to give meaningful advice on how to make large changes to the zig type system without first doing the design work required to know how to make them
+
+1721760878
+Krajina!~Krajina@user/Krajina
+hello chaps, I'm trying to play with MultiArrayList and I have noticed that the code snippet in this article raises an error: https://zig.news/kristoff/struct-of-arrays-soa-in-zig-easy-in-userland-40m0
+
+1721760902
+Krajina!~Krajina@user/Krajina
+I just chucked it into zigfiddle.dev as-is and it says "error: no field named 'allocator' in struct 'heap.general_purpose_allocator.GeneralPurposeAllocator..."
+
+1721760951
+squeek502!~squeek502@user/squeek502
+Krajina, https://ziglang.org/download/0.9.0/release-notes.html#Allocgate
+
+1721760955
+squeek502!~squeek502@user/squeek502
+https://pithlessly.github.io/allocgate.html
+
+1721760965
+Krajina!~Krajina@user/Krajina
+gate, lmao, oh no, thanks for this
+
+1721762186
+Krajina!~Krajina@user/Krajina
+so everyone is cool with breaking changes, right?  Especially because we aren't at 1.0 yet?  Do the BigZigs have an opinion on stuff like that after 1,0, like the Python2 -> Python3 situation?
+
+1721762234
+Krajina!~Krajina@user/Krajina
+I feel like the advice "just get it right the first time" isn't helpful :^)
+
+1721774852
+grayhatter!~grayhatte@user/grayhatter
+it's good advice
+
+1721774928
+grayhatter!~grayhatte@user/grayhatter
+if it's not helpful, you probably don't understand what it means, so then the solution is ask more questions
+
+1721774941
+torque!~tachyon@user/torque
+it's conceivable that zig versions 0.1 to 0.13+ exist because it was not gotten right the first time
+
+1721774942
+companion_cube!~simon@user/meow/companion-cube:68572
+in retrospec python 2->3 could have been a lot better
+
+1721774956
+grayhatter!~grayhatte@user/grayhatter
+another way to phrase the same advice is take extra care to make sure you account for all the issues that could arise
+
+1721774993
+companion_cube!~simon@user/meow/companion-cube:68572
+if each file declared the version of zig-the-language it used… you could mix different versions in the same project 🙃
+
+1721775055
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: sure, but that's a lot of overhead that unlikely to ever be worth it. given it's trying to solve an api (maybe abi) compat issue while still on v0.x
+
+1721775093
+companion_cube!~simon@user/meow/companion-cube:68572
+oh I meant post 1.0 :)
+
+1721775104
+companion_cube!~simon@user/meow/companion-cube:68572
+but that's assuming that change is, actually, needed
+
+1721775112
+torque!~tachyon@user/torque
+you can already mix versions, as long as you export a c-abi from everything
+
+1721775125
+companion_cube!~simon@user/meow/companion-cube:68572
+(and history seems to demonstrate that languages need to evolve)
+
+1721775149
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: explain C
+
+1721775188
+companion_cube!~simon@user/meow/companion-cube:68572
+even C is still evolving
+
+1721775199
+companion_cube!~simon@user/meow/companion-cube:68572
+but also: "explain C" is why zig exists :D
+
+1721775216
+grayhatter!~grayhatte@user/grayhatter
+there's a defective meme floating around in software engineering that progress for the sake of progress is required
+
+1721775246
+companion_cube!~simon@user/meow/companion-cube:68572
+if C is perfect, then why do C++, zig, odin, rust, etc exist?
+
+1721775252
+grayhatter!~grayhatte@user/grayhatter
+you can have C, and it can be good, and functional and useful, and you can have Zig, and Python
+
+1721775287
+grayhatter!~grayhatte@user/grayhatter
+I can have a close friend, and a significant other, and both can be perfect, and require no changes
+
+1721775306
+companion_cube!~simon@user/meow/companion-cube:68572
+people change too!
+
+1721775321
+torque!~tachyon@user/torque
+I am pretty sure that C++ is a very elaborate prank at this point
+
+1721775322
+companion_cube!~simon@user/meow/companion-cube:68572
+anyway, imho C stayed stuck in 1970 and that's bad actually
+
+1721775337
+torque!~tachyon@user/torque
+every feature, every programming paradigm, everything you could ever dream of, all at your finger types
+
+1721775359
+companion_cube!~simon@user/meow/companion-cube:68572
+if only! it doesn't have basic stuff like *checks notes* tagged unions
+
+1721775369
+companion_cube!~simon@user/meow/companion-cube:68572
+lots of crap, but not the bare minimum
+
+1721775381
+torque!~tachyon@user/torque
+trivial to do with a struct with an enum field
+
+1721775387
+torque!~tachyon@user/torque
+good try
+
+1721775401
+companion_cube!~simon@user/meow/companion-cube:68572
+a struct with an enum and an union, 0 type safety, footgunny, yay
+
+1721775414
+torque!~tachyon@user/torque
+footguns are also a feature
+
+1721775470
+companion_cube!~simon@user/meow/companion-cube:68572
+guess I really should stfu and go somewhere else
+
+1721775482
+grayhatter!~grayhatte@user/grayhatter
+torque: I find that's a suprisingly hard idea for most people to grasp
+
+1721775489
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: no? why?
+
+1721775497
+companion_cube!~simon@user/meow/companion-cube:68572
+not very productive here :/
+
+1721775502
+grayhatter!~grayhatte@user/grayhatter
+I like enjoy chatting with you
+
+1721775517
+companion_cube!~simon@user/meow/companion-cube:68572
+ah sorry, ok ok :D
+
+1721775518
+grayhatter!~grayhatte@user/grayhatter
+like & enjoy
+
+1721775529
+companion_cube!~simon@user/meow/companion-cube:68572
+like and subscribe!
+
+1721775580
+torque!~tachyon@user/torque
+C++26 going to have comptime type reflection and we're so excited except for the part where the syntax was apprently invented when someone tripped and fell into a box full of plugged-in keyboards
+
+1721775870
+hadronized!~phaazon@2001:41d0:a:fe76::1
+hey companion_cube 
+
+1721775875
+grayhatter!~grayhatte@user/grayhatter
+torque: lmao, I love that quote, I will 100% copy and repurpose that for later
+
+1721775905
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I swear I’ve seen your nickname many times in other IRC channels; I just don’t recall
+
+1721776346
+companion_cube!~simon@user/meow/companion-cube:68572
+Ahah possible :) 
+
+1721776355
+companion_cube!~simon@user/meow/companion-cube:68572
+I'm just a bit salty today is all
+
+1721776427
+hadronized!~phaazon@2001:41d0:a:fe76::1
+I see that
+
+1721776441
+hadronized!~phaazon@2001:41d0:a:fe76::1
+we all have different levels of “this is not up to the industry expectations” ;)
+
+1721776457
+hadronized!~phaazon@2001:41d0:a:fe76::1
+(I think mine are especially super high, so I can be salty about pretty much most of languages :D)
+
+1721776615
+companion_cube!~simon@user/meow/companion-cube:68572
+For me, the absence of (decent) tagged unions has become a immediate "nope" for any language, so I often complain about that in particular 
+
+1721776628
+companion_cube!~simon@user/meow/companion-cube:68572
+It's like not having struct 
+
+1721776754
+hadronized!~phaazon@2001:41d0:a:fe76::1
+it’s about exhaustiveness / total functions, yes
+
+1721776816
+companion_cube!~simon@user/meow/companion-cube:68572
+It's about having a decent tool to express multiple choices, yeah. Just like struct is a tool to get multiple things at the same time 
+
+1721776979
+hadronized!~phaazon@2001:41d0:a:fe76::1
+yes, to me, sum, product, and algebraic types are required in a modern language now
+
+1721777002
+hadronized!~phaazon@2001:41d0:a:fe76::1
+just as static analysis / escape analysis, which is not the case with Zig (and hence I’m a bit relunctant to dig too deep into the language)
+
+1721777126
+companion_cube!~simon@user/meow/companion-cube:68572
+Living dangerously :-) 
+
+1721777141
+hadronized!~phaazon@2001:41d0:a:fe76::1
+say that to the users of your software ;)
+
+1721777244
+companion_cube!~simon@user/meow/companion-cube:68572
+Lots of stuff is in C and C++, so it'd still be an improvement 
+
+1721778931
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+how do you debug.print a [:0]const u8?
+
+1721778933
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+I thought this is printable
+
+1721778951
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+I'm trying to print a StructField.name
+
+1721779055
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+with `any` format, it print "{ 48 }"
+
+1721779060
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+with `s`, it errors
+
