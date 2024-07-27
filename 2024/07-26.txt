@@ -1,0 +1,276 @@
+1721989918
+ekaitz!~Ekaitz@213.94.27.227
+hi i'm taking a new look to this problem: https://github.com/ziglang/zig/issues/18063
+
+1721989946
+ekaitz!~Ekaitz@213.94.27.227
+when CPLUS_INCLUDE_PATH is set, zig tries to use it even for cross-compilation
+
+1721989958
+ekaitz!~Ekaitz@213.94.27.227
+where is it coming from?
+
+1721990060
+ekaitz!~Ekaitz@213.94.27.227
+if its NativePaths.zig file, that treats C_INCLUDE_PATH the same as CPLUS_... and it's just the CPLUS that adds issues
+
+1721990086
+ekaitz!~Ekaitz@213.94.27.227
+any idea of what's going on in here?
+
+1721996958
+a-khabarov!~a-khabaro@user/a-khabarov
+Hello, could someone please have a look at https://github.com/ziglang/zig/pull/19818/? I've rebased it and it is ready for review
+
+1721998731
+ekaitz!~Ekaitz@213.94.27.227
+    var db : c.duckdb_database = undefined;
+
+1721998733
+ekaitz!~Ekaitz@213.94.27.227
+    _ = c.duckdb_open(null, &db);
+
+1721998738
+ekaitz!~Ekaitz@213.94.27.227
+why can that have a segfault?
+
+1721998756
+ekaitz!~Ekaitz@213.94.27.227
+any idea?
+
+1721998771
+ekaitz!~Ekaitz@213.94.27.227
+i can use the very same library to build a C program that works
+
+1721998797
+ekaitz!~Ekaitz@213.94.27.227
+i'm getting Segmentation fault at address 0x0
+
+1721998805
+ekaitz!~Ekaitz@213.94.27.227
+but why should anything have address 0 there?
+
+1721999073
+ifreund!2940d10f8b@user/ifreund
+ekaitz: I mean, you are passing a null pointer to that function
+
+1721999108
+ekaitz!~Ekaitz@213.94.27.227
+yes, but the first argument you mean?
+
+1721999108
+ifreund!2940d10f8b@user/ifreund
+it's impossible to give meaningful help without knowing what that function does and what the types involved are
+
+1721999121
+ekaitz!~Ekaitz@213.94.27.227
+that's supposed to make an in-memory database
+
+1721999147
+ifreund!2940d10f8b@user/ifreund
+and are you sure that your segmentation fault is caused by that line?
+
+1721999164
+ekaitz!~Ekaitz@213.94.27.227
+no, i'm  not sure, but nothing after it is called
+
+1721999166
+ekaitz!~Ekaitz@213.94.27.227
+https://duckdb.org/docs/api/c/connect#example
+
+1721999170
+ekaitz!~Ekaitz@213.94.27.227
+that's what i'm trying to do
+
+1721999190
+ifreund!2940d10f8b@user/ifreund
+ok, then your first step is to obtain a stacktrace that shows which pointer dereference is causing the segfault
+
+1721999215
+ekaitz!~Ekaitz@213.94.27.227
+ifreund: this is all i have: ???:?:?: 0x0 in ??? (???)
+
+1721999234
+ifreund!2940d10f8b@user/ifreund
+try gdb?
+
+1721999249
+ifreund!2940d10f8b@user/ifreund
+does your duckdb library have debug info?
+
+1721999271
+ekaitz!~Ekaitz@213.94.27.227
+i don't think so
+
+1721999304
+ekaitz!~Ekaitz@213.94.27.227
+the C example works, btw
+
+1721999597
+ekaitz!~Ekaitz@213.94.27.227
+ACTION is building with debug symbols
+
+1721999621
+ekaitz!~Ekaitz@213.94.27.227
+but why does it work from C...?
+
+1721999643
+ifreund!2940d10f8b@user/ifreund
+I don't know, I don't know anything about duckdb
+
+1721999688
+ekaitz!~Ekaitz@213.94.27.227
+at least the code i did is the same as the C equivalent, right?
+
+1721999731
+ifreund!2940d10f8b@user/ifreund
+perhaps the duckdb_database is a totally cursed type hiding behind a typedef, perhaps duckdb_open is a macro that translate-c translates in a buggy way
+
+1721999756
+ekaitz!~Ekaitz@213.94.27.227
+oh
+
+1721999761
+ifreund!2940d10f8b@user/ifreund
+ekaitz: you didn't share the full code you are running, I assume it's more than just those 2 lines...
+
+1721999778
+ekaitz!~Ekaitz@213.94.27.227
+no, it's literally just those two
+
+1721999797
+ekaitz!~Ekaitz@213.94.27.227
+yes! it's a typedef _...{ void* something  } * duckdb_database
+
+1721999803
+ekaitz!~Ekaitz@213.94.27.227
+might that be the problem?
+
+1721999856
+ifreund!2940d10f8b@user/ifreund
+perhaps, how does translate-c translate that?
+
+1721999897
+ekaitz!~Ekaitz@213.94.27.227
+i'll try
+
+1721999961
+ekaitz!~Ekaitz@213.94.27.227
+pub const struct__duckdb_database = extern struct {
+
+1721999963
+ekaitz!~Ekaitz@213.94.27.227
+    __db: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
+
+1721999965
+ekaitz!~Ekaitz@213.94.27.227
+};
+
+1721999981
+ekaitz!~Ekaitz@213.94.27.227
+vs
+
+1721999985
+ekaitz!~Ekaitz@213.94.27.227
+typedef struct _duckdb_database {
+
+1721999987
+ekaitz!~Ekaitz@213.94.27.227
+ void *__db;
+
+1721999989
+ekaitz!~Ekaitz@213.94.27.227
+} * duckdb_database;
+
+1722000034
+ekaitz!~Ekaitz@213.94.27.227
+oh i was missing something
+
+1722000044
+ekaitz!~Ekaitz@213.94.27.227
+pub const struct__duckdb_database = extern struct {
+
+1722000046
+ekaitz!~Ekaitz@213.94.27.227
+    __db: ?*anyopaque = @import("std").mem.zeroes(?*anyopaque),
+
+1722000048
+ekaitz!~Ekaitz@213.94.27.227
+};
+
+1722000050
+ekaitz!~Ekaitz@213.94.27.227
+pub const duckdb_database = [*c]struct__duckdb_database;
+
+1722000140
+ekaitz!~Ekaitz@213.94.27.227
+so duckdb_database is a pointer to a struct _duckdb_database?
+
+1722000163
+ekaitz!~Ekaitz@213.94.27.227
+looks kind of the same thing
+
+1722000684
+ifreund!2940d10f8b@user/ifreund
+I suppose the other cause of the issue could be in how you are compiling/linking duckdb
+
+1722000734
+ifreund!2940d10f8b@user/ifreund
+e.g. the correct version of the C++ standard library needs to be linked in
+
+1722000762
+ekaitz!~Ekaitz@213.94.27.227
+hmmm
+
+1722000769
+ifreund!2940d10f8b@user/ifreund
+in any case, getting a useful stack trace would almost certainly point out whatever the root cause is
+
+1722000779
+ekaitz!~Ekaitz@213.94.27.227
+i'm building with debug symbols
+
+1722000789
+ekaitz!~Ekaitz@213.94.27.227
+thanks for the help, i'll see if I can get something from this
+
+1722000811
+ekaitz!~Ekaitz@213.94.27.227
+the build will take some time
+
+1722023837
+ekaitz!~Ekaitz@213.94.27.227
+ifreund: i kind of solved it!
+
+1722023854
+ekaitz!~Ekaitz@213.94.27.227
+i needed to link libc and libcpp in build.zig
+
+1722023860
+ekaitz!~Ekaitz@213.94.27.227
+*ouch*
+
+1722024006
+ekaitz!~Ekaitz@213.94.27.227
+but no the resulting binary doesn't find the dynamic lib in my system
+
+1722024039
+ekaitz!~Ekaitz@213.94.27.227
+rpath issue?
+
+1722024052
+ekaitz!~Ekaitz@213.94.27.227
+it's searching in glibc's folders and not in the system folders...
+
+1722027192
+ekaitz!~Ekaitz@213.94.27.227
+in zig-0.11 it works out the box in guix, but in zig-0.13 i need to change the LD_LIBRARY_PATH to make it find the libraries
+
+1722027424
+ekaitz!~Ekaitz@213.94.27.227
+in zig-0.13 doesn't add the runpath automatically
+
+1722027427
+ekaitz!~Ekaitz@213.94.27.227
+!
+
