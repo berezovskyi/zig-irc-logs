@@ -1,0 +1,108 @@
+1722328743
+squishy_bloob!~squishy@217-209-88-44-no600.tbcn.telia.com
+hmm any way to easily deal with printf style callbacks from a c library? i don't see a std.c.vprintf
+
+1722339134
+squeek502!~squeek502@user/squeek502
+squishy_bloob, possible relevant? https://ziglang.org/documentation/master/#toc-C-Variadic-Functions
+
+1722339151
+squeek502!~squeek502@user/squeek502
+sorry, correct link is: https://ziglang.org/documentation/master/#C-Variadic-Functions
+
+1722340869
+squishy_bloob!~squishy@217-209-88-44-no600.tbcn.telia.com
+sadly no, like, i already can get a variadic call from a c library, and i can do variadic calls... the problem is that @cVarArg requires a type, and in a printf style call you only know the types after parsing the format string; in pure C that's solved by having vprintf which takes the va_list directly; c.std.vprintf doesn't exist, and when cImport'ing stdio.h vprintf takes a different type of va list
+
+1722340871
+squishy_bloob!~squishy@217-209-88-44-no600.tbcn.telia.com
+than @cVaStart returns
+
+1722348161
+bblack!~bblack@wikimedia/bblack-WMF
+squishy_bloob: sounds like maybe what's missing here is someone implementing std.c.vprintf in a way that takes std.builtin.VaList as its va_list argument and does the necessary magic?
+
+1722348218
+bblack!~bblack@wikimedia/bblack-WMF
+(and the other calls like vprintf)
+
+1722348413
+ifreund!2940d10f8b@user/ifreund
+I don't think there's any need to reimplement vprintf in zig
+
+1722348437
+ifreund!2940d10f8b@user/ifreund
+it should be sufficient to write the correct extern function definition and use libc's
+
+1722348502
+bblack!~bblack@wikimedia/bblack-WMF
+would the va_list arg match up with std.builtin.VaList automagically, with the right signature?
+
+1722348516
+bblack!~bblack@wikimedia/bblack-WMF
+I guess I could just try and see :)
+
+1722348547
+ifreund!2940d10f8b@user/ifreund
+it's not magic, std.builtin.VaList is defined based on the given architecture's C ABI
+
+1722348574
+bblack!~bblack@wikimedia/bblack-WMF
+well, that seems sensible, but I wasn't sure
+
+1722348648
+ifreund!2940d10f8b@user/ifreund
+In practice though, std.builtin.VaList is broken on some architectures and I personally suspect that it needs to be made into a @VaList() builtin or similar
+
+1722348704
+ifreund!2940d10f8b@user/ifreund
+see my comment here: https://github.com/ziglang/zig/issues/15389
+
+1722348744
+ifreund!2940d10f8b@user/ifreund
+currently I just do this stuff in C: https://codeberg.org/river/river/src/branch/master/river/wlroots_log_wrapper.c
+
+1722348768
+ifreund!2940d10f8b@user/ifreund
+zig makes it so easy to compile C code into my executable that it's not a big issue
+
+1722349485
+bblack!~bblack@wikimedia/bblack-WMF
+yeah it works fine, at least on x86_64
+
+1722349508
+bblack!~bblack@wikimedia/bblack-WMF
+using a signature like: 
+
+1722349511
+bblack!~bblack@wikimedia/bblack-WMF
+pub extern "c" fn vprintf(format: [*:0]const u8, *std.builtin.VaList) c_int;
+
+1722349608
+bblack!~bblack@wikimedia/bblack-WMF
+but #15389 makes sense to make it work everywhere
+
+1722360273
+zayd!wanderer@user/zayd
+https://scribe.rip/@eddo2626/lets-learn-zig-1-using-stdout-and-stdin-842ee641cd trying to use this example to mess around, it appears to work, but why is it printing an unknown character (�) for each unused byte?
+
+1722360785
+Ayo!~Ayo@45.142.232.203
+zayd: That code does not look correct to me
+
+1722360867
+Ayo!~Ayo@45.142.232.203
+The return value of readUntilDelimiter() should not be ignored, it should be captured and passed to print instead of 'input'
+
+1722360883
+zayd!wanderer@user/zayd
+oh
+
+1722360892
+zayd!wanderer@user/zayd
+it was the only example i could find that worked at all
+
+1722360960
+zayd!wanderer@user/zayd
+yep it works now
+
