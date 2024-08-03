@@ -1,0 +1,188 @@
+1722586889
+ekaitz!~Ekaitz@94.73.37.227
+hi! how can I check if something is an Slice using comptime?
+
+1722587106
+ekaitz!~Ekaitz@94.73.37.227
+just T = []u8 for example?
+
+1722588723
+Ayo!~Ayo@45.142.232.203
+ekaitz: @typeInfo(T) returns a https://ziglang.org/documentation/0.13.0/std/#std.builtin.Type
+
+1722588748
+ekaitz!~Ekaitz@94.73.37.227
+Ayo: yes, but Type doesn't know about Slice
+
+1722588749
+Ayo!~Ayo@45.142.232.203
+a slice is a Pointer with .size = Slice
+
+1722588757
+ekaitz!~Ekaitz@94.73.37.227
+oh
+
+1722588762
+ekaitz!~Ekaitz@94.73.37.227
+thanks!
+
+1722588774
+ekaitz!~Ekaitz@94.73.37.227
+i didn't see that
+
+1722610680
+Ayo!~Ayo@45.142.232.203
+Low-key feature request: more selective size vs. performance optimization options. I want ReleaseFast for important parts of the code, but I don't format enough floats to warrant the 10k lookup table. I want debugging symbols for debugging tools, but don't care about the whole ELF parsing code to generate backtraces. I'm sure there's more tunables like that.
+
+1722610726
+Ayo!~Ayo@45.142.232.203
+Of course this is just me being perfectionist about things that usually don't matter :)
+
+1722610824
+Ayo!~Ayo@45.142.232.203
+Oh actually the ELF parsing parts is tunable already, a custom panic handler takes care of that
+
+1722619486
+leiu!~leiu@user/leiu
+Good day! When writing a zig library, how do I export types, so that I can use them from within the zig application which uses the library? (The library sources are not in the same location as the application sources.) Wasn't able to figure out so far ...
+
+1722619619
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+leiu: they need to be marked public in your root_source_file
+
+1722619751
+leiu!~leiu@user/leiu
+rockorager: I dont have a root source file. It is a static library. I have to export the functions, (and types ?), not the pub modifier.
+
+1722621498
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+leiu: is your library only intended for other zig projects?
+
+1722621550
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If so, you need to set it up as a module
+
+1722621756
+ekaitz!~Ekaitz@94.73.37.227
+also, adding to the question: if i want to export something as default what should I do? 
+
+1722621798
+ekaitz!~Ekaitz@94.73.37.227
+like what happens with top-level structs that can be imported as `const MyStruct = @import("MyStruct.zig");`
+
+1722621807
+ekaitz!~Ekaitz@94.73.37.227
+but being it a function instead
+
+1722621852
+ekaitz!~Ekaitz@94.73.37.227
+i want to avoid the `const X = @import("x.zig").X` because X is the only thing i have in x.zig
+
+1722622030
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ekaitz: I’m not sure I understand your question
+
+1722622119
+ekaitz!~Ekaitz@94.73.37.227
+rockorager: i have a file with a generic struct -> that is a function
+
+1722622144
+ekaitz!~Ekaitz@94.73.37.227
+I want to export it directly to be able to import it like: `const X = @import("x.zig")`
+
+1722622156
+ekaitz!~Ekaitz@94.73.37.227
+without having to add `.FunctionName` in the end
+
+1722622215
+Ayo!~Ayo@45.142.232.203
+That's not supported, a file *is* a struct
+
+1722622239
+ekaitz!~Ekaitz@94.73.37.227
+:(
+
+1722622274
+ekaitz!~Ekaitz@94.73.37.227
+but thanks for the answer Ayo
+
+1722622658
+leiu!~leiu@user/leiu
+rockorager: Thanks for the reply. Actually it is a zig library and a zig application. I currently build an .a file (static library). But I can only export functions for the library, not types. Maybe I'm on the wrong path here. Is it better to provide the library sources instead of building an archive and try to link the application against? ... that is if I have to use none primitive types that are
+
+1722622660
+leiu!~leiu@user/leiu
+defined within the library.
+
+1722622754
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+leiu: see an example of. small library here: https://github.com/rockorager/zeit/blob/main/build.zig
+
+1722622775
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+the b.addModule is what makes it importable by other zig applications
+
+1722622795
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+anything public in root_source_file will be accessible
+
+1722633638
+LAC-Tech!~lewis@granite-phrase.bnr.la
+"error: expected type '*[]const lib.Addr', found '*const []const lib.Addr'" so the later type means the pointer itself cannot be re-assigned, right?
+
+1722636954
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+LAC-Tech, no, read from left to right, pointer-to const slice
+
+1722638478
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I thought I was pointer. left to right: pointer (which is constant) to a slice (which is constant) of lib.Addr
+
+1722639650
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+LAC-Tech, that type doesn't say anything about whether the pointer is constant 
+
+1722639694
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+const [], constant slice
+
+1722641165
+LAC-Tech!~lewis@granite-phrase.bnr.la
+so what is "* const" if not const pointer?
+
+1722641520
+Palanix!~palanix@dynamic-077-189-004-006.77.189.pool.telefonica.de
+it's a const pointer
+
+1722641597
+Palanix!~palanix@dynamic-077-189-004-006.77.189.pool.telefonica.de
+no, actually it means that the value cannot be changed, mb
+
+1722642404
+torque!~tachyon@user/torque
+*const []const T is "pointer to const slice of const T"
+
+1722642462
+torque!~tachyon@user/torque
+i.e. if you do `var myslice: []const T = undefined` then `&myslice` would be `*[]const T` because the slice itself is mutable
+
+1722642498
+torque!~tachyon@user/torque
+but if it is declared as `const myslice: []const T = undefined` then `&myslice` is `*const []const T` because the slice itself is declared as constant
+
+1722642651
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+the consequences being: you can't modify the len or the ptr of the slice, right?
+
+1722642668
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I mean those are the only fields on the slice so I don't know what else it would mean
+
+1722643006
+torque!~tachyon@user/torque
+yes
+
+1722643044
+torque!~tachyon@user/torque
+(or overwrite it with a different slice, but that's the same thing as changing both the len and ptr)
+
