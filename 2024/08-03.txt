@@ -1,0 +1,204 @@
+1722643646
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok so const T means "the elements can't be modified", and then const before the slice means "you can't change the ptr or length"
+
+1722643838
+Palanix!~palanix@dynamic-077-189-004-006.77.189.pool.telefonica.de
+it's from left to right so * const []const u8 means pointer(*) to a const slice of const u8 element
+
+1722643878
+torque!~tachyon@user/torque
+you can think of a slice as being basically `struct { ptr: [*](const) T, len: usize}`
+
+1722643916
+torque!~tachyon@user/torque
+when the slice itself is mutable, you can set either of those two fields to whatever you want
+
+1722644671
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I finally get it
+
+1722644898
+LAC-Tech!~lewis@granite-phrase.bnr.la
+isn't that what I originally said? :D
+
+1722648916
+torque!~tachyon@user/torque
+yes, I was rephrasing what you said
+
+1722649009
+torque!~tachyon@user/torque
+it's easy to think of a slice as something special, but it's really just a very basic container for a many pointer and a length
+
+1722649031
+torque!~tachyon@user/torque
+it just makes sense to have as a builtin type so that it can interact with the language syntax more accurately
+
+1722649036
+torque!~tachyon@user/torque
+er, more naturally
+
+1722650841
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah that makes sense. I mean you see a ptr param + a size param all over C APIs. so it's just combining that
+
+1722679040
+leiu!~leiu@user/leiu
+rockorager: Thank you much for the library example code. I'll look into this ...
+
+1722705896
+torque!~tachyon@user/torque
+leiu, zig libraries are normally distributed as source. zig does not have a defined ABI, so the only thing that can be exported across a static library (.a) boundary are functions and types that conform to the C abi (structs must be `extern struct`, enums must have a tag type, you can't use slices or tagged unions, etc)
+
+1722705914
+torque!~tachyon@user/torque
+additionally, since comptime does code generation, you can't have comptime interfaces across library boundaries
+
+1722706702
+leiu!~leiu@user/leiu
+torque: Thank you much for the explanation! Yeah thats what I figured. Meanwhile I manged to create (intentionally) a build workflow based on GNU Make. Mainly because I use it for bare metal targets and have to use the drop-in compiler in order to compile the bootstrap assembly sources, add linker scripts et cetera. I created a root library module as "interface" to the library code which publicly
+
+1722706704
+leiu!~leiu@user/leiu
+provides all the library submodules. Have to invoke zig build-exe with --dep libroot.zig and -Mlibroot.zig=../somelibrary/src/libroot.zig.
+
+1722707266
+torque!~tachyon@user/torque
+I'm kind of curious why you chose to use make instead of the zig build system
+
+1722708925
+leiu!~leiu@user/leiu
+torque: Because make is the most rock solid concept for decades for generically building artefacts. build.zig is limited to the zig ecosystem afaik. Imagine doing external stuff during the build process, e.g. building disassemblies et cetera ... and the build.zig is very volatile at this earyly (0.14) phase of the language. I had to alter all my build.zig files every minor release. And of course it's
+
+1722708927
+leiu!~leiu@user/leiu
+also a skill issue of mine since I'm relativley new to build.zig. So I'm very glad that there are zig build-exe, zig test zig build-obj zig cc and friends.
+
+1722709664
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+is contributor friendly the equivalent of good first issue here?
+
+1722709931
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+https://github.com/ziglang/zig/issues/19248
+
+1722709936
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I was looking at this issue
+
+1722709953
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+and I think I could probably help with doing a benchmark
+
+1722709968
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+but I've also never contributed to zig and I'm pretty green in general
+
+1722710092
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+my guess is that the standard practice for doing something like this is to see how others are doing it and try to replicate something
+
+1722711249
+torque!~tachyon@user/torque
+contributor-friendly basically means that you don't need to have a lot of preexisting knowledge of how the compiler is designed or works, but you may still benefit from outside knowledge (in this case, probably knowledge of setting up good benchmarks and maybe zstd knowledge)
+
+1722711286
+torque!~tachyon@user/torque
+note that the milestone on that issue being post-1.0 means it is currently very low priority, so it's unlikely to receive much attention in the short term
+
+1722712318
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+torque: meaning that me getting work done on it might not be super relevant since it wouldn't really be able to be merged until we're closer to 1.0?
+
+1722712577
+andrewrk!~andrewrk@mail.ziglang.org
+torque: to be clear, the milestone is for zig core team's rough plan. contributors are of course welcome to work on anything they please, including things in the "unplanned" milestone
+
+1722712619
+andrewrk!~andrewrk@mail.ziglang.org
+(I wrote up a precise description of the "unplanned" milestone if you view its page)
+
+1722712631
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+andrewrk: I'd prefer to pick something where it's not super critical but has the opportunity to learn a lot
+
+1722712647
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+(super *time* critical)
+
+1722712760
+andrewrk!~andrewrk@mail.ziglang.org
+how about joining the efforts to implement translate-c on top of aro?
+
+1722712816
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+translate-c is the source to source translation from zig to c right?
+
+1722712826
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I'm not sure I know about aro though
+
+1722712842
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/Vexu/arocc
+
+1722712870
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh that's super cool
+
+1722712871
+andrewrk!~andrewrk@mail.ziglang.org
+recent related PR: https://github.com/ziglang/zig/pull/20883
+
+1722712903
+andrewrk!~andrewrk@mail.ziglang.org
+there's already an existing test suite, you just gotta start trying to pass more of it
+
+1722712913
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh sweet
+
+1722712926
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+okay, this will be awesome to work on when I'm done my exams in a week and a half
+
+1722712929
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+thanks andrew!
+
+1722712957
+andrewrk!~andrewrk@mail.ziglang.org
+happy hacking
+
+1722713823
+torque!~tachyon@user/torque
+thanks for the clarification. my intention was to say that that, as someone trying to learn, a low priority issue is less likely to receive much attention/support from the core team, so it may not be a good choice if you are looking for mentorship etc. compared to something of higher priority
+
+1722713867
+torque!~tachyon@user/torque
+of course anyone can work on what they want, but at the end of the day it all has to go through the funnel of people who have commit access, and they have limited bandwidth
+
+1722714252
+andrewrk!~andrewrk@mail.ziglang.org
+very true
+
+1722718330
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+that makes sense
+
+1722718361
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+yeah I feel like I'm not at the stage in my developer experience + my level of knowledge of zig where I can just work on something that potentially has limited eyes on it
+
+1722719937
+grayhatter!~grayhatte@user/grayhatter
+zig does have a few people without commit access that can review, and support pull requests though right?
+
+1722720122
+grayhatter!~grayhatte@user/grayhatter
+so if someone wanted to work on something interesting to them, but low priority, or they're new enough to the language that they need a lot of easy feedback, I'd assume there's plenty of people who'd be willing to help, and offer advice. Then after their feedback has been resolved, they could tag the PR, and someone from the core team could take a look to see if it's actually ready to be merged
+
+1722720413
+torque!~tachyon@user/torque
+technically anyone can review, and you can get helpful feedback that way for sure
+
