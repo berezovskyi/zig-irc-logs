@@ -1,0 +1,156 @@
+1722750193
+LAC-Tech!~lewis@granite-phrase.bnr.la
+every time I run "zig build test" it's a big guessing game. which files tests will it run? how many tests and for which file? is there anyway to get a decent output
+
+1722750218
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+`zig build test --summary=all`
+
+1722750306
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+How are you including all your tests?
+
+1722750363
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://github.com/LAC-Tech/interlog/blob/master/zig/build.zig looks like "--summary" is unrecognised, though it does appear in the flags
+
+1722750374
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Uh, try without the =
+
+1722750395
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I think I get that wrong the first time I run it... everytime.
+
+1722750411
+Ayo!~Ayo@45.142.232.203
+Hehe, and this is why a minimal arg parser in std might be a good thing to have :)
+
+1722750436
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+https://git.sr.ht/~gcoakes/zig-cli
+
+1722750484
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I haven't shared that before now, but it solves my need for a CLI module.
+
+1722750513
+Ayo!~Ayo@45.142.232.203
+Yeah, there's a bunch. I, for one, am always hesitant to add a dependency for something I can cook up myself in an hour, so that's not helping either.
+
+1722750525
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Yeah
+
+1722750544
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+What's the current stance on including one in std by the core team?
+
+1722750572
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ah ok I've got the build summary, though it doesn't tell me much
+
+1722750608
+Ayo!~Ayo@45.142.232.203
+No clue, but I expect there won't be much of a consensus on API
+
+1722750610
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+LAC-Tech, I've been running `rm -rf .zig-cache/; zig build test` when I want to ensure it rebuilds.
+
+1722750674
+Ayo!~Ayo@45.142.232.203
+Here's an approach I used for one project: https://g.blicky.net/ncdu.git/tree/src/main.zig#n103
+
+1722750992
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Yeah, mine is just `inline for` for days. You define an "Interface" which may have flags, optionals, positionals, and a remainder. The remainder can be another Interface for a subcommand.
+
+1722750992
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I like that you're seems to be built on a parser struct which doesn't have any comptime. There's too much comptime in mine.
+
+1722751001
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+*yours
+
+1722751064
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I wouldn't mind working on a CLI parser in the standard library, if one would be accepted.
+
+1722751083
+Ayo!~Ayo@45.142.232.203
+Yeah mine's more low-level and less convenient, but I like its flexibility
+
+1722751113
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Oh, also, I do too many allocations.
+
+1722751165
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I just couldn't get around that if I wanted to return a struct which had all of the fields populated rather than an iterator approach.
+
+1722751258
+Ayo!~Ayo@45.142.232.203
+I think any std implementation should at least have a low-level token iterator-based parser for those that need the flexibility, and an optional higher-level API that can fill a given struct or something
+
+1722751363
+Ayo!~Ayo@45.142.232.203
+A simple token-based parser is already an improvement over the manual parsing done by Zig tools and would correctly handle --opt=x vs '--opt x'
+
+1722776042
+motiejus!~motiejus@88.223.107.21
+(possibly repost, sorry) can I ask someone with merge access to kick off/review https://github.com/ziglang/zig/pull/19818 ? it's affecting more people than the issue may suggest
+
+1722781829
+Synon!~Synon@user/Synon
+Hi there! Wow I haven't use IRC for such a long time I was extatic to find out that it's still a thing
+
+1722781884
+Synon!~Synon@user/Synon
+Is this the right place to ask for help with Zig? I want to make a library and I need help in deciding how to structure it. What library can I look at to get some inspiration?
+
+1722782067
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm, zig doesn't have a very mature ecosystem. so it's a bit of a free for all
+
+1722782093
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Synon: this is a good place!
+
+1722782128
+Synon!~Synon@user/Synon
+tranzystorekk: haha yeah I figured
+
+1722782202
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://github.com/natecraddock/ziglua is a good example
+
+1722782223
+Synon!~Synon@user/Synon
+two notions kind of clash in my mind: zig makes it easy (and seems to encourage) writing tests in the same file, but then in the `build.zig` should I just repeat `b.addTest` blocks for each file that contains a test?
+
+1722782245
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+and https://github.com/mitchellh/libxev
+
+1722782300
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Synon: usually no. typically you will add one test runner with a root source file. that root source should import all of the files which should be tested then
+
+1722782339
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+See libxev:src/main.zig for an example
+
+1722784713
+Synon!~Synon@user/Synon
+rockorager: sweet thanks! Right what I needed to see
+
+1722784749
+Synon!~Synon@user/Synon
+so just by importing with `_ = @import("heap.zig");` it means the test is in this file? Then in build.zig I just `b.addTest` for that file end everything runs?
+
+1722785478
+Ayo!~Ayo@45.142.232.203
+Synon: As long as those imports are in a test block, yup.
+
