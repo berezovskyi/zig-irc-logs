@@ -1,0 +1,172 @@
+1722902592
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: I started writing a reply on https://github.com/ziglang/zig/pull/20953 asking to fix up their commits+add good commit messages but didn't hit send. Is that something you want?
+
+1722907603
+andrewrk!~andrewrk@mail.ziglang.org
+demo: https://andrewkelley.me/temp/2024-08-05%2018-11-01.mkv
+
+1722911958
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+andrewrk, no dice :( what should I be grepping approximately?
+
+1722912130
+andrewrk!~andrewrk@mail.ziglang.org
+fengshaun: http.Server
+
+1722912132
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+only Client.zig has examples
+
+1722913266
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+anyway, if someone knows how std.http.Server and std.net.Connection connect, I'd appreciate it. I've read through both files and still don't get how they connect together
+
+1722917186
+andrewrk!~andrewrk@mail.ziglang.org
+fengshaun: look at lib/compiler/std-docs.zig:    var server = std.http.Server.init(connection, &read_buffer);
+
+1722919253
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: the fuzz testing looks awesome! is there a branch somewhere? (I want to ask if it'll save the seeds that result in crashes, or new coverage but figured I could answer that myself by reading)
+
+1722919756
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+also saw it on mastodon
+
+1722919759
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+very cool!
+
+1722919772
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I'm so excited to try it out
+
+1722920625
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: yeah it's the fuzz branch (also PR up at https://github.com/ziglang/zig/pull/20958)
+
+1722920696
+andrewrk!~andrewrk@mail.ziglang.org
+the part where it does something intelligent with interesting inputs is not implemented yet
+
+1722920715
+andrewrk!~andrewrk@mail.ziglang.org
+it's a pretty key ingredient that is missing, but I wanted to be able to visualize wtf I was doing before I started working on it
+
+1722920935
+grayhatter!~grayhatte@user/grayhatter
+I just had a conversation the other day with someone who was complaining that now in addition to asking someone to include tests, they also had to ask them to *run* the tests as well. 
+
+1722921003
+grayhatter!~grayhatte@user/grayhatter
+the original author found it strange that it crashed instantly when my friend ran the tests, but it didn't crash for him after a few minutes of fuzz testing... assuming that's likely... I would **love** to have had the chance to find the seed that didn't crash. :D
+
+1722921121
+grayhatter!~grayhatte@user/grayhatter
+thinking more generically, fuzz testsing stops being interesting once you have 100% coverage (I'm chosing to ignore libraries for this comment :P) would be dope if zig would cache the seeds that give you 100% coverage so you don't have to wait for the random every single time
+
+1722921134
+grayhatter!~grayhatte@user/grayhatter
+(Really just thinking out loud, because I doubt this isn't already what you're planning to do)
+
+1722921235
+andrewrk!~andrewrk@mail.ziglang.org
+well the plan is to follow the pretty decent way that AFL works by keeping a corpus of inputs that trigger unique paths through the machine code
+
+1722921296
+andrewrk!~andrewrk@mail.ziglang.org
+it's not really based on seeds because it could take a very long time for a seed to end up making a crash happen, and any tiny amount of nondeterminism could make the seed ineffective. also if the source changes. meanwhile input bytes probably are still a good test even if the source changes
+
+1722921506
+grayhatter!~grayhatte@user/grayhatter
+err, sorry, I wasn't thinking random seeds, I was thinking input seeds
+
+1722921555
+grayhatter!~grayhatte@user/grayhatter
+I default to thinking in the way AFL does it (it's what I'm most familar with), but I've gotten into the bad habit of speaking too generically because no one else is ever familiar with AFL
+
+1722921673
+grayhatter!~grayhatte@user/grayhatter
+does the fuzzer track execution as a bool, or as a uint?
+
+1722922034
+andrewrk!~andrewrk@mail.ziglang.org
+each edge in the control flow graph increments an 8-bit integer
+
+1722922048
+andrewrk!~andrewrk@mail.ziglang.org
+the fuzzer has access to all of these 8-bit integers as one consecutive array
+
+1722922063
+andrewrk!~andrewrk@mail.ziglang.org
+https://clang.llvm.org/docs/SanitizerCoverage.html#inline-8bit-counters
+
+1722922184
+andrewrk!~andrewrk@mail.ziglang.org
+it could be changed to inline bool-flag however the 8-bit counter might be nice to notice that changes in the input corresponded to certain PCs being hit more or less often
+
+1722922191
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Does the current implementation of the fuzzer actually use the input corpus? I wrote a fuzzer for JSON parsing after I found https://github.com/ziglang/zig/issues/20931, and I adapted it to use the built-in fuzzer. The built-in fuzzer version doesn't fail using that same corpus.
+
+1722922226
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+https://git.sr.ht/~gcoakes/zig-fuzz/tree/main/item/src/json.zig
+
+1722922252
+andrewrk!~andrewrk@mail.ziglang.org
+gcoakes: what do you mean by "the input corpus"? there's not even a way to specify it yet
+
+1722922269
+andrewrk!~andrewrk@mail.ziglang.org
+oh you mean the existing unit tests?
+
+1722922269
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+https://ziglang.org/documentation/master/std/#std.testing.FuzzInputOptions
+
+1722922282
+andrewrk!~andrewrk@mail.ziglang.org
+oh look at that, I did add an option for it
+
+1722922292
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+So, it's not being used, presumably.
+
+1722922293
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+andrewrk, oh, grep the whole lib, not just the std part. Will do, thanks a lot!
+
+1722922310
+andrewrk!~andrewrk@mail.ziglang.org
+gcoakes: it uses it in the normal unit test run but not fuzzing yet
+
+1722922340
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+So, it'll iterate over the inputs during normal unit testing?
+
+1722922376
+andrewrk!~andrewrk@mail.ziglang.org
+well right now it picks only one random one to run
+
+1722922399
+andrewrk!~andrewrk@mail.ziglang.org
+fuzz testing is alpha quality right now, it's not really ready to try out unless you want to get involved in working on it
+
+1722922411
+andrewrk!~andrewrk@mail.ziglang.org
+look at the bottom of test_runner.zig
+
+1722922487
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+Oh, absolutely understand. I was writing this because I was hoping to contribute in the form of fuzzer harnesses for popular open source tools which have trophies from existing fuzzers.
+
+1722922521
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+fuzzing sounds like magic to me
+
+1722922521
+gcoakes!~Thunderbi@syn-150-220-104-157.res.spectrum.com
+I'm working on json-c integration right now.
+
