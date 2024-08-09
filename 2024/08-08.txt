@@ -1,0 +1,552 @@
+1723077885
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+andrewrk: that’s exactly what I was thinking! I tried a naive version with no cat and a static buffer and a version with an allocator and the allocator one was faster 
+
+1723077923
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+i’d be happy to document my experiment if you feel that maybe i did something wrong here
+
+1723077950
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+that said, i’m sure you have more important things to do - ie the fuzzing project 
+
+1723078099
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: how big was your static buffer?
+
+1723078141
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I tried anywhere from 1024 to 60000ish
+
+1723078144
+daurnimator!~daurnimat@vultr.daurnimator.com
+(and how big was your allocation)
+
+1723078155
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I didn't actually measure the allocation
+
+1723078159
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+maybe I should
+
+1723078180
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I just found it was faster to use fstat and then allocate the exact size
+
+1723078192
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+didn't entirely make sense to me if I'm being honest
+
+1723078227
+daurnimator!~daurnimat@vultr.daurnimator.com
+As anyone that's made lots of boot USB sticks will tell you, using dd with a blocksize of 16 megabytes or so is usually the fastest option
+
+1723078250
+daurnimator!~daurnimat@vultr.daurnimator.com
+that knowledge should imply a buffer of multiple megabytes is the fastest
+
+1723078310
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+hmm very interesting
+
+1723078318
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+maybe I'll give it a try sans alloc
+
+1723078330
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I'll let you folks know how it goes
+
+1723078344
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: in any case, it should be very easy to swap between static buffers and an allocator if you use LinearFifo which is probably the right datastructure for you here
+
+1723078353
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+rn my version of cat (zat) is 2 ish times faster than cat to cat a 2 Meg copy of the bible
+
+1723078365
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+also tried with the quran for parity but it crashed
+
+1723078461
+grayhatter!~grayhatte@user/grayhatter
+lol, there's a joke in there somewhere
+
+1723078472
+grayhatter!~grayhatte@user/grayhatter
+aidenfoxivey: what version of cat are you testing against?
+
+1723078480
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+just the one installed by default on my mac
+
+1723078503
+grayhatter!~grayhatte@user/grayhatter
+how are you measuring it being faster?
+
+1723078534
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+hyperfine
+
+1723078544
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+hyperfine "./zig-out/bin/zat ~/bible.txt ~/bible.txt" "cat ~/bible.txt ~/bible.txt"
+
+1723078617
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I do the operation twice because I thought it was fair to test the IO as well
+
+1723078620
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+and give it more to chew on
+
+1723078624
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+but it's not very scientific
+
+1723078632
+andrewrk!~andrewrk@mail.ziglang.org
+I recommend to get to the bottom of the mystery if your goal is to learn
+
+1723078634
+grayhatter!~grayhatte@user/grayhatter
+are you sure your version of cat is reading the whole file twice?
+
+1723078642
+andrewrk!~andrewrk@mail.ziglang.org
+you can figure out what is happening and it will help you understand better
+
+1723078656
+grayhatter!~grayhatte@user/grayhatter
+^ that's a very good point
+
+1723078662
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+grayhatter: from what I can tell, yes
+
+1723078674
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+andrewrk: I promise I'll figure this one out o7
+
+1723078695
+andrewrk!~andrewrk@mail.ziglang.org
+aidenfoxivey: what is your github handle?
+
+1723078713
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+same as my username here
+
+1723078716
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+github.com/aidenfoxivey
+
+1723078717
+andrewrk!~andrewrk@mail.ziglang.org
+noted
+
+1723078733
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I have a pleasant drawing of a camel as the pfp
+
+1723078750
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+grayhatter: can confirm it's printing twice
+
+1723078761
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+(reading twice sorry)
+
+1723078782
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: `pub fn main() !void {    const stdin_file = std.io.getStdIn().reader();    const stdout_file = std.io.getStdOut().writer();    var fifo = std.fifo.LinearFifo(u8, .{.Static = 4096 * 32}).init();    try fifo.pump(stdin_file, stdout_file);}`
+
+1723078797
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: ^ that's the basic shape of a `cat` program
+
+1723078844
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh with a fifo
+
+1723078846
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+interesting
+
+1723078849
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+lemme try that
+
+1723079165
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+make
+
+1723079963
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: FYI: https://pst.moe/paste/tveqxq
+
+1723080145
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh that’s awesome thank you 
+
+1723083688
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+daurnimator: would it matter at all that I'm using MacOS?
+
+1723083702
+daurnimator!~daurnimat@vultr.daurnimator.com
+matter in which respect?
+
+1723083722
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+speed-wise
+
+1723083786
+daurnimator!~daurnimat@vultr.daurnimator.com
+yes? everything will matter for speed: operating system, cpu, filesystem/formatting, temperature in the room you're in right now...
+
+1723083812
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+sorry, should be more specific
+
+1723083830
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I'm getting worse performance using the FIFO version than with an allocator
+
+1723083846
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+and I'm curious whether that might be expected or unexpected considering I'm using MacOS
+
+1723083865
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I do know that when I run binaries the first time on MacOS they take notably longer to run than subsequent times
+
+1723083870
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+which I think is XNU safety checks
+
+1723083871
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: the fifo version can also take an allocator. swap `std.fifo.LinearFifo(u8, .{ .Static = std.mem.page_size * 4 }).init();` for `std.fifo.LinearFifo(u8, .Dynamic).init(yourallocator);`
+
+1723083909
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh very cool
+
+1723083911
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+let me try that
+
+1723084039
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+hmm, it's telling me error: Unexpected
+
+1723084044
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I'll try compiling with debugging on
+
+1723084129
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+hmm, a panic
+
+1723084145
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+https://paste.sr.ht/~aidenfoxivey/f373bcb83a8878cab4e2d45dee0f3866181df574
+
+1723084167
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+sorry in advance for dumb mistakes
+
+1723084212
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: bring the allocator + gpa into your main function
+
+1723084388
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: so e.g. https://pst.moe/paste/qpovvz
+
+1723084515
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh that's weird, I thought I had that
+
+1723084520
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+but mine didn't work and yours did
+
+1723084523
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+thank you so much
+
+1723084692
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+weird! it's still slower than fstat and then mallocing that amount
+
+1723084844
+daurnimator!~daurnimat@vultr.daurnimator.com
+aidenfoxivey: my `std.mem.page_size * 4` there was a random guess/choice. try something bigger there instead
+
+1723084900
+daurnimator!~daurnimat@vultr.daurnimator.com
+e.g. try 16 megabytes like I mentioned earlier. i.e. `16<<20`
+
+1723084976
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+seems to be notably slower 
+
+1723084979
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I'll try a single meg
+
+1723085005
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+okay, same as before
+
+1723085008
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+maybe in the middle?
+
+1723085137
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+yeah it seems like the lowest it goes is not as good as the lowest my fstat + alloc goes
+
+1723085315
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+https://paste.sr.ht/~aidenfoxivey/1fc50d45f503039f031fc13d5e847c31f32dbe23
+
+1723085319
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+this is what I originally wrote
+
+1723085327
+daurnimator!~daurnimat@vultr.daurnimator.com
+cheat and use the size of your bible.txt file as a hardcoded allocation size
+
+1723085488
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+daurnimator: with the fifo allocator right?
+
+1723085542
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+*linearfifo
+
+1723086989
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+turns out I just made a super amateur mistake
+
+1723087003
+andrewrk!~andrewrk@mail.ziglang.org
+aidenfoxivey: if you've never used strace before, now would be a good time to play with it (assuming you are on linux)
+
+1723087017
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+In my original one I wasn't even reading into the file buffer I allocated
+
+1723087031
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+andrewrk: unfortunately on macos at the moment, but can definitely fire up asahi
+
+1723087866
+daurnimator!~daurnimat@vultr.daurnimator.com
+dtruss is like strace but for macos
+
+1723092463
+gcoakes!~Thunderbi@2603:8082:2000:72:5874:dae3:cfff:823f
+andrewrk, is your expectation that `std.testing.fuzzInput` would only ever be called once for a given test?
+
+1723092626
+andrewrk!~andrewrk@mail.ziglang.org
+correct
+
+1723092720
+andrewrk!~andrewrk@mail.ziglang.org
+however, I think it may need to change to something that only sets up fuzz testing with options, including the function pointer that will be called repeatedly for each input
+
+1723092766
+andrewrk!~andrewrk@mail.ziglang.org
+this way the test body could do some setup that is not run for every input
+
+1723092785
+gcoakes!~Thunderbi@2603:8082:2000:72:5874:dae3:cfff:823f
+Dumb question, but the idea of a language addition which introduces a new type of test with associated corpus is out of the question, right?
+
+1723092825
+andrewrk!~andrewrk@mail.ziglang.org
+it's not that the question is dumb, but that it lacks a problem statement
+
+1723092828
+gcoakes!~Thunderbi@2603:8082:2000:72:5874:dae3:cfff:823f
+i.e.: `test corpus("datadir/this/tests/data") { ... }`
+
+1723092852
+andrewrk!~andrewrk@mail.ziglang.org
+well, maybe your corpus is some string literals, or @embedFile
+
+1723092894
+andrewrk!~andrewrk@mail.ziglang.org
+there are other options too such as min/max length of the input
+
+1723092928
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: heh, I see your comment on the code golfed audio. I have an old favourite
+
+1723092963
+andrewrk!~andrewrk@mail.ziglang.org
+what's that?
+
+1723093001
+daurnimator!~daurnimat@vultr.daurnimator.com
+`echo 'main(i){for(i=0;;i++){putchar(((i*(i>>8|i>>9)&46&i>>8))^(i&i>>13|i>>6));if(i==0x7ffffff)break;}}' > 1.c; gcc ./1.c; ./a.out | aplay` 
+
+1723093025
+gcoakes!~Thunderbi@2603:8082:2000:72:5874:dae3:cfff:823f
+"including the function pointer that will be called repeatedly for each input" Would a patch integrating just that be accepted?
+
+1723093081
+daurnimator!~daurnimat@vultr.daurnimator.com
+uh I guess aplay doesn't work as I remembered. but play the output of that as 8 bit audio
+
+1723093101
+andrewrk!~andrewrk@mail.ziglang.org
+that's pretty good
+
+1723093104
+andrewrk!~andrewrk@mail.ziglang.org
+aplay works4me
+
+1723093158
+daurnimator!~daurnimat@vultr.daurnimator.com
+ah yep I just messed something up locally
+
+1723093167
+daurnimator!~daurnimat@vultr.daurnimator.com
+but yeah it's a long loop that feels like it has a build up and everything
+
+1723093186
+daurnimator!~daurnimat@vultr.daurnimator.com
+I (used to) use it as intro music when I was streaming
+
+1723093221
+gcoakes!~Thunderbi@2603:8082:2000:72:5874:dae3:cfff:823f
+Also, I'm investigating how to do corpus minimization and integrate that into `lib/fuzzer.zig`. Generally speaking, is that something that would be desirable? It would likely mean passing the corpus slice from `test_runner.zig` to `lib/fuzzer.zig` via `fuzzer_init`. Then, subsequent calls to `fuzzer_next` would iterate over the original corpus until exhausted.
+
+1723127612
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+andrewrk: a summary from my investigation (if you can call it that) last night
+
+1723127637
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+1) it turns out that an "optimized version" I had was just reading a fixed size and then finishing
+
+1723127651
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+it was definitely not correct
+
+1723127674
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+2) there was, as expected, no allocator that could beat the performance of stack FIFO
+
+1723127968
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+I think we can chock most of my "findings" up to operator error
+
+1723127978
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+PEBKAC
+
+1723129585
+grayhatter!~grayhatte@user/grayhatter
+aidenfoxivey: generally it's "always" turns out to be "operator error"
+
+1723129622
+grayhatter!~grayhatte@user/grayhatter
+but on the plus side, you now learned first hand something pretty significant about systems programming... which was the whole point of doing it wasn't it?
+
+1723129631
+grayhatter!~grayhatte@user/grayhatter
+I'd call it a success
+
+1723130384
+Synon!~Synon@user/Synon
+Hey quick question: what's the right way to turn a u8 sice of a length less than or equal to 8 into a u64 (filling with zero if the length is less than 8)
+
+1723130481
+Synon!~Synon@user/Synon
+Naturally, I would iterate over the slice and update the u64 I want to return with the item shifted to the right but I'm wondering if there's a magic way that just takes 8 u8s and parses it as one 864
+
+1723130484
+Synon!~Synon@user/Synon
+u64*
+
+1723130508
+ifreund!2940d10f8b@user/ifreund
+Synon: you can @bitCast() an array of 8 u8s to a u64
+
+1723130530
+ifreund!2940d10f8b@user/ifreund
+be careful about endianness though
+
+1723130600
+ifreund!2940d10f8b@user/ifreund
+so, given your original question, I would copy the slice to an array of length 8, fill with zeros if needed, and then bitcast
+
+1723130644
+ifreund!2940d10f8b@user/ifreund
+The "length less than or equal to 8" part does seem a bit strange though...
+
+1723132413
+Synon!~Synon@user/Synon
+Thanks ifreund 
+
+1723132547
+Synon!~Synon@user/Synon
+I know it's not the most common thing but yeah my use-case requires it. I'm happy to explain why if you want to know but basicly, I have a struct that holds a u8 slice (dynamic size). I want a method that takes an offset and returns a u64 made of 8 elements from that slice starting at that offet and if there are less then 8 elements left from that offset, just consider that the rest are zero bytes
+
+1723139388
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+yes I would certainly agree it’s a success
+
+1723139757
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+any recommendations on a good next tiny project?
+
+1723139773
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+seeing as though zig cat is sorted now mostly 
+
+1723140628
+andrewrk!~andrewrk@mail.ziglang.org
+a game
+
+1723140703
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+does zig have good support for game frameworks?
+
+1723140731
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+https://machengine.org
+
+1723140732
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+ooooh
+
+1723140734
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+fancy
+
+1723144406
+grayhatter!~grayhatte@user/grayhatter
+jdh has a good video of making a game in zig, going 0 to done which might be interesting
+
+1723144484
+grayhatter!~grayhatte@user/grayhatter
+I'd play a zig version of the dino jumping game that's in chrome
+
+1723144523
+grayhatter!~grayhatte@user/grayhatter
+huge bonus points if you could get it to compile into wasm so I could host it for my friends to play
+
+1723153366
+aidenfoxivey!08de0355d2@2a03:6000:1812:100::e41
+oh yes a jumping game sounds enjoyable 
+
