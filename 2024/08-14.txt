@@ -1,0 +1,204 @@
+1723610426
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+Hi, is there the opposite of parseFromValue? a function that takes a static struct and converts it to a dynamic std.json.Value?
+
+1723610434
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+Thanks!
+
+1723612662
+torque!~tachyon@user/torque
+is there a reason you would want to go to an intermediate representation rather than directly to JSON with `stringify`?
+
+1723614037
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+Because, I'm mainly working with a large json.Value and only parsing parts of it to structs for modifications. 
+
+1723614598
+torque!~tachyon@user/torque
+I don't think there's an existing function because the json module directly serializes structs, it doesn't use Value as an intermediate. It would be relatively straightforward to write a function that did the conversion, though
+
+1723614698
+torque!~tachyon@user/torque
+I guess just directly modifying your json.Value object is clunky
+
+1723614719
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+yep, too many levels of nested code
+
+1723614734
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+it's what I've been doing so far but it's not pretty
+
+1723614787
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+I've just written a function for my struct, but I'll consider sending a PR to zig. Seems logical to include it given the existence of parseFromValue
+
+1723615152
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+https://github.com/ziglang/zig/wiki/Language-Proposals states "we are not accepting new proposals to change the language at this time". How am I supposed to interpret this in this context? I'm guessing this is slightly different as it's for the standard library but I don't see any instructions on what to do when suggesting a new function for the standard library.
+
+1723621179
+ifreund!2940d10f8b@user/ifreund
+nilsirl: if youve already written the code just open a PR
+
+1723621199
+nilsirl!~m-us44bu@2a01:4f8:c012:3461::1
+ifreund: I've not written the code
+
+1723623953
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Anyone here done FFI stuff with Common Lisp? Specifically SBCL? Curious to see/hear about your adventures.
+
+1723629398
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+how does one export a function (that has a body) as a C ABI? I'm getting errors either about ignored error unions (but you can't use !void for the C ABI), or errors about having a function body
+
+1723629923
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I can build a .dylib but there's no `main` in the symbol list, my attempts to add a named function fail as above
+
+1723629989
+ifreund!2940d10f8b@user/ifreund
+tsujp: `export fn add(a: i32, b: i32) i32 { return a + b; }`
+
+1723630042
+ifreund!2940d10f8b@user/ifreund
+if you call something that can return an error in a function that does not return a error union, you have to handle the error somehow
+
+1723630049
+ifreund!2940d10f8b@user/ifreund
+this is not related to exporting functions though
+
+1723630065
+ifreund!2940d10f8b@user/ifreund
+for example, `foo() catch |err| { ... }`
+
+1723630640
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm, I don't know what to do to handle the error I guess lol, it's not clear to me how to clean up attempting to create a mach (engine) module
+
+1723630923
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+how can I get more information on the unhandled error so I can handle it properly? Mach is under rapid development and the docs are lacking (understandable) and I've been away from Zig for a long time so I'm not sure how to handle the error here
+
+1723631221
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+can always do catch unreachable, unsure `defer` cleanups still run then right?
+
+1723632599
+squeek502!~squeek502@user/squeek502
+tsujp, when calling the function that can error, do `func() catch |err| switch (err) {}` and the compiler will tell you all the errors that are possible
+
+1723632642
+squeek502!~squeek502@user/squeek502
+(specifically, the resulting compile error will tell you the possible errors)
+
+1723633385
+ifreund!2940d10f8b@user/ifreund
+tsujp: catch unreachable is not a way to handle an error
+
+1723633398
+ifreund!2940d10f8b@user/ifreund
+it is always wrong if the error can actually be returned
+
+1723633436
+ifreund!2940d10f8b@user/ifreund
+your options are either log something and panic or return something from your exported function to indicate that an error occured
+
+1723636783
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+cheers
+
+1723636855
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+thinking about doing something cheeky with io_uring. Instead of communicating with another process using FFI (having to build and load libraries etc)... what if the other process dumped it's communication into an io_uring buffer and I consume it from one
+
+1723636877
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+io_uring bandwidth is ludicrous from my reading and it's probably less syscalls than FFI as well...?
+
+1723636905
+ifreund!2940d10f8b@user/ifreund
+ffi is not a syscall
+
+1723636942
+ifreund!2940d10f8b@user/ifreund
+it generally refers to calling a function in a different object file using the C ABI
+
+1723636965
+ifreund!2940d10f8b@user/ifreund
+it does not require a context switch to the kernel (like a syscall) or anything like that
+
+1723637023
+ifreund!2940d10f8b@user/ifreund
+the overhead of an FFI call depends entirely on the languages involved
+
+1723637052
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah okay (@ the context switch)
+
+1723637057
+ifreund!2940d10f8b@user/ifreund
+calling between C and Zig is effectively the same as calling between C and C for example
+
+1723637081
+ifreund!2940d10f8b@user/ifreund
+Calling between a language with a large, complex runtime such as javascript and C can be relatively quite expensive
+
+1723637087
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+spitballing efficient ways to interface with SBCL (that Common Lisp implementation)
+
+1723637101
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+SBCL has to serialise when going over the FFI boundry AFAIK
+
+1723637370
+ifreund!2940d10f8b@user/ifreund
+tsujp: I suspect that the FFI implementation in SBCL is the most efficient way
+
+1723638252
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund I'd tend to agree, I'm just racking my brain thinking about running the Lisp image remotely and having a local GUI to it for example. For context, the SBCL Lisp image in question is for Lem (an Emacs-y-like editor).
+
+1723648607
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Does anyone know if it's possible to make a required argument with zig-clap? I'm not seeing it in the examples
+
+1723648787
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I guess I could just check if it's there and, if it's not, exit with an error... but if there's a built-in way to do the same thing I may as well
+
+1723649717
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Also, if I've got a variable defined in build.zig (in this case, const version), is it possible to access that from another file? 
+
+1723649971
+bblack!~bblack@wikimedia/bblack-WMF
+do you mean access it from the normal source in the project, like a config setting templated into the code?
+
+1723650101
+bblack!~bblack@wikimedia/bblack-WMF
+for that kind of use-case, there's: https://ziglang.org/documentation/master/std/#std.Build.Module.addOptions
+
+1723650402
+bblack!~bblack@wikimedia/bblack-WMF
+for example, in build.zig you can do something like:
+
+1723650409
+bblack!~bblack@wikimedia/bblack-WMF
+const version = ...; const options = b.addOptions(); options.addOption([]const u8, "version", version); exe.root_module.addOptions("build_config", options);
+
+1723650447
+bblack!~bblack@wikimedia/bblack-WMF
+and then in your normal source, code you can @import("build_config") and access it as build_config.version
+
+1723650497
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+bblack: exactly, thanks!
+
+1723656589
+andrewrk!~andrewrk@mail.ziglang.org
+thank you torque
+
