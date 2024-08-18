@@ -1,0 +1,884 @@
+1723854713
+cixel!~cixel@user/cixel
+noobie question: poking around some std code related to TLS and wanted to find why std/crypto/Certificate/Bundle/macos.zig is directly reading "/System/Library/Keychains/SystemRootCertificates.keychain" and see in issue #14169:
+
+1723854714
+cixel!~cixel@user/cixel
+> this is typically done with a framework on macOS but we cannot depend on frameworks in the zig standard library
+
+1723854714
+cixel!~cixel@user/cixel
+and had a few questions about this:
+
+1723854715
+cixel!~cixel@user/cixel
+* why not depend on frameworks? is it an issue of cross-compilation?
+
+1723854715
+cixel!~cixel@user/cixel
+* does this limitation extend to dynamically linked frameworks?
+
+1723854716
+cixel!~cixel@user/cixel
+I don't know enough about macOS conventions to understand when/why this is the case, but on my system, the default keychain is my user keychain, and it doesn't seem to match the system root keychain (I'm on a work computer and we have an SSL-intercepting proxy installed; could be related and this is just an odd setup?) -- this leads to
+
+1723854716
+cixel!~cixel@user/cixel
+TlsInitialization errors. I wonder if the "fault" here is the tool (Netskope) for installing in a way that ignores the system root, or std's for assuming the system root is the correct keychain to use.
+
+1723856883
+cixel!~cixel@user/cixel
+(IRC logs are cooked and I don't have a bouncer set up so I may not see a reply; I think I'm just going to open a github issue)
+
+1723861907
+torque!~tachyon@user/torque
+you can write a zig program that links and uses frameworks, but I believe it doesn't work for the stdlib because the framework headers can't be redistributed without apple's permission so there's no way to cross compile them
+
+1723862034
+torque!~tachyon@user/torque
+I suspect it would be possible for the SSL certificate resolution stuff to more closely mimic the framework behavior in terms of trying to load from the user's keychain
+
+1723862245
+cixel!~cixel@user/cixel
+I'm not really sure what the 'rules' are for framework resolution - it seems like the correct thing will always be to use `/usr/bin/security` or to use the framework
+
+1723862385
+cixel!~cixel@user/cixel
+keychain** resolution
+
+1723862465
+cixel!~cixel@user/cixel
+Go does some fried stuff (https://go-review.googlesource.com/c/go/+/227037) to support dynamic linking without using cgo, which I assumed wouldn't be necessary for zig, but I guess dynamic linking isn't so straightforward if you can't bundle headers
+
+1723862822
+andrewrk!~andrewrk@mail.ziglang.org
+I think zig could use dlopen to access framework APIs at runtime, relying on extern function declarations in the standard library
+
+1723862839
+andrewrk!~andrewrk@mail.ziglang.org
+that's an option that I was not aware of until recently
+
+1723866365
+cixel!~cixel@user/cixel
+hm, ok. i'll mess with dlopen and dlsym. might be a fun way to learn about casting :P
+
+1723866374
+cixel!~cixel@user/cixel
+thanks
+
+1723866483
+cixel!~cixel@user/cixel
+in the meantime, I kinda hacked in a fix locally by patching Bundle so it checks the value of an env var to load a .pem if it's set (https://github.com/cixel/config/blob/main/home-manager/zig_cert.patch)
+
+1723866580
+cixel!~cixel@user/cixel
+considering that curl, node.js, and other things that package their own certs have env vars like this, it seems like a reasonable thing to suggest for the language anyway, regardless of what the default Bundle scanning behavior is
+
+1723866675
+cixel!~cixel@user/cixel
+especially once https://github.com/ziglang/zig/issues/14168 is in place, because it'll be necessary to get around things like Netskope or Zscaler or other things that proxy TLS
+
+1723870174
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+How busy is this channel, anyone around?
+
+1723870196
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I see zig taking alot of the buzz/enthusiasm away from rust
+
+1723870200
+grayhatter!~grayhatte@user/grayhatter
+davros1: someone is usually around, but it's still IRC so there's spurts of activity
+
+1723870245
+grayhatter!~grayhatte@user/grayhatter
+davros1: I'm not sure it's taking it away from rust. Programming languages aren't a zero sum game, you could easily be excited about both rust, zig, and many other languages
+
+1723870274
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Rust tends to be very divisive
+
+1723870333
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Myself I was on a knife edge, the language has been a rollercoaster for me.. I've been at both extremes (a rust fanatic, and someone who finds it humiliating when it takes you capabilities away)
+
+1723870367
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Does Alex RP frequent here? I wanted to pull the discussion on #21105 off GitHub to IRC.
+
+1723870406
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+So I know the mindset that zig is winning with. ("We want a new language thats as powerful as C/C++, but without the clunky old syntax etc, and without the borrow checker meaning we need 500 library functions for every trivial thing"
+
+1723870489
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I heard that zig didn't do overloads, but looking at some zig code I do see some method call syntax
+
+1723870502
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+It doesnt' have RAII does it, it uses defer?
+
+1723870533
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+"t=create_thjing(); defer destroy_thing((t); ..." Right?
+
+1723870702
+grayhatter!~grayhatte@user/grayhatter
+davros1: Zig is a systems programming language that's designed to be easy to understand and write maintainable code. Part of that is it doesn't try to guess what the programmer wants. So with Zig you're expected to init and raze your objects
+
+1723870753
+grayhatter!~grayhatte@user/grayhatter
+defer is one of the ways you could raze objects
+
+1723870760
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I hear some people criticise RAII for its inability to pass parameters to destructors (linear types woudl be an interesting alternative)
+
+1723870799
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I have personally used RAII forever now but in the 'before time' I did code in C and asm
+
+1723870813
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+("Forever" = "feels like forever at this point")
+
+1723870948
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I started my rust journey in 2014. Wanted to use it for gamedev. Now I saw how the rust core team (back before it was stabilised) rejected all the feedback from the games community. (Like 'safety is overkill, why not have an unsafe mode', ' can you make it easier for rapid iteration' ..)  - 10 years later, it has indeed not made inroads into gamedev. And I'm seeing peopel who try jai&zig get more done more quickly
+
+1723870996
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Conversely there's some cases where things I disliked about rust.. by persevering (because I did fundamentally agree with some pillars like "globals are unsafe[}" for parallel code) - there's some cases where the rust team has actually turned my thinking
+
+1723871020
+txdv!~txdv@78.56.38.107
+rust has a very strong focus on safety while trading development speed
+
+1723871053
+txdv!~txdv@78.56.38.107
+nothing wrong with that, but some might prefer development speed for prototyping etc
+
+1723871061
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+What surprises with rust is whilst it is indeed slower at the start, I think their super strict choices make projects easier to grow and change further down the road
+
+1723871085
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+So my rust codebase.. whilst I got more done in less time in c++, I've been able to keep my project going for longer
+
+1723871107
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I never typically kept any code for longer than 3 years in c++. I always got fed up , threw it out and started again
+
+1723871130
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Wheras ive got some code in my current project that I've been able to go back and clean up & keep working that goes back 10 years now lol
+
+1723871146
+txdv!~txdv@78.56.38.107
+that is impressive
+
+1723871157
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I think my estimates were that rust Felt half as productive, but this aspect is a paradox
+
+1723871187
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Any place where I have a choice that I got fed up with.. I've been able to do the big sweeping refactor to fix it
+
+1723871217
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+And it magically "keeps working" wheras in c++ I wouldn't have expected it to ("it's easier to just rewrite at this point..")
+
+1723871253
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+However, part of that is down to places where rust simplifies over c++ (other cases, its where it's stricter)
+
+1723871275
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+The former statement makes me wonder if the "stick with c" people were right all along lol
+
+1723871298
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+But the latter.. e.g. rusts ability to make newtypes really easily is handy when doing a refactor
+
+1723871322
+txdv!~txdv@78.56.38.107
+try it out? since zig is advertised as being a better C 
+
+1723871357
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+"How do I make sure I dont trip myself out with all these int indices" " just throw a wrapper in, SourceIndex(i32)" , "my_function(a:32, b:i32, SourceIndex(c):SourceIndex, d:i32)" /* makes it easier not to trip up..*/
+
+1723871409
+Affliction!affliction@idlerpg/player/affliction
+Yeah, I haven't personally done much with zig yet, but rust does make refactoring much easier, without feeling like you've missed something.
+
+1723871431
+grayhatter!~grayhatte@user/grayhatter
+Affliction: that's likely a false sense of security
+
+1723871432
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+The way I like to explain it is that the type system is man-machine intelligence
+
+1723871438
+Affliction!affliction@idlerpg/player/affliction
+grayhatter: hence, "feeling"
+
+1723871440
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+It lets you do things bigger than your own ability to track
+
+1723871493
+Affliction!affliction@idlerpg/player/affliction
+newtypes can largely work in any language, rust just makes them more likely to be used.
+
+1723871539
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Yeah. In c++ I would have likely already had a tonne of overloads, breaking that "change the types and it forces you to reconsider all the calls" aspect
+
+1723871558
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(Which you could in principle also fix with discipline, "dont overuse overloading")
+
+1723871582
+grayhatter!~grayhatte@user/grayhatter
+davros1: that issue you're describing is one of the reasons zig doesn't have overloading
+
+1723871624
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Does it have polymorphism (like rust has trait-bounded overload essentially)
+
+1723871624
+txdv!~txdv@78.56.38.107
+I guess that is why every company has its own "how to use c++ correctly" guide, which limits the set of features dramatically
+
+1723871636
+Affliction!affliction@idlerpg/player/affliction
+That and the "no hidden control flow" aspect
+
+1723871647
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Yeah c++ diverges into a nomber of styles
+
+1723871651
+Affliction!affliction@idlerpg/player/affliction
+davros1: kinda, sorta, not really. Structs with function pointers.
+
+1723871659
+Affliction!affliction@idlerpg/player/affliction
+see eg, Allocator
+
+1723871660
+grayhatter!~grayhatte@user/grayhatter
+davros1: no, it has comptime
+
+1723871677
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I was going to say at this point I'd never voluntarily work with another person on a  c++ project ever again, the extent to which it encourages coworker fights
+
+1723871693
+Affliction!affliction@idlerpg/player/affliction
+oh, yeah, comptime for static dispatch, self-defined vtables for dynamic
+
+1723871709
+grayhatter!~grayhatte@user/grayhatter
+scroll through std/mem.zig
+
+1723871726
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+And I say  to myself that "the rust restrictions would win in a team environment" - but ive also found it helpful for growing my own codebase ( doing big sweeping refactors)
+
+1723871742
+grayhatter!~grayhatte@user/grayhatter
+because explicit is better than implicit, the polymorphism is a variable
+
+1723871777
+andrewrk!~andrewrk@mail.ziglang.org
+davros1: lately I've been using a lot of `enum(u32) { _ }` with convenience methods added
+
+1723871802
+andrewrk!~andrewrk@mail.ziglang.org
+basically, you wrap an integer, making it have type safety and convenience methods, but get zero cost runtime code for it, as if it were an integer
+
+1723871820
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Comp time for static dispatch.. would that be stuff like.  "Fn add(alb){. If type=X { handle that} else if type=Y{handle that} /* same end result as having add(:X), add(:Y)" ?
+
+1723871820
+grayhatter!~grayhatte@user/grayhatter
+but, you're free to accept an var: anytype, and switch (@typeOf(var))
+
+1723871891
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+That sound quite like rust newtypoes
+
+1723871908
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+("Ernum (u32)" .. not sure what that does but ..
+
+1723871944
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Another place rust won me over is enum/match , I found that inbuilt tagged unions do change how you (well I) code 
+
+1723871986
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+"c++ , I'll just throw a load of extra bool parameters in here (known bad stye)" => "rust, very easy to express the concept properly a an enum"
+
+1723872035
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Not sure what my goal was jumping into this channel today .. curiosity 
+
+1723872053
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I sort of feel some envy to how fast I see zig people get stuff done lol
+
+1723872081
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+But I also find myself wanting to defend rust if they trash talk it (some bias down to the fact I've been using rust so long at this point)
+
+1723872128
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Its quite possible if zig was around in 2015 or so .. it would have suited me better
+
+1723872183
+Affliction!affliction@idlerpg/player/affliction
+I'm content to try a bit of both
+
+1723872189
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I also figure another langauge switch would be a net negative for me at this point sadly
+
+1723872208
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(Given the other lesson - how long it takes to adapt after you build habits)
+
+1723872218
+Affliction!affliction@idlerpg/player/affliction
+Though rust-analyzer has spoiled me, heh. zls isn't quite there yet, but still better than nothing.
+
+1723872266
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Yeah maybe 5 years of delay for me in liking rust enough to want it for my main project, but for most of that time C++ IDEs were much better
+
+1723872320
+txdv!~txdv@78.56.38.107
+zig is pretty slick in terms of learning, the language has a strong focus on not introducing redundant features, so the feature set to learn is smaller but its powerful
+
+1723872329
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+"Messy language with good IDE wins vs better language with plain text editor" was a conclusion , but I stubbornly persevered. And some time between 2018-2021 .. I found rust analyzer improved a lot
+
+1723872388
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I did appreciate taht rusts syntax tweaks made plain greps easier (try finding the function defs in c++ lol)
+
+1723872406
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I note zig does the same thing "fn ..."
+
+1723872500
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I'd guess that JAI, Zig, Odin would beat rust in gamedev . However, the community will be split between them. 
+
+1723872531
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Rust at this point .. it's fair to say is not winning the game development community over, it remains C++ dominant
+
+1723872541
+Affliction!affliction@idlerpg/player/affliction
+jai, has that been released?
+
+1723872564
+Affliction!affliction@idlerpg/player/affliction
+haven't heard of odin
+
+1723872576
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Not really but jblow's elitist community selection seems to yield the same sort of thing , "peopel who try it get a lot done quickly"
+
+1723872607
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Odin has some similarities with both JAI,Zig
+
+1723872638
+txdv!~txdv@78.56.38.107
+might be biast, because only very experienced devs get to use JAI, obviously they are productive already nevermind what language they use
+
+1723872671
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Yeah  . And he makes it clear, "he's targeting experienced devs anyway"
+
+1723872674
+Affliction!affliction@idlerpg/player/affliction
+SOA listed on the main page as a first class feature, nice. I think zig has similar capabilities.
+
+1723872815
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Inbuilt matrices is interesting but I personally just enjoy what they criticise.. templates etc letting you build complicated structures in the langauge 
+
+1723872829
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I've been pleasantly surprised by how much LLVM can autovectorize
+
+1723872869
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I haven't gone hard on SIMD opt yet because I'm targeting wasm aswell but I think between rust macros & generics , and LLVM's autovectorizing, I'll be able to get good. SIMD utilisation
+
+1723872894
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Out of the box I was seeing llvm autovectorize 4x4 matrices just fine (which was a pleasant surprise)
+
+1723872942
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+What I dont have is much avx2 8xf32 use. But ARM & neon out there make me focus on 4xf32 
+
+1723872998
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I have SIMD on my mind right now because Zen5 beefs up AVX512 support , that could be a game changer for cpu approach
+
+1723873018
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(Like the gap from how you code for 4xf32 to 16xf32 is bigger)
+
+1723873021
+andrewrk!~andrewrk@mail.ziglang.org
+people are on pretty good behavior here. I don't think we've had a person trash talking Rust in many months
+
+1723873032
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Cool.
+
+1723873046
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I accept people who simply say "rust doesn't work for me", because I've been there
+
+1723873106
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+And the rust community itself also invites a defensive reaction , pretty much "you can't be trusted .. ", "you must rewrite in this safe langauge" (-> well no)
+
+1723873127
+andrewrk!~andrewrk@mail.ziglang.org
+well, let's not start generalizing about the rust community please
+
+1723873147
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+"Extreme elements of .." Perhaps
+
+1723873173
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+In just about any programming space I'll see divisive arguments over it very quickly
+
+1723873183
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+It is a very polarising language .
+
+1723873250
+andrewrk!~andrewrk@mail.ziglang.org
+🤷
+
+1723873279
+cixel!~cixel@user/cixel
+random q: https://github.com/ziglang/zig/wiki/Community links to https://marler8997.github.io/zig-irc-webpage/?date=2024-08-17 for history, but it 404s and it looks like the source repo (https://github.com/marler8997/zig-irc-logs) hasn't been written to since 2022 - is there another? or is the service that was doing logging defunct?
+
+1723873356
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(Is andrewrk the official zig person I see on GitHub etc?)
+
+1723873729
+Affliction!affliction@idlerpg/player/affliction
+Yes, you're speaking to THE andrewrk. Behold his greatness.
+
+1723873794
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Its a nice achievement to get traction for a language
+
+1723873839
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I did have a bash at building 'my ideal pet language' but whilst I got it working I quickly concluded I wouldnt' be able to get traction so I gave up on it
+
+1723873953
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+My plan was something that could be transpilable with more of a c++ subset for a migration path but I never got as far as trying that out
+
+1723873969
+Affliction!affliction@idlerpg/player/affliction
+Anyone can cobble together a parser and code gen. Few have the patience to see it through to something genuinely useful. Fewer release what they've built and subject it to criticism of the masses.
+
+1723874046
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+There's probably hundreds of working languages out there but only a few get popular
+
+1723874080
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I mentioned the IDE support, I replied I'd never be able to do all that lol
+
+1723874129
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+And there was a long time during which rust itself had everything I needed, but it was just lack of IDE support keeping me going back to C++ (id' have had the same problem with my pet language)
+
+1723874163
+Affliction!affliction@idlerpg/player/affliction
+Yeah, tooling's important.
+
+1723874327
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I also figured it would be bad for my mental health to retreat into my own little world like that, I figured persevering with the contrary views I was getting from Rust people would broaden my mind more
+
+1723874349
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+And indeed there were a few aspects in which they changed my mind on some things 
+
+1723874373
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+My pet lang had all the adhoc c++ overloads. Whch I now accept are a "misfeature"
+
+1723875464
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Has anyone else encountered aborted tests due to ProcessFdQuoteExceeded when running `zig build test-std -fqemu -fwasmtime -fwine` on a many-core system? I changed my command to add `-j1` and now it is working (I think). I tried raising the FD limit, but that didn't seem to be enough.
+
+1723876764
+torque!~tachyon@user/torque
+I don't know anything about rust, but I am willing to go buck wild insulting C++ 24/7 if the situation demands it
+
+1723906791
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Does zig have a 'context' like jai
+
+1723906815
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I hear some jai people saying there's a 'context' implicitely passed around holding the allocator, or somethign like that
+
+1723907204
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+You could always just use a global allocator if you're application desires to only use one allocator.
+
+1723907277
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+If you want to go really crazy, you could probably do some kind of `fn pushAllocator` and `fn popAllocator` with a global `var allocator_stack = std.DoublyLinkedList(std.mem.Allocator){}`.
+
+1723907487
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Push/pop would need to get the thread id I think 
+
+1723907513
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Or could operate on something in 'thread local storage' I guess (I'm not sure how performant the out of the box mechanisms are for that)
+
+1723907542
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+This might be the problem jai is solving with its context (the rust way is "you just make and pass context around, explicitely")
+
+1723907545
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Oh, yeah, you would probably need a TLS var.
+
+1723907616
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+What do you think JAI would be doing differently? Are they passing it as an implicit function argument?
+
+1723907624
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I thinks
+
+1723907628
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I think so
+
+1723907633
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I'm not sure exactly though
+
+1723907656
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+The way people talked about it.. "just throw the globals in it"
+
+1723907726
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+One thing in rust that really resonates with me, I do strongly dislike global variables and agree with their choice to make then "unsafe{}" to mutate
+
+1723907809
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+But if you had some implicit per-thread pointer that you could throw stuff in as easily as adding global vars, it might give the best of both worlds
+
+1723907943
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+You don't need `unsafe{}` for global variables in Rust. You just need something to ensure exclusivity.
+
+1723907996
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Right. "Without a safe wrapper, mutable globals are unsafe"
+
+1723908031
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Exlucsive to a thread? How would you signal it or know which thread you're in .. so in practice in a multithreaded codebase , globals need sync primitive.
+
+1723908060
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(& rust is designed for multithreaded codebases first and foremost)
+
+1723908092
+companion_cube!~simon@user/meow/companion-cube:68572
+if you use TLS you're good, they can't be accessed by other thredads but then they're not true globals
+
+1723908106
+companion_cube!~simon@user/meow/companion-cube:68572
+anyway in Odin I think the context is passed as a hidden argument, and stored on the stack
+
+1723908111
+companion_cube!~simon@user/meow/companion-cube:68572
+idk about jai
+
+1723908159
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I have hazy memory that TLS isn't quite as versatile as a pointer to a context object.. something like 'its fudged as an x86 segment register (?)
+
+1723908214
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Is comp time versatile enough to insert a context object pointer ? (I think JAI has some kind of 'let the user modify the AST at compile time..)
+
+1723908275
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Insert it where?
+
+1723908313
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Literally stuff an extra argument (I'm not sure what zig comp time can & cant do)
+
+1723908502
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Into a function call signature? I don't think that would be a good idea even if you could. You could probably do something crazy like create a "decorator" function which wraps a function, but I don't know how you would make that visible to the wrapped function.
+
+1723908608
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(Does zig have local functions ?)
+
+1723908622
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Meaning closures?
+
+1723908644
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Not quite - distinct from closures in that they're just normal functions, that just happen to be limited in scope
+
+1723908659
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+(No variable capture)
+
+1723908684
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+You can do `const func = struct { fn impl() void {} }.impl;`, if that's what you're asking.
+
+1723908729
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+It's not pretty. Superficial as that may be, it keeps me from using most of the time compared to just file scoped, private functions.
+
+1723908749
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+*file scoped => scoped to the current type
+
+1723908792
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Trying to pick up more of zig's syntax.. I'm guessing thats creating an empty local stunt, I see C++ -esque declaration of functions inside a type? Woudl those come with implicit "this *" or not
+
+1723908815
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+No, there are no implicit arguments in Zig.
+
+1723908838
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+But, yes, it is a locally defined struct. It can capture comptime variables, but nothing from runtime.
+
+1723908867
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+My model is something like "zig = c + (rust- Cplusplus)" if you were to categorise languages in a vector space lol
+
+1723908919
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Maybe there's a better way to describe it. Also I see this sort of thing "for (..) |x| { ....}" which reminds me of rusts deleted "do notation", what is that doing exactly
+
+1723909048
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+It's capturing a single item at a time from whatever iterable is given in `for (..)`. https://ziglang.org/documentation/master/#for
+
+1723909087
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Iterable is something defined by the compiler for specific types, not something generally implementable from user code.
+
+1723909354
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Does anyone know what version of wine is used by the x86_64-linux-{debug,release} CI jobs? I'm trying to get my local repo to pass all the tests from `zig build test-std`. I was previously just testing with `-Dskip-non-native`, but now, I need to fix an issue that seems exclusive to wine. I'm getting errors related to wine functions not being
+
+1723909355
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+implemented.
+
+1723926225
+grayhatter!~grayhatte@user/grayhatter
+gcoakes: debian?
+
+1723926279
+grayhatter!~grayhatte@user/grayhatter
+either way, functions don't often go "missing" so update to the newest version of wine, and see if that doesn't fix the issue
+
+1723926296
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+I don't have the issue locally. The CI does.
+
+1723926306
+grayhatter!~grayhatte@user/grayhatter
+I don't think zig expects to pin to a specific verison of wine, so once you're sure you have... ahh
+
+1723926327
+grayhatter!~grayhatte@user/grayhatter
+the CI is probably running debian, so wine from 10 years ago probably 
+
+1723926345
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+In fact, I can't reproduce it locally. I'm trying to figure out how to reproduce it.
+
+1723926376
+grayhatter!~grayhatte@user/grayhatter
+[hyperbole for the humor because I'm constantly annoyed by debian's repos]
+
+1723926425
+grayhatter!~grayhatte@user/grayhatter
+you're trying to fix a CI issue, or you fixed an issue, and CI fails but it passes locally?
+
+1723926441
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+https://github.com/ziglang/zig/actions/runs/10399427158/job/28798281003?pr=21083
+
+1723926448
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Trying to fix that linking error.
+
+1723926457
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+error: lld-link: undefined symbol: _UnmapViewOfFile
+
+1723926537
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+I think I'm just going to sidestep the issue anyways because that is a symbol from kernel32.dll, and the Zig std library wants to use ntdll.dll. I'm pretty sure NtUnmapViewOfSection will work since it seems to be used in other parts of the standard library.
+
+1723926631
+grayhatter!~grayhatte@user/grayhatter
+this feels like a zig build bug
+
+1723926865
+grayhatter!~grayhatte@user/grayhatter
+I'm surprised that zig will attempt to link kernel32.dll, but only ntdll.dll on CI. I'd have assumed that if it worked locally, it would also work CI. In this case, I'd have assumed it wouldn't try to link kernel32.dll
+
+1723927753
+Synon!~Synon@user/Synon
+I need help understanding one thing: why do I get integer overflow when trying to store @intFromBool(...) + @intFromBool(...) + @intFromBool(...) into an u8?
+
+1723927766
+Synon!~Synon@user/Synon
+the max value should be 3, how does that overflow an u8?
+
+1723927783
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what's the type of the int?
+
+1723927871
+Synon!~Synon@user/Synon
+u8
+
+1723927886
+Synon!~Synon@user/Synon
+wait nevermind
+
+1723927892
+Synon!~Synon@user/Synon
+@intFromBool() returns a u1
+
+1723927930
+Synon!~Synon@user/Synon
+I mean still... u8 = u1 + u1 + u1; should be fine no?
+
+1723927939
+Synon!~Synon@user/Synon
+I can work around it by doing += over 3 lines instead
+
+1723927955
+Synon!~Synon@user/Synon
+or by wrapping each @intFromBool() inside a @as(u8, ...)
+
+1723928114
+Synon!~Synon@user/Synon
+I feel like @intFromBool() can be useful when used to add a lot of bools together in one line, would be great if that was made possible
+
+1723928124
+Synon!~Synon@user/Synon
+like to check of at least n of m conditions are true
+
+1723928883
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Maybe you would be better off using a enum set or just normal integer flags. With the latter, you even could do @popCount to get the count more efficiently using hardware instructions where available.
+
+1723930060
+grayhatter!~grayhatte@user/grayhatter
+Synon: yeah, I hate that feature of Zig myself
+
+1723930117
+grayhatter!~grayhatte@user/grayhatter
+in my head `u32 = 16 + 16` shouldn't overflow but it does. Zig see it is u32 = u16(u16 + u16)
+
+1723930171
+grayhatter!~grayhatte@user/grayhatter
+which feels even more wrong because it'll promote comptime_int :/
+
+1723931129
+Synon!~Synon@user/Synon
+grayhatter: yeah that's sad
+
+1723931218
+Synon!~Synon@user/Synon
+gcoakes: actually I have a bunch of methods isThis(), isThat() and I have methods that will check them, I also have a method that will check all of them and only return true if 5 of 8 conditions are true (doesn't matter which)
+
+1723931264
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Ah, gotcha.
+
+1723931265
+Synon!~Synon@user/Synon
+In C, I would just add the "booleans" together since booleans are just numbers
+
+1723931294
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Yeah, I think `@as` is the correct way then.
+
+1723931326
+Synon!~Synon@user/Synon
+@as(u8, @intFromBool(...)) works, it's just a bit too verbose IMHO
+
+1723931336
+Synon!~Synon@user/Synon
+yeah, that's what I ended up doing
+
+1723931354
+Synon!~Synon@user/Synon
+thanks for the help though :D
+
+1723932815
+torque!~tachyon@user/torque
+you only need to wrap one of them in the @as(u8)
+
+1723932825
+torque!~tachyon@user/torque
+the rest will be promoted
+
+1723933130
+Synon!~Synon@user/Synon
+torque: oh nice thanks!
+
+1723933202
+torque!~tachyon@user/torque
+the problem, I believe, is that the intermediate expression is only as wide as the widest involved type. I think this behavior predates much of the result location semantics stuff and it would be nice if the intermediate expression could be promoted to the result type if one is available
+
+1723933353
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.13.0/#Type-Coercion-Integer-and-Float-Widening
+
