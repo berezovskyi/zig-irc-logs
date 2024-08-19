@@ -1,0 +1,256 @@
+1723954855
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+So zig has no overloading ?.. but it does do some kind of generics .. it can do compile time logic based on types ?
+
+1723954892
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Just curious if it still does some kind of name mangling like C++ on that front... and exactly how that would happen
+
+1723954967
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Was just wondering about interop. Rust can use C libs quite happily . c++ is harder because of mangling , templates, mismatch between rust & C++ ideas
+
+1723955006
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I'm guessing Zig can expose unmangled plain C functions (as rust can #[no_mangle] etc)
+
+1723955078
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+I'm finding that rust new types are still useable with C-FFI, e.g. I've been able to wrap some of the typeless OpenGL parameters with rust struct GlBuffer(GLuint) , struct GlEnum(GLenum) etc
+
+1723955360
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+What would happen with slice parameters (zig has combined pointer+length as a slice, right)
+
+1723955395
+davros1!~davros2@host86-184-190-18.range86-184.btcentralplus.com
+Can we pass slice references  between zig & rust..
+
+1723957661
+Ayo!~Ayo@45.142.232.203
+davros1: Last time I tried, Zig slices did not have a defined ABI and Zig won't let you use them in extern structs/fns.
+
+1723993949
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+Hey, has something changed for building Zig from source on Windows? I've been using a pre-built Zig from https://ziglang.org/downloads to test standard library changes; however, I would like to spin up a full development environment.
+
+1723993999
+gcoakes!~gcoakes@2603:8082:2000:72:264b:feff:fe90:1384
+I tried downloading the dependencies from https://ziglang.org/deps. That is giving me a 403 error. This occurs both from a browser and via `powershell -File ci\x86_64-windows-debug.ps1`.
+
+1724012927
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+What is currently the easist way under Windows to build the compiler? Ran into a regression when upgrading from 0.14.0-dev.364+8ab70f80c to 0.14.0-dev.1166+bb7050106 and am trying to find what commit broke it. The following is a reduction of my code that had been working fine for years http://aeug.eu/p/cf6f.zig
+
+1724014001
+andrewrk!~andrewrk@mail.ziglang.org
+Flaminator: https://github.com/ziglang/zig?tab=readme-ov-file#building-from-source
+
+1724014219
+andrewrk!~andrewrk@mail.ziglang.org
+anyway it's probably this one: https://github.com/ziglang/zig/pull/20964
+
+1724014232
+andrewrk!~andrewrk@mail.ziglang.org
+see also https://github.com/ziglang/zig/issues/20663
+
+1724014301
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+Thanks, will give it a try.
+
+1724015012
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+Yes I have been following that thread, can't say I like having usingnamespace removed as I've been using it for the last 5 years in this code, non of the replacements would make this code any more readable. fieldParentPtr is like container_of in C right?
+
+1724015517
+andrewrk!~andrewrk@mail.ziglang.org
+right
+
+1724015547
+andrewrk!~andrewrk@mail.ziglang.org
+if your usage does not fit one of those patterns mentioned by mlugg in that issue, it would be helpful if you could share that
+
+1724016260
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+Just checked that pull request is indeed the culprit, it was still working on the commit before that one.
+
+1724018031
+grayhatter!~grayhatte@user/grayhatter
+> This can be elegantly achieved using a zero-bit field and 
+
+1724018041
+grayhatter!~grayhatte@user/grayhatter
+"elegantly"
+
+1724018990
+grayhatter!~grayhatte@user/grayhatter
+my comments about deleting usingnamespace aren't deep enough to reply on github. But I hate the argument "namespaces are good, actually". I was just complaining about this idea at work. I was just doing a security consult for a group who hadn't considered how users are actually using the software. When asked about how their propasol would behave with "common use case", they something to the effect of
+
+1724018992
+grayhatter!~grayhatte@user/grayhatter
+"that's not what you're supposed to do", which is just a different way of saying "you're holding it wrong". Users should be allowed to "use it wrong".
+
+1724020321
+andrewrk!~andrewrk@mail.ziglang.org
+well, I made zig because I think other people write code in terrible ways, and I wanted more people to write code like I do
+
+1724020332
+andrewrk!~andrewrk@mail.ziglang.org
+and I don't like reading people's code with usingnamespace in it
+
+1724020375
+andrewrk!~andrewrk@mail.ziglang.org
+none of my code uses it anymore, and I like it better
+
+1724020431
+andrewrk!~andrewrk@mail.ziglang.org
+so, yeah, you're holding it wrong. don't hold it wrong
+
+1724020996
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: presumably, you and I *think* differently, right? Which one of us thinks about things in the correct way/order?
+
+1724021224
+grayhatter!~grayhatte@user/grayhatter
+I'm asking rhetorically, which I assume is obvious. Because I agree with you, there are plenty of cases where one method of doing stuff is objectively better than the other. But because one of the reasons people have such an attachment to `usingnamespace` (myself included) is because it's about how you think about code. You're code is better because it's better for you. But I doubt it objectively more
+
+1724021226
+grayhatter!~grayhatte@user/grayhatter
+correct 
+
+1724021286
+torque!~tachyon@user/torque
+the real value of usingnamespace imo is for method mixins.
+
+1724021307
+andrewrk!~andrewrk@mail.ziglang.org
+composition is better
+
+1724021329
+torque!~tachyon@user/torque
+composition is good, but they solve different problems, largely
+
+1724021336
+andrewrk!~andrewrk@mail.ziglang.org
+no it solves the same problem
+
+1724021368
+andrewrk!~andrewrk@mail.ziglang.org
+people just whine about having to use the field name to access the methods
+
+1724021381
+torque!~tachyon@user/torque
+I don't have an object I'm trying to compose
+
+1724021394
+torque!~tachyon@user/torque
+I just want a variety of structs to all have an identical interface method
+
+1724021406
+grayhatter!~grayhatte@user/grayhatter
+usingnamespace makes it easier for me to think about the code. It allows me to abstract parts of the code and segment my thoughts. I think explicit is better, where you should `name = mixin.name`, which will lead to a lot of copy paste. And it's probably objectively better to be more explicit. But for people who have a harder time scanning through code, I can totally understand how they could feel
+
+1724021408
+grayhatter!~grayhatte@user/grayhatter
+like asking for that is akin to a denial of service attack on their brain
+
+1724021427
+torque!~tachyon@user/torque
+e.g. I have 30 structs representing different types of telemetry that can all use the same packing/unpacking routine. This could exist as a free function, but it feels much more natural to express it as a "method"
+
+1724021520
+grayhatter!~grayhatte@user/grayhatter
+I think this is a bad change. But I do think explicit namespaces are better, so I look forward to it's removal so that the code is easier for me to understand
+
+1724021557
+grayhatter!~grayhatte@user/grayhatter
+torque: I agree it feel more natural... do you have a lot of time with python?
+
+1724021590
+torque!~tachyon@user/torque
+I've written my fair share of python
+
+1724021657
+torque!~tachyon@user/torque
+though I think zig promotes using "method" style bound functions itself. they're certainly more convenient to call than free functions because the compiler automatically handles the pointer (de)referencing
+
+1724021670
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I’m for its removal. every time I have come across it it makes go “where the hell is that function defined in this struct?!”
+
+1724021671
+grayhatter!~grayhatte@user/grayhatter
+I think my feeling of it being natural comes from python. Mixins are super common, and it makes it easy to plug in code here and there without needing to understand every part of it
+
+1724021698
+grayhatter!~grayhatte@user/grayhatter
+I think that's the part of the story that andrewrk and mali 
+
+1724021761
+torque!~tachyon@user/torque
+I could take or leave `usingnamespace` itself, and I will probably just migrate to manually mixing in methods if I have to, but that ends up being quite clunky, and potentially error prone
+
+1724021814
+torque!~tachyon@user/torque
+since you have to re-bind every function into the namespace of the struct you want it on, if something changes in the interface, you can end up missing that change and having one piece be inconsistent with the rest
+
+1724021858
+torque!~tachyon@user/torque
+it's a lot less about "not understanding" and a lot more about DRY
+
+1724021908
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+My toy project is me just mainly trying out zig stuff while at the same time trying out win32 stuff. So all of my user windows have a usingnamespace that includes common stuff hiding implementation details.
+
+1724021914
+torque!~tachyon@user/torque
+not that I think dry is the be all and end all, but having to maintain common functionality in 30 places instead of one is demonstrably worse
+
+1724021948
+grayhatter!~grayhatte@user/grayhatter
+...[sigh gotta figure out what key is doing that ] .... part of the story that andrewrk and mlugg would be remiss not to consider. They're both unreasonably expert engineers. They clearly, easily, and commonly function on a level that most developers will never reach. Such that I suspect it's hard if not impossible for them to see code the way the average engineer does. It's so easy to forget that
+
+1724021950
+grayhatter!~grayhatte@user/grayhatter
+stuff that's easy, or trivial for you, could be very difficult for others. I don't like removing features, nor the arguments, but I do like the goal of the simplest language, and no simpler.... but, it does everyone a disservice if you forget that engineering is just easier for you
+
+1724022071
+andrewrk!~andrewrk@mail.ziglang.org
+I may have a lot of experience but I am not good at holding a lot of complexity in my head at once
+
+1724022084
+andrewrk!~andrewrk@mail.ziglang.org
+I don't like having to remember many things at the same time
+
+1724022087
+torque!~tachyon@user/torque
+zig code is so easy to navigate (one of the best features of the language design) and I understand the complaint of "where is this method coming from" hiding in `usingnamespace`
+
+1724022344
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+In my case I have a usingnamespace that hides about 500 lines of code torque. So opening a file and only seeing 100 lines of code instead of 600 lines of code does make some stuff easier to read.
+
+1724022387
+grayhatter!~grayhatte@user/grayhatter
+usingnamespace is objectively less maintainable, for that reason alone it's a bad lanugage feature for zig. But given that multiple language developers want to remove it. I wonder if tone of the issue started off with implying the wrong expectations. I don't think there's a single use case that could save it, so perhaps the issues, and responses shouldn't have been around making the argument it should
+
+1724022389
+grayhatter!~grayhatte@user/grayhatter
+happen, but understanding the uses, and asserting the goal would be to find alternitives that are as ergonomic as usingnamespace. 
+
+1724022521
+torque!~tachyon@user/torque
+well, abstractions are useful for being able to reduce the amount of complexity you have to store in your head. I don't have to worry about how the bits are actually persisted on my SSD, I just have to open a file and write to it.
+
+1724022577
+torque!~tachyon@user/torque
+functions in code are inherently an abstraction of the work done by the function. When you see a function call that concatenates two strings, you know conceptually what it does without having to look at the function definition every time
+
+1724022587
+Flaminator!~Flaminato@ns323457.ip-5-39-76.eu
+In the old days, I used to use usingnamespace at file level to includes common types because the winapi is just that annoying but after the change where you always have to go through @This() i know have at the bottom of my files just have 20-30 includes to things I must possible use in a file.
+
+1724023987
+andrewrk!~andrewrk@mail.ziglang.org
+usingnamespace was basically born out of ignorance. it's what you get with #include in C. since zig started as a C replacement it seemed like a natural language feature. but as I have learned more about what a better language looks like it became apparent the feature is not needed
+
