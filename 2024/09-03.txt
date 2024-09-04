@@ -1,0 +1,640 @@
+1725387748
+cydox!~jan@user/cydox
+What's the state of std.crypto.tls? Anybody have good / bad experiences with it? I'm looking at implementing a protocol on top TLS 1.3 and doing mTLS for auth.
+
+1725387864
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+cydox: I've used it with good results. There is one particular handhsake method that isn't implemented yet, so I'm using a third party library since some servers I am connecting to use this particular part of the handshake
+
+1725387926
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/ianic/tls.zig
+
+1725387929
+cydox!~jan@user/cydox
+Well I would be in control both the server and client so I can choose whatever handshake it supports.
+
+1725387942
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+std should be good then
+
+1725387964
+cydox!~jan@user/cydox
+Do you remember which handshake was problematic? I would prefer using X25519
+
+1725388274
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+cydox: https://github.com/ziglang/zig/issues/19521
+
+1725388464
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+is there a simple/built-in way to evaluate a []const u8 value as an enum value?
+
+1725388550
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+gluon: at runtime no. If you know all, or at least the variants you want to handle, at comptime you can do std.meta.stringToEnum
+
+1725388612
+cydox!~jan@user/cydox
+rockorager: Thx for that info. That is indeed a problem for me, as I want to authenticate the client using a client certificate.
+
+1725388671
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+rockorager: hah, thanks. i'm the guy who created the PR for zeit earlier. my goal is to build one TimeZone from a string, but loadTimeZone takes a Location enum
+
+1725388719
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+gluon: Thanks again for the PR :)
+
+1725388726
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+you're welcome :)
+
+1725388776
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+say i have "Europe/London" in a string and want to build an instant with that timezone, instead of loading from the TZ env variable
+
+1725388776
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You should be able to do `std.meta.stringToEnum(zeit.Location, <string>)`
+
+1725388799
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+oh, perfect
+
+1725388802
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+thanks
+
+1725388825
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/rockorager/zeit/blob/a25dc245fd5981ff37e0e1d667d2c71c36fa263a/src/zeit.zig#L68-L71
+
+1725388851
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yup
+
+1725388862
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+that's what i need
+
+1725388923
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+do you think it makes sense to be able to build a Time with a TimeZone, without having to create an Instant and then get a new Time again?
+
+1725388943
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+you do have the offset field in Time, but that's not as practical
+
+1725389055
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+gluon: what's the use case?
+
+1725389083
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The reason I didn't is that to convert from one timezone to another you have to go to timestamps anyways
+
+1725389127
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+hmm
+
+1725389133
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i guess your way makes sense
+
+1725389160
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It might make sense, since there is that newer format that includes the timezone name
+
+1725389178
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yup
+
+1725389186
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+in that case it would be useful
+
+1725389256
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i have these CSV records with times in ISO format, which i parse with zeit.Time.fromISO8601, but then i also have a field with a time zone
+
+1725389269
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+so it would be nice to build the time already in that tz
+
+1725389304
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Ah, I would store your times as Instants then
+
+1725389316
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+ofc, as it is now, what i'm doing is converting the parsed Time into an Instant, then using in() to set a tz and then time() again
+
+1725389318
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Cheaper on memory too since it's a timestamp + a pointer to the timezone
+
+1725389352
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yeah, that was my first thought too, but i can't change the way it is store for now
+
+1725389358
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+but i will in the future
+
+1725389377
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Oh I don't mean on disk, I mean in your struct
+
+1725389383
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+oh
+
+1725389401
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+ofc
+
+1725389403
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+hehe
+
+1725389572
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i'll store as instants and then i'll only convert to a Time those that i actually need to display nicely
+
+1725389578
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+which are much less
+
+1725389622
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+in a a new time zone
+
+1725389628
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+There's not much math involved in the conversion so I would be surprised if it ever showed up in a profile
+
+1725389644
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yeah
+
+1725389675
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+anyway, my use case isn't performance critical at all
+
+1725389751
+andrewrk!~andrewrk@mail.ziglang.org
+announcement: there's a new zulip server that is officially moderated by ZSF and has channels for compiler development and standard library development. it's not for general help but for contributors to collaborate. https://zsf.zulipchat.com
+
+1725390038
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I'm always interested when a foss project selects a proprietary option over something foss. I'd be interested to read an opinion/blog for the selection criteria if zsf (or someone from) was able to write one
+
+1725390127
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: zulip is apache licensed
+
+1725390266
+andrewrk!~andrewrk@mail.ziglang.org
+it's open source and you can run your own instance if you don't want cloud hosted
+
+1725390281
+andrewrk!~andrewrk@mail.ziglang.org
+they fund the project by offering cloud hosting for $
+
+1725390286
+andrewrk!~andrewrk@mail.ziglang.org
+same as source hut
+
+1725390374
+Earnest!~earnest@user/earnestly
+It's a good idea
+
+1725390482
+grayhatter!~grayhatte@user/grayhatter
+but ZSF didn't elect to self host?
+
+1725390485
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: will the stdlib-devel and compiler-devel discord channels go away?
+
+1725390629
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: I am not a moderator of that discord server and I have permanently left the server. I don't know what they will decide to do
+
+1725390675
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i didn't check yet, but i suppose using .@"" to define field names is some built-in way to allow special chars in those fields?
+
+1725390681
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+that's my intuition at least
+
+1725390789
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: ack
+
+1725390840
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+gluon: that is correct, you can also use keywords if you need to, eg @"type"
+
+1725390858
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+nice
+
+1725391026
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I determined that the transition from cloud to self-hosting is so smooth that there's no harm in using the cloud service as a trial period before deciding to self-host
+
+1725391160
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i love how zig's syntax makes it predictable. even without learning the whole spec you can easily figure out what something does the first time you see it
+
+1725391198
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+payload captures in particular are really nice
+
+1725391214
+andrewrk!~andrewrk@mail.ziglang.org
+glad it's working out for you :)
+
+1725391229
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+:)
+
+1725391479
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+honestly, i jump between rust (when i want the language to be the main puzzle) and now zig (when i want the problem domain to be the puzzle)
+
+1725391488
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+both are great
+
+1725392325
+grayhatter!~grayhatte@user/grayhatter
+gluon: when I want the language to be the puzzle vs when I want the problem to be the puzzzle is a fantastic description, I'm gonna have to use that!
+
+1725392432
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I'm less interested in the licensing and migration aspects, and more interested in why not creat #zig-lang[-devel] and #zig-stdlib[-devel] instead?
+
+1725392463
+andrewrk!~andrewrk@mail.ziglang.org
+on irc? both of those are on topic here. there's not enough chatter for them to need separate channels
+
+1725392618
+grayhatter!~grayhatte@user/grayhatter
+I guess I'm using proprietary incorrectely (as an antonym for open standards/apis)
+
+1725392717
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: why zulip, instead of creating another channel on IRC?
+
+1725393210
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+grayhatter: be my guest!
+
+1725393303
+ifreund!2940d10f8b@user/ifreund
+there's not enough traffic for more than one zig IRC channel
+
+1725393323
+ifreund!2940d10f8b@user/ifreund
+splitting up what traffing there is on this one would be counterproductive
+
+1725393404
+ifreund!2940d10f8b@user/ifreund
+I for one am very happy to see an alternative that might lessen the amount of important discussion happening on discord
+
+1725393466
+grayhatter!~grayhatte@user/grayhatter
+I didn't realize there were important discussions happening on discord
+
+1725393630
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But why zulip and not irc?
+
+1725394527
+ifreund!2940d10f8b@user/ifreund
+rockorager: there is large number of people that will use discord but will not use IRC
+
+1725394538
+ifreund!2940d10f8b@user/ifreund
+this is a fact and is not likely to change quickly
+
+1725394563
+ifreund!2940d10f8b@user/ifreund
+I believe that a subset of these people that will use discord but not IRC would be willing to use Zulip over discord
+
+1725394584
+ifreund!2940d10f8b@user/ifreund
+Zulip has things like chat history for all users by default
+
+1725394591
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Fair enough
+
+1725394651
+grayhatter!~grayhatte@user/grayhatter
+Thinking out loud I'm assuming it's some part of UI/UX, it's why I use discord more than I use IRC even though I like IRC better. But IRC is also great for ephemeral conversations, and to ifreund's point, emphemeral conversations aren't ideal for important discussions. 
+
+1725394674
+grayhatter!~grayhatte@user/grayhatter
+that's what I get from walking away from the computer before hitting enter :D
+
+1725394772
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I guess I've found my experience with soju + goguma + <desktop irc app> is 90% as good as discord
+
+1725394948
+grayhatter!~grayhatte@user/grayhatter
+IMO, that some people won't use IRC should be considered a feature rather than a detirment 
+
+1725394979
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i use weechat running on my vps inside tmux 24/7 so i have all the chat history available there. it also acts as a bouncer for my mobile client
+
+1725394986
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i also use discord though
+
+1725394987
+grayhatter!~grayhatte@user/grayhatter
+the worst IRC channel doesn't come close to the worst discord server
+
+1725395002
+ifreund!2940d10f8b@user/ifreund
+I personally vastly prefer IRC to discord. The barrier to entry and need to setup a bouncer or similar for decent UX is an issue though
+
+1725395033
+grayhatter!~grayhatte@user/grayhatter
+but, there are tons of features from discord/slack/et al I'd love to have in IRC... reations and threads are top of the list
+
+1725395102
+grayhatter!~grayhatte@user/grayhatter
+ifreund: that's the point I was trying to get at without leading it there, I stand by my assertion that the difficulty of onboarding to IRC is a feature... but it's way too good of a feature
+
+1725395170
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ifreund: agreed. A zsf hosted soju instance with eg github oauth could go a long way
+
+1725395192
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Acknowledging that this workflow doesn't exist and would require work to setup the oauth flows
+
+1725395212
+grayhatter!~grayhatte@user/grayhatter
+rockorager: have you used znc?
+
+1725395219
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+no, only soju
+
+1725395288
+grayhatter!~grayhatte@user/grayhatter
+oh, built by emersion... it's probably pretty good
+
+1725395406
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think a decent desktop GUI client that supports the chat history extension would be needed for all platforms in order for that to be a viable path, though. I'll keep dreaming
+
+1725395453
+torque!~tachyon@user/torque
+I guess this is a good motivation to check out zulip
+
+1725395473
+grayhatter!~grayhatte@user/grayhatter
+rockorager: with IRCv3 you can have that
+
+1725395498
+grayhatter!~grayhatte@user/grayhatter
+rockorager: if you wanted to build something in zig, I'd contribute code
+
+1725395510
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yeah, I'm not aware of a nice macos client that uses that though
+
+1725395512
+torque!~tachyon@user/torque
+happy to see less discord centralization
+
+1725395541
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: I have a TUI irc client in zig but not a GUI one ;)
+
+1725395559
+grayhatter!~grayhatte@user/grayhatter
+he says without providing a link :D
+
+1725395573
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+github.com/rockorager/comlink
+
+1725395647
+torque!~tachyon@user/torque
+I've been running weechat for... way too many years at this point and I really like having my chat client in my terminal
+
+1725395663
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+zulip has a TUI which is nice to see
+
+1725395682
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I bet there is a weechat plugin for it even
+
+1725395706
+torque!~tachyon@user/torque
+rockorager, I've wondered if you would have any interest in supporting other protocols directly in comlink, like native matrix (or slack/discord, though those would be hacks)
+
+1725395774
+grayhatter!~grayhatte@user/grayhatter
+torque: IMO that's better done in a bouncer
+
+1725395787
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I don't use matrix nor slack, so it would be up to someone else to write it. Probably should move to #comlink to discuss further though
+
+1725395791
+grayhatter!~grayhatte@user/grayhatter
+but #comlink exists, and that's probably a better channel for that discussion :)
+
+1725395799
+torque!~tachyon@user/torque
+fair enough
+
+1725395820
+torque!~tachyon@user/torque
+I showed up here to say that I saw decl literals had been implement and I am exited to try them out
+
+1725395826
+torque!~tachyon@user/torque
+but then got distracted by the chat chat
+
+1725395890
+grayhatter!~grayhatte@user/grayhatter
+torque: whered' you learn that? (I wanna read some docs)
+
+1725395915
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/pull/21264
+
+1725396002
+torque!~tachyon@user/torque
+this also solves the problem with name aliases in enums being super non-ergonomic compared to member usage
+
+1725396290
+grayhatter!~grayhatte@user/grayhatter
+oh wow, this is really nice
+
+1725396529
+andrewrk!~andrewrk@mail.ziglang.org
+I would say the main use case for this feature is to promote init methods and values, avoiding the footgun of using default struct field values too much, making it easy to initialize something incorrectly
+
+1725396540
+grayhatter!~grayhatte@user/grayhatter
+how hard would it be to embed a zig compiler within a binary?
+
+1725396585
+grayhatter!~grayhatte@user/grayhatter
+context: I'm trying to build something that matches the ergonomics of uwsgi & flask
+
+1725396721
+grayhatter!~grayhatte@user/grayhatter
+where using a config file you can point uwsgi at a directory with python, and get a web app
+
+1725396742
+ifreund!2940d10f8b@user/ifreund
+I'm certainly looking forward to decl literals making this kind of thing half as verbose: https://codeberg.org/river/river/src/commit/55974987b6a09d4208af09a07ecccd4656b660b6/river/Cursor.zig#L159
+
+1725397731
+andrewrk!~andrewrk@mail.ziglang.org
+oh wow
+
+1725397825
+ifreund!2940d10f8b@user/ifreund
+It wouldn't be as verbose if I hadn't decided make things type safe :D
+
+1725397866
+Earnest!~earnest@user/earnestly
+Oh that is quite nice
+
+1725399543
+grayhatter!~grayhatte@user/grayhatter
+should heap.arena_allocator overflow an int?
+
+1725402032
+andrewrk!~andrewrk@mail.ziglang.org
+in what context?
+
+1725402679
+grayhatter!~grayhatte@user/grayhatter
+I thought my bug was in inf loop, which kept appending to the arena, but I was passing an invalid pointer to printAlloc("{s}", ...);
+
+1725402775
+grayhatter!~grayhatte@user/grayhatter
+but to answer specifically, arena_allocator.zig:165 : `const len = big_enough_len + big_enough_len / 2;`
+
+1725402876
+grayhatter!~grayhatte@user/grayhatter
+I would have expected createNode() to complain about big_enough_len being too large instead of depending on int overflow checking
+
+1725403007
+grayhatter!~grayhatte@user/grayhatter
+I'm not sure if I think this is a stdlib bug or not
+
+1725403063
+andrewrk!~andrewrk@mail.ziglang.org
+if you pass an invalid pointer, an integer overflow is a likely outcome and in fact is the happy path, because it means the invalid pointer was caught and caused a crash
+
+1725403068
+grayhatter!~grayhatte@user/grayhatter
+obviously I fixed my bug, but what would have happened if I was trying to work with a multigig file on a 32bit system?
+
+1725403125
+grayhatter!~grayhatte@user/grayhatter
+oh, no. I'm very glad zig crashed here, but it wouldn't have crashed _here_ if I used releasefast right?
+
+1725403509
+ifreund!2940d10f8b@user/ifreund
+grayhatter: it would be Undefined Behavior if you used release fast
+
+1725403541
+ifreund!2940d10f8b@user/ifreund
+but probably would have crashed with a segfault or similar in practice
+
+1725403594
+grayhatter!~grayhatte@user/grayhatter
+it would have, but likely later in the stack (it was a stale pointer from a hash map)
+
+1725403618
+grayhatter!~grayhatte@user/grayhatter
+I don't think I would have gotten a segv until much later
+
+1725403707
+dy!sid3438@user/dy
+Finding myself wondering what a “native” Zig debugger would look like in an ideal world.
+
+1725403727
+grayhatter!~grayhatte@user/grayhatter
+dy native how?
+
+1725403754
+dy!sid3438@user/dy
+As in, built for Zig from the ground up rather than just being LLDB/GDB-based. This is just purely hypothetical.
+
+1725403789
+dy!sid3438@user/dy
+What does the debugging story look like when you have comptime?
+
+1725403821
+dy!sid3438@user/dy
+Purely academic. In practice I just attach GDB/LLDB :^)
+
+1725403832
+dy!sid3438@user/dy
+(And, mostly, printf debug lol)
+
+1725403840
+grayhatter!~grayhatte@user/grayhatter
+probably similar to the fuzzing branch
+
+1725403853
+dy!sid3438@user/dy
+The hwat?
+
+1725403896
+dy!sid3438@user/dy
+In any case I don’t really know enough about how comptime _actually works_ 😅
+
+1725403932
+grayhatter!~grayhatte@user/grayhatter
+oh, it merged... dope 
+
+1725403934
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/pull/20958
+
+1725404076
+dy!sid3438@user/dy
+I guess the inciting thought for me is that holistically debugging a Zig program might involve debugging comptime, and I’m not sure what it even looks like to attach a (stepping) debugger that “early”.
+
+1725404104
+grayhatter!~grayhatte@user/grayhatter
+I'm pretty sure comptime is completely determinstic
+
+1725404136
+dy!sid3438@user/dy
+Well, there’s @embedFile if you’re evil with it.
+
+1725404205
+dy!sid3438@user/dy
+In any case, personally I’d really love first class record-replay debugging, which seems more compatible a model with staged execution versus attaching to a running process anyhow.
+
+1725404307
+dy!sid3438@user/dy
+Time-travel debugging is swell.
+
+1725404524
+grayhatter!~grayhatte@user/grayhatter
+@embedFile doesn't make it nondeterministic 
+
