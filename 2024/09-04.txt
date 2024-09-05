@@ -1,0 +1,140 @@
+1725410264
+Synon!~mkejji@user/Synon
+Hey quick question: in the initial project stucture (obtained with zig init), what's the expect role of root.zig?
+
+1725410547
+andrewrk!~andrewrk@mail.ziglang.org
+Synon: check out the first few lines of the file, the doc comments 
+
+1725442602
+tiosgz!~tiosgz@user/tiosgz
+hello! is there a way for the build system to statically link libc and another system lib?
+
+1725442647
+tiosgz!~tiosgz@user/tiosgz
+i figured i need `.linkage = .static` in the addExecutable() call, but that removes the -search_paths_first_static from the build-exe invocation
+
+1725442680
+tiosgz!~tiosgz@user/tiosgz
+so build-exe finds the dynamic libs and complains i want a static executable from it
+
+1725442722
+tiosgz!~tiosgz@user/tiosgz
+* need `.linkage = .static` to link libc statically. or is there another way?
+
+1725442799
+tiosgz!~tiosgz@user/tiosgz
+it doesn't matter whether i linkSystemLibrary("foo") or linkSystemLibrary2("foo", .{ .preferred_link_mode = .static })
+
+1725445567
+ifreund!2940d10f8b@user/ifreund
+tiosgz: sounds like a bug tbh, I dont think -search_paths_first_static should be removed in that case
+
+1725445615
+tiosgz!~tiosgz@user/tiosgz
+didn't want to phrase it that way :P
+
+1725445639
+ifreund!2940d10f8b@user/ifreund
+either that or the compiler should always ignore dynamic libs and only look for static ones if statically linking regardless
+
+1725460157
+Synon!~mkejji@user/Synon
+andrewrk: after running "zig init", am I supposed to have a "src/root.zig" file that has comments? Mine doesn't have any
+
+1725460248
+ifreund!2940d10f8b@user/ifreund
+Synon: the build.zig file has lots of comments explaining the example
+
+1725460301
+Synon!~mkejji@user/Synon
+None that explain the role of the "root.zig" file
+
+1725460316
+Synon!~mkejji@user/Synon
+I mean, I can see from the name of the variable that uses it that it's supposed to be a static library
+
+1725460328
+ifreund!2940d10f8b@user/ifreund
+root.zig is the code that goes into an example static library
+
+1725460344
+ifreund!2940d10f8b@user/ifreund
+the purpose of the static library is to be an example and show how to make a static library
+
+1725460404
+ifreund!2940d10f8b@user/ifreund
+just like the purpose of main.zig is to be an example and show how to make an executable
+
+1725460556
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+Synon: you can compare it to lib.rs as created by cargo new --lib (in case you're familiar with rust)
+
+1725460579
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+feel free to remove it and any references to it, if you don't need it
+
+1725461135
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+^ there used to be separate init-bin and init-lib for zig but now there's just init that does both and you can get rid of whatever you don't need
+
+1725461333
+bblack!~bblack@wikimedia/bblack-WMF
+what's the idiomatic way (from a build.zig + build.zig.zon perspective) to make a "library" project that's intended to be consumed in source form by other zig code, rather than through a true OS-level library (.a or .so files)?
+
+1725461460
+bblack!~bblack@wikimedia/bblack-WMF
+or maybe an even more interesting question: can the two approaches be blended? (where some interfaces are linked in via .so files, but others are in source form, akin to small higher-performance inline funcs exported in a .h header in the C world)
+
+1725461824
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+bblack: b.addModule in the library, then the consuming code has to have it defined in build.zig.zon, and they use the b.dependency() call in build.zig
+
+1725462314
+Synon!~mkejji@user/Synon
+gluon: got it thanks
+
+1725462341
+Synon!~mkejji@user/Synon
+I was mostly curious, how does that look like in real zig projects but I didn't see any that had a root.zig
+
+1725462401
+Synon!~mkejji@user/Synon
+I'm building a library with zig and it's split in a ton of files, I was wondering if there was some hidden best practice there where you're supposed to import each of the files and expose them in root.zig to make it easier for people who use the library
+
+1725462420
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+That's what most libraries do, yeah
+
+1725462429
+Synon!~mkejji@user/Synon
+I just wanted to see an example of that somewhere to kinda confirm I'm on the right path
+
+1725462448
+Synon!~mkejji@user/Synon
+alright yeah, I'll do that then
+
+1725462452
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/rockorager/libvaxis/blob/main/src/main.zig
+
+1725462453
+Synon!~mkejji@user/Synon
+thanks rockorager
+
+1725462521
+Synon!~mkejji@user/Synon
+So it's a convention to now call that file "root.zig" rather than "main" to avoid confusion with binaries?
+
+1725462533
+Synon!~mkejji@user/Synon
+executable I mean
+
+1725462555
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I haven't seen a convention take place in what the root source file is named
+
+1725462568
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+main.zig, <name of library>.zig are both common
+
