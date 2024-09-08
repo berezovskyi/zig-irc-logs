@@ -1,0 +1,552 @@
+1725668856
+ekaitz!~Ekaitz@94.73.34.227
+i'll start with zig 0.13 and we'll see
+
+1725668865
+ekaitz!~Ekaitz@94.73.34.227
+this will probably be abandoned
+
+1725668879
+ekaitz!~Ekaitz@94.73.34.227
+my time is limited, but it's helping me do things, which is always good
+
+1725668888
+ekaitz!~Ekaitz@94.73.34.227
+now i got sidetracked with the peg parser... :S
+
+1725673179
+torque!~tachyon@user/torque
+are there any known issues with the C backend type ordering? i was fiddling around with it today and got an output C file that had exactly one declaration occur after it was used, which caused an error when trying to compile the C output with gcc
+
+1725673217
+torque!~tachyon@user/torque
+this is with 0.13
+
+1725673268
+torque!~tachyon@user/torque
+I was able to fix this by hand but since this project is not open source and also I don't know how to try to generate a minimal reproduction, I don't have enough info to make a new issue atm
+
+1725673426
+torque!~tachyon@user/torque
+I didn't see anything in a cursory glance through the issue tracker, but I'll admit I didn't read through all the issues in detail
+
+1725676794
+andrewrk!~andrewrk@mail.ziglang.org
+torque: I don't think so. a bug report would be welcome, especially if it comes with a minimal repro
+
+1725676819
+andrewrk!~andrewrk@mail.ziglang.org
+if `zig reduce` were more complete it could help with this
+
+1725677374
+torque!~tachyon@user/torque
+ok, I can take a look at reproducing it
+
+1725702955
+bw!sid2730@user/betawaffle
+Omg #21264 is awesome!
+
+1725722671
+Synon!~mkejji@user/Synon
+Hey there, another noobie question if you guys don't mind: I'm running a specific test with `zig test some_library_file.zig` and I got a segfault, what's a good way to debug it? All I could find online is how to debug a segmentation fault by attaching a debugger to an executable
+
+1725723793
+Synon!~mkejji@user/Synon
+I don't suppose I should attack a debugger on the executable 'zig' and run it with arguments 'test' and 'my_file.zig', or is it exactly what I'm supposed to do?
+
+1725723799
+Synon!~mkejji@user/Synon
+attach*
+
+1725725055
+Synon!~mkejji@user/Synon
+Ok I found that the executable of my test execution is in .zig-cache/o/ and that I can run lldb there
+
+1725726080
+Synon!~mkejji@user/Synon
+Tricky one... I have a heap allocated ArrayList(u8) (response of an std.http.Client.fetch) that represents a JSON string. I parse the arraylist's .items as a JSON string into a struct to do what I need to do. Then if I try to deinit the parsed JSON struct or the ArrayList, I get a segmentation fault. If I don't, I get a leak
+
+1725726121
+Synon!~mkejji@user/Synon
+should I clone the arraylist's .items before JSON-parsing it?
+
+1725727142
+Synon!~mkejji@user/Synon
+I tried passing the_arraylist.toOwnerSlice() instead of the_arraylist.items
+
+1725727150
+torque!~tachyon@user/torque
+I think by default the json parser option `.alloc_if_needed` skips copying certain values from the input buffer
+
+1725727184
+torque!~tachyon@user/torque
+if you use `.alloc_always` the result of parsing should own all of its own memory
+
+1725727613
+Synon!~mkejji@user/Synon
+Same problem. The json parser makes its own arena so it shouldn't be a problem if it skips some allocations
+
+1725727647
+Synon!~mkejji@user/Synon
+If that helps look into the right direction, I get segfault at address 0x4, is it a hint?
+
+1725727714
+Synon!~mkejji@user/Synon
+lldb tells me the error occurs at the line "const allocator = self.arena.child_allocator" inside std.json.Parsed.deinit() function
+
+1725727755
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that suggests a null pointer deference of a struct or array
+
+1725728112
+Synon!~mkejji@user/Synon
+I'm really stuck. If I remove the line that .deinit() the parsed json, then I see the memory that leaked is the std.json.Parsed's arena, if I put the .deinit() back, then I see it's trying to dereference member "allocator" of arena while arena is null
+
+1725728419
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Synon: maybe you can try to make a minimal code snippet reproducing it?
+
+1725728872
+dy!sid3438@user/dy
+Is there any way to get the Zig build process to emit a plain C header for the exported fns in a library?
+
+1725728902
+dy!sid3438@user/dy
+I’d like to explore some interoperation between Zig and Racket, but to make Racket tooling happy, I need a C header for its FFI system to parse.
+
+1725728938
+dy!sid3438@user/dy
+I’d like to avoid having to redeclare the C header interface manually (annoying to keep in sync, prone to small errors, etc).
+
+1725729213
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+dy: I haven't done it, but have you explored building with the C backend?
+
+1725730683
+dy!sid3438@user/dy
+Matthias1: I have not, I haven’t come across any resources explaining how to use it…
+
+1725730756
+dy!sid3438@user/dy
+Also, I’d like to keep Em32 as a target, not sure how well they play together
+
+1725730796
+dy!sid3438@user/dy
+That said, having the Racket shell compiled for wasm/em is itself a pain, it’s feasible enough for a custom DSL but not really working for the whole language yet from what I understand.
+
+1725730865
+dy!sid3438@user/dy
+Last I saw the state of the art there was masters thesis ware :/
+
+1725731012
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+With `zig build-exe` the c backend is -ofmt=c; you'd have to poke around in the build system docs
+
+1725731023
+Synon!~mkejji@user/Synon
+Gliptic: I made a minimal example here: https://zigbin.io/494911 you can save it to "rpc_client.zig" and run "zig test rpc_client.zig" it will show that some memory has leaked due to the response_body line 112 never being freed. However if you uncomment line 115 that does the freeing, then you'll see the bug
+
+1725731024
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+The c backend does output target-specific code (i.e. assuming usize is 64 bits on 64 bit systems) but that may not matter if you're just using the headers
+
+1725731137
+dy!sid3438@user/dy
+Are there any worked examples online? I’m not entirely familiar with the zig tooling yet, so I’m just sticking to simple `zig build`s haha.
+
+1725731157
+dy!sid3438@user/dy
+My project is structured in the usual lib+client-exe (the client being a demo currently).
+
+1725731159
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I feel like this is a really stupid question -- if I have a number, how can I convert it to a string? So like if I have 13, how would I get it to be []u8{ '1', '3', 0 }? 
+
+1725731168
+Synon!~mkejji@user/Synon
+It's not segfault at 0x4 anymore though, it's reaching ".FAULT => unreachable," in std/posix.zig:1223
+
+1725731258
+dy!sid3438@user/dy
+The_Buhs: `std.fmt.allocPrint(allocator, “{d}”, . { 13 })`?
+
+1725731282
+dy!sid3438@user/dy
+That seems to be the nearest analog to `itoa` logic, I think.
+
+1725731294
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Synon: I've not used it, but are you sure parseFromSlice doesn't maintain references into the slice as long as the result is alive?
+
+1725731306
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you need to keep the passed slice alive as long as the json result
+
+1725731358
+Synon!~mkejji@user/Synon
+Gliptic: that was my guess too, let me make a second zigbin so you can see what I tried
+
+1725731464
+dy!sid3438@user/dy
+Matthias1: doesn’t look like `build-obj/lib -ofmt=c` produces headers. Output is much messier than I’d like as well, unfortunately.
+
+1725731496
+dy!sid3438@user/dy
+It just seemed like given Zig builds C ABI compatible objects/libraries, emitting C headers would be something that existed in some capacity :/.
+
+1725731517
+dy!sid3438@user/dy
+Maybe I’ll have a look at what some larger projects are doing.
+
+1725731581
+dy!sid3438@user/dy
+Most of what I can think of are executables...
+
+1725731601
+dy!sid3438@user/dy
+Being able to export C headers would be a big boon for interoperability with other languages’ FFIs.
+
+1725731638
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+dy: ty :) 
+
+1725731924
+Synon!~mkejji@user/Synon
+Gliptic: Here: https://zigbin.io/71d56b check the comment line 22, the next 2 lines will make the program crash. The first one will segfault 0x9, the second will segfault 0x4
+
+1725732037
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Synon: that's because they both are pointers to local variables
+
+1725732055
+Synon!~mkejji@user/Synon
+Gliptic: Damn, I found the problem
+
+1725732059
+Synon!~mkejji@user/Synon
+ahah yeah, silly me
+
+1725732064
+dy!sid3438@user/dy
+Is there a story for Zig code reflection/inspection?
+
+1725732085
+Synon!~mkejji@user/Synon
+Here's the fixed code https://zigbin.io/474af5
+
+1725732091
+dy!sid3438@user/dy
+Emitting something like SWIG .i’s as an intermediary to generate C headers might make the most sense.
+
+1725732118
+dy!sid3438@user/dy
+Likely a lot of limitations for full Zig, but handling a C-like subset of structs and function definitions shouldn’t be particularly tricky.
+
+1725733325
+dy!sid3438@user/dy
+Jesus… trying to build SWIG and was getting bison errors… good old Apple shipping a version of Bison from _2006_.
+
+1725734549
+dy!sid3438@user/dy
+Well, @typeInfo(some_module) is entirely unhelpful for introspecting declarations, nothing is exposed except a name :/
+
+1725735349
+dy!sid3438@user/dy
+I’m guessing the answer here is *no*, but there’s no mechanism by which I can refer to a source file from an import is there?
+
+1725735389
+dy!sid3438@user/dy
+For a few reasons, I’m presuming the answer is just an emphatic no.
+
+1725735413
+dy!sid3438@user/dy
+But it would be nice to be surprised 😅
+
+1725736070
+torque!~tachyon@user/torque
+<dy> Being able to export C headers would be a big boon for interoperability with other languages’ FFIs.
+
+1725736087
+torque!~tachyon@user/torque
+if you're using build-lib, this is available through the -femit-h flag, I believe
+
+1725736135
+torque!~tachyon@user/torque
+if you're using build.zig, it's available somewhere in the plumbing, I think
+
+1725736218
+andrewrk!~andrewrk@mail.ziglang.org
+bw: were you able to clean up some code with it? (re: decl literals)
+
+1725736409
+dy!sid3438@user/dy
+torque: ohh! I'll take a look, thanks!
+
+1725736445
+dy!sid3438@user/dy
+I've generally not grokked in general how to translate between build-lib/obj/exe flags and std.Build incantations.
+
+1725736455
+dy!sid3438@user/dy
+But I guess I can just go look at the source.
+
+1725736503
+torque!~tachyon@user/torque
+std/Build/Step/Compile.zig has a generated_h field but I don't think there's a high-level build API call exposed for setting it up
+
+1725736531
+torque!~tachyon@user/torque
+so you'd set it up manually on the compile step returned by b.addStaticLibrary() or similar
+
+1725736556
+torque!~tachyon@user/torque
+also re: > @typeInfo(some_module) is entirely unhelpful for introspecting declarations
+
+1725736577
+torque!~tachyon@user/torque
+presuming `some_module` is the result of an import, this is just a struct, so you should be able to do all the type introspection you'd normally do on a struct
+
+1725736727
+torque!~tachyon@user/torque
+I guess decls don't have type info directly associated with them, but you can do @TypeOf(@field(@TypeOf(my_import), decl_name)) to get it
+
+1725736741
+torque!~tachyon@user/torque
+or something like that, at any rate
+
+1725738574
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+How would/can I get the current local time in zig? I know there's a few ways to get the posix time but how can I actually get like, 14:49
+
+1725738928
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Oh I guess I could just use cImport and time.h if I need
+
+1725739126
+torque!~tachyon@user/torque
+https://github.com/rockorager/zeit
+
+1725739130
+torque!~tachyon@user/torque
+there are probably others
+
+1725739215
+dy!sid3438@user/dy
+torque: appears -femit-h just instantly segfaults 😅
+
+1725739228
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque: Thanks! I did actually see that one in here, but I didn't know if I wanted to add a whole dependency just for getting the current time xD but I might
+
+1725739237
+Synon!~mkejji@user/Synon
+Is there a way I can pass a *[32]u8 as a parameter to a function that accepts *[]u8 type? I tried @ptrCast(), @as()?
+
+1725739312
+torque!~tachyon@user/torque
+a pointer to a slice?
+
+1725739345
+andrewrk!~andrewrk@mail.ziglang.org
+are you sure you don't want to make the parameter `[]u8` instead? if you do that, you can pass a `*[32]u8` and it will coerce silently as expected
+
+1725739412
+andrewrk!~andrewrk@mail.ziglang.org
+dy: -femit-h is effectively blocking on https://github.com/ziglang/zig/issues/20654
+
+1725739428
+dy!sid3438@user/dy
+Ah thanks, Andrew!
+
+1725739459
+torque!~tachyon@user/torque
+The_Buhs, unfortunately "local" time typically means dealing with a bunch of time zone info, mostly. up to you to decide if you prefer linking libc vs having a library dependency
+
+1725739592
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Yeah, I didn't think about timezones lol (I do already link libc though on this project)
+
+1725739595
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Thanks :)
+
+1725739596
+Synon!~mkejji@user/Synon
+andrewrk: yes, the parameter in question is a buffer that gets allocated by the caller and filled by the receiving function
+
+1725739611
+dy!sid3438@user/dy
+andrewrk: perhaps a silly question but… rather than a new .abi file, why not just use DWARF?
+
+1725739629
+Synon!~mkejji@user/Synon
+I managed to pass &buffer[0..bufSize], works fine
+
+1725739639
+dy!sid3438@user/dy
+(This is more of a rhetorical question, I assume there’s various reasons that wouldn’t be ideal.)
+
+1725739687
+dy!sid3438@user/dy
+Though, I’d think that ABI emission would also potentially be of concern to future implementation of debuggers.
+
+1725739709
+torque!~tachyon@user/torque
+Synon, if you are just filling the buffer and not directly modifying its .ptr or .len fields, then you can pass it directly as a []u8
+
+1725739763
+Synon!~mkejji@user/Synon
+torque: oh, ok I'll try that. I was just mimicking what I saw in the standard library
+
+1725739803
+torque!~tachyon@user/torque
+a pointer to a slice is fairly unconventional. the more common pattern is to take a buffer argument and return a new slice with the correct len if the size is not already known by the caller
+
+1725739829
+torque!~tachyon@user/torque
+if the size is already known by the caller, then []u8 can be modified in place
+
+1725739869
+andrewrk!~andrewrk@mail.ziglang.org
+dy: it's not clear to me that dwarf is capable of representing the desired information, and it seems like dwarf would not efficiently encode the information
+
+1725739895
+andrewrk!~andrewrk@mail.ziglang.org
+a different format/standard would also be easier to document and share with third party projects who may want to adopt it
+
+1725739909
+andrewrk!~andrewrk@mail.ziglang.org
+because it has a stronger narrative
+
+1725740002
+andrewrk!~andrewrk@mail.ziglang.org
+Synon: I've written a lot of zig by now, and I can't recall ever using `*[]u8` as a parameter type
+
+1725740009
+Synon!~mkejji@user/Synon
+torque: got it thanks, I'll update my code accordingly
+
+1725740016
+andrewrk!~andrewrk@mail.ziglang.org
+maybe passing an ArrayList to the function would be handy?
+
+1725740016
+dy!sid3438@user/dy
+Hm, fair enough. Nonetheless, DWARF emission seems like it would be desirable in-of-itself. It might be the case that this is facilitated by a Zig → ABI → DWARF transformation.
+
+1725740038
+Synon!~mkejji@user/Synon
+andrewrk: No I haven't seen it either, I was referring to the hash functions that take a *[size]u8 argument that gets filled
+
+1725740051
+Synon!~mkejji@user/Synon
+I thought *[]u8 would be the same but just with unknown size
+
+1725740082
+Synon!~mkejji@user/Synon
+why can't hash function take [size]u8 args instead?
+
+1725740087
+andrewrk!~andrewrk@mail.ziglang.org
+dy: not sure what you mean, since zig already emits DWARF both via the LLVM backend and in the self-hosted backends
+
+1725740142
+dy!sid3438@user/dy
+I was about to ask about the self-hosted backend.
+
+1725740165
+dy!sid3438@user/dy
+I just noticed that plumbing around, sorry for the slow uptake!
+
+1725740168
+torque!~tachyon@user/torque
+the *[size]u8 argument pattern is for passing in a fixed-size buffer, which may not be completely filled. Functions that do this almost always return a slice (which points to only the part of the buffer that was filled)
+
+1725740233
+Synon!~mkejji@user/Synon
+torque: I'm referring to functions like "pub fn hash(bytes: []const u8, out: *[digest_length]u8, options: Options) void" (like the one in std/crypto/sha3.zig line 67)
+
+1725740251
+torque!~tachyon@user/torque
+oh in that case it's because the digest has to be an exact size
+
+1725740261
+torque!~tachyon@user/torque
+so the function has better type safety
+
+1725740276
+Synon!~mkejji@user/Synon
+But wouldn't that function work if it was [digest_lengt]u8 instead of *[digest_length]u8?
+
+1725740289
+torque!~tachyon@user/torque
+no, because arguments are all passed as const
+
+1725740314
+torque!~tachyon@user/torque
+[digest_len]u8 as a function parameter is constant and cannot be modified
+
+1725740356
+Synon!~mkejji@user/Synon
+ok got it thanks
+
+1725740523
+torque!~tachyon@user/torque
+you can get a pointer to an array from a slice by slicing with comptime-known bounds https://ziglang.org/documentation/0.13.0/#Slices which makes this fairly flexible
+
+1725740544
+torque!~tachyon@user/torque
+of course you can also just take a pointer to an array as well
+
+1725740672
+dy!sid3438@user/dy
+Hm that’s odd. It looks like -Doptimize=Debug built libraries have .debug_info contents, but executables don’t...?
+
+1725740685
+torque!~tachyon@user/torque
+this reminds me that I want to change the wording of that description, "the slice's length is known at runtime" is misleading, since comptime-known slices have comptime known lengths.
+
+1725740705
+torque!~tachyon@user/torque
+it's more that for slices, the length is part of the value, whereas for arrays the length is part of the type
+
+1725740733
+dy!sid3438@user/dy
+Ah, it’s in the intermediate object files, stripped in the final binary…
+
+1725740763
+dy!sid3438@user/dy
+I can see why… there’s the whole standard library pulled in :^p
+
+1725740780
+dy!sid3438@user/dy
+Nice cozy 70kloc of debug info.
+
+1725745935
+Synon!~mkejji@user/Synon
+Is there a way to write this function: https://zigbin.io/761f11 in a way that looks more like this https://zigbin.io/1f555b (where ibits and ubits are respectively i8, i16, i24... and u8, u16, u24...)
+
+1725746096
+dy!sid3438@user/dy
+Andrewrk: to a first approximation what information is missing from DWARF / would be desired?
+
+1725746267
+dy!sid3438@user/dy
+I definitely agree on a different standard being easier to document and share though. To that point though, what would be intended scope of such a format be? For example, name mangling (and to what extent).
+
+1725747966
+sp2!uid197664@user/meow/sp2
+Synon: Here's one way to do it, although it's a little messy: https://zigbin.io/2a9085 (`signExtendUnrolled` specifically). I left out the size of your function's machine code by accident, but it came out to 4842 bytes.
+
+1725748173
+Synon!~mkejji@user/Synon
+sp2: ouh nice! I didn't know about std.meta.Int
+
+1725748175
+Synon!~mkejji@user/Synon
+Thanks a lot mate!
+
+1725748183
+Synon!~mkejji@user/Synon
+exactly what I was looking for
+
