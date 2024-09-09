@@ -1,0 +1,192 @@
+1725762598
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager: do you know what this error's about? using zeit 0.4.1 https://paste.gentoo.zip/ugeQligs
+
+1725762604
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://paste.gentoo.zip/DWEmqkjJ here's the code snippet that's causing it
+
+1725762995
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The_Buhs: No, that’s really weird. does it happen if you try to access the envmap in your application?
+
+1725763240
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+All zeit is doing there is trying to grab the TZ variable…not sure why it’d cause that error.
+
+1725764886
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager I’ll check tomorrow, put my laptop right after I asked sorry😅 
+
+1725764923
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+ctx.alloc is the c allocator if that matters ¯\_(ツ)_/¯ 
+
+1725765818
+torque!~tachyon@user/torque
+how are you acquiring your envmap? this looks like possibly the memory behind the map has gotten invalid
+
+1725772359
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Looking to do some actor-ish type programming with Zig, any suggestions for approaches? My basic idea is a bunch of worker processes (could be on different machines) with messages passing between them. I could use Kafka, ZeroMQ, RabbitMQ but that feels a bit heavy handed _right now_? Looking to K.I.S.S with Zig or a C library (via Zig) for now...
+
+1725772437
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Valve has this cool project (doesn't require Steam, and isn't exclusive to games at all): https://github.com/ValveSoftware/GameNetworkingSockets and there's also Mosquitto https://github.com/eclipse/mosquitto for an MQTT broker
+
+1725772515
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Any input/ideas/feedback on approaches? I don't think I'll care about (de)serialisation as I'll be writing the server and clients and following from TigerBeetle's example I'll just cast data at both ends and append a checksum
+
+1725809472
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque & rockorager I forgot the defer for the env.deinit() call 🤦
+
+1725810007
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The_Buhs: that explains it :)
+
+1725810033
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Literally noticed it within 30 seconds of opening it up this morning haha
+
+1725812392
+Synon!~mkejji@user/Synon
+The_Buhs: Cool, I was also scratching my head over a "incorrect alignment" error, so now I know where to look. Does that error typically happen when trying to access unaloccated memory in a HashMap?
+
+1725812889
+Synon!~mkejji@user/Synon
+It is my understanding (can't remember where I read that) that @import() isn't supposed to be used to import files but modules, is that correct? I'm struggling to make use of some functions I have in `lib/utils/hex.zig` in a file in `lib/rpc/rpc_client.zig`. It seems I can't import files from parent directories but at the same time I'd love to keep the option of running tests in a single file (`zig test
+
+1725812891
+Synon!~mkejji@user/Synon
+src/lib/rpc/rpc_client.zig`). Although I'm happy to give up on that little confort if there's a better way to expose the functions in 'hex.zig' to my 'rpc_client.zig'
+
+1725813044
+torque!~tachyon@user/torque
+in my experience, if you are running debug or release safe, use after free (or allocator-based race conditions) do tend to show up as inexplicably failing safety checks
+
+1725813051
+Lynix!~raphael@77.64.254.206
+Hi, i'm just getting started with Zig and have a questions regarding error handling. Let's say i have a function that has two different errors. I want to call this function and assign the function return to a variable. If error 1 happens, set the variable to 0, if error 2 happens set it to 10. I was able to do this using catch combined with switch. However what if i want to execute additional code before 
+
+1725813057
+Lynix!~raphael@77.64.254.206
+setting the value to 0 or 10 in case of an error. For example it could be useful to print out that the value was set because of an error. How would i do that. Here is a codesnipped to illustrate what i mean: https://dpaste.com/HNVMK9DC4
+
+1725813166
+torque!~tachyon@user/torque
+you can use a labeled block to create a multi-line expression that produces a value: https://ziglang.org/documentation/0.13.0/#Blocks
+
+1725813389
+torque!~tachyon@user/torque
+e.g. https://zigbin.io/18480a
+
+1725813428
+torque!~tachyon@user/torque
+you may also want to look at std/log.zig for some basic logging functionality 
+
+1725813445
+torque!~tachyon@user/torque
+debug.print is more geared toward print debugging
+
+1725813560
+Lynix!~raphael@77.64.254.206
+Thank you very much this works. Is this how you would usually do something like this? (besides using logging instead of debug.print)
+
+1725813631
+torque!~tachyon@user/torque
+yes, except in cases where extracting common functionality to a function would make more sense
+
+1725813701
+Synon!~mkejji@user/Synon
+I was looking at examples, Tigerbeetle seem to have no problem importing files from a parent folder: https://github.com/tigerbeetle/tigerbeetle/blob/0db94f6c33d514bbd92bd9e2ac23239c3c01a28d/src/stdx/bounded_array.zig#L2 or is it just because it's an order version of Zig?
+
+1725813727
+Lynix!~raphael@77.64.254.206
+torque: Alright thanks 
+
+1725813768
+torque!~tachyon@user/torque
+Synon, importing files from a parent folder works up to the level of your root source file
+
+1725813853
+torque!~tachyon@user/torque
+e.g. if your project has `src/main.zig`, `src/other.zig`, and `src/nested/stuff.zig`, then you can do `@import("../other.zig")` from `src/nested/stuff.zig`
+
+1725813873
+Synon!~mkejji@user/Synon
+torque: Oh yeah, it didn't work for me because I was doing `zig test path/to/file.zig`. In that scenario it considers that my root dir is `path/to` right?
+
+1725813875
+torque!~tachyon@user/torque
+however, none of the files under `src` in this example would be able to import something above that directory
+
+1725813885
+torque!~tachyon@user/torque
+Synon, yes, I believe that is correct
+
+1725813931
+Synon!~mkejji@user/Synon
+is there a command line option that lets me change that root path? (I'm looking in the meantime but asking in case someone has the answer ready)
+
+1725814070
+Synon!~mkejji@user/Synon
+Or I guess I could create a test file in say `src/test` that just does `test { @import("path/to/file.zig"); }`. I think I like this option
+
+1725814105
+torque!~tachyon@user/torque
+idk about `zig test` specifically, but out-of-tree source files can be bound to module names and imported that way. The other option for test would probably be to always test some top-level file and use --test-filter to only run the tests you're interested in
+
+1725814138
+torque!~tachyon@user/torque
+yes, that latter pattern you've mentioned is common
+
+1725814254
+Synon!~mkejji@user/Synon
+torque: thanks for the assistance! I'll use test filters for now, I didn't think of that earlier
+
+1725824693
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager: this isn't really a zeit thing, I think it's just a me not understanding a zig thing, how can I use strftime to write to a []u8 instead of directly to std out or whatever? Do I just need to figure out how to write my own writer
+
+1725824789
+andrewrk!~andrewrk@mail.ziglang.org
+The_Buhs: it looks to me like strftime writes to a buffer, not to stdout
+
+1725824838
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+andrewrk: I just meant stdout as in that's the only writer I know how to get
+
+1725824886
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://rockorager.github.io/zeit/#zeit.Time.strftime since it needs a writer with writeAll(). (I think I just don't really understand)
+
+1725824957
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+can't you get a writer from a ArrayList(u8) for instance
+
+1725824963
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.writer()
+
+1725825054
+andrewrk!~andrewrk@mail.ziglang.org
+you don't need a writer, you just need an array of bytes to act as a buffer
+
+1725825268
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+but if I pass a plain buffer to zeit.Time.strftime() I get `error: no field or member function named 'writeAll' in '[6:0]u8'`
+
+1725825374
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The_Buhs: Its writing to a generic writer or an Anywriter. check out the tests for how to write to a static buffer
+
+1725825416
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+ooooh tests, thanks. Didn't think to look there -- doing that now
+
+1725825482
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Ok yeah, that makes sense. Thanks :)
+
