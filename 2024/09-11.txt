@@ -1,0 +1,320 @@
+1726067976
+dy!sid3438@user/dy
+I'm trying to bootstrap Zig from source on a Mac, running into issues with `-lzstd` not picking up the Homebrew installed zstd. Has anyone run into this and found a simple fix that doesn't involve modifying `CMakeLists.txt`?
+
+1726067990
+dy!sid3438@user/dy
+I presumed `CMAKE_PREFIX_PATH=/opt/homebrew/opt/llvm:/opt/homebrew` but no dice.
+
+1726068008
+dy!sid3438@user/dy
+s/but no dice/would be sufficient but no dice/
+
+1726068103
+ifreund!2940d10f8b@user/ifreund
+CMAKE_PREFIX_PATH is about where to install artifacts not where to search for libraries if I'm not mistaken
+
+1726068166
+dy!sid3438@user/dy
+No, it's prefixes for `find_package`, `find_program`, etc  
+
+1726068197
+ifreund!2940d10f8b@user/ifreund
+dy: I believe you want https://cmake.org/cmake/help/latest/variable/CMAKE_LIBRARY_PATH.html
+
+1726068228
+dy!sid3438@user/dy
+CMAKE_PREFIX_PATH subsumes that.
+
+1726068243
+ifreund!2940d10f8b@user/ifreund
+yeah, looks like you're right
+
+1726068244
+dy!sid3438@user/dy
+CMAKE_PREFIX_PATH is set to a directory that contains a `bin`, `lib`, `include`, etc.
+
+1726068248
+dy!sid3438@user/dy
+hence "prefix"
+
+1726068274
+dy!sid3438@user/dy
+https://www.irccloud.com/pastebin/z5tkfTUS/
+
+1726068276
+ifreund!2940d10f8b@user/ifreund
+Ususally prefix referes to the destination in build systems... I obviously am not a cmake expert
+
+1726068290
+dy!sid3438@user/dy
+CMake is rather arcane, haha.
+
+1726068348
+dy!sid3438@user/dy
+In any case, the issue here just seems to be that the project assumes `libzstd` will just be on the library path.
+
+1726068350
+ifreund!2940d10f8b@user/ifreund
+so zstd is a transitive dependency from llvm (lld specifically iirc)
+
+1726068377
+ifreund!2940d10f8b@user/ifreund
+I don't see an explicit find_library() call for zstd in zig's cmake lists unless you set ZIG_STATIC_ZSTD
+
+1726068388
+ifreund!2940d10f8b@user/ifreund
+maybe try that in combination with your prefix path variable?
+
+1726068418
+dy!sid3438@user/dy
+Yup, and I _could_ rewrite the CMakeLists to find_package for zstd (which it probably should be doing) but I don't want to do that for obvious reasons haha
+
+1726068449
+dy!sid3438@user/dy
+What I want is to propagate to the linker a (DY)LD_LIBRARY_PATH.
+
+1726068455
+dy!sid3438@user/dy
+That includes Homebrew.
+
+1726077727
+olabaz!~olabaz@user/olabaz
+I have a struct with an optional slice: tags: ?[]const u8 = null. If it exists I am setting it with self.tags = allocPrint(....). I am getting a compile error when I try to free using: if (self.tags) | tags | { allocator.free(tags) }. Am I missing something?
+
+1726077803
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+olabaz: what is the compile error?
+
+1726077838
+olabaz!~olabaz@user/olabaz
+General protection exception (no address available)
+
+1726077887
+olabaz!~olabaz@user/olabaz
+something else about d[0] = c and     @memset(non_const_ptr[0..bytes_len], undefined);
+
+1726078044
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's a crash, not a compile error
+
+1726078082
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you saying the compiler crashes?
+
+1726078205
+olabaz!~olabaz@user/olabaz
+let me paste the whole thing
+
+1726078234
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+in a pastebin please
+
+1726078305
+olabaz!~olabaz@user/olabaz
+https://pastebin.com/m4Ftpf0P
+
+1726078355
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's while running tests, not while compiling
+
+1726078397
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you're doing something invalid, like double-freeing that slice or freeing it with the wrong allocator or something
+
+1726078538
+olabaz!~olabaz@user/olabaz
+hmmm, ok let me take another look. If I define a block with: { //code; defer blah} will `blah` be called after that scope or do I need to define it a different way
+
+1726078601
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it should
+
+1726078713
+dy!sid3438@user/dy
+Welp
+
+1726078769
+dy!sid3438@user/dy
+I got clang to find libzstd... but now zig2 can't find it. It seems to expect that libzstd is installed... with LLVM?
+
+1726078785
+dy!sid3438@user/dy
+https://www.irccloud.com/pastebin/zURceDID/
+
+1726079083
+olabaz!~olabaz@user/olabaz
+for some reason the if (self.tags) is evaluating to true even though it's default set to null
+
+1726079126
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how is self created
+
+1726079167
+olabaz!~olabaz@user/olabaz
+    var parsed_message = try allocator.create(NewMsg);
+
+1726079186
+olabaz!~olabaz@user/olabaz
+NewMsg has the field tags: ?[]const u8
+
+1726079193
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but create returns undefined memory
+
+1726079197
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+^^
+
+1726079213
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+parsed_message.* = .{};
+
+1726079221
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If you have all the defaults defined
+
+1726079232
+olabaz!~olabaz@user/olabaz
+I see
+
+1726079269
+olabaz!~olabaz@user/olabaz
+is there a more idiomatic way to go about this
+
+1726079282
+olabaz!~olabaz@user/olabaz
+(works now!)
+
+1726079298
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+do you need to allocate it with an allocator at all?
+
+1726079310
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Create followed by assignment-with-deref is pretty idiomatic, but the rest would depend on the surrounding code
+
+1726079350
+olabaz!~olabaz@user/olabaz
+Gliptic: yes I'm returning it at the end of the function
+
+1726079360
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+olabaz: you can still return it
+
+1726079362
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+As Gliptic says, you should consider if you actually need to heap allocate the struct
+
+1726079363
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+by value
+
+1726079384
+olabaz!~olabaz@user/olabaz
+that's true
+
+1726079417
+olabaz!~olabaz@user/olabaz
+let me move it to stack
+
+1726079554
+aquamo4k!~mross@162.222.54.134
+dy: did you pass in a CMAKE_PREFIX_PATH= variable to cmake when you setup your build?  did you include the directory where the libstd.* libraries are on your system?
+
+1726079631
+aquamo4k!~mross@162.222.54.134
+dy: mine on FreeBSD has both the llvm18 dir *and* the place I put libzstd (-DCMAKE_PREFIX_PATH="/usr/local/llvm18;/usr/local") for example
+
+1726079650
+dy!sid3438@user/dy
+I think I've got it... zig2 is building stage 3 and I can see it's got libzstd dylib open.
+
+1726079660
+aquamo4k!~mross@162.222.54.134
+ack cool
+
+1726079703
+dy!sid3438@user/dy
+Build finished!
+
+1726079746
+dy!sid3438@user/dy
+aquamo4k: I think I just had some corruption in my build from playing with configuration, seems to be good now. And yes I have `CMAKE_PREFIX_PATH=/opt/homebrew/opt/llvm:/opt/homebrew`
+
+1726079786
+aquamo4k!~mross@162.222.54.134
+ack, makes sense.   It took me a couple tries when i started up my daily builds of zig too across a few platforms.  cool
+
+1726079879
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Gliptic you can return stack-allocated structs in Zig? 
+
+1726079901
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+The_Buhs: of course, by copy
+
+1726079924
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+o duh :P
+
+1726079998
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+but const foo: Foo = .{}; return &foo; still would still be a bug (assuming the caller tries to access the returned value?) 
+
+1726080032
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+of course, that's a dangling pointer
+
+1726083466
+dy!sid3438@user/dy
+Thought I’d take a look at the contrib friendly issue for 100% behavior tests on aarch64. But, since I’m on an aarch64-macos system already not using qemu aarch64-linux. Runs successfully without `-fno-llvm -fno-lld`, but with them I get panics during codegen 🙃
+
+1726083500
+dy!sid3438@user/dy
+I even get panics in codegen from a `zig test hello_world.zig -fno-llvm -fno-lld`.
+
+1726083704
+dy!sid3438@user/dy
+Looks like things are moving fast though 🙂… my 0.14 beta built from master a couple days ago has TODO errors that have apparently been implemented
+
+1726084340
+andrewrk!~andrewrk@mail.ziglang.org
+dy: the aarch64 self-hosted backend is not very far along yet
+
+1726084370
+andrewrk!~andrewrk@mail.ziglang.org
+which is a real shame considering the increasing popularity of that architecture
+
+1726084384
+dy!sid3438@user/dy
+yeah, between AWS, OCI, and well, Macs
+
+1726084450
+dy!sid3438@user/dy
+andrewrk: Are there any contributor friendly issues that you'd especially like to see someone work on, and that would be good for getting to know the codebase?
+
+1726084598
+dy!sid3438@user/dy
+#20986 seems useful/doable/straightforwardish
+
+1726091531
+dy!sid3438@user/dy
+zstd not being found somehow strikes again after resetting caches despite identical config 🙃
+
+1726096977
+dy!sid3438@user/dy
+Huh. I'm getting a completely different error trying to get fuzzing working on mac from either of the two in issue #20986.
+
+1726096993
+dy!sid3438@user/dy
+LLVM ERROR: Global variable '__sancov_gen_.0' has an invalid section specifier '__sancov_cntrs': mach-o section specifier requires a segment and section separated by a comma.
+
+1726097343
+dy!sid3438@user/dy
+Still digging around, don’t know my way around the codebase well at all.
+
+1726099173
+andrewrk!~andrewrk@mail.ziglang.org
+dy: have a look at what the equivalent LLVM IR code clang generates for that target and compare it to the LLVM IR generated by zig
+
