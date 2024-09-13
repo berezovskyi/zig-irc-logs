@@ -1,0 +1,608 @@
+1726099224
+andrewrk!~andrewrk@mail.ziglang.org
+here's a hint: clang -c test.c -fsanitize=fuzzer-no-link -S -emit-llvm -g
+
+1726099261
+dy!sid3438@user/dy
+🫡 thanks for the tip, I was thinking something like that but had to put the problem down to do some work
+
+1726105272
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://zigbin.io/781285 how can I get this to work? 
+
+1726105311
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I'm assuming it's just something with the way that buf is being initialized but I'm not actually sure
+
+1726105352
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+fbs.getWritten
+
+1726105366
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you are passing the full buffer instead of the written bytes
+
+1726105389
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+and the full buffer has undefined bytes in it
+
+1726105801
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+that buffer will always be ascii though. I’m not sure what else your doing but you could probably just do a for loop over the written bytes instead of a code point iterator
+
+1726107105
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+makes sense, thank you rockorager ! 
+
+1726108367
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+"In Debug mode, Zig writes 0xaa bytes to undefined memory." oooooohhh that explains some things
+
+1726108537
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I'm using fcft though so I think I need the codepoints
+
+1726109074
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager: is zeit.Time.strftime's %l supposed to add 1 to the hour? Right now it's 21:44/9:44 local time for me, but "%l:%M" gives "10:44"
+
+1726109096
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+C's strftime with the same formatter gives 9:44
+
+1726111381
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+It’s supposed to be exactly what C gives, could you file a bug report so I remember to look at it tomorrow?
+
+1726111406
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+%H gives the correct time though?
+
+1726111641
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Yeah %H shows up correctly, I’m not at my laptop atm but I’ll file one in the morning 
+
+1726111720
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I found the bug from GitHub mobile, stupid math error on my part. I’ll fix it tomorrow
+
+1726112409
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Cool, thanks :)
+
+1726115883
+dy!sid3438@user/dy
+andrewrk: apologies if I'm seeming like I'm being a fumbly sillyhead here, I just really love what this project is doing and would like to contribute to it and despite my lacks I do actually have a decent understanding of what's involved in these issues.
+
+1726115924
+dy!sid3438@user/dy
+which is a fancy way to say I'm a masochist who enjoys long LLDB/GDB sessions while waiting between >100s builds :^)
+
+1726115967
+dy!sid3438@user/dy
+But really, as a long time C programmer who gets irritated to no end by C++ only interfaces you're doing God's work.
+
+1726116011
+dy!sid3438@user/dy
+I have written so many C interfaces wrapping C++ libraries. I am so fucking sick of it.
+
+1726116035
+dy!sid3438@user/dy
+So, I'm really interested in the ABI declaration file idea, but I think it should go further.
+
+1726116050
+dy!sid3438@user/dy
+It should be embeddable in binaries as a section.
+
+1726116098
+dy!sid3438@user/dy
+And it should contain all necessary information to generate headers at minimum and optionally include documentation but either way be authoritative.
+
+1726116159
+dy!sid3438@user/dy
+ But making it relatively independent of Zig (an ABI not a ZABI) is difficult especially when interface files post CPP are still the standard for ABI.
+
+1726116217
+dy!sid3438@user/dy
+Also sidenote but the proposals for comment schemes for enhanced Zig support are all fucking wrong use #pragma.
+
+1726116298
+dy!sid3438@user/dy
+In any case I'm making a casew for binary format, I think after a lot of research broadly following DWARF is a good idea.
+
+1726116363
+dy!sid3438@user/dy
+And Zig binaries potentially shippinb=g with sufficient materials to be safely linked against is a killer feature.
+
+1726116413
+dy!sid3438@user/dy
+I am against all good sense working on a draft format just to kickstart the convo.
+
+1726116476
+dy!sid3438@user/dy
+I think you just need to be a bit more ballsy about zabi.
+
+1726116503
+dy!sid3438@user/dy
+Trying to conform to the C standards will be too hard.
+
+1726131718
+speeder!~speeder@2001:8a0:dfde:fa00:6533:29a6:c21b:96f5
+hello! I am new to zig, reading the docs but not understanding it. What "const someName = try somefunc(bar)" do? specially in the case "somefunc(bar)" fails?
+
+1726132475
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+speeder, if the expression fails, the current function returns with the error
+
+1726132504
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I think the docs are quite clear, "If it is an error, it returns from the current function with the same error."
+
+1726132523
+speeder!~speeder@2001:8a0:dfde:fa00:6533:29a6:c21b:96f5
+what error? the one generated by "somefunc" ?
+
+1726132526
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1726132549
+speeder!~speeder@2001:8a0:dfde:fa00:6533:29a6:c21b:96f5
+ah, so if somefunc only line is also a "try" line then I need to keep chasing down the code until I find something that is NOT a try?
+
+1726132659
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+more or less, there are other ways to unwrap errors, like catch or if/else with captures
+
+1726133212
+ifreund!2940d10f8b@user/ifreund
+speeder: `try foo()` is sugar for `foo() catch |err| return err;` fwiw
+
+1726140442
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+is there a way to force the shadowing of a function parameter? or maybe should i say redeclare a local variable with the same name as a parameter?
+
+1726140463
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+and if possible, is this an anti-pattern maybe?
+
+1726140689
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+if not possible, do you have some convention to name a local variable x that should have the same name as the x function parameter?
+
+1726141094
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yeah, just realised it's a bad idea
+
+1726141375
+ifreund!2940d10f8b@user/ifreund
+yeah, shadowing is intentionally not possible
+
+1726149963
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The_Buhs: zeit is fixed
+
+1726150264
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager thank you! 
+
+1726154259
+grayhatter!~grayhatte@user/grayhatter
+can I force a test timeout yet?
+
+1726163847
+andrewrk!~andrewrk@mail.ziglang.org
+gluon: an alternative to shadowing is to put your popular name in a block with curly braces, then you can reuse the name outside the block
+
+1726164200
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+andrewrk: oh i thought the scope would be limited to the block. thanks!
+
+1726164218
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+although, it's more readable to actually give it some other name. after all it's something else
+
+1726164302
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it is limited to the block
+
+1726164332
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+oh ofc, so i can return it from within the block
+
+1726164338
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i need to return it
+
+1726164405
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+my typical use case for this is some function that somehow changes parameter x very slightly and returns it
+
+1726164412
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you said it was a parameter you wanted to shadow, so that won't help
+
+1726165478
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+my use case:
+
+1726165480
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+https://zigbin.io/a7f546
+
+1726165489
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+but yeah, still shadows the parameter like this
+
+1726170171
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+gluon: Maybe pass a pointer if you are modifying it
+
+1726170203
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Oh I see
+
+1726170204
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yeah, that was my solution eventually
+
+1726170948
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+rockorager: i ended up using an ArrayList because it was more useful, so then i just changed the msg parameter to msg: *std.ArrayList(u8) and used append
+
+1726171033
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i fell into a habit of avoiding any kind of mutation doing too much functional programming style in rust
+
+1726171046
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+but obviously that's not always desirable
+
+1726171633
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i enjoy that zig uses pointer/value semantics to mean mutable/immutable function parameters
+
+1726171661
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+no need to use some extra keyword and it's also a reminder that it is a good idea to use a pointer to change anything
+
+1726172039
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+maybe this is part of the reason why shadowing parameters = error
+
+1726172174
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+that would kind of defeat the purpose of having immutable parameters, i think
+
+1726172291
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the reason is just that confusion about what a name is referring to is bad
+
+1726172316
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yeah, there's only one possibility this way
+
+1726172318
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+makes sense
+
+1726182547
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/news/migrate-to-self-hosting/ ziglang.org is no longer using amazon web services
+
+1726183075
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: that's fantastic!
+
+1726183092
+grayhatter!~grayhatte@user/grayhatter
+perf-regression testing soon?
+
+1726183299
+andrewrk!~andrewrk@mail.ziglang.org
+it would be nice. I don't really have time to do the operational work to maintain that currently
+
+1726183320
+andrewrk!~andrewrk@mail.ziglang.org
+it's something a third party enthusiast could do pretty easily however 
+
+1726183346
+andrewrk!~andrewrk@mail.ziglang.org
+wasn't there just somebody asking how they could help? ah it was user dy
+
+1726183408
+andrewrk!~andrewrk@mail.ziglang.org
+well there's your answer dy. create and maintain a third party website to track zig's performance on various benchmarks so we can know if we improved or regressed performance with every commit
+
+1726183411
+dy!sid3438@user/dy
+sorry about last evening I was admittedly coming off a good evening out with some friends
+
+1726183431
+grayhatter!~grayhatte@user/grayhatter
+also, I'm working on a source sharing site. one of the primary motivators is redundancy (freedesktop keeps breaking their host/CI which breaks a friends builds for days every time.) I'd be very interested to read about any difficulties you encounter so I can try to not run into the same issues.
+
+1726183433
+dy!sid3438@user/dy
+Hmm, so something like what Python has for their typing spec?
+
+1726183450
+grayhatter!~grayhatte@user/grayhatter
+or maybe come up with something to make the whole thing easier too
+
+1726183492
+andrewrk!~andrewrk@mail.ziglang.org
+I don't know what python thing you're talking about but if you want an example, here's one: http://llvm-compile-time-tracker.com/
+
+1726183577
+dy!sid3438@user/dy
+Makes sense
+
+1726183641
+dy!sid3438@user/dy
+I think the key challenge there wouldn't be setting up the platform (absolutely within my wheelhouse, worked in web dev for better part of a decade) but rather what's worth running, on what architectures, who would pay for it, and how often it runs. In other words, backend data.
+
+1726183692
+grayhatter!~grayhatte@user/grayhatter
+dy: if you build it, they will come
+
+1726183709
+andrewrk!~andrewrk@mail.ziglang.org
+well yeah if it wasn't a pain in the ass then I'd just do it. there's not really any trivial valuable work to be done
+
+1726183715
+dy!sid3438@user/dy
+At minimum it seems like there should be an Intel target, an ARM target and... that's probably fine to start?
+
+1726183743
+dy!sid3438@user/dy
+andrewrk: not looking for trivial work and this is definitely something I could take a crack at, just trying to understand the requirements
+
+1726183745
+grayhatter!~grayhatte@user/grayhatter
+that is to say, that part shouldn't be important. If there was a way to track that stuff for zig, you'd likely get a lot of people that go... hey, I have a server that sits idle some times, maybe I can donate some CPU time to Zig
+
+1726183799
+dy!sid3438@user/dy
+Well, I'm not exactly sitting on the money to absorb the impact if it suddenly costs way more than expected, and actually organizing donation of CPU time is expensive and also there's heterogeneity of results before and after switches.
+
+1726183804
+andrewrk!~andrewrk@mail.ziglang.org
+the thing that would be nice about this from zig's perspective is that the zig core team wouldn't really have to do anything but be users. it can be 100% independently operated
+
+1726183809
+dy!sid3438@user/dy
+If it's going to be experimentally useful it needs to be consistent.
+
+1726183810
+grayhatter!~grayhatte@user/grayhatter
+running some script is really easy for most people... making it easy to intergrate all thoes datapoints is the part that needs some investment
+
+1726183849
+dy!sid3438@user/dy
+Collecting and displaying all of the resultant data points is, relatively, easy  
+
+1726183868
+dy!sid3438@user/dy
+It's automatically scheduling the infrastructure on demand to run the jobs that's not.
+
+1726183869
+grayhatter!~grayhatte@user/grayhatter
+dy: not for me
+
+1726183897
+dy!sid3438@user/dy
+This seems very doable in any case
+
+1726183904
+grayhatter!~grayhatte@user/grayhatter
+dy: build a "pull" system instead
+
+1726183920
+dy!sid3438@user/dy
+Oh it's not that part that's the concerning part
+
+1726183938
+grayhatter!~grayhatte@user/grayhatter
+don't worry about how you'll schedule the data yet, just build something that people *could* submit test runs to, and then you'll find someone who thinks the rest is easy
+
+1726183938
+dy!sid3438@user/dy
+It's more, "how do you handle holes in the data, crashes, etc in a way that doesn't compromise the utility of the data"
+
+1726183955
+dy!sid3438@user/dy
+This is the subject of my PhD so I'm a bit sensitive to it heh
+
+1726183985
+grayhatter!~grayhatte@user/grayhatter
+dy: you're a good engineer, trying to preempt problems. but I'm not convinced that problem exists. This is a case where some data, even buggy data is better than no data. 
+
+1726183985
+dy!sid3438@user/dy
+Ah I see so you're saying don't even worry about pulling, just collate
+
+1726183996
+dy!sid3438@user/dy
+That's the Do The Simplest Possible Thing starting point for sure.
+
+1726184018
+grayhatter!~grayhatte@user/grayhatter
+fixing buggy data is much easier than inventing data that doesn't exist, and has no place to live
+
+1726184029
+dy!sid3438@user/dy
+The main concern I have isn't an engineering one but a data sanity one which is how to ensure some modicum of consistency or comparability in results
+
+1726184064
+dy!sid3438@user/dy
+And again I'm not poo pooing this at all, I think it's a fantastic idea and something I'm interested in, just want to get a better grip on what's expected
+
+1726184088
+grayhatter!~grayhatte@user/grayhatter
+I don't think you don't need phd levels of confidence here
+
+1726184094
+dy!sid3438@user/dy
+With arbitrary submission from users there's no way to regularize to the differences in their systems. 
+
+1726184133
+grayhatter!~grayhatte@user/grayhatter
+if you wanted to use the data to make decisions, or build conclusions, yes, you would... but first, having a heuristic, or a way to detect **serious** regressions would be miles better than what Zig uses currently 
+
+1726184135
+dy!sid3438@user/dy
+To be "fair", at least for relatively long periods of time with announced shifts, benchmarks should be run on identical machines or dedicated VPS (a bit shakier)
+
+1726184149
+dy!sid3438@user/dy
+Yeah if the goal is just to detect serious regressions I agree.
+
+1726184166
+dy!sid3438@user/dy
+But something like this will (like the Python one) possibly end up getting plugged into issue tracker smoke testing real fast.
+
+1726184184
+grayhatter!~grayhatte@user/grayhatter
+dy: yes, if you wanted to draw verifable conclusions directly from the data I agree... but I just want to know which way the trend line is going
+
+1726184185
+dy!sid3438@user/dy
+And if it's inaccurate it becomes a pain in the arse and if it's a pain in the arse it gets ignored or not used.
+
+1726184204
+grayhatter!~grayhatte@user/grayhatter
+worry about malicious data later, because that's a super easy problem for me to solve
+
+1726184206
+dy!sid3438@user/dy
+I think the gap here is I'm thinking how it will likely be used versus you thinking how you would use it.
+
+1726184213
+dy!sid3438@user/dy
+I'm not worried about malicious data in the slightest.
+
+1726184219
+dy!sid3438@user/dy
+No one cares enough for that haha
+
+1726184255
+dy!sid3438@user/dy
+I'm worried about someone deciding it isn't acceptable to accept a good contribution because automated code I wrote decides it creates an illusory performance regression
+
+1726184289
+dy!sid3438@user/dy
+Or people wasting time trying to find a but that's due to infrastructure and not what that infrastructure is supposed to test.
+
+1726184301
+grayhatter!~grayhatte@user/grayhatter
+dy: having watched IRC, and the git repo for as long as I have. I'd bet my house no one is dumb enough to let that happen.
+
+1726184314
+dy!sid3438@user/dy
+Hey idk man I'm pretty dumb sometimes
+
+1726184319
+dy!sid3438@user/dy
+(Jk)
+
+1726184331
+grayhatter!~grayhatte@user/grayhatter
+lol, I mean, same... but what'cha gonna do?
+
+1726184337
+dy!sid3438@user/dy
+Many eyes :)
+
+1726184354
+dy!sid3438@user/dy
+In any case ok good idea so next step
+
+1726184355
+grayhatter!~grayhatte@user/grayhatter
+either way, I think you should do it, if it really is easy for you, you should. Because it's not something I'd be able to do quickly
+
+1726184360
+dy!sid3438@user/dy
+Use what, the behavior tests?
+
+1726184367
+grayhatter!~grayhatte@user/grayhatter
+but if you keep searching for excuses not to, I can't help there 
+
+1726184370
+dy!sid3438@user/dy
+That seems as good a place to start as any
+
+1726184382
+dy!sid3438@user/dy
+And at least them the crash state and output are actually valuable outputs themselves
+
+1726184389
+dy!sid3438@user/dy
+then*
+
+1726184416
+dy!sid3438@user/dy
+grayhatter: please don't misunderstand as me searching for excuses not to! If I didn't want to I would just ignore it!
+
+1726184431
+dy!sid3438@user/dy
+I'm just trying to winnow the expectations/requirements.
+
+1726184457
+dy!sid3438@user/dy
+This sounds fun as I'd have to automate orchestration of VPS resources.
+
+1726184466
+dy!sid3438@user/dy
+New problem domain.
+
+1726184467
+grayhatter!~grayhatte@user/grayhatter
+I think the primary expectation is to enjoy building something useful the zig community could use to track the perf of the language and compiler over time
+
+1726184497
+dy!sid3438@user/dy
+Right but for that "over time" bit to be useful the experimental conditions need to be consistent.
+
+1726184498
+grayhatter!~grayhatte@user/grayhatter
+other than that? I don't think there's a failure point
+
+1726184529
+dy!sid3438@user/dy
+I think my gut would be that the default should be comparable not quite bottom but relatively recently introduced nodes on Intel and ARM from a major VPS provider introduced somewhat recently
+
+1726184577
+dy!sid3438@user/dy
+Though initially I just run it off my desktop for testing purposes :^)
+
+1726184592
+dy!sid3438@user/dy
+so moving on what would be worth benchmarking that exists today?
+
+1726184605
+dy!sid3438@user/dy
+my first thought is the behavior tests as mentioned
+
+1726184620
+dy!sid3438@user/dy
+compilation of the compiler itself perhaps but that depends on goals
+
+1726184644
+dy!sid3438@user/dy
+are there some benchmarks already I'm just not aware of?
+
+1726184672
+dy!sid3438@user/dy
+Problem with behavior tests is they change for more than one reason. Good perf tests never really change.
+
+1726184747
+dy!sid3438@user/dy
+In any case, the front end side of this is completely in my wheel house so a decent first step would be just having it be an open platform with "there are X benchmarks with X data formats, submit data and it'll be displayed"
+
+1726184761
+dy!sid3438@user/dy
+The compute issue is not MVP
+
