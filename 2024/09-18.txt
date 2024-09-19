@@ -1,0 +1,120 @@
+1726619230
+andrewrk!~andrewrk@mail.ziglang.org
+sc0ttr: do you have any more context? is this a linker error you're getting?
+
+1726619289
+andrewrk!~andrewrk@mail.ziglang.org
+that error message seems to imply you are trying to use libdawn.a as a linker object but it's not functioning as one
+
+1726620493
+torque!~tachyon@user/torque
+finally got around to reducing that c backend issue I ran into a couple of weeks ago https://github.com/ziglang/zig/issues/21439
+
+1726620542
+torque!~tachyon@user/torque
+turns out the code triggering it was in zigimg
+
+1726634390
+grayhatter!~grayhatte@user/grayhatter
+bool is an octet?
+
+1726634598
+grayhatter!~grayhatte@user/grayhatter
+I wanted packed struct, but I'm still a bit suprised that's not the default
+
+1726634979
+andrewrk!~andrewrk@mail.ziglang.org
+bool does not have a well-defined memory layout. the compiler is free to lower in any bit pattern
+
+1726634993
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: hmm? a bool is one bit. but just like u1/i1/enum {a,b} it can take up whatever size it wants. or in an array will go to byte aligned
+
+1726635077
+daurnimator!~daurnimat@vultr.daurnimator.com
+I think the docs around that are mainly in @sizeOf? https://ziglang.org/documentation/0.13.0/#sizeOf " This function returns the number of bytes it takes to store T in memory. The result is a target-specific compile time constant. This size may contain padding bytes. If there were two consecutive T in memory, the padding would be the offset in bytes between element at index 0 and the element at index
+
+1726635079
+daurnimator!~daurnimat@vultr.daurnimator.com
+1. For integer, consider whether you want to use @sizeOf(T) or @typeInfo(T).Int.bits."
+
+1726635084
+grayhatter!~grayhatte@user/grayhatter
+now that I'm explaining it, I'm sure this is me being dumber than I need to... (i.e. I could find it in stdlib) but I wrote FSPerm = struct{ read: bool, write: bool, exec: bool: sticky: bool: padding} and was suprised when @sizeOf was 5
+
+1726635127
+grayhatter!~grayhatte@user/grayhatter
+I meant `padding: u4,`
+
+1726635146
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: try `struct{ read: align(0) bool, write: align(0) bool, exec: align(0) bool, sticky: align(0) bool, padding: align(0) bool}`
+
+1726635169
+grayhatter!~grayhatte@user/grayhatter
+`packed struct(u8)` is what stdlib does, and I like that better
+
+1726635207
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: I think the idea here is that if you have a pointer-to-bool it only has a byte; not the bit offset. so by default it rounds bool up to bytes 
+
+1726635216
+daurnimator!~daurnimat@vultr.daurnimator.com
+s/to bytes/to a byte/
+
+1726635391
+daurnimator!~daurnimat@vultr.daurnimator.com
+Am I imagining things or did pointers used to have a bitoffset as part of the alignment?
+
+1726635431
+daurnimator!~daurnimat@vultr.daurnimator.com
+looks like `align(1:3:1)` does still exist in an error message in the docs. Is that compoletely undocumented?
+
+1726635572
+sp2!uid197664@user/meow/sp2
+looks like it's vaguely documented here: https://ziglang.org/documentation/master/#toc-packed-struct
+
+1726643803
+dy!sid3438@user/dy
+>minification makes me sad @sc0ttr
+
+1726643805
+dy!sid3438@user/dy
+I agree
+
+1726643819
+dy!sid3438@user/dy
+I want my JS to be accessible
+
+1726643960
+dy!sid3438@user/dy
+My personal preference is that you should just write less of it and make your JS accessible and friendly
+
+1726644075
+dy!sid3438@user/dy
+HTMX is admittedly a heavy dependency but honestly it's just such a clearly good idea...
+
+1726644098
+dy!sid3438@user/dy
+HTMZ doesn't quite do it.
+
+1726644220
+dy!sid3438@user/dy
+I'd like to see HTMX build into browsers through, I think in would be absolutely disastrous to frameworks.
+
+1726644227
+dy!sid3438@user/dy
+Built8
+
+1726644234
+dy!sid3438@user/dy
+Built*
+
+1726702892
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+How would one go about linking against a cpp library and using it like I would a C lib? Is that even a possibility or should I be writing a wrapper for the cpp lib?
+
+1726702919
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+in my specific case, there is already a C wrapper, but this is a curiosity-made-the-cat-insane issue
+
