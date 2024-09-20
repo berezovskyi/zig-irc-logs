@@ -1,0 +1,320 @@
+1726704162
+bblack!~bblack@wikimedia/bblack-WMF
+in theory you could generate a C header that had the mangled names and try to call into those symbols somehow, but ewww
+
+1726704170
+bblack!~bblack@wikimedia/bblack-WMF
+C wrapper probably better :)
+
+1726704313
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+yea, fair enough
+
+1726704320
+bblack!~bblack@wikimedia/bblack-WMF
+like the bottom answer here: https://stackoverflow.com/questions/12371370/using-c-mangled-functions-from-c
+
+1726704328
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+cpp interop, always the bane of my existence
+
+1726704448
+bblack!~bblack@wikimedia/bblack-WMF
+s/ interop// :)
+
+1726704490
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+lol yes, indeed
+
+1726704532
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+that actually sounds fun, to explore the mangledfulness of cpp .o and call directly, I wonder what kind of scream I will hear late night if I try to throw an exception
+
+1726704534
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+time to find out
+
+1726705913
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+holy s*** it actually works!
+
+1726717935
+andrewrk!~andrewrk@mail.ziglang.org
+fengshaun: you can use the ABI portion of the target triple to support different kinds of mangling too
+
+1726718016
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+:O there goes my weekend!
+
+1726718038
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+if I can find a way to match the name mangling, that'd be glorious
+
+1726718573
+grayhatter!~grayhatte@user/grayhatter
+how is zig's support for cpp?
+
+1726718630
+grayhatter!~grayhatte@user/grayhatter
+I've been writing extern c replacement blocks so could I call a cpp funcctions for a library, but It'd be really nice to just call some of the cpp func's directly
+
+1726719080
+torque!~tachyon@user/torque
+I think like everything else, the support is you do manual name manging or write C-api wrappers
+
+1726719086
+torque!~tachyon@user/torque
+mangling
+
+1726719143
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+I always thought c wrappers were the only way to do it, but it works for now, although I'm doing my own mangling for testing
+
+1726719263
+torque!~tachyon@user/torque
+name mangling only gets you so far. afaik, once templates get involved, you have to force the compiler to actually generate the functions and thus need some C++ to do that, at which point you're probably better off just exporting a C api
+
+1726719314
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+fair enough, it's been more than a decade since I've touched c++
+
+1726719348
+dy!sid3438@user/dy
+Calling C++ from anything that isn’t also C++ (and I guess Swift) is kind of a dead end. It’s a really wicked problem.
+
+1726719370
+dy!sid3438@user/dy
+There’s really little to do but generate or define a C API.
+
+1726721967
+andrewrk!~andrewrk@mail.ziglang.org
+my strategy is to eliminate c++ dependencies
+
+1726755851
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+On https://ziglang.org/learn/build-system/ it looks like all the `zig build` shell examples don't have a space after the build, so there are lots of things like `zig build--summary`. Is that correct? 
+
+1726755920
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I also noticed that in the `User-provided options` section, it says "please direct your attention to these lines" but I have no clue where the following lines are coming from
+
+1726758631
+torque!~tachyon@user/torque
+there should definitely be a space after `build`
+
+1726758681
+torque!~tachyon@user/torque
+re: your second question, that would be in the output of `zig build --help` but that command appears to have been omitted
+
+1726781497
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Are there any sort of warnings for unused imports (or top-level declarations)?
+
+1726782080
+ElementW!~tungsten@hoodie.elementw.net
+The_Buhs: as with all consts/vars, unused non-pub top level imports will emit an error
+
+1726782161
+ElementW!~tungsten@hoodie.elementw.net
+wait no my bad they don't
+
+1726782202
+ElementW!~tungsten@hoodie.elementw.net
+consts do not
+
+1726782235
+torque!~tachyon@user/torque
+I think there's a proposal for that, though
+
+1726782255
+ElementW!~tungsten@hoodie.elementw.net
+#335
+
+1726782274
+ElementW!~tungsten@hoodie.elementw.net
+In status quo they don't but as I remembered yeah Andrew wants all unused non-pubs to be errors
+
+1726782300
+ElementW!~tungsten@hoodie.elementw.net
+so depending on how you interpret "will", my sentence is still correct
+
+1726782328
+ElementW!~tungsten@hoodie.elementw.net
+they *will*, they just currently don't :°)
+
+1726782433
+ElementW!~tungsten@hoodie.elementw.net
+There's this fresh new thing to check for them though https://github.com/tusharsadhwani/zigimports
+
+1726783001
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+Would I use std.c._errno() to check for syscall errors? e.g. in https://ziglang.org/documentation/master/std/#std.os.linux.inotify_init1
+
+1726783218
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+cool thanks ElementW and torque 
+
+1726783952
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+nvm, looks like std.os.linux.inotify_* and std.posix.inotify_* have different apis and posix one has error handling
+
+1726786615
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+"zig/lib/std/c/linux.zig:181 pub const AI = struct {" I KNEW it. Zig is using advanced AI technologies!
+
+1726786876
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+on a more serious note, I can see that NONBLOCK is part of "pub const O" in std/os/linux.zig, but when I try to pass std.os.linux.O.NONBLOCK to std.posix.inotify_init1, compiler screams "os.linux.O__struct_8220 has no member named 'NONBLOCK'
+
+1726786889
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+it's on x86_64, and it's right there staring me down
+
+1726786931
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+technically I should be using IN.NONBLOCK, but the values are the same
+
+1726786949
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+there is something I'm not understanding about how this all fits together, but I'm not sure what it is
+
+1726787034
+sp2!uid197664@user/meow/sp2
+it's not an enum, it's a struct; try `.{ .NONBLOCK = true }`?
+
+1726787109
+sp2!uid197664@user/meow/sp2
+it looks like it was changed from bitflags to a packed struct in 0.11.0
+
+1726787114
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+now I get type u32 does not support struct init syntax, which makes sense, flag: u32
+
+1726787119
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+yea
+
+1726787222
+sp2!uid197664@user/meow/sp2
+looks like `std.os.linux.IN.NONBLOCK` should work?
+
+1726787238
+sp2!uid197664@user/meow/sp2
+it's defined as a bitflag: `pub const NONBLOCK = 1 << @bitOffsetOf(O, "NONBLOCK");`
+
+1726787254
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+huh, so maybe the issue is somewhere else
+
+1726787270
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+I'm still getting blocking std.posix.read on the inotify fd
+
+1726787283
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+thanks for checking+help!
+
+1726787399
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+oh no, *face palm*, I was polling on file fd, not inotify fd
+
+1726788211
+torque!~tachyon@user/torque
+lol I had forgotten how much of a honeypot #335 ended up becoming
+
+1726788253
+torque!~tachyon@user/torque
+honestly confused by all the people who get mad about unused variables being an error, this has caught a lot of mistakes/incomplete code for me and I really like that it exists
+
+1726788471
+ElementW!~tungsten@hoodie.elementw.net
+People being angry about Zig's "no warnings" philosophy is an endless stream of honestly mediocre developers imo
+
+1726788542
+ElementW!~tungsten@hoodie.elementw.net
+"But I'm prototyping!" well yeah but you don't know how long you'll take to do it and the liminality of that state is not a justification for being dirty and inconsistent
+
+1726788621
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+lol, I'm a mediocre developer and I hate C warnings
+
+1726788683
+torque!~tachyon@user/torque
+the thing I don't understand is that even when I am prototyping, I'm normally trying to prototype code that works. and being really sloppy about it makes the prototyping process less useful, not more
+
+1726788774
+torque!~tachyon@user/torque
+I did a C++ (barf) programming exercise for a job interview and the first thing I had to do was add -Werror -Wpedantic because the code scaffold they gave me would immediately segfault when run due to something that was a warning
+
+1726789875
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+I'm just now starting through "Learning Zig" (total noob). Is the following sentence true or is it a rationalization?
+
+1726789877
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+For the sake of improved readability, there is no function overloading (the same function named defined with different parameter types and/or number of parameters).
+
+1726789886
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+In your opinion
+
+1726789940
+grayhatter!~grayhatte@user/grayhatter
+wrycode: I don't think it's for readability, it's more targeting procecting namespaces
+
+1726789976
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+Not sure what you mean
+
+1726789985
+grayhatter!~grayhatte@user/grayhatter
+anytype exists, and you can use that instead of creating many different functions 
+
+1726790006
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+gotcha, thanks
+
+1726790021
+grayhatter!~grayhatte@user/grayhatter
+between creating many functions, or using anytype, creating many functions would be easier to read IMO
+
+1726790086
+torque!~tachyon@user/torque
+it is also readability: you know from the callsite exactly what version of a function is being run, because there is only ever one
+
+1726790096
+torque!~tachyon@user/torque
+so you can immediately go find the correct definition
+
+1726790099
+grayhatter!~grayhatte@user/grayhatter
+to say zig doesn't allow function overloading, is more about putting the programmer in control. I.e. when you specify a function to call, the compiler will call **that** function, it won't decide for you which of the multiple different flavors of functions it'll call
+
+1726790131
+torque!~tachyon@user/torque
+being able to tell what is going on at the callsite is, as it turns out, really useful for reading code, which is also why operator overloading is bad™
+
+1726790147
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+I am planning on working through "Crafting Interpreters" with Zig instead of Java and C, so I'm just looking out for red flags. I don't know if it's easily possible for the first section of the book
+
+1726790194
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+grayhatter: I was trying to figure out where I remembered you from, hope you don't mind I googled your github, I think we used to chat on the tox channel possibly? Like 4 years ago
+
+1726790241
+torque!~tachyon@user/torque
+you may be interested in https://github.com/buzz-language/buzz which says it was started while following through crafting interpreters
+
+1726790244
+grayhatter!~grayhatte@user/grayhatter
+sounds likely
+
+1726790264
+grayhatter!~grayhatte@user/grayhatter
+your name also sounds famaliar, so nice to see you again :)
+
+1726790377
+wrycode!~wrycode@2605:a601:91aa:b900:cee1:e295:f05f:e631
+Good looking out. I can't tell if that project started from the first half of the book or the second
+
