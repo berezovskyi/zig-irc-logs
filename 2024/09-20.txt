@@ -1,0 +1,160 @@
+1726790499
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+what exactly is constant in []const T
+
+1726790516
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: []type, is a pointer right?
+
+1726790552
+torque!~tachyon@user/torque
+it reads left to right, so that's "slice of const T"
+
+1726790580
+torque!~tachyon@user/torque
+which means the items in the slice cannot be modified
+
+1726790592
+grayhatter!~grayhatte@user/grayhatter
+and the data lives "behind" that pointer? That data might exist in memory that's read only, and attempting to write to it, might cause the kernel to kill the application 
+
+1726790598
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque: that makes sense, thanks
+
+1726792157
+une!brocc@user/brocc
+I need help-- const c: c_int = 1; std.debug.print("{d:0>5}\n", .{c}); -- prints `000+1` - I'd expect `00001`
+
+1726792207
+une!brocc@user/brocc
+How does one print leading zeroos?
+
+1726792605
+torque!~tachyon@user/torque
+fmt always adds the sign to signed integers if a precision is specified
+
+1726792624
+torque!~tachyon@user/torque
+if you use an unsigned type there (e.g. `c_uint`) it should do what you expect
+
+1726792668
+grayhatter!~grayhatte@user/grayhatter
+lol, even if that's not a bug... I'd expect +0001
+
+1726792807
+torque!~tachyon@user/torque
+it's definitely odd coming from like printf but it is internally consistent
+
+1726797171
+une!brocc@user/brocc
+thanks torque
+
+1726820649
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+it's *almost* consistent. `var c: c_longdouble = 1.1` with "{d:0>5.1}" prints "001.1", but -1.1 prints "0-1.1"
+
+1726820655
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+with integers it always prints the sign
+
+1726820684
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+I guess the logic is you're _padding_ with a character, be it 0 or space, etc
+
+1726820710
+fengshaun!~fengshaun@d198-166-106-219.abhsia.telus.net
+this is on 0.13
+
+1726827999
+qball!7791bf95c0@user/qball
+I just started playing with zig. (first app)  I was wondering (maybe missing something) is there an easy way to get the date? 
+
+1726829767
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+qball: https://github.com/rockorager/zeit
+
+1726830970
+qball!7791bf95c0@user/qball
+rockorager: Thanks.
+
+1726831048
+qball!7791bf95c0@user/qball
+hmm example does not work.. lets see why
+
+1726831158
+qball!7791bf95c0@user/qball
+kay example is missing try's.. 
+
+1726831789
+qball!7791bf95c0@user/qball
+rockorager: thanks, got it to work.
+
+1726835439
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+oh I should fix that
+
+1726836275
+bblack!~bblack@wikimedia/bblack-WMF
+nice time library :)
+
+1726840475
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+bblack: thanks
+
+1726853930
+qball!7791bf95c0@user/qball
+I have 'const p = try json.ParsedFromSlice(...) orelse { continue :loop; };   this worked before (for reading mqtt package),b ut on the json it complaints 'expected optional type found error{..}.   when can you use orelse and when not?
+
+1726854053
+qball!7791bf95c0@user/qball
+I got this runtime error before, that I am trying to fix, I assume it failed to parse json here, and is error is not handled you get a syntax error.. I assume that assumption is correct. https://paste.sr.ht/~qball/5be1823c30ecc4752835b01e85bdfbfdd932dbf8
+
+1726854333
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+qball: orelse is only when there is an optional
+
+1726854425
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you probably want 'const p = json.parseFromSlice(...) catch { continue :loop };
+
+1726854614
+ifreund!2940d10f8b@user/ifreund
+well, it seems that there's both an optional type and an error union involved here
+
+1726854658
+ifreund!2940d10f8b@user/ifreund
+qball: you probably just need to add parentheses, e.g. `const p = (try json.parseFromSlice(...)) orelse ...`
+
+1726854724
+qball!7791bf95c0@user/qball
+the catch was it.
+
+1726854726
+qball!7791bf95c0@user/qball
+thx
+
+1726854760
+ifreund!2940d10f8b@user/ifreund
+ah, that API has changed to only use an error union rather than both an error union and and optional it seems
+
+1726854786
+qball!7791bf95c0@user/qball
+Its my first ever zig program.. its a bit of a learning curve.
+
+1726854826
+ifreund!2940d10f8b@user/ifreund
+note that `try foo()` is syntax sugar for `foo() catch |err| return err;`
+
+1726854873
+qball!7791bf95c0@user/qball
+aah thx.. that is good to know
+
+1726854876
+ifreund!2940d10f8b@user/ifreund
+so your "before" example handled both the error (with `try`) and the optional (with orelse)
+
+1726854906
+ifreund!2940d10f8b@user/ifreund
+presumably this API changed, so now there is no longer a possibility of that function returning null
+
