@@ -1,0 +1,144 @@
+1726915328
+phaleth!~phaleth@user/phaleth
+I wonder why is ziglang.org not compressing svg files, is the nginx configuration available openly somewhere, where it could maybe accepting PRs?
+
+1726923216
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+i have a multiple producer, single consumer setup, where producer threads append values to an ArrayList and the consumer thread pops values from that ArrayList. i'm protecting both operations with mutex locks but i wonder if there's a better way? some other data structure more suited for this than the ArrayList?
+
+1726925384
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+gluon: FIFO or LIFO?
+
+1726925413
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+if FIFO is think a ring buffer would be better so you don’t have to move all the items each pop
+
+1726925450
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+FIFO ideally
+
+1726925454
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yeah, thanks
+
+1726925570
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+gluon: https://github.com/rockorager/libvaxis/blob/main/src/queue.zig
+
+1726925664
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+oh
+
+1726925670
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+perfect, thanks!
+
+1726934210
+netvor_!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+can I disable usage of control characters when running zig build?   i want to run it in scripts and keep log.   I was looking for some option to switch this but `zig --help` is not helpful and `zig build --help` is not it, either
+
+1726934322
+netvor_!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+it also does not seem to auto-detect non-interactive mode (ie. `zig build install | cat` will still use control chars)
+
+1726934483
+ifreund!2940d10f8b@user/ifreund
+it should autodetect non-interactive usage
+
+1726934495
+ifreund!2940d10f8b@user/ifreund
+if it doesnt thats a bug imo
+
+1726934581
+netvor_!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+(it's 0.13.0 btw)
+
+1726934593
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I tested `zig build 2> foo.txt` and that turns off the control characters at least
+
+1726934598
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(also 0.13.0)
+
+1726934601
+netvor_!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+ah
+
+1726934631
+netvor_!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+my bad, I did not realize it's using 2 (which is RARE correct thing to do :D)
+
+1726934650
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah yeah
+
+1726934912
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+ok so it does not use control chars but does not print anything at all..  `zig build install 2>2` (2 is empty)
+
+1726935025
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+i think it would still be nice to have a way to enforce plain text anyway using cli option or envvar, so that i can still have the log on-the-fly
+
+1726935055
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+(one can do that using awkward bash syntax i guess)
+
+1726935081
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+i suppose it would be minor issue, more like ux polishing
+
+1726937153
+ElementW!~tungsten@hoodie.elementw.net
+netvor: iirc there was a bunch of changes not too long ago around respecting `NOCOLOR` and `YESCOLOR` env vars, idk if that disables anything more than color control chars though
+
+1726937542
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+tried NOCOLOR=true and NO_COLOR=true and neither has any effect
+
+1726937655
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+No color only turns off color
+
+1726937676
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+(imho most of these "standards" are kinda misguided; trying to cram what is 3-state problem into 2 states, failing, so inventing a 4 state solutuion)
+
+1726937687
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+well that's what i would expect from the name
+
+1726938794
+torque!~tachyon@user/torque
+if you include `--summary all` it will print out a build summary at the end. this does not give you live progress, however
+
+1726938839
+torque!~tachyon@user/torque
+or, more accurately, it does not change how the live progress is presented
+
+1726939354
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+ah, i see now that i haven't been able to access the `zig build --help` because it fails outside of initiated project (and i wrongly assumed this just means that it just does not have any options)
+
+1726939470
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+so --color off disables all output for me :)  (and 'on' does not actually give colored build, but does do ansi shenanigans which i don't want in log)
+
+1726939593
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+`--color off --verbose --summary all` seems like a nice compromise (to have at least something iont he log)
+
+1726940029
+netvor!~netvor@2a00:ca8:a1f:cd0:8ba1:f045:b9f7:fa14
+actually `--color off` is not needed because the auto-detection seems to work after all, it's just that it also disables all output for my project.  (originally i was not seeing output in my logs and assumed the ansi was removed in post which was wrong -- and a questionable assumption) 
+
+1726944364
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+what could it mean if my zig program keeps a fixed very small resident memory, but virtual memory keeps increasing?
+
+1726945542
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+probably unused allocations
+
