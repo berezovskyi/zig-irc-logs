@@ -1,0 +1,164 @@
+1726994618
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+gpa reports no leaks. i wonder if spawning threads in itself does increase the virt mem in top
+
+1726996576
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+gluon: at least it allocates address space for stacks
+
+1726996662
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+makes sense
+
+1726996727
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+the OS doesn't seem to claim it back even when the threads end
+
+1726996734
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+but i guess that's by design
+
+1726996770
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+resident memory  is the number that matters i suppose
+
+1726998848
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+yup, i did a test, just spawning empty threads
+
+1726998871
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+for each thread linux allocates 16K in VIRT
+
+1726999330
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+which is the default value in SpawnConfig.stack_size
+
+1726999333
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+makes sense
+
+1727002151
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+my next question is: is it worth going for a thread pool if i'm only handling tens of requests per hour or is it ok to spawn a new thread per request for this use case?
+
+1727002338
+ifreund!2940d10f8b@user/ifreund
+you probably dont need threads at all for tens of requests per hour
+
+1727002632
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+hehe ofc
+
+1727002636
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+fair enough
+
+1727002667
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+although if i get more than one at the same time and since they take long to compute, i'd like to have threads
+
+1727009282
+fleischie!~fleischie@vm069.de
+Hello. Does someone know whether it is intentional, that `@typeInfo` now returns lowercase names? I.e. `@typeInfo(T).@"struct"` (instead of `@typeInfo(T).Struct`). And if so, what commit/PR did introduce this change?
+
+1727009375
+fleischie!~fleischie@vm069.de
+Context: Trying to build a 0.13 version zig library on 0.14. Ah, yes. This is on the latest zig master, I upgraded it two days ago.
+
+1727011093
+fleischie!~fleischie@vm069.de
+Found it: https://github.com/ziglang/zig/pull/21225
+
+1727012520
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+When developing a zig project on NixOS, how do you keep zig and zls versions aligned? Using this flake.nix https://pastebin.com/6Vb6mRkW how to install zls 0.13.0 to match zig 0.13.0?
+
+1727012750
+Franciman!~Franciman@mx1.fracta.dev
+does zls follow zig's version number?
+
+1727012762
+Franciman!~Franciman@mx1.fracta.dev
+in guix you would define a variable projectVersion
+
+1727012795
+Franciman!~Franciman@mx1.fracta.dev
+and then require the packages (string-append "zig@" projectVersion) and (string-append "zls@" projectVersion)
+
+1727013061
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+Franciman: It does: https://github.com/zigtools/zls/releases/tag/0.13.0. This makes me wonder if I could reference the flake.nix from zls 0.13.0 release.
+
+1727013085
+Franciman!~Franciman@mx1.fracta.dev
+sadly i don't know nix's syntax
+
+1727013094
+Franciman!~Franciman@mx1.fracta.dev
+but if  you can do it in guix, i see no reason why you can't do it in nix
+
+1727013191
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+I guess the approach I originally had in mind would need a zls nix overlay, similar to the zig nix overlay
+
+1727013436
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+Thanks for mentioning guix, I was thinking of looking into it (even got packaged in NixOS since then).
+
+1727013900
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+I got it to work by including the "0.13.0" version tag in the flake input URL: `zls.url = "github:zigtools/zls?ref=0.13.0"`
+
+1727016454
+rmt!~rmt@2a02:8109:833a:2e00:86a:73ff:fefa:46a5
+Here's one for Linux users with jack installed: https://pastebin.com/hteCm0Kp .. perhaps it's obvious to others why this segfaults, but not yet to me.
+
+1727016672
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+rmt: does it still seqfault if you don't print it?
+
+1727018942
+rmt!~rmt@2a02:8109:833a:2e00:86a:73ff:fefa:46a5
+Gliptic, yes
+
+1727019241
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+Gliptic: the issue i'm having with the threads not detaching properly on 0.13.0 for aarch64 is this one:
+
+1727019244
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+https://github.com/ziglang/zig/issues/20677
+
+1727019259
+gluon!~gluon@2a01:4f8:c0c:e2da::1
+presumably fixed on master
+
+1727023414
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager: do you know about this error? https://paste.gentoo.zip/nZJNzd2G (it's just at the very end of this big log). Specifically the line that's causing it is here: https://codeberg.org/bwbuhse/beanclock/src/commit/458fe2af27dc98c2d50dc5af961dbe2e140b90a4/src/Backend.zig#L475
+
+1727023475
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I guess I just have to call zeit.local() once and save it
+
+1727025655
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The_Buhs: looks like I never called close on the tzinfo file
+
+1727025711
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+So, real bug but you should also cache the timezone rather than loading it each render
+
+1727025934
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+rockorager: cool, thanks :) yeah I switched to caching it. When I was writing it I wasn't really paying attention and I think I misunderstood zeit.local() a bit (I thought it was based off the Instant, not just a mostly unrelated thing that the Instant can use)
+
+1727033403
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+Is there a build.zig example in community ressources that includes a C Code generation step, e.g. using protoc-c?
+
+1727033578
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+nvm, found https://ziglang.org/learn/build-system/#generating-files
+
