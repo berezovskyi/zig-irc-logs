@@ -1,0 +1,100 @@
+1727067589
+lrvick!1002@2a01:4f8:141:1272::2
+Hey I have been trying to reproduce Zig and noticed that it appears reproducible on a given mahine, the builds from two different machines differ slightly. https://dpaste.org/5Z44S/raw
+
+1727067685
+lrvick!1002@2a01:4f8:141:1272::2
+Here is how I am building: https://codeberg.org/stagex/stagex/src/branch/lance/repro-fixes/packages/zig/Containerfile
+
+1727067689
+lrvick!1002@2a01:4f8:141:1272::2
+musl based distro
+
+1727090431
+lrvick!1002@2a01:4f8:141:1272::2
+fixed with: -DZIG_TARGET_TRIPLE=native-linux.6.1-musl
+
+1727105894
+gf3!~gf3@user/gf3
+hi all, i'm new to zig and have a question about patterns. i have a function on a struct that is supposed to return a string. to build the string, i wrap a C-library that takes a fixed-size buffer and writes N chars to the buffer and terminates with \0. all good so far, what i'm wondering is how are these things usually returned in zig?
+
+1727105927
+gf3!~gf3@user/gf3
+should i use std.mem.span and return a slice? should i accept an allocator and let the caller discard the buffer later? should i create a new N-sized array and return that?
+
+1727106192
+ifreund!2940d10f8b@user/ifreund
+gf3: you might be interested in checking out the std.io.Reader API, it provides a variety of useful abstractions over a bare-bones "write a number of bytes into a caller provided buffer" API
+
+1727106325
+ifreund!2940d10f8b@user/ifreund
+when wrapping a C library I personally would provide at a minimum a direct translation of the C API into zig that utilizes zig's type system to describe things that are implicit in C (e.g. pointer nullability or sentinel termination)
+
+1727106364
+ifreund!2940d10f8b@user/ifreund
+If there is an abstraction I found universally useful when using that API, I would provide that as well
+
+1727106709
+gf3!~gf3@user/gf3
+ifreund: thank you! also i should clarify, i'm not actually wrapping a C-library i'm just calling some libc functions from my struct function
+
+1727106982
+ifreund!2940d10f8b@user/ifreund
+to give a more boring answer, usually the type zig users expect when someone says "string" is a `[]const u8`
+
+1727107086
+gf3!~gf3@user/gf3
+ifreund: gotcha—thanks!
+
+1727108286
+gf3!~gf3@user/gf3
+ifreund: thanks again for the pointer. the change was super easy: const ret: []const u8 = buf[0..writtern :0]; return ret;
+
+1727108322
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1727125518
+andrewrk!~andrewrk@mail.ziglang.org
+lrvick: that's fair game for a bug report, so please file one if it does not already exist and you are up to the task. I can't promise it will be the highest priority at the moment but I do think it is a 1.0 blocker
+
+1727125536
+andrewrk!~andrewrk@mail.ziglang.org
+and community efforts to tackle it are of course welcome in the meantime
+
+1727134134
+lrvick!1002@2a01:4f8:141:1272::2
+fixed. Needed to be explicit about the target triple with: -DZIG_TARGET_TRIPLE=native-linux.6.1-musl
+
+1727134158
+lrvick!1002@2a01:4f8:141:1272::2
+if you don't do that, it will embed your running kernel version in the binary, even if that is the only difference.
+
+1727134164
+lrvick!1002@2a01:4f8:141:1272::2
+thus builds on different kernel versions won't reproduce
+
+1727134263
+lrvick!1002@2a01:4f8:141:1272::2
+The compiler should probably default to the oldest lts kernel version supported if the user does not specify, so builds are reproducible and broadly portable by default.
+
+1727134307
+lrvick!1002@2a01:4f8:141:1272::2
+thanks to daurnimator for pointing me in the right direction here. Was a good hunch.
+
+1727134603
+andrewrk!~andrewrk@mail.ziglang.org
+I don't agree that the compiler should default to the oldest version if the user does not specify. if you want a reproducible build you should fully specify the target
+
+1727134688
+andrewrk!~andrewrk@mail.ziglang.org
+I would however be open to a -freproducible, -fno-reproducible flag which would essentially cause the compiler to early-fail if any other incompatible CLI arguments were provided, such as any of the target options being determined by the host
+
+1727134745
+andrewrk!~andrewrk@mail.ziglang.org
+this flag would default depending on other CLI options and be observable by @import("builtin").reproducible
+
+1727135710
+lrvick!1002@2a01:4f8:141:1272::2
+fair compromise
+
