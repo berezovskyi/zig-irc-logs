@@ -1,0 +1,324 @@
+1727137659
+andrewrk!~andrewrk@mail.ziglang.org
+lrvick: by the way, I think you would be better off specifying a version range - presumably these builds are intended to work on kernel versions older than 6.1 too, right?
+
+1727137690
+andrewrk!~andrewrk@mail.ziglang.org
+I suggest to specify the minimum version as well, otherwise the standard library may assume that newer kernel APIs are available
+
+1727138177
+lrvick!1002@2a01:4f8:141:1272::2
+in our distro we don't actually ship any kernels older than 6.1 so non issue for us
+
+1727138184
+lrvick!1002@2a01:4f8:141:1272::2
+but a range would make sense in the future if that is a thing
+
+1727142035
+andrewrk!~andrewrk@mail.ziglang.org
+I see, nice. what distro is that?
+
+1727143360
+bigs!~bigs@user/bigs
+Mic check 1-2
+
+1727143369
+bigs!~bigs@user/bigs
+Wooooooooooo registering with nickserv does help, doesn't it.
+
+1727143431
+bigs!~bigs@user/bigs
+Hey y'all, I'm new to Zig but not systems languages (or just language nerdery in general). I'm working on a small project to get my feet wet and encountering ana odd issue with build.zig
+
+1727143480
+bigs!~bigs@user/bigs
+Namely, I had everything in my project (zig init default project) in src/root.zig, and I've extractd some parsers to, well, src/parser.zig, which I import and export via pub const parser = @import("parser.zig");
+
+1727143519
+lrvick!1002@2a01:4f8:141:1272::2
+andrewrk: stagex: https://codeberg.org/stagex/stagex/src/branch/main/packages/zig/Containerfile
+
+1727143521
+bigs!~bigs@user/bigs
+My problem is, zig build test no longer runs my tests. But if I add pub usingnamespace parser; it does. But I don't want to pollute my root namespace with my parsers. Any thoughts? I've looked at a few other projects build.zig files and can't really see what's' up
+
+1727143539
+bigs!~bigs@user/bigs
+My silly toy project is here https://github.com/bigs/ziggy-somnus/tree/extract-parsers (that's the branch w/ the extraction)
+
+1727143827
+andrewrk!~andrewrk@mail.ziglang.org
+lrvick: neat, thanks for sharing. you might be interested to collaborate with the guix folks with regards to stage0 bootstrapping. in particular one of them is looking into making a zig interpreter that replaces zig1.wasm to eliminate that binary blob
+
+1727143833
+andrewrk!~andrewrk@mail.ziglang.org
+let's see, what was their IRC nick...
+
+1727144919
+bigs!~bigs@user/bigs
+I guess I can fix it by making a dedicated tests step and adding every source file I add to that test step, but I've seen other projects (really just mecha ;_;) avoid that.
+
+1727145168
+gf3!~gf3@user/gf3
+hi all, i have two variables which seem identical. they're both [:0]const u8 and have the same value. one is a literal string and the other is built dynamically and returned from a function. however, when i pass the one that's built dynamically to a 3rd party library it shows up as an invalid utf8 string. i must be missing something simple
+
+1727145204
+gf3!~gf3@user/gf3
+any thoughts?
+
+1727145244
+bigs!~bigs@user/bigs
+gf3: At the risk of going too obvious, have you compared the strings byte for byte? Could be some control code missing?
+
+1727145244
+geemili!d3fc6e6a8a@user/geemili
+bigs: You need to add in a comptime block that references parser.zig, like `comptime { _ = parser; }`
+
+1727145263
+geemili!d3fc6e6a8a@user/geemili
+This is necessary because zig automatically removes un-referenced code
+
+1727145278
+bigs!~bigs@user/bigs
+geemili: Oh, thanks a ton. That makes sense. I will give that a go!
+
+1727145279
+gf3!~gf3@user/gf3
+bigs: yes, i printed the strings and i printed them byte-for-byte and i checked the sentinel value—all identical
+
+1727145350
+bigs!~bigs@user/bigs
+geemili: That did the trick :) Thanks a ton.
+
+1727145373
+Affliction!affliction@idlerpg/player/affliction
+gf3: pipiing into eg, "hexdump -C" might reveal a difference
+
+1727145397
+geemili!d3fc6e6a8a@user/geemili
+bigs: no problem ;)
+
+1727145459
+gf3!~gf3@user/gf3
+is it possible that the value returned from the fn is being freed before it's used by the library but after i've printed it?
+
+1727145864
+bigs!~bigs@user/bigs
+Surely you'd get a leak warning
+
+1727145939
+bigs!~bigs@user/bigs
+Err actually I'm exactly incorrect :P 
+
+1727145997
+gf3!~gf3@user/gf3
+hmm
+
+1727146607
+gamaguest!~gamaguest@user/gamaguest
+ACTION Rolls a 6 sided dice and gets 4
+
+1727146610
+gamaguest!~gamaguest@user/gamaguest
+ACTION Rolls a 6 sided dice and gets 6
+
+1727146611
+gamaguest!~gamaguest@user/gamaguest
+ACTION Rolls a 6 sided dice and gets 2
+
+1727146682
+geemili!d3fc6e6a8a@user/geemili
+gf3: how are you building the string dynamically?
+
+1727146705
+gamaguest!~gamaguest@user/gamaguest
+Hey guys! pretty new to the community. I want to contribute and also to learn the language at a deeper level...if i wrote a bloom filter for the zig std lib, would this be useful/accepted by the community?
+
+1727147018
+gf3!~gf3@user/gf3
+geemili: i create a buffer of size N, then write some data into it via libc functions, and return a slice
+
+1727147067
+gf3!~gf3@user/gf3
+geemili: now i am experimenting with passing in an allocator to create the buffer, but i'm having trouble casting []u8 to [:0]const u8
+
+1727147188
+geemili!d3fc6e6a8a@user/geemili
+gf3: You probably want to @ptrCast the pointer directly instead of the slice: `const null_terminated_multi_pointer: [*:0]const u8 = @ptrCast(slice.ptr)`
+
+1727147323
+geemili!d3fc6e6a8a@user/geemili
+gf3: by buffer of size N, do you mean something like `var buffer: [N]u8 = undefined`, or something like `std.c.malloc(N)`?
+
+1727147392
+geemili!d3fc6e6a8a@user/geemili
+If you're using `var buffer: [N]u8 = undefined`, that is allocating memory on the stack, and the slice becomes undefined once you exit the function.
+
+1727147456
+gf3!~gf3@user/gf3
+geemili: that was exactly the problem, thank you. i thought it would be copied on return, and i was obviously wrong
+
+1727147507
+gf3!~gf3@user/gf3
+the other piece that was missing to cast to a c string was allocator.allocSentinel (instead of allocator.alloc)
+
+1727147629
+geemili!d3fc6e6a8a@user/geemili
+Yeah, that would help. You can do the ptrCast thing but then it's on you to make sure that the string has a null terminator.
+
+1727148678
+bigs!~bigs@user/bigs
+Thx again geemili, see you around!
+
+1727159617
+mountaingoat!~mountaing@user/mountaingoat
+i'd like to populate a bounded array (with known max capacity) in a struct at compile-time, but access it through a slice in the rest of the codebase for convenience. something like this https://godbolt.org/z/rT9fE66ze 1) is this safe? e.g., how is the base address of widgets[0..3] stable across the return, and 2) is there a better way to do this while avoiding an allocator
+
+1727160705
+torque!~tachyon@user/torque
+I don't think that is safe. `foo` may get copied on return, and if so `foo.widgets` will point to the data in the array from inside the `init` function, which will end up being a dangling stack pointer
+
+1727160926
+torque!~tachyon@user/torque
+one safe way to do it would be to have Foo store a `length: usize` field instead of a slice. the slice would be trivially producible from the array and length, and you could have a convenience method to do this
+
+1727164211
+mountaingoat!~mountaing@user/mountaingoat
+torque: was thinking of resorting to the BoundedArray type, and using .slice(), which seems similar to what you've described
+
+1727165434
+ifreund!2940d10f8b@user/ifreund
+I dont think you need BoundedArray at all
+
+1727165458
+ifreund!2940d10f8b@user/ifreund
+you can iteratively build a slice at comptime with ++
+
+1727204619
+andrewrk!~andrewrk@mail.ziglang.org
+ah it was ekaitz!
+
+1727204636
+ekaitz!~Ekaitz@94.73.34.227
+who!?
+
+1727204642
+andrewrk!~andrewrk@mail.ziglang.org
+I was trying to remember your nick for lrvick yesterday
+
+1727204660
+ekaitz!~Ekaitz@94.73.34.227
+it's not only my nick! it's also my name
+
+1727204663
+andrewrk!~andrewrk@mail.ziglang.org
+lrvick is working on https://codeberg.org/stagex/stagex
+
+1727204663
+ekaitz!~Ekaitz@94.73.34.227
+:)
+
+1727204700
+ekaitz!~Ekaitz@94.73.34.227
+andrewrk: i ported stage-0's first steps to riscv
+
+1727204714
+ekaitz!~Ekaitz@94.73.34.227
+and I work closely with some of the stage0 developers
+
+1727204735
+ekaitz!~Ekaitz@94.73.34.227
+how does all this relate with zig?
+
+1727204749
+ekaitz!~Ekaitz@94.73.34.227
+zig has its own bootstrapping problems :)
+
+1727204766
+andrewrk!~andrewrk@mail.ziglang.org
+umm they were trying to figure out why nondeterminism was happening and it had to do with specifying the OS version range
+
+1727204780
+ekaitz!~Ekaitz@94.73.34.227
+oh
+
+1727204805
+andrewrk!~andrewrk@mail.ziglang.org
+when I looked at stagex it occurred to me that it would also benefit from the work you were considering doing about providing a guix interpreter for zig stage1
+
+1727204828
+ekaitz!~Ekaitz@94.73.34.227
+probably you already know https://github.com/fosslinux/live-bootstrap 
+
+1727204841
+andrewrk!~andrewrk@mail.ziglang.org
+more carefully worded, an interpreter for zig stage1 written in guix
+
+1727204853
+ekaitz!~Ekaitz@94.73.34.227
+we work closely, as we are bootstrapping guix from source using that
+
+1727204890
+ekaitz!~Ekaitz@94.73.34.227
+in fact, we ported that bootstrapping work for the whole distro in RISC-V
+
+1727204921
+ekaitz!~Ekaitz@94.73.34.227
+that's why i'm trying to bootstrap zig too, this is very related with what I've been doing the last 3 years
+
+1727205061
+ekaitz!~Ekaitz@94.73.34.227
+interesting that lrvick and I are both in the same channels like #bootstrappable :)
+
+1727209786
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+What is the difference between the mem.tokenizeX and mem.splitX functions?
+
+1727209935
+dutchie!~dutchie@user/dutchie
+how they handle repeated separators
+
+1727209986
+dutchie!~dutchie@user/dutchie
+tokenize drops empty segments between separators, split will return empty strings
+
+1727210160
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Ah, that makes sense. thanks :)
+
+1727212212
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: how would you declare the storage for it in the struct?
+
+1727213266
+ifreund!2940d10f8b@user/ifreund
+comptime memory is ok to "leak"
+
+1727213323
+ifreund!2940d10f8b@user/ifreund
+you can return a slice of an array local to a block/function for example
+
+1727213430
+ifreund!2940d10f8b@user/ifreund
+you dont even really need to have some kind of hardcoded upper bound though, just iteratively add to and overwrite your const slice
+
+1727215854
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is it possible to create a struct with something like const fields? 
+
+1727217751
+torque!~tachyon@user/torque
+<ifreund> you can iteratively build a slice at comptime with ++
+
+1727217762
+torque!~tachyon@user/torque
+this of course only works if you can actually build your slice at comptime
+
+1727217809
+torque!~tachyon@user/torque
+though hmm. if you have the known upper bound at comptime and you're just re-slicing it at runtime, the actual pointer would be stable, wouldn't it
+
+1727217869
+torque!~tachyon@user/torque
+this would preclude having a slice of mutable data, though
+
