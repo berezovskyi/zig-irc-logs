@@ -1,0 +1,108 @@
+1727402042
+probie!cc0b34050a@user/probie
+What happened to async?
+
+1727402715
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it sunk (rimshot)
+
+1727402780
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+probie: https://github.com/ziglang/zig/wiki/FAQ#what-is-the-status-of-async-in-zig
+
+1727439413
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Should libraries log? Or should I just return an error and let the user figure it out
+
+1727439930
+bblack!~bblack@wikimedia/bblack-WMF
+probably depends on the library.  But generally I tend to think libraries should error, and applications should log as appropriate.
+
+1727439977
+bblack!~bblack@wikimedia/bblack-WMF
+but sometimes it makes sense for an application to hand a logging callback to the library or something.  or pass it a flag about how it should log things.
+
+1727440098
+bblack!~bblack@wikimedia/bblack-WMF
+but sometimes libraries are narrow enough in purpose and focus that it might make sense for the library to just log on its own?
+
+1727440117
+bblack!~bblack@wikimedia/bblack-WMF
+(perhaps it's expected and makes sense)
+
+1727440216
+bblack!~bblack@wikimedia/bblack-WMF
+the bad outcomes are things like: the application ends up calling library function X hundreds of times per second in the context of user requests in some scaled-out service, and the library implementor of function X decided that some trivial error should be logged directly, resulting in tons of log-spam for the application when some unusual condition arises, and the app doesn't have a way to control/contain 
+
+1727440222
+bblack!~bblack@wikimedia/bblack-WMF
+that problem.
+
+1727440258
+bblack!~bblack@wikimedia/bblack-WMF
+maybe from that app's perspective, that error would've been better to just account for in a metric, instead of spam logs
+
+1727442747
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Fair enough, thanks. That's more or less what I was leaning towards, too, but I wasn't totally sure.
+
+1727445642
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I've got a fn (comptime T: type) type to build a struct, is it possible to make an ArrayList (or any data structure) where I can have different types? I'm assuming I've got to wrap it somehow but not sure
+
+1727446211
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Can I just do ArrayList(*anyopaque)
+
+1727446855
+torque!~tachyon@user/torque
+While you can do ArrayList(*anyopaqure), it doesn't seem terribly useful since you have to know what type to cast the pointer back to in order to actually use it
+
+1727446866
+ifreund!2940d10f8b@user/ifreund
+using a proper log scope with the std.log interface in a library allows the user of the library to filter or comptime disable logging with that scope
+
+1727446959
+torque!~tachyon@user/torque
+your better bet probably for being able to handle parameterized types like that would be to have them conform to a vtable-style interface like mem.Allocator
+
+1727447091
+ifreund!2940d10f8b@user/ifreund
+if this only needs to work at comptime, you probably want an anytype parameter that accepts a tuple
+
+1727447093
+ifreund!2940d10f8b@user/ifreund
+(like std.fmt)
+
+1727448462
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Thanks, I'll take a loot at those
+
+1727448837
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+look*
+
+1727451739
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Yeah, I'm struggling to figure this out lol. Might need to simplify my ideas for right now
+
+1727452734
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+Using Zig 0.13.0 build system, how do you debug the build.zig? All std.debug.print's get swallowed by the progess output.
+
+1727453905
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+Must have been in the wrong terminal, I see the debug print output now.
+
+1727456087
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+On x86_64-windows-gnu target, where can I specify the MSYS2/MinGW64 include and lib dirs? These are absolute paths and depend on MSYS2 install location (that I could pass as an argument to `zig build`).
+
+1727456776
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+Found `LazyPath.cwd_relative` as per `zig build` output with the caveat for absolute paths.
+
+1727465255
+andrewrk!~andrewrk@mail.ziglang.org
+I was going to say I'm very sure we have stderr locking to make sure nothing gets swallowed by the progress output
+
