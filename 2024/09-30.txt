@@ -1,0 +1,152 @@
+1727695159
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+does zig have sth like rust's Option::map? to transform the optional value and return the new optional with it?
+
+1727695509
+ifreund!2940d10f8b@user/ifreund
+tranzystorekk: no, just use an if statement
+
+1727695546
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ack
+
+1727721317
+netvor!~netvor@185.5.68.52
+n00b here (esp. when it comes to system-level languages).  writing a simple http server from codecrafter course.  inspired by Tiger Style, i wanted to allocate all memory as early as possible.  now, this seems like a perfect solution that should be supported:  but won't compile:
+
+1727721324
+netvor!~netvor@185.5.68.52
+std.heap.ArenaAllocator.init(std.heap.FixedBufferAllocator.init(&buf));
+
+1727721343
+netvor!~netvor@185.5.68.52
+the complaint is that `src/main.zig:338:86: error: expected type 'mem.Allocator', found 'heap.FixedBufferAllocator'`
+
+1727721353
+netvor!~netvor@185.5.68.52
+it's 0.13.0
+
+1727721383
+netvor!~netvor@185.5.68.52
+should I work around this somehow or is there a better way to do what i want?  (eg. other allocator strategy)
+
+1727721638
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+netvor: ArenaAllocator.init takes an Allocator, you can get that from a FixedBufferAllocator by calling .allocator()
+
+1727721655
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you need to keep the FixedBufferAllocator around
+
+1727721689
+netvor!~netvor@185.5.68.52
+ah, i did not realize that.  so .allocator() it is
+
+1727721745
+netvor!~netvor@185.5.68.52
+keeping it around should not be a problem i guess (i'm still wrapping my head around memory management so i might be underestimating that point)
+
+1727721780
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it just means .allocator() will return a struct that has a pointer to the FixedBufferAllocator, so the FixedBufferAllocator has to be kept live
+
+1727721947
+netvor!~netvor@185.5.68.52
+i see, thanks
+
+1727732960
+adaNewb1234!~Name@86.125.65.181
+hello, I'm trying to learn zig, and I'm running into issues with regards to the difference between arrays and slices.
+
+1727733032
+adaNewb1234!~Name@86.125.65.181
+I'm trying to turn a []u8 obtained by reading a pgm image's pixel data into a [WIDTH][HEIGHT]u8
+
+1727733275
+adaNewb1234!~Name@86.125.65.181
+so, if the pixel data is in pixel_data, and I have the pre-sized multidimensional array as pixels_2d, could I do something like     for (pixels_2d, 0..HEIGHT) |array_row, i| {array_row = pixel_data[i * WIDTH .. (i + 1) * WIDTH];}? I'm getting a compiler error no matter what I try
+
+1727733328
+adaNewb1234!~Name@86.125.65.181
+(this example doesn't work because array_row becomes const, but I also get an error if I use pixels_2d[i] instead)
+
+1727733510
+adaNewb1234!~Name@86.125.65.181
+pixels_2d[i] = pixel_data[i * WIDTH .. (i + 1) * WIDTH]; says "expected type '[256]u8', found '[]u8'" 
+
+1727733583
+adaNewb1234!~Name@86.125.65.181
+Using @as does nothing, @memcpy says something about needing a pointer, but then claiming the pointer is const if I pass it &pixels_2d[i]
+
+1727733717
+adaNewb1234!~Name@86.125.65.181
+ok, so std.mem.copyForwards did it, but I thought I already tried it. maybe I didn't give it a pointer last time?
+
+1727738458
+andrewrk!~andrewrk@mail.ziglang.org
+adaNewb1234: do you need to copy the memory? perhaps you could reinterpret the memory instead
+
+1727738496
+adaNewb1234!~Name@86.125.65.181
+that is what I would like, yes. how do I do that?
+
+1727738498
+andrewrk!~andrewrk@mail.ziglang.org
+in other words, is the memory already laid out correctly?
+
+1727738531
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/#ptrCast
+
+1727738648
+adaNewb1234!~Name@86.125.65.181
+well, I have a HEIGHT*WIDTH block of bytes, which I have in a [HEIGHT*WIDTH]u8, and I would like to be in a [HEIGHT][WIDTH]u8 (or the other way round, whichever is correct). is the memory going to be laid out correctly?
+
+1727738785
+adaNewb1234!~Name@86.125.65.181
+also, how do I force a function to be called at comptime?
+
+1727738908
+torque!~tachyon@user/torque
+put the `comptime` keyword in front of the call, typically, or put the call in a comptime block
+
+1727738940
+adaNewb1234!~Name@86.125.65.181
+what does " evaluation exceeded 1000 backwards branches" mean?
+
+1727738989
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.13.0/#setEvalBranchQuota
+
+1727738993
+adaNewb1234!~Name@86.125.65.181
+Is it just not done to put relatively expensive loops in comptime?
+
+1727739025
+andrewrk!~andrewrk@mail.ziglang.org
+you have to tell the compiler an upper bound for how much computation it's OK to do
+
+1727739059
+adaNewb1234!~Name@86.125.65.181
+and is this per-loop, or total?
+
+1727739116
+torque!~tachyon@user/torque
+I would recommend reading https://ziglang.org/documentation/0.13.0/#comptime
+
+1727739137
+adaNewb1234!~Name@86.125.65.181
+good idea... it is 2:30 am here.
+
+1727739177
+torque!~tachyon@user/torque
+anyway, not sure that specific question is answered in there, but I believe it is within the scope that the @setEvalBranchQuota is called in
+
+1727739180
+andrewrk!~andrewrk@mail.ziglang.org
+there's also https://codeberg.org/ziglings/exercises/ 
+
+1727739185
+andrewrk!~andrewrk@mail.ziglang.org
+a lot of people enjoy learning zig this way
+
