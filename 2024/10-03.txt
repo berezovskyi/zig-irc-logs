@@ -1,0 +1,212 @@
+1727994584
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+So ziglings says you can't do this, but it seems to work? https://zigbin.io/d4418b 
+
+1727994632
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is this something that's just changed with zig or just a bad example from ziglings?
+
+1727995140
+Palanix!~palanix@dynamic-077-181-199-048.77.181.pool.telefonica.de
+The_Buhs: The difference is the `var` vs `const`
+
+1727995169
+grayhatter!~grayhatte@user/grayhatter
+Palanix, you sure?
+
+1727995238
+Palanix!~palanix@dynamic-077-181-199-048.77.181.pool.telefonica.de
+No
+
+1727995260
+Palanix!~palanix@dynamic-077-181-199-048.77.181.pool.telefonica.de
+Although from trying it out, it does seem to be the case: https://zigbin.io/e0714b
+
+1727995552
+torque!~tachyon@user/torque
+I believe this is because the const u16 value is known at comptime and so the compiler can guarantee the coercion is safe
+
+1727995697
+grayhatter!~grayhatte@user/grayhatter
+I would expect this would be valid because _ = some_const; should be a nop and removed, or reduced to a comptime_int comptime_float as torque mentioned
+
+1727995776
+grayhatter!~grayhatte@user/grayhatter
+Palanix: used `_ = &for;` which I think is treated as if it may have side effects? But I don't know what the actual rules are
+
+1727995818
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/#Float-Literals
+
+1727995829
+grayhatter!~grayhatte@user/grayhatter
+> Float literals coerce to any floating point type, and to any integer type when there is no fractional component. 
+
+1727995844
+Palanix!~palanix@dynamic-077-181-199-048.77.181.pool.telefonica.de
+grayhatter: i just silenced the compiler warnings about modifying var variables
+
+1727995909
+grayhatter!~grayhatte@user/grayhatter
+Palanix: I'm pretty sure _ = foo; doesn't have the same behavior as _ = &foo; 
+
+1727996062
+torque!~tachyon@user/torque
+_ = &foo; is just a way to avoid an unmutated variable error
+
+1727996073
+torque!~tachyon@user/torque
+It does nothing in the second zigbin
+
+1727996120
+torque!~tachyon@user/torque
+er, in terms of changing the analysis, I mean
+
+1727996247
+grayhatter!~grayhatte@user/grayhatter
+well IIUC, using _ = &foo requires the compiler to generate a pointer to foo, that then exists somewhere, which prevent the compiler from proving foo is never mutation free. Which does seem to change the analysis 
+
+1727996456
+torque!~tachyon@user/torque
+anyway, this looks like it's actually a bug, possibly around the f16 case
+
+1727996474
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/Pvajhqq8z
+
+1727996548
+grayhatter!~grayhatte@user/grayhatter
+yeah... there's 100% a bug somewhere
+
+1727996580
+grayhatter!~grayhatte@user/grayhatter
+change 16 -> u32, and then to 65537, both compile, both return inf
+
+1727996606
+grayhatter!~grayhatte@user/grayhatter
+https://zig.godbolt.org/z/o9ashzjoG
+
+1727996619
+torque!~tachyon@user/torque
+happens with f32 as well
+
+1727996624
+torque!~tachyon@user/torque
+wonder if there's an open issue for this
+
+1727996669
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/fz3e5rqax
+
+1727996760
+torque!~tachyon@user/torque
+<torque> er, in terms of changing the analysis, I mean <-- to double clarify, I was talking about the type analysis. sorry for the vague wording
+
+1727996830
+grayhatter!~grayhatte@user/grayhatter
+torque: I can't find any open issues, are you planning to open one?
+
+1727996843
+gabeio!8c51bebfb2@user/gabeio
+it seems like it's not an issue but the newer versions of zig has improved the error from the `var` version of the ziglins to suggest using comptime instead of erroring about the type. if [you] go back to zig 0.11.0 you'll see what I mean.
+
+1727996958
+grayhatter!~grayhatte@user/grayhatter
+this is very interesting, in v0.11 you get 4294967296 but in >= 0.12 you get 4294967300
+
+1727997039
+grayhatter!~grayhatte@user/grayhatter
+seems it's been "broken" since v0.9 where f32 can't represent that int value
+
+1727997084
+grayhatter!~grayhatte@user/grayhatter
+ok, I'm gonna open an issue
+
+1727997095
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: do you want credit for the discovery?
+
+1727997537
+grayhatter!~grayhatte@user/grayhatter
+actaully, I take it back, I'll open an issue if someone chimes in to ask for one, trying the reverse direction, makes me think this is actually intentional 
+
+1727997539
+grayhatter!~grayhatte@user/grayhatter
+https://zig.godbolt.org/z/fseEaqz8K
+
+1727997548
+grayhatter!~grayhatte@user/grayhatter
+> example.zig:6:22: error: fractional component prevents float value 'inf' from coercion to type 'u32'
+
+1727997648
+gabeio!8c51bebfb2@user/gabeio
+I meant const not comptime. oops.
+
+1727997884
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+oops, I went away for a bit and came back to all this xD
+
+1727997996
+grayhatter!~grayhatte@user/grayhatter
+I like this a lot
+
+1727998040
+grayhatter!~grayhatte@user/grayhatter
+foo = 65535; bar = foo; baz = (bar == foo);
+
+1727998043
+grayhatter!~grayhatte@user/grayhatter
+https://zig.godbolt.org/z/aYGWobfa5
+
+1727998056
+grayhatter!~grayhatte@user/grayhatter
+baz is false
+
+1727998178
+torque!~tachyon@user/torque
+I would say it's definitely a bug without an explicit @floatFromInt call, since it is silently losing bits
+
+1727998210
+torque!~tachyon@user/torque
+I will open an issue if you don't, got distracted fixing a bad typo in one of my build system wraps
+
+1727998235
+grayhatter!~grayhatte@user/grayhatter
+and maybe @truncate
+
+1727998416
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Well cool that I accidentally helped discover this lol
+
+1727998436
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I fully thought I was just misunderstanding the ziglings problem :P
+
+1727998459
+grayhatter!~grayhatte@user/grayhatter
+I'm writing the issue now, The_Buhs would you like credit?
+
+1727998484
+grayhatter!~grayhatte@user/grayhatter
+(what's your gh name? or you can open it if you'd like :) )
+
+1727998528
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+You can open it, I think I probably can't articulate it well enough, but my username is bwbuhse on there if you want to mention my initial question haha
+
+1727998684
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: sure you can, this is an easy one 
+
+1727998790
+grayhatter!~grayhatte@user/grayhatter
+this is what I was gonna submit https://gist.github.com/GrayHatter/f018f27944ed2242a4a80c8d0a2a923f
+
+1727998812
+grayhatter!~grayhatte@user/grayhatter
+I can click submit myself too if you really don't want to :)
+
+1727998892
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I guess I'll go ahead and do it :) 
+
