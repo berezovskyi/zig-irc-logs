@@ -1,0 +1,292 @@
+1728020186
+mountaingoat!~mountaing@user/mountaingoat
+is there a cleaner way to test a tagged union's state other than: if (switch (x) { .a => true, .b => false }) { ... ?
+
+1728020280
+sp2!uid197664@user/meow/sp2
+a tagged union will automatically coerce to its tag, which means you can compare with `==`: `if (x == .a) { ... }`
+
+1728020286
+sp2!uid197664@user/meow/sp2
+mountaingoat: ^
+
+1728020753
+mountaingoat!~mountaing@user/mountaingoat
+sp2: interesting ... is this new? i'm fixing up stuff at 0.11.0 before upgrading to 0.13.0
+
+1728020872
+sp2!uid197664@user/meow/sp2
+Huh... I actually don't know when it was added. Looking up old documentation pages, it was first mentioned in 0.6.0: <https://ziglang.org/documentation/0.6.0/#Type-Coercion-unions-and-enums>
+
+1728020894
+sp2!uid197664@user/meow/sp2
+wait, nevermind, I misread that.
+
+1728020923
+sp2!uid197664@user/meow/sp2
+wait, nevermind the nevermind, I didn't misread it!
+
+1728021150
+andrewrk!~andrewrk@mail.ziglang.org
+you're looking at 0.6.0 docs?
+
+1728021243
+sp2!uid197664@user/meow/sp2
+I was just curious what the first version that supported this coercion was, so I was looking at really old docs pages.
+
+1728021315
+andrewrk!~andrewrk@mail.ziglang.org
+ah
+
+1728021411
+Guest2833!~ag@110.224.173.140
+hi, moving from discord to irc, inspired by all the posts, i feel real good. thank you! really admire the community decisions.
+
+1728021433
+andrewrk!~andrewrk@mail.ziglang.org
+welcome
+
+1728022914
+daurnimator!~daurnimat@vultr.daurnimator.com
+Guest2833: which posts?
+
+1728023291
+Guest2833!~ag@110.224.173.140
+daurnimator: i meant mostly the messages from andrewrk, i am aware that the discord and other communities are still active in their place
+
+1728023313
+andrewrk!~andrewrk@mail.ziglang.org
+https://kristoff.it/blog/critical-social-infrastructure/
+
+1728023327
+Guest2833!~ag@110.224.173.140
+yea i have read this one too
+
+1728028769
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+Hi! I'm calling a C library from Zig and one of the functions expects a parameter of type `[*:0]const u8`. As I understand it means null-terminated string of undefined length (makes sense). But what is the best way to construct strings like this in Zig? Especially if I want to use std.fmt.allocPrint or std.fmt.bufPrint?
+
+1728028796
+ifreund!2940d10f8b@user/ifreund
+evocatus: you can use allocPrintZZ or bufPrintZ
+
+1728028809
+ifreund!2940d10f8b@user/ifreund
+er, just one Z for allocPrintZ
+
+1728028839
+ifreund!2940d10f8b@user/ifreund
+the only difference is that they print an extra null byte at the end
+
+1728028888
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+wow, I didn't notice them. Thanks!
+
+1728029158
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+I tried this `const txt = std.fmt.allocPrintZ(std.heap.HeapAllocator, "{} {}", .{ .centerX, .centerY });` and got an `@compileError("Unsupported OS")` from heap.zig ! I'm on Linux amd64 btw
+
+1728029436
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+worked with std.heap.c_allocator and adding `try` before the allozPrintZ call
+
+1728029972
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+what is your go to allocator (unless you have special needs)? GeneralPurposeAllocator?
+
+1728030398
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/#Choosing-an-Allocator
+
+1728030722
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+thank you :)
+
+1728031709
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+It's amazing how Zig came to the idea of `@newStackCall` which is exactly what Clojure does with `recur` (since JVM doesn't have TCO)
+
+1728032827
+resxnance!~resxnance@user/resxnance
+Do you guys have any zig experience? If so what project did you start building?
+
+1728033052
+ifreund!2940d10f8b@user/ifreund
+I learned zig by writing my own wayland compositor, river
+
+1728033120
+resxnance!~resxnance@user/resxnance
+oh damn
+
+1728033160
+ifreund!2940d10f8b@user/ifreund
+I was already quite familiar with C/C++ so I found Zig quite easy to pick up
+
+1728033226
+resxnance!~resxnance@user/resxnance
+I do have some experience in C/C++ but not professional. I am planning to learn some zig and it seems very interesting
+
+1728035070
+andrewrk!~andrewrk@mail.ziglang.org
+https://codeberg.org/andrewrk/TrueType stb_truetype.h ported to zig
+
+1728036558
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it looks like I was able to build a simple c program with zig build, while being a n00b in this area didn't bother me apparently :) https://paste.debian.net/1331285/
+
+1728036587
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for installing the binary on a linux system, has zig build something for that, or should I use a script or Makefile?
+
+1728036886
+Pistahh!~Pistahh@user/pistahh
+flower_: install -m 755 zig-out/bin/whatever /usr/bin
+
+1728036907
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, thx
+
+1728036940
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+coming from C you need to unlearn quite a few patterns of thinking and assumptions
+
+1728036952
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+about arithmetics and type conversion, about allocation, etc.
+
+1728037019
+evocatus!~evocatus@2a02:a210:20c2:d600:70e2:1402:e545:6b53
+sometimes you're frustrated just because you see something unfamiliar and verbose and when you think about it you realize C just does some implicit stuff in the same situation and Zig is usually is more transparent and precise
+
+1728056370
+probie!cc0b34050a@user/probie
+Without resorting to inline assembly, is there a way to grab things which aren't in scope, but are a known distance away on the stack?
+
+1728056711
+probie!cc0b34050a@user/probie
+I guess I can turn `@frameAddress` into a pointer and fumble my way from there
+
+1728064065
+torque!~tachyon@user/torque
+that sounds like a highly questionable design decision
+
+1728065683
+probie!cc0b34050a@user/probie
+questionable, and not quite what I want, since I've realised that I actually need the current stack pointer since I care about locals. I wanted to try implementing an allocator backed by a simple mark-and-sweep gc (just for fun), but that means I need to be able to walk the stack to get my "root set".
+
+1728067336
+andrewrk!~andrewrk@mail.ziglang.org
+flower_: generally, I think it is best practice to leave stuff you compiled manually from source in your home directory, and allow the system package manager to manage the root directories
+
+1728067382
+andrewrk!~andrewrk@mail.ziglang.org
+so I would recommend for example doing `zig build -p ~/.local` which will install your binary to ~/.local/bin
+
+1728067390
+andrewrk!~andrewrk@mail.ziglang.org
+and then have your PATH set up to include that directory
+
+1728067445
+andrewrk!~andrewrk@mail.ziglang.org
+this also makes it trivial to uninstall things (`rm -rf ~/.local`) without endangering your system integrity
+
+1728068136
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+andrewrk: hm interesting take. I thought having a binary would have more security concerns then /usr/bin
+
+1728068214
+ifreund!2940d10f8b@user/ifreund
+flower_: it's not really about security, it's about cleanly separating the parts of the system managed by the distro/package manager and the parts managed by the user
+
+1728068245
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yeah, I thought there was /usr/local/bin invented for
+
+1728068259
+andrewrk!~andrewrk@mail.ziglang.org
+yeah exactly. when I say "integrity" I mean you don't want to accidentally uninstall system python or something like that
+
+1728068286
+ifreund!2940d10f8b@user/ifreund
+requiring root priviledges to install to /usr/local/bin is lame
+
+1728068288
+andrewrk!~andrewrk@mail.ziglang.org
+well, are you trying to install the application for all users of the system, or only yourself?
+
+1728068300
+ifreund!2940d10f8b@user/ifreund
+and in many cases requires running arbitrary build logic as root
+
+1728068304
+ifreund!2940d10f8b@user/ifreund
+which is bad for security
+
+1728068333
+ifreund!2940d10f8b@user/ifreund
+If I'm building stuff purely for myself, it always goes in ~/.local
+
+1728068389
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, thx for the advise, I will think about
+
+1728068620
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Aside: I can never get the neovim build to respect a ~/.local prefix...I'm hoping the build.zig they are working on fixes that
+
+1728069138
+andrewrk!~andrewrk@mail.ziglang.org
+oh that's surprising. cmake, autools, and even hipster build systems all support installing to a specified prefix
+
+1728069279
+ifreund!2940d10f8b@user/ifreund
+the problem is probably that make only supports it by convention :/
+
+1728069310
+ifreund!2940d10f8b@user/ifreund
+though most people would consider a makefile broken if it doesn't honor $PREFIX
+
+1728069398
+ifreund!2940d10f8b@user/ifreund
+lol, nvim appears to use a custom makefile that invokes cmake
+
+1728069402
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://github.com/neovim/neovim/blob/master/INSTALL.md#install-from-source
+
+1728069409
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Those are what I'm following and i get this error:
+
+1728069413
+ifreund!2940d10f8b@user/ifreund
+this is cursed
+
+1728069448
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://0x0.st/XEqA.txt
+
+1728070287
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I feel like I should report this upstream but since they are working on moving to zig for building...eh
+
+1728070408
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Oh I didn't realize, their build.zig is pulling in ziglua too
+
+1728072172
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+andrewrk: and where do you install the manpages, documentation, license? Everything in ~/.local ?
+
+1728072566
+ifreund!2940d10f8b@user/ifreund
+yep, set MANPATH for the man pages, etc.
+
+1728072889
+andrewrk!~andrewrk@mail.ziglang.org
+to be honest I don't know how man pages works and I've never set that up in my own projects
+
+1728073284
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
