@@ -1,0 +1,240 @@
+1728110031
+ashie!~ashie@user/ashie
+trying to use std.net and I am not sure if I am closing the listening server correctly, because on consecutive runs it says the address is still in use
+
+1728110065
+ashie!~ashie@user/ashie
+I tried by putting this `var server = try (try net.Address.initUnix("127.0.0.1:8124")).listen(.{}); defer server.deinit();` in the main function and literally nothing else
+
+1728112694
+probie!cc0b34050a@user/probie
+ashie: I'm new to Zig, but if you're trying to re-listen on that address immediately after closing it, you probably need to set `reuse_address` in the listen options. A TCP connection lingers for a while after being "closed" to make sure that the other party receives the ACK of its FIN
+
+1728113243
+probie!cc0b34050a@user/probie
+"for a while" generally being about ~4 minutes I think. It's a 2MSL wait, and RFC793 suggests an MSL of 2 minutes, with the comment "This is an engineering choice, and may be changed if experience indicates it is desirable to do so."
+
+1728127678
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is this still valid build code? https://paste.debian.net/1331377/
+
+1728127730
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is there difference between making a build file for cpp compared to c?
+
+1728127798
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm trying to build a small cpp project with zig: https://paste.debian.net/1331378/
+
+1728127857
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+. /build.zig:19:10: error: member function expected 1 argument(s), found 2 proxy.addCSourceFiles(&.{
+
+1728127917
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and in a previous attempt it failed cause it couldn't find <list>, which should be in the cpp standard library?
+
+1728127932
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+bit of a build noob here
+
+1728127963
+phaleth!~phaleth@user/phaleth
+flower_: https://github.com/phaleth/zig-c-interop-demo/blob/master/build.zig
+
+1728128496
+ifreund!2940d10f8b@user/ifreund
+flower_: you probably need to linkLibCpp()
+
+1728128539
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ifreund: ah
+
+1728128556
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+phaleth: thx, but 6months old? Still up to date?
+
+1728128618
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, not quite, look at the example phaleth linked
+
+1728128628
+phaleth!~phaleth@user/phaleth
+yeah, it's not exactly what you want, but if you look into the not so long commit history you'll find what changed
+
+1728128652
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh, never mind
+
+1728128712
+phaleth!~phaleth@user/phaleth
+to see more build.zig files try searching at https://grep.app/
+
+1728131530
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+seems that the package I try to build uses threads, which is a gcc thing?
+
+1728131649
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+proxy.linkSystemLibrary("threads"); can't be found
+
+1728131749
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not pthreads?
+
+1728131776
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that's what I see in the code indeed
+
+1728132131
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but how do I use that library?
+
+1728132175
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+In a meson file I find: threaddep = dependency('threads')
+
+1728132201
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+using threads the same way as other system libs
+
+1728132209
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+in the meson file
+
+1728132263
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but that's building with gcc and zig build with linkLibCpp uses ?
+
+1728132586
+phaleth!~phaleth@user/phaleth
+try adding "-D GC_THREADS" flag
+
+1728132956
+phaleth!~phaleth@user/phaleth
+well, that's prolly nonsense
+
+1728132974
+phaleth!~phaleth@user/phaleth
+try adding the "-pthread" flag
+
+1728135277
+ifreund!2940d10f8b@user/ifreund
+pthreads is part of libc.so, thata not the problem
+
+1728135347
+ifreund!2940d10f8b@user/ifreund
+"threads" is presumably some other dependency that needs to be pulled in
+
+1728136360
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+its builds with zig, but the app crashes. I tried to build it with meson, it builds (with threads dependency) and it doesn't crash
+
+1728136381
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so yeah, need to figure out which dependency
+
+1728136391
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for threads
+
+1728136555
+ifreund!2940d10f8b@user/ifreund
+maybe "threads" is a libcpp thing
+
+1728136586
+ifreund!2940d10f8b@user/ifreund
+in any case, a missing shared library would be a linker error not a runtime crash
+
+1728136622
+ifreund!2940d10f8b@user/ifreund
+(barring dlopen shenanigans)
+
+1728138187
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if I read it well pthread can handle signals. I think it crashes when it receives a signal
+
+1728140332
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+in a wscript it is named: PTHREAD
+
+1728140350
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+(waf script)
+
+1728142389
+uint69_t!~user@user/uint69-t:68777
+hello there
+
+1728143159
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can one set global build flags? Or only per file?
+
+1728143657
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+waf has gnu_dirs https://waf.io/apidocs/tools/gnu_dirs.html
+
+1728152076
+torque!~tachyon@user/torque
+"threads" is a meson magic dependency that tries to link different libraries depending on the platform meson is run on
+
+1728152430
+torque!~tachyon@user/torque
+you may want to look at some of the build system wraps in https://github.com/allyourcodebase
+
+1728152501
+torque!~tachyon@user/torque
+most of them target 0.13 and master, so are up to date. and there are some nontrivial build systems implemented so they can give you an idea of what's possible
+
+1728152618
+torque!~tachyon@user/torque
+I'm not sure what you mean by "global build flags", but your gnu_dirs link looks like you maybe mean build options. However, note that the installation prefix stuff is generally already built into the build system
+
+1728157309
+mischief!~mischief@2601:646:100:23:2efd:a1ff:feba:38aa
+hey. i was looking at building zig from source in yocto, but i ran into some missing symbols at the final step. it seems libz, libxml2 and libzstd are missing. i didn't see any special instructions in the readme. any thoughts? https://0x0.st/XE1d.do_compi
+
+1728162468
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+torque: thx
+
+1728165648
+MimiVals1!~MimiVals1@user/MimiValsi
+ 
+
+1728168452
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+torque: maybe pkg-config related, e.g. that it can't find threads?
+
+1728168465
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the waf build included pkg-config
+
+1728168475
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+anyway, will check it tomorrow
+
+1728168765
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is [*]T more or less the exact same as *T in C? i.e. you just have to manually keep track of how many items it's pointing to, you can treat it like one or many, that sort of thing?
+
+1728169991
+torque!~tachyon@user/torque
+yes, but it does not allow null like *T in C does
+
+1728170080
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Ah, yeah
+
+1728170099
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+So ?[*]T for maximum chaos :)
+
+1728172363
+mischief!~mischief@2601:646:100:23:2efd:a1ff:feba:38aa
+well, i made a little progress, but now i'm stumped by these missing libc symbols https://0x0.st/XEeG.do_compi
+
+1728172627
+andrewrk!~andrewrk@mail.ziglang.org
+mischief: looks like problems with C++
+
