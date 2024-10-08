@@ -1,0 +1,164 @@
+1728268011
+phryk!~totallyno@user/phryk
+Hello! I'm looking for a compiled language (OO, functional, or hybrid) that's cleaner than C++ which can just import C libraries to interface with low level resources. I've previously put some time into D, which approaches what I want and I like it overall, but while it's theoretically ABI-compatible to C this often involves writing D equivalents to the header file and I really don't want to have to
+
+1728268013
+phryk!~totallyno@user/phryk
+bother with that.
+
+1728268061
+phryk!~totallyno@user/phryk
+Is Zig a viable alternative for me? I'm running BSD on all my machines if that makes a difference.
+
+1728268213
+torque!~tachyon@user/torque
+zig can in most cases automatically generate the compatible header file for you
+
+1728268267
+phryk!~totallyno@user/phryk
+ye, that's what the D community said, too. I seem to have a real knack to hit the edge cases. :P
+
+1728268320
+torque!~tachyon@user/torque
+well, if you're using libraries that abuse some of the worse properties of C preprocessor macros, those may not be able to be translated directly
+
+1728268351
+phryk!~totallyno@user/phryk
+interesting, sounds like the exact same issue I ran into with D.
+
+1728268391
+phryk!~totallyno@user/phryk
+And I gave up on manually translating the header files because they were super labyrinthian to me… tho I'm not exactly fluent in C, so I'm not sure if it says more about libdrm or me ^^;
+
+1728268460
+torque!~tachyon@user/torque
+well, you can always try running `zig translate-c` on them and see if you run into any issues
+
+1728268526
+phryk!~totallyno@user/phryk
+aye, thanks for the hint – will try it out. first have to build the zig package tho. :)
+
+1728276324
+daurnimator!~daurnimat@vultr.daurnimator.com
+phryk: or just download the binary
+
+1728281604
+probie!cc0b34050a@user/probie
+What's current best practice for handling dependencies (both C and Zig) in Zig?
+
+1728281649
+andrewrk!~andrewrk@mail.ziglang.org
+probie: here's a project with 4 dependencies https://codeberg.org/andrewrk/player/src/branch/main/build.zig.zon
+
+1728282073
+probie!cc0b34050a@user/probie
+On https://ziglang.org/learn/build-system/ under "Linking to System Libraries" there's a link to "Package Management" that goes nowhere. Is that meant to be talking about this?
+
+1728286211
+andrewrk!~andrewrk@mail.ziglang.org
+W.I.P.
+
+1728295930
+robertgzr!5db90f0c51@user/robertgzr
+heyo. so i am working with `[]u8` (that i get from `std.fs.path.join`) and want to pass that to some function that expects `[*:0]const u8`
+
+1728295944
+robertgzr!5db90f0c51@user/robertgzr
+can i do this without `allocator.dupeZ`?
+
+1728296266
+ifreund!2940d10f8b@user/ifreund
+robertgzr: no, consider using joinZ() though
+
+1728296312
+robertgzr!5db90f0c51@user/robertgzr
+cheers, that was my suspicion
+
+1728296413
+robertgzr!5db90f0c51@user/robertgzr
+the join call happens in a zig module and the sentinel is required for c interop
+
+1728296443
+robertgzr!5db90f0c51@user/robertgzr
+i dont want to contaminate my zig code with c-isms? does that make sense?
+
+1728296642
+ifreund!2940d10f8b@user/ifreund
+no way to say what makes sense in general. If global system complexity is reduced by using [:0]u8 rather than []u8 in some places I'd probably do that
+
+1728296678
+robertgzr!5db90f0c51@user/robertgzr
+i found a better way :)
+
+1728296697
+robertgzr!5db90f0c51@user/robertgzr
+instead of doing the path.join in the module i return the parts and let the caller handle joining
+
+1728296718
+ifreund!2940d10f8b@user/ifreund
+cool :)
+
+1728296727
+robertgzr!5db90f0c51@user/robertgzr
+thanks for the suggestion!
+
+1728305006
+ovf!sid19068@id-19068.hampstead.irccloud.com
+should the link in https://ziglang.org/documentation/0.13.0/#Zig-Standard-Library be correspondingly versioned, rather than pointing to https://ziglang.org/documentation/master/std/ ?
+
+1728308865
+ifreund!2940d10f8b@user/ifreund
+probably yeah
+
+1728335989
+cryptocode!~zy@user/zy
+https://github.com/bellard/quickjs/issues/358 is a new installment in the series "UB sits in popular C library for years", which is caught instantly by the equivalent Zig code
+
+1728336781
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+'Rewrite it to get rid of UB' .. usually a rustacean thing.
+
+1728336802
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+But I gather zig is a middle ground which might be easier to integrate with c
+
+1728337088
+cryptocode!~zy@user/zy
+Tempted to rewrite libbf for sure, would give me a lot more confidence working on this. Pretty sure there's more of these issues lurking.
+
+1728337143
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+I'm in the rust camp myself but am not so much of a "MUST PURGE ALL UNSAFE CODE!" , I'm happy to use c libraries and I do miss c++
+
+1728337196
+cryptocode!~zy@user/zy
+yeah I use c libs left and right in Zig, and it's smooth sailing usually
+
+1728337199
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Rust / zig / odin / JAI all have slices, I wonder if you could get compatibility between those
+
+1728337244
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+I did find I was able to bind to C libs and use stronger newtypes to wrap single parameters
+
+1728337261
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+I am definitely sold on how strongly typed rust is
+
+1728337389
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+maybe rust etc calling C one might find a &[i32] parameter looks like s  struct {i32* ptr, size_t count}
+
+1728337411
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Have never tried passing somethign like that though
+
+1728337447
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Imagine if rust & zig end up getting extern "Zig" {} / extern "Rust" {} 
+
+1728337477
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+They probably namespace diferently
+
