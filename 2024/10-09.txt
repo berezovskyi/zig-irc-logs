@@ -1,0 +1,240 @@
+1728451338
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what's the easiest way to print u8 slice as a hex string?
+
+1728451619
+LAC-Tech!~lewis@granite-phrase.bnr.la
+hmm, printing "std.mem.bytesAsValue(2048, header_bytes)" with {X} gives ok results
+
+1728451979
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not happy with it, but: "{}", .{std.fmt.fmtSliceHexLower(bytes)}
+
+1728451997
+andrewrk!~andrewrk@mail.ziglang.org
+it used to be just "{x}" and I let a contributor convince me to change it
+
+1728452246
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah I originally just tried {x} and {X} but you couldn't line them up visually, because of the lack of padding
+
+1728452254
+LAC-Tech!~lewis@granite-phrase.bnr.la
+will use std.fmt functions, thanks
+
+1728460015
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+re mustache: managed to backport a workaround in https://github.com/tranzystorekk/mustache-zig/tree/zig13 but now comptime complains aout a comptime var
+
+1728466087
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah well the authors have faced these issues as well, but with no apparent fix
+
+1728497204
+highvoltage!~highvolta@shell.jonathancarter.org
+hey andrewrk o/
+
+1728497221
+highvoltage!~highvolta@shell.jonathancarter.org
+I'm just catching up on the debian packaging bug report (after taking a stab at packaging myself)
+
+1728497265
+highvoltage!~highvolta@shell.jonathancarter.org
+I noticed that zig builds fine without "lib/tsan lib/libcxxabi lib/libcxx lib/libc" - how essential are these?
+
+1728497302
+highvoltage!~highvolta@shell.jonathancarter.org
+also, during build mkshlibs reports "package could avoid a useless dependency if debian/zig/usr/bin/zig was not linked against libz3.so.4 (it uses none of the library's symbols" - just fyi
+
+1728497502
+andrewrk!~andrewrk@mail.ziglang.org
+highvoltage: the libz dependency comes from llvm, it's not a direct dependency of zig. that's a configuration option that debian is choosing
+
+1728497570
+andrewrk!~andrewrk@mail.ziglang.org
+for debian packaging, I think it's important to ask the question, what is the purpose of the zig package? if it's only to package other stuff within debian, then I have one set of (simpler) suggestions. if it's to provide a generally useful zig compiler to users, then you can't be deleting stuff from the repo that makes cross compilation work
+
+1728497639
+highvoltage!~highvolta@shell.jonathancarter.org
+andrewrk: imho just a compiler for packaging other software written in zig would be a good start
+
+1728497733
+andrewrk!~andrewrk@mail.ziglang.org
+in this case, you may be able to avoid an llvm dependency altogether: https://github.com/ziglang/zig/?tab=readme-ov-file#building-from-source-without-llvm
+
+1728497761
+highvoltage!~highvolta@shell.jonathancarter.org
+andrewrk: ah yes, I saw that this afternoon, I was also wondering if that would be very useful at all
+
+1728497848
+andrewrk!~andrewrk@mail.ziglang.org
+anyway the straight answer to your question is those directories are used when using thread sanitizer, linking libc++, and linking libc
+
+1728497929
+highvoltage!~highvolta@shell.jonathancarter.org
+is linking libc and libc++ quite common? (I'd guess so, but I also haven't taken a look at many 3rd party zig software )
+
+1728497995
+highvoltage!~highvolta@shell.jonathancarter.org
+also, should a minimum zig package still be called zig? or just something like zig-compiler?
+
+1728498003
+andrewrk!~andrewrk@mail.ziglang.org
+yes, more often than not. however, when using zig to build debian packages, you don't want that libc++, you want to integrate with the system one
+
+1728498022
+andrewrk!~andrewrk@mail.ziglang.org
+my preference would be something obtuse like zig-debian
+
+1728498045
+andrewrk!~andrewrk@mail.ziglang.org
+so that users don't get the software confused with an upstream distribution which has cross compilation features as advertised by the project homepage
+
+1728498111
+highvoltage!~highvolta@shell.jonathancarter.org
+andrewrk: for python we have a python-minimal, would zig-minimal be obtuse enough?
+
+1728498123
+andrewrk!~andrewrk@mail.ziglang.org
+sure
+
+1728498222
+highvoltage!~highvolta@shell.jonathancarter.org
+I also noticed that the default cmake leaves a bunch of empty directories around (usr/lib/zig/std/compress/flate/testdata/fuzz/, usr/lib/zig/std/compress/testdata, usr/lib/zig/std/tar/testdata, etc, not sure they are actually needed in the final install)
+
+1728498560
+andrewrk!~andrewrk@mail.ziglang.org
+they are not needed
+
+1728498582
+andrewrk!~andrewrk@mail.ziglang.org
+in the source tree they contain large test files which are only needed in a source checkout for testing
+
+1728500641
+highvoltage!~highvolta@shell.jonathancarter.org
+yeah although it's probably a bug that they get installed as empty directories at the end at all
+
+1728501007
+highvoltage!~highvolta@shell.jonathancarter.org
+so zig2 doesn't have help and says only few commands are supported. is that documented somewhere? (otherwise I'll just do some trial and error)
+
+1728502092
+highvoltage!~highvolta@shell.jonathancarter.org
+andrewrk: in a zig-minimal package, should the binary still be called zig2 or just zig?
+
+1728502514
+andrewrk!~andrewrk@mail.ziglang.org
+I think that is up to the debian packaging team
+
+1728502554
+andrewrk!~andrewrk@mail.ziglang.org
+which zig application(s) in particular are you looking to package?
+
+1728502960
+highvoltage!~highvolta@shell.jonathancarter.org
+from the ITP bug it references ncdu, wayprompt and mepo, although this will likely grow quite a bit, so I'd at least want some form of zig in the archives before freeze hits
+
+1728504011
+andrewrk!~andrewrk@mail.ziglang.org
+I suggest to try packaging at least one of those along with your zig package work to test out its efficacy
+
+1728504399
+highvoltage!~highvolta@shell.jonathancarter.org
+*nod*, I was thinking the same thing
+
+1728504430
+highvoltage!~highvolta@shell.jonathancarter.org
+at least it 'build-exe' and 'run' works on my local hello world :)
+
+1728504715
+andrewrk!~andrewrk@mail.ziglang.org
+the applications will likely need a patch to support being built with zig2. don't forget to pass --system and see the other relevant options under "System Integration Options" in `zig build --help`
+
+1728504958
+highvoltage!~highvolta@shell.jonathancarter.org
+ah yes I'll have to install a full zig somewhere too in order to see that
+
+1728505770
+andrewrk!~andrewrk@mail.ziglang.org
+pretty sure zig2 supports the build subcommand
+
+1728505949
+highvoltage!~highvolta@shell.jonathancarter.org
+it does, but not the --help
+
+1728507712
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+What's the different between these two struct definitions? https://zigbin.io/d6a929 
+
+1728507756
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: I need more context about what you're asking about
+
+1728507794
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+The_Buhs: the undefined
+
+1728507835
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+grayhatter: basically just, when you're declaring a field in a struct that you don't have a default for, is there any difference between writing "= undefined" and just not setting it to anything?
+
+1728507949
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+The_Buhs: yes, if you don't have a default it will force you to initialize it when you instantiate the struct
+
+1728507963
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: think more about how you'd expect Struct1/2 to be used. Struct2 makes it easier for anyone using it, to accidentally trip over undefined behavior. Where every time you want to use Struct1, you'd have to set .field = undefined. I.e. you wouldn't be able to do thing:Struct1 = .{}; 
+
+1728508004
+grayhatter!~grayhatte@user/grayhatter
+if you look at struct1 = .{}, you can't tell at a glance that field is invalid.
+
+1728508011
+andrewrk!~andrewrk@mail.ziglang.org
+The_Buhs: it's usually a code smell to default-initialize fields to undefined
+
+1728508017
+grayhatter!~grayhatte@user/grayhatter
+otherwise, I think that's the only difference between the two
+
+1728508088
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+thanks y'all
+
+1728508093
+grayhatter!~grayhatte@user/grayhatter
+more explicitly, what I understand is andrewrk's point, is setting a default assement to undefined is a hint that the code wasn't written to be robust, and it becomes safe to assume there's other bugs throughout the code
+
+1728508164
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: some extra context, when I read that Struct2, I almost asked "hey, is it ever valid to set a default value to undefined?" because when I read that, I thought, there's no way that's what anyone intends 
+
+1728508201
+grayhatter!~grayhatte@user/grayhatter
+or, maybe the compiler should prohibit that, because it can't possible ever be correct
+
+1728508307
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://codeberg.org/bwbuhse/beanclock/src/commit/443e6cab8d28ebef4ab4e0a3fcafbba5d6627160/src/main.zig#L44 here's where I've used it like that -- but as you can see, I *do* have a comment saying maybe I should default to null :P
+
+1728508453
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+The_Buhs: why spread out the initialization of context like that
+
+1728508495
+grayhatter!~grayhatte@user/grayhatter
+If I try hard, I can imagine a reason it might be ok. But in all cases, it's an unforced error. You shouldn't make it easier for anyone to make mistakes because they forgot a small detail for split second. You should also consider future you as someone you want to be nice to. Requiring anyone using it to write `.field = undefined` might feel bothersome, but IMO, it's **way** nicer than if their code
+
+1728508497
+grayhatter!~grayhatte@user/grayhatter
+explodes later down the line because they missed that detail just once. :)
+
+1728508532
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh right, it's a global...
+
+1728511468
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Gliptic: just for you I'm refactoring to not use a global or any default undefineds
+
