@@ -1,0 +1,148 @@
+1728522765
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Hey, question: what's "zig2" that andrew mentioned. typo or real thing? been away for a while.
+
+1728523055
+torque!~tachyon@user/torque
+it's one of the intermediate compilers that is built when building the compiler from source
+
+1728523176
+torque!~tachyon@user/torque
+I believe the chain is: there's a wasm blob that takes in the compiler source and translates it to C code which is compiled with your system c compiler. the output of this is the zig2 binary which is a mostly-but-not-fully-featured zig compiler. zig2 is then used to recompile the compiler source code directly into an executable, which is zig3
+
+1728523251
+torque!~tachyon@user/torque
+zig3 is the fully-functional zig compiler (which can be used to recompile the compiler for zig4, though that's mostly just to check that the build process produces consistent output)
+
+1728523252
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Interesting. I'm going to download a pre-built compiler for now, but I'll build from source someday
+
+1728523285
+torque!~tachyon@user/torque
+pre-built is definitely the way to go unless you're trying to debug or develop the compiler
+
+1728523960
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+or running gentoo :p
+
+1728525741
+andrewrk!~andrewrk@mail.ziglang.org
+torque is exactly right
+
+1728527897
+grayhatter!~grayhatte@user/grayhatter
+that would be a good thing to copy into a lesser faq
+
+1728527989
+grayhatter!~grayhatte@user/grayhatter
+I've had to dig that info out myself before, and having a page on the website with a bunch of cool details like that would be an awesome thing to point to when talking about zig
+
+1728540760
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: how about this? https://ziglang.org/news/goodbye-cpp/
+
+1728594178
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Are there any reasons to pass structs by value instead of by reference (in specific I mean for methods on that struct, but also when passing them to other functions/methods)?
+
+1728594375
+andrewrk!~andrewrk@mail.ziglang.org
+when you pass by value, you prevent people reading the code from wondering whether the data could be modified during other function calls 
+
+1728594405
+andrewrk!~andrewrk@mail.ziglang.org
+you also prevent the compiler from wondering the same thing, which can have optimization implications
+
+1728594421
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+So just, generally, pass by value when I don't want to modify it and pass by reference when I do?
+
+1728594430
+andrewrk!~andrewrk@mail.ziglang.org
+generally yes
+
+1728594445
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Thanks
+
+1728599834
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is there a build.zig that shows how to run the tests in files other than just the root_source_file with `zig build test`? I can zig test the other file fine, but zig build test is only running the test in main.zig
+
+1728600406
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Howdy! I've downloaded today's master binary toolchain, and I'm building with a wrapped C lib, but I get an error: error: no field named 'aarch64_32' in enum 'Target.Cpu.Arch'; Some more details are here https://codeberg.org/option2/nats.zig/issues/1
+
+1728600465
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+If there's an easy workaround, please advise. If I need to go look at the allyourcodebase wrappers, I'm down to do that, too. 
+
+1728600911
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+oh wait it might be your lib torque if that's you on GH
+
+1728602429
+andrewrk!~andrewrk@mail.ziglang.org
+coleman: aarch64_32 was removed, so that build.zig file needs to be updated
+
+1728602483
+andrewrk!~andrewrk@mail.ziglang.org
+since I didn't implement https://github.com/ziglang/zig/issues/20178 yet, can you tell me which package is p/1220d265dc673167ffe4a3cefe2840893d2910cfd773cfb1893ff768d5f1351d2a1f?
+
+1728602717
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+one sec
+
+1728602837
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+not quite sure how to track that down. This is https://github.com/allyourcodebase/nats.c.git which wants libressl ... i think
+
+1728602890
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I can dig in git SHAs if that's it, or is it the hash one of the deps in zig.build.zon ...
+
+1728602915
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+i'll go look for those hashes
+
+1728602986
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+libsodium? https://github.com/allyourcodebase/nats.c/blob/master/build.zig.zon#L22
+
+1728603360
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Fixed in libsodium https://github.com/jedisct1/libsodium/commit/8c54312a62dd6383d692e56a65c57a2210d73936 maybe
+
+1728603572
+andrewrk!~andrewrk@mail.ziglang.org
+can you just look in that directory and tell me what package it is? it's not the one you linked because that build.zig does not contain the line from your output
+
+1728603604
+andrewrk!~andrewrk@mail.ziglang.org
+look at /home/coleman/.cache/zig/p/1220d265dc673167ffe4a3cefe2840893d2910cfd773cfb1893ff768d5f1351d2a1f/
+
+1728603675
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+looking
+
+1728603765
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+ahh seems like libsodium?
+
+1728603894
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/jedisct1/libsodium/commit/8c54312a62dd6383d692e56a65c57a2210d73936
+
+1728603897
+andrewrk!~andrewrk@mail.ziglang.org
+fixed 3 months ago
+
+1728603903
+andrewrk!~andrewrk@mail.ziglang.org
+update your dependency
+
+1728603975
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I'll make a PR to allyourcodebase if i can get it working locally
+
