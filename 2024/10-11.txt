@@ -1,0 +1,420 @@
+1728605750
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+It is not a tagged release, unfortunately. https://github.com/allyourcodebase/nats.c/pull/1/files
+
+1728606104
+torque!~tachyon@user/torque
+<andrewrk> update your dependency
+
+1728606113
+torque!~tachyon@user/torque
+I want to stick with tagged releases unfortunately
+
+1728606151
+torque!~tachyon@user/torque
+the problem can be sort of worked around with the 0.14 dev compiler by (ab)using the fact that libsodium is a lazy dependency
+
+1728606241
+torque!~tachyon@user/torque
+if you clear your cache and use `-Denable-libsodium=false` when building, it should build with 0.14. Unfortunately, the way that the build system works, once libsodium is in the cache, it will break build.zig
+
+1728606347
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+!!! I was about to say something re: the cache
+
+1728606357
+torque!~tachyon@user/torque
+I could potentially be convinced to update to a random commit on libsodium master, but that feels bad™
+
+1728606415
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+It's not a big deal. I can open an issue upstream. It's a tiny patch so maybe they'd be willing to tag it.
+
+1728606451
+torque!~tachyon@user/torque
+yeah that would be a nice option that I didn't consider
+
+1728606493
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+They seem to want that stuff in "Discussions" so I'll toss it there and link to allyourcodebase
+
+1728606731
+torque!~tachyon@user/torque
+also, glad to see someone is (trying to) use my bindings. I'm no longer working on the project I wrote them for, but I'll still gladly accept suggestions/improvements
+
+1728606770
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+https://github.com/jedisct1/libsodium/discussions/1416 there's asking for a tag
+
+1728606831
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Oh yea I was so pleased to see bindings. I was just thinking to myself, "Instead of implementing NATS in Zig, someone oughtta bind to the C library!" And lo and behold.
+
+1728606911
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+FWIW I do not use anything but the low-level nats protocol either. I am quite familiar with it in Go. If I can come up with any ergonomics changes I will reach out. I'm a Zig noob though.
+
+1728607155
+squeek502!~squeek502@user/squeek502
+The_Buhs, reference the other files in an unnamed test block, e.g. `test { _ = @import("other.zig"); }`
+
+1728607232
+squeek502!~squeek502@user/squeek502
+there's also a helper at `std.testing.refAllDecls();` that will reference the pub decls in the file for you, so if you have something like a `root.zig` that references all the files in your project then `test { std.testing.refAllDecls(); }` will work (this is the approach the standard library takes, see `lib/std/std.zig`)
+
+1728607255
+squeek502!~squeek502@user/squeek502
+sorry, i meant `std.testing.refAllDecls(@This());`
+
+1728607292
+torque!~tachyon@user/torque
+an alternative to that is `comptime { if (@import("builtin").is_test) { _ = @import("./whatever.zig"); } }`
+
+1728607310
+torque!~tachyon@user/torque
+the only real difference is that the if check does not create an empty test that always succeeds
+
+1728607328
+torque!~tachyon@user/torque
+not a big difference but some people don't like their test count to get inflated
+
+1728608466
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Cool thanks y’all
+
+1728617377
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: did you try to rewrite the http server to be unopinionated?
+
+1728617864
+grayhatter!~grayhatte@user/grayhatter
+I ask because I'm writing a webserver framework that primarily serves over the uwsgi_protocol, but I've added http as a development option, and I find intergrating it annoying. But that's possibly/likely my own implementation. But before I rewrite the whole thing I wanted to get some more context so I know what direction the fix needs to be
+
+1728621857
+motiejus!~motiejus@88.223.107.21
+Hi all. Just before running a compiled "zig test" binary (i.e. the one that gets compiled with `zig test`), I need to run `sudo setcap cap_net_admin=+ep /path/to/that/binary`, so it has enough permissions to do it's unit tests. Do I have any options with `zig build`? If you see this message not for the first time, let me know! I'm still fighting with my bouncer.
+
+1728621892
+motiejus!~motiejus@88.223.107.21
+I looked at `setExecCmd`, but it doesn't seem to take effect (as seen via execsnoop the binary doesn't seem to be started). (And the message seems to have gone through)
+
+1728622431
+motiejus!~motiejus@88.223.107.21
+ok, I have a clue: if the test binary executes as-is, it will not run the test-cmd. If I remove `--listen=-` from it's arguments, it will do what's expected. Is there a serial, trivial mode that runs the tests one layer below?
+
+1728623947
+motiejus!~motiejus@88.223.107.21
+decided to try ziggit :) https://ziggit.dev/t/running-tests-with-my-own-wrapper/6331
+
+1728630318
+motiejus!~motiejus@88.223.107.21
+A different question: why do I get non-zero here? https://zigbin.io/906f3f  context: I am trying to initialize a struct in `init` function, pre-fill some buffers. But the address of returned struct is different than in the initialization, which implies it is copying it(?). This blows my previous understanding about returning structs (i.e. not addresses) from `init` functions. Please advise. :)
+
+1728630338
+motiejus!~motiejus@88.223.107.21
+s/addresses/pointers/
+
+1728631308
+motiejus!~motiejus@88.223.107.21
+clarifying my problem a bit: I would like to create pointers to the inner structure in the `init` function, but since there is copying, I can't.
+
+1728639406
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+when using libvaxis, i had an integer underflow bug in my code and when it crashed the app i expected the deferred terminal cleanup logic to leave it in a proper state before printing error diagnostics, but it still ended up garbled
+
+1728639493
+ifreund!2940d10f8b@user/ifreund
+unless the terminal cleanup is done in a SIGABRT signal handler it won't run on a safety check panic
+
+1728639527
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah right
+
+1728639632
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+is there some erroring math equivalent?
+
+1728639654
+ifreund!2940d10f8b@user/ifreund
+@addWithOverflow() is probably what you want
+
+1728639710
+ifreund!2940d10f8b@user/ifreund
+there's some wrapper for that function in std.math probably but i doubt it's worth using
+
+1728639750
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+for now the fix was just to switch together operations, i.e a + 2 - b instead of a - b + 2 but ill remember that
+
+1728640458
+bbsl!~bbsl@user/bbsl
+Hi. Can someone help me understand what I am doing wrong here https://privatebin.net/?ca60b535e1344ce5#CEJRY1XZpXZHp4ArRqEpob4oWqQ4nGyKpQ3PbW2wkRgz when I get this https://privatebin.net/?39427ebe190af697#2EbTkPmhZjkxGStucDidzBqroXe6jM3uuF8q8gd4Jm1b I tried looking at the library code for the called function and the triggered "guard" comparing the two buffer sizes but as far as I can tell this should
+
+1728640461
+bbsl!~bbsl@user/bbsl
+pass leading me to think there is something even more basic I dont understand here?
+
+1728640691
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+bbsl, you're returning the whole 4096 buffer as a slice
+
+1728640740
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+lots of garbage at the end
+
+1728640816
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which is why you should not ignore the return value of encode
+
+1728640860
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but the more serious issue is that you're returning a slice to a local variable
+
+1728640912
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+out_buf is only valid inside its function
+
+1728650514
+bbsl!~bbsl@user/bbsl
+Gliptic: ok tyvm for the pointers. I did find it odd that the api of that function was to return a non-void thing. I guess that shoul have set off the alarm bells. I will have a look with what you pointed out :)
+
+1728651975
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+btw ifreund since you mentioned if an autojump used zf you'd be interested, a prototype version is here: https://codeberg.org/tranzystorekk/zioom
+
+1728655401
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Am I doing something wrong here? I am defining a struct in a doctest, but within that test I get a compiler error for undeclared identifier
+
+1728655490
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://0x0.st/X6m3.png
+
+1728656738
+meidam!~meidam@user/meidam
+Does anyone know if there is anything in the std library for self signed certificates now? That you can use for tcp requests?
+
+1728656767
+torque!~tachyon@user/torque
+rockorager, since tests are function bodies, declarations are ordered so I don't think you can refer to a struct by its name inside itself there
+
+1728656783
+torque!~tachyon@user/torque
+@This() should work in that case
+
+1728656834
+torque!~tachyon@user/torque
+<motiejus> A different question <-- I don't think the result location semantics currently offer hard guarantees for when copies can be elided
+
+1728656867
+torque!~tachyon@user/torque
+init functions are not special in any way, so for your mental model, it's probably better to assume that direct struct returns are always copied, even if the compiler can sometimes optimize that out
+
+1728656940
+torque!~tachyon@user/torque
+this means you need to alloc to get a stable heap pointer or make the user pass in a mutable pointer you can modify (or change your data model)
+
+1728657070
+torque!~tachyon@user/torque
+there's an open proposal that would affect this use case: https://github.com/ziglang/zig/issues/2765
+
+1728657102
+torque!~tachyon@user/torque
+I've also run into this before and I think this proposal would be quite useful for this scenario
+
+1728659259
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I'm doing Crafting Interpreters atm and I'm trying to figure out my Token struct. https://zigbin.io/f7ff72 this is what I have right now, but this way, there's nothing stopping someone from adding a non-void literal to a non-literal Token. Is there a better way to handle this? I supposed I could just make TokenType a tagged union actually
+
+1728659344
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Sorry for making you all my rubber ducks
+
+1728659376
+dutchie!~dutchie@user/dutchie
+🦆
+
+1728659986
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Can you do a tagged union and just leave the type off of void members of the union?
+
+1728660481
+cancername!~cancernam@user/cancername
+you can use a union(TokenType), I think.
+
+1728660547
+dutchie!~dutchie@user/dutchie
+you can indeed leave `: void` off tagged union members
+
+1728660572
+dutchie!~dutchie@user/dutchie
+see "test_union_method.zig" under https://ziglang.org/documentation/master/#toc-Tagged-union
+
+1728660648
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+cancername: I don't think I even need to do that - I just changed TokenType from enum to union(enum) and just gave types to the three literals
+
+1728660660
+cancername!~cancernam@user/cancername
+alright
+
+1728660690
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+torque: @This() worked perfect, thanks!
+
+1728660709
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+dutchie: 🤦‍♂️ I stopped looking at the example before that lol. Thanks :) 
+
+1728674325
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is there a replacement for ComptimeStringHashmap in 0.13.0?
+
+1728674574
+grayhatter!~grayhatte@user/grayhatter
+uhhh... if you know your map at comptime, why not enum and "static" alloc?
+
+1728674663
+grayhatter!~grayhatte@user/grayhatter
+I'm still waiting for a comptime allocator though, it'd be super cool if I could get the compiler to calculate array sizes for me
+
+1728674762
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Well I'm trying to map []const u8s to tagged-union values. I *did* just find std.StaticStringMap that has initComptime() 🤔
+
+1728674787
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+What do you mean specifically by static alloc?
+
+1728675450
+grayhatter!~grayhatte@user/grayhatter
+inline for tag in tagunion: comptime std.mem.eql(uc, string, @tagName(tag)) return tag;
+
+1728675482
+grayhatter!~grayhatte@user/grayhatter
+but, unless you're taking runtime user input... just use .enum_values
+
+1728675573
+grayhatter!~grayhatte@user/grayhatter
+var statically_alloced: [static_size or length_of_taggedunion]u8 = undefined;
+
+1728675602
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+> unless you're taking runtime user input
+
+1728675602
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I am ;) just doing Crafting Interpreters for fun right now and the REPL is runtime user input *shrug*
+
+1728675612
+grayhatter!~grayhatte@user/grayhatter
+something tells me there's a better way to write what you're trying to explain The_Buhs 
+
+1728675620
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I mean quite possibly, yes
+
+1728675640
+grayhatter!~grayhatte@user/grayhatter
+I'd suggest linking to code, or explaining generally your problem, and omit any part of the solutions your considering
+
+1728675691
+grayhatter!~grayhatte@user/grayhatter
+when getting coding advice, never ask how to make a solution work, (unless you're unable to consider different solutions)
+
+1728675770
+grayhatter!~grayhatte@user/grayhatter
+that said, I break this rule all the time so *shrug*
+
+1728675975
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+https://en.wikipedia.org/wiki/XY_problem
+
+1728676039
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://paste.gentoo.zip/W40d57JC this is what I'm trying to replicate (Java code). I'm trying to create a scanner for a lox interpreter and this is part of scanning for identifiers/keywords. https://zigbin.io/a7f0dd here is more of the code I've got right now with a comment explaining what I'm actually trying to do
+
+1728676068
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The_Buhs: Good source would be in the zig repo: lib/std/zig/tokenizer.zig
+
+1728676134
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+well looking at that... looks like it actually uses StaticStringMap with initComptime() for keywords lol
+
+1728678408
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+any good resource about learning how to name your variables and functions when programming?
+
+1728678464
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+other people's code, and a strong cup of coffee 
+
+1728678475
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+there's https://ziglang.org/documentation/0.13.0/#Names but naming is hard and i doubt anyone's got it 100% figured out
+
+1728679268
+soulseeder!~soulseede@user/soulseeder
+hey, could someone help me understand this error I'm getting? https://pastebin.com/xfX5pi86 All I want to do now is to have a small example that properly includes and links a library installed on the machine
+
+1728679341
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+soulseeder: just c.WLR_DEBUG
+
+1728679365
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+c.enum_wlr_log_importance is not a zig enum but a c_uint
+
+1728679415
+soulseeder!~soulseede@user/soulseeder
+ah, and C exports enum names to global namespace
+
+1728679420
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1728679455
+soulseeder!~soulseede@user/soulseeder
+thanks Gliptic 
+
+1728681513
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+thx
+
+1728681965
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah zig is advising to mix the different naming types, while other languages recommends one particular afaik (Go, python)
+
+1728682239
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+like between functions and variables?
+
+1728682783
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yes
+
+1728682910
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah well, I personally enjoy snake_case for most things, kebab-case for filesystem
+
+1728682935
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I learned programming mostly with Go. That focus on error checking is a good learning experience. Get the feeling that learning zig before c, might also help to become a better programmer, especially if you have the tendency to be sloppy like me :)
+
+1728683054
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm yead I try to adopt to what the language advises. I preferred snake_case over camelCase, but after Go it's vice versa. I think I just had some aversion against Python, heh
+
+1728685329
+gog!~ada@user/meow/gog
+my job is a suite of .net apps and aspnetcore
+
+1728685390
+gog!~ada@user/meow/gog
+so i'm all TitleCase for types and properties, camelCase for fields and variables, and kebab-case for css classes
+
+1728685400
+gog!~ada@user/meow/gog
+snake_case is prohibited
+
