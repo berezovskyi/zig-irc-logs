@@ -1,0 +1,152 @@
+1729044525
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is there any reason I could expect a test to just get stuck? If I just manually run the test with .zig-cache/..../test it works, but with zig build test it fails? It's only this one specific test, too. If I comment it out but leave the other tests in the same file it works and I've got no clue why. If I manually run the test, it also fails
+
+1729044525
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+(correctly)
+
+1729049607
+torque!~tachyon@user/torque
+does your test print to stdout? I think the test runner chokes on that
+
+1729049654
+torque!~tachyon@user/torque
+see: https://github.com/ziglang/zig/issues/15091 
+
+1729051876
+probie!cc0b34050a@user/probie
+> This suggests that if you're the main application, it's acceptable to write to stdout. However, doing so means you can no longer unit test your application properly! Does that sound reasonable to you? Honestly, it’s a strange behavior.
+
+1729051918
+probie!cc0b34050a@user/probie
+Can't they just parametrize what stream they're writing to, or am I missing something?
+
+1729052062
+torque!~tachyon@user/torque
+it's easy to work around, but it's pretty bad user experience that it just hangs with no indication what is happening
+
+1729052190
+probie!cc0b34050a@user/probie
+Definitely not ideal, but garbage in garbage out. I think "no one but the main can write to stdout" is a pretty reasonable position.
+
+1729052228
+probie!cc0b34050a@user/probie
+Imagine you're writing an interactive terminal application and suddenly one of your dependencies starts spewing nonsense to stdout that confuses the user
+
+1729071642
+motiejus!~motiejus@88.223.107.21
+Hi all. I talked with a colleague about Zig's way of generating stdlib. Anyone has heard of why it's done on the client side with wasm-compiled zig, as opposed to on the host (and serving the resulting generated files)? Also asked here: https://github.com/ziglang/zig/pull/19208#issuecomment-2416271520
+
+1729071761
+motiejus!~motiejus@88.223.107.21
+I see this benefit: >The HTTP server creates the requested files on the fly, including rebuilding main.wasm if any of its source files changed, and constructing sources.tar, meaning that any source changes to the documented files, or to the autodoc system itself are immediately reflected when viewing docs. ; are there more?
+
+1729083441
+o0x1eef!~user@user/o0x1eef
+I'm not sure it answers your question, but my platform disables webassembly by default and I wish it was plain old HTML+CSS. I found this: http://ratfactor.com/zig/stdlib-browseable2/
+
+1729087952
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque ah, yeah (I think) it does. It *should* be printing to stderr, but I might've passed the wrong writer. I'll need to check when I get home later, thanks.
+
+1729089382
+bblack!~bblack@wikimedia/bblack-WMF
+is anyone working yet on a zig-native, efficient qsbr (like userspace-rcu's qsbr impl, basically)?
+
+1729089407
+bblack!~bblack@wikimedia/bblack-WMF
+I think the atomics in std are enough to build on, but there's some tricks/hacks to make it optimzally-efficient of course
+
+1729092815
+grayhatter!~grayhatte@user/grayhatter
+so I know that the compiler is never supposed to have warnings, but what about something like @compileWarn(). It would become an error in any build mode other than Debug, but would allow me to make progress in a larger refactor without needing to make all of the changes at once. I'd like to test the changes one by one so that I don't lose my place or the mental context I have from the function I'm
+
+1729092817
+grayhatter!~grayhatte@user/grayhatter
+rewriting a bit to use the "improved" api
+
+1729093082
+ifreund!2940d10f8b@user/ifreund
+I don't see how @compileWarn() would help that use-case
+
+1729093092
+ifreund!2940d10f8b@user/ifreund
+also, I'm pretty sure it's already been proposed and rejected
+
+1729093181
+grayhatter!~grayhatte@user/grayhatter
+I can get a list of unfixed callers with -freference-trace 
+
+1729093250
+grayhatter!~grayhatte@user/grayhatter
+some places I want to change the caller directly, and others I want to change higher in the stack to use a different (new higher level) API 
+
+1729093853
+ifreund!2940d10f8b@user/ifreund
+so your use-case is more concretely "list all the callsites of a given function"?
+
+1729093870
+ifreund!2940d10f8b@user/ifreund
+that very much sounds like an IDE feature to me
+
+1729093904
+grayhatter!~grayhatte@user/grayhatter
+I know how grep works, the call stack with lines is the helpful part
+
+1729093918
+grayhatter!~grayhatte@user/grayhatter
+I don't use an IDE, too distracting
+
+1729093944
+grayhatter!~grayhatte@user/grayhatter
+s/lines/line numbers
+
+1729094015
+ifreund!2940d10f8b@user/ifreund
+either way, I don't see any reason a language feature would be needed to support this use-case
+
+1729094064
+ifreund!2940d10f8b@user/ifreund
+by IDE feature, I mean something that should be provided one way or another by language tooling
+
+1729094074
+grayhatter!~grayhatte@user/grayhatter
+yeah, I agree with you, that's totally fair, it's probably better as a tool feature. I'll probably build something eventually that does that
+
+1729094155
+ifreund!2940d10f8b@user/ifreund
+fwiw, there are plans to expose this kind of information from a compiler server kind of thing eventually
+
+1729094177
+ifreund!2940d10f8b@user/ifreund
+which would serve as the backend for IDE style things and also other tooling
+
+1729102594
+andrewrk!~andrewrk@mail.ziglang.org
+we're getting quite close to that reality now that incremental compilation is coming together: https://github.com/ziglang/zig/pull/21722
+
+1729102622
+andrewrk!~andrewrk@mail.ziglang.org
+(compiler stays running with all that information available for querying)
+
+1729103696
+reykjalin!7e28cf3a41@user/reykjalin
+:q
+
+1729103707
+reykjalin!7e28cf3a41@user/reykjalin
+oops, that was supposed to go to my editor, not here. Sorry about that!
+
+1729121778
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://github.com/rockorager/libvaxis Zig TUI library. Was playing around with ncurses and saw this, looks like it's actively developed.
+
+1729121870
+torque!~tachyon@user/torque
+you might even find the developer in this very channel
+
+1729122369
+LAC-Tech!~lewis@granite-phrase.bnr.la
+no way!
+
