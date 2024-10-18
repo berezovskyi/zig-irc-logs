@@ -1,0 +1,104 @@
+1729125349
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+yes I am here
+
+1729129752
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Let's say I want to return a list of Foos from a function. Is the most idiomatic way to do that to take an allocator, allocate however I want, then just return a slice? I was planning to use an ArrayList since I'm not sure how many I'll need, so should I just fooList.toOwnedSlice() ?
+
+1729129823
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs that's what I'd do, and a fine implementation until you have a clear reason it doesn't work
+
+1729129905
+reykjalin!7e28cf3a41@user/reykjalin
+The_Buhs: The alternative would be to accept a slice for the function to write into, but in that case the caller must allocate that slice before calling your function
+
+1729129924
+reykjalin!7e28cf3a41@user/reykjalin
+Not sure if that's necessarily more idiomatic, but it's an alternative approach if you don't want the function itself to allocate
+
+1729129936
+grayhatter!~grayhatte@user/grayhatter
+reykjalin: which is hard if the function doesn't know the final size, I assume the caller won't either
+
+1729129966
+reykjalin!7e28cf3a41@user/reykjalin
+yeah, in that case I think you'll probably want to accept an allocator
+
+1729129972
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Cool, thanks y'all :)
+
+1729129979
+reykjalin!7e28cf3a41@user/reykjalin
+no problem!
+
+1729144218
+probie!cc0b34050a@user/probie
+The_Buhs: you could also do something like a writer, but with `writeFn: *const fn (context: *const anyopaque, foo: Foo) anyerror!void`. Less convenient, but in many of scenarios this allows you to avoid the allocation entirely
+
+1729189259
+reykjalin!7e28cf3a41@user/reykjalin
+probie: wouldn't the writer still have to allocate? I'm curious how you could avoid allocations entirley that way
+
+1729189359
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+reykjalin: it depends on what the caller wants to do with the results, maybe it can do it in O(1) space
+
+1729189473
+reykjalin!7e28cf3a41@user/reykjalin
+Gliptic: I guess what I mean is; the writer must be writing to _something_, wouldn't you have to allocate that something?
+
+1729189492
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+reykjalin: not if it can do whatever it needs to do in O(1) space
+
+1729189584
+reykjalin!7e28cf3a41@user/reykjalin
+I don't really understand what you mean by that. What I think you mean is if the caller is, for example, writing 10 characters to a slice of length 1024 (or anything larger than 10)? But I'm not sure if I'm understanding that correctly
+
+1729189593
+reykjalin!7e28cf3a41@user/reykjalin
+sorry, just trying to learn here
+
+1729189612
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, this is a completely open-ended problem, so if the caller just wants to sum all the results or something, it can pass a writer that does that
+
+1729189675
+reykjalin!7e28cf3a41@user/reykjalin
+Ah yeah, I get that
+
+1729189705
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or perhaps search for a specific item, or do a random selection (reservoir sampling), etc. etc.
+
+1729189738
+reykjalin!7e28cf3a41@user/reykjalin
+Going back to the specific example though, could you have a writer write to an array you don't know the final lenght of upfront without allocations? I think that's where I don't see how you could avoid allocations
+
+1729189783
+reykjalin!7e28cf3a41@user/reykjalin
+for example writing to a slice that may have 10 elements or 1k elements, you don't know upfront
+
+1729189826
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that wasn't the specific example, because The_Buhs didn't say what it was going to do with the elements. But no, of course you can't write an unbounded number of elements into an array without allocating
+
+1729189890
+reykjalin!7e28cf3a41@user/reykjalin
+ok gotcha, glad I wasn't missing something there :)
+
+1729192554
+andrewrk!~andrewrk@mail.ziglang.org
+thanks for the PR review help today ifreund - always appreciated
+
+1729198004
+libfud!~libfud@2600:1700:48e8:d1cf:3bac:c794:62d6:4b6b
+Is there an article or issue I can reference for zig's design philosophy about allocators?
+
+1729198115
+libfud!~libfud@2600:1700:48e8:d1cf:3bac:c794:62d6:4b6b
+ah, I should have searched some more - https://ziglang.org/learn/why_zig_rust_d_cpp/ looks like a good starting point
+
