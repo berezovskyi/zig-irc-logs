@@ -1,0 +1,628 @@
+1729213747
+netvor!~netvor@185.5.68.52
+how to test that a value, which is of tagged union type, has specific type active?  it's `const FooType = enum{bar, baz}; const Foo = struct Foo(FooType) { .bar = .., .baz = .. };`  i want to do it in test
+
+1729213861
+torque!~tachyon@user/torque
+that's not valid syntax, but you can check equality with the union tag type to see if a given tag is active
+
+1729213928
+netvor!~netvor@185.5.68.52
+ah, i see now it's even in the docs;  `try expect(std.meta.Tag(ComplexType) == ComplexTypeTag);`
+
+1729213939
+netvor!~netvor@185.5.68.52
+thanks though :)
+
+1729213957
+torque!~tachyon@user/torque
+i.e. `const Foo = union(enum) { bar: u8, baz: bool }; const myfoo: Foo = .{.baz = true}; std.debug.assert(myfoo == .baz)`
+
+1729213959
+torque!~tachyon@user/torque
+yeah
+
+1729214018
+torque!~tachyon@user/torque
+you do not need to use `std.meta` for this use case, decl literals will coerce to the union tag type directly
+
+1729214307
+netvor!~netvor@185.5.68.52
+oh, i see. `expect(foo == .baz)` works actually.  i tried expectEqual earlier but that fails because it tries to coerce it.  (i wanted "nicer" test fail message)
+
+1729214425
+netvor!~netvor@185.5.68.52
+turns out what i can actually to do make up for it is just `expect(foo==.baz) catch return error.TestWrongTagActive` and still have an "expressive" message
+
+1729214453
+netvor!~netvor@185.5.68.52
+Zig is just so awesome, i'm having such a great time learning it :)
+
+1729214618
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+netvor: you can print to stderr in the catch block
+
+1729214833
+torque!~tachyon@user/torque
+expectEqual wants to check the entire contents of the union, including the value of the active tag, which is why it doesn't work in this case
+
+1729214937
+torque!~tachyon@user/torque
+anyway, yeah, you could print something like `std.testing.print("Wanted tag baz, but found tag {s}\n", .{@tagName(myfoo)});`
+
+1729214959
+netvor!~netvor@185.5.68.52
+I see, did not know about std.testing.print
+
+1729215010
+netvor!~netvor@185.5.68.52
+it's so darn convenient that I can just invent own errors out of thin air, though
+
+1729215061
+netvor!~netvor@185.5.68.52
+std.testing.print sounds definitely more maintainer-friendly way to deal with it
+
+1729215408
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ooh I didn’t know about testing.print either, nice tip torque 
+
+1729215467
+torque!~tachyon@user/torque
+ah, on further review that's because it's an internal function
+
+1729215507
+torque!~tachyon@user/torque
+std.debug.print does work in tests, though (as does std.log stuff, afaik)
+
+1729215552
+torque!~tachyon@user/torque
+turns out, testing.print actually just calls std.debug.print under the hood
+
+1729215581
+torque!~tachyon@user/torque
+this is what happens when I flip through the stdlib too fast :/
+
+1729224866
+apache8080!~apache808@user/apache8080
+What is the canonical way of linking to zig libraries in my zig program?
+
+1729225090
+apache8080!~user@user/apache8080
+23:17 ***  NAMES [para] _________ _wilsonk a-khabarov abeaumont acarrico acryo adam12 adigitoleo adsr aerth Affliction aidenfoxivey aktina Albright alethkit alip AlxFG Amun-Ra Anarchic andrea andrewrk ane Ankhers apache8080 APic aquamo4k Arwalk arya_elfren ashie aspen Awoobis azval baraq Batzy bblack bcardarella belst bfiedler_ bheesham bindu Biolunar blackdream blathijs bmp Boarders_____ bookworm bozo braewoods_ br
+
+1729225090
+apache8080!~user@user/apache8080
+ass BratishkaErik breavyn brutusmcforce bunny buoy49__ bw cancername carter_ casaca cdsxax chexum chgr54300 chiselfuse chrisnicola[m] cjb cloak cnx coder_kalyan codingcampbell colbyhub coleman companion_cube constxd coolnickname copygirl cot cp-- cpli cptaffe cr1901 crest crqra crumbles cryptocode cuong___ cursey cybermancer cyplo danderson danielle daru DasBrain daurnimator daved davros1 dbohdan dch de1b39 delitako
+
+1729225090
+apache8080!~user@user/apache8080
+ DFP Digit dilaver_7 distopico dkibi dliviu dnkl dnl dnm Domo doseijin DragonMaus drakonis drewjose driib318 driib_ziglogger duckraphi duncanm dutchie dutchie_ dwi dy dza dzoidberg Earnestly eein egtann Ekho electrosssnake ElementW emigre Enapiuz endoffile energizer erik` erock errilaz_ esensar eso Exa fancycade fawn fengshaun fifr finsternis Flaminator fleg fleischie flokli fm Franciman freshcoffee1 fruitcase fsx f
+
+1729225090
+apache8080!~user@user/apache8080
+wam gabeio gabriel_sevecek gabrielgio gbrlsnchs geemili gjn Gliptic gluon gpanders grayhatter GreaseMonkey Guest7502______ haliucinas1 hamess hanna__ helene henrytill highvoltage Hinrik hspak humour ianhedoesit ibokuri ifreund inr inspork iza[m] j-peg jackdk JailBird jamii jasiak jcmoyer jeffrom jekb jimw jistr jkl jkoshy jmcantrell joef johnLate jzck k0ta kaisan1 kaizoku kandinski kareigu kasesag kilic_ kimiamania 
+
+1729225091
+apache8080!~user@user/apache8080
+KitsuWhooa kjvbrt km koolazer kotto kron kvik LAC-Tech lagash lanodan larme larsjel layneson leah2 lechner lemmi leon-p leopoldek leptonix lescx letoram_ libfud linuxgemini listentolist lizog lockbox____ lordmzte losinggeneration LostKobrakai lqd lumidify lun4 m257 m5zs7k makidoll malina ManDeJan marcj maringuu martin2020_ mattikus mattnite maytha8 mbger McKael meidam meinside MeowKing mgxm midgard midipix mischief 
+
+1729225091
+apache8080!~user@user/apache8080
+mkoskar mkozaq mla mlugg mob_ mohan43u momo8787 MonsoonSecrecy mooff Moridin8 motiejus mountaingoat mronetwo MustachedSquid mycroft mz` n0ot nafod nagitsu neonloop_ netlynx netvor neurocyte nhanb nickersonm NickH nickster nikita Nikitat0_ Nilium nilsirl Nixx noam noeontheend nopjmp nore novakane ntdll o0x1eef oddish oisota okCiel Opus Overkilll ovf oz Palanix parasrah paulgrmn pavelz perro phaebz philipwhite philtor
+
+1729225091
+apache8080!~user@user/apache8080
+ phryk picnoir pierrebeaucamp_ Piraty Pistahh pitust pld pmk pocketprotector PotatoGim powerofzero probie psnszsn psyomn ptrckd pwillard qball raghavgururajan raiaq Raito_Bezarius rb rbino realguy_ redj renerocksai reykjalin rib RoadrunnerWMC robertgzr rockorager rom1504 romi Ronan-Dplq rubin55 Rudde runxiyu rv1sr rytec rzezeski s1dsq saolsen SchweinDeBurg sdc selenebun sepeth sewn shachaf shanoaice sheertj shodan45
+
+1729225092
+apache8080!~user@user/apache8080
+ shurane siaal sjs slind slothby slow99 slowjo sm2n Smithx10 smlavine Snetry soulseeder spookmoe spyt squeek502 sskras swinnenb switchy symb0l Synon taeltydes_ Techcable teddydd Terlisimo termos tetsuo-cpp thatonebrah thaumavorio The_Buhs thelounge82 theRealAlexz ThinkT510 tigerchops timj timj1 tjf tjpcc1 tleb toasterking tomku toms toothlessgear torque ToxicFrog tranzystorekk tributarian tsmanner_ tsujp ttyyls tund
+
+1729225092
+apache8080!~user@user/apache8080
+ra tusf tvaalen twopoint718 txdv tyhi u3ccqK77RNxp ugla unnick_ unwired4 ursa-major user3456 V v0idpwn viashimo vimproved voroskoi voxpelli vpol vrischmann w0lff weslem whereiseveryone willcl-ark wilsonjholmes Wolf480pl wowi42 Xe xEgoist xtex xutaxkamay xvmt yeti yrashk yth zagura zayd zbrown2 zenmaya zenomat zilti zups |darc| |darc||
+
+1729225118
+torque!~tachyon@user/torque
+probably not like that
+
+1729225125
+sewn!f6c66e284f@irc.pico.sh
+yeah
+
+1729225127
+libfud!~libfud@2600:1700:48e8:d1cf:3bac:c794:62d6:4b6b
+inb4 ban
+
+1729225132
+zayd!wanderer@user/zayd
+andrewrk: either spam or a command gone horribly wrong
+
+1729225135
+torque!~tachyon@user/torque
+pretty sure that was an accident
+
+1729225138
+DasBrain!dasbrain@user/meow/DasBrain
+rude, apache8080
+
+1729225144
+apache8080!~user@user/apache8080
+that was an accident
+
+1729225147
+zayd!wanderer@user/zayd
+ah
+
+1729225174
+DasBrain!dasbrain@user/meow/DasBrain
+"accidentially" highlighting 450 people.
+
+1729225219
+unwired4!~unwired@user/unwired
+^^^
+
+1729225246
+torque!~tachyon@user/torque
+anyway, normally you use the zig build system to expose the zig library to your code and you can @import it
+
+1729225273
+unwired4!~unwired@user/unwired
+@import allnicks
+
+1729225331
+apache8080!~user@user/apache8080
+sorry about that, trying out a new irc client and hit a wrong key bind 
+
+1729225393
+malina!~malina@user/malina
+he wasn't highlighting, he was storing the names in an array
+
+1729225400
+malina!~malina@user/malina
+esp o que, gringoto?
+
+1729225431
+unwired4!~unwired@user/unwired
+Most irc clients automatically sort names
+
+1729225460
+malina!~malina@user/malina
+ye, I guess an internal array suddenly spewing out is possible lol. 
+
+1729225492
+malina!~malina@user/malina
+what irc client is that then apache8080 apache8080  apache8080 apache8080 apache8080 apache8080 apache8080 apache8080 
+
+1729225501
+malina!~malina@user/malina
+oh oops. my fat finger hit the wrong bind key
+
+1729225539
+apache8080!~user@user/apache8080
+lol, tried the emacs IRC for the first time 
+
+1729225549
+malina!~malina@user/malina
+LOL
+
+1729225571
+malina!~malina@user/malina
+ok i don't know it but if it's emacs.. .irc client? THAT alone ot me sounds ama worthy :)
+
+1729225588
+malina!~malina@user/malina
+to*
+
+1729225640
+apache8080!~user@user/apache8080
+I think I hit C-m RET which parses the current line and sends it, the current line was the names that IRC first prints when you connect to the channel
+
+1729225661
+unwired4!~unwired@user/unwired
+yeah that makes sense why it started with 23:17 ***  NAMES
+
+1729225690
+malina!~malina@user/malina
+fair.
+
+1729225697
+apache8080!~user@user/apache8080
+well I guess thats a good welcome to the zig community, sorry for the spam 
+
+1729225753
+malina!~malina@user/malina
+ye, I kinda smile, because emacs to me is... well even a quarter of a century ago, I even then felt... like it's powerful and very able.... but it kinda is like machines which today are the size of a hoover, whereas back in the 1890s or somehting, they were the size of a small train...
+
+1729225800
+malina!~malina@user/malina
+with levers, buttons and crap...  like that's how I feel about emacs :D 
+
+1729225829
+malina!~malina@user/malina
+(and hi zig community... I just HAD to comment on apache8080 whizidding x)
+
+1729225866
+tetsuo-cpp!uid672509@id-672509.hampstead.irccloud.com
+apache8080: a bit off topic but i use ERC too, i have erc-send-current-line bound to C-c RET to avoid accidentally sending messages hehe
+
+1729225901
+apache8080!~user@user/apache8080
+I may have to do that lol
+
+1729226171
+andrewrk!~andrewrk@mail.ziglang.org
+looks like an accident
+
+1729227663
+apache8080!~rishi@user/apache8080
+are zig dependencies always statically linked?
+
+1729228912
+tusf!cb6c78d75e@user/TUSF
+apache8080: Not neccesarily, but Zig code that's depended on by Zig code is definitely statically linked by default. Or, technically, it's treated all as a single compilation unit.
+
+1729228974
+apache8080!~rishi@user/apache8080
+is it possible to dynamically link Zig code that depends on Zig code?
+
+1729229034
+tusf!cb6c78d75e@user/TUSF
+Yes-ish. There's no stable Zig ABI, so your Zig library would have to go out of its way to expose a C API to link against.
+
+1729229059
+apache8080!~rishi@user/apache8080
+tusf: ah ok, so this is a bit similar to rust. thanks
+
+1729229082
+tusf!cb6c78d75e@user/TUSF
+Similar situation, yeah.
+
+1729237182
+d76d5!~d76d5@user/d76d5
+spent a few hours with zig, and this is what I have been looking for my entire life
+
+1729237197
+d76d5!~d76d5@user/d76d5
+thank you all for the effort you've put into this :)
+
+1729245152
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Did someone say my name?? :P
+
+1729245324
+ifreund!2940d10f8b@user/ifreund
+emacs would like to speak to you
+
+1729245455
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ifreund: computers should not speak unless spoken to
+
+1729245467
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ifreund: computers are to do as they're told, not to think for themselves.
+
+1729245916
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+anton doesn't call me anything, he grimly does his work, then he sits motionless until it's time to work again. we could all take a page from his book.
+
+1729264295
+txdv!~txdv@78.56.38.107
+Zig produces coff files, but does it have facilities to read and modify coff files?
+
+1729266812
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+https://zigbin.io/a9f55f can you do something like this in zig? Like if I need to call multiple functions that return error unions and I want to handle the errors the same way, is there a way to catch the errors with a single catch block? 
+
+1729267121
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+I guess I could just make a nested function with that logic and call it then catch like normal
+
+1729269615
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+The_Buhs: this is probably the closest thing but I'm not sure it works: https://pastebin.com/FJDy3L18
+
+1729269657
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+and making a nested function is probably more idiomatic anyway
+
+1729271503
+grayhatter!~grayhatte@user/grayhatter
+ifreund: does zigwayland have a channel, or do you mind questions here?
+
+1729271824
+ifreund!2940d10f8b@user/ifreund
+grayhatter: here or #river are both fine
+
+1729271896
+grayhatter!~grayhatte@user/grayhatter
+scanner generates wayland.zig, is that inspectable, or does it behave more like "in-memory" only?
+
+1729271933
+ifreund!2940d10f8b@user/ifreund
+grayhatter: you can inspect it, it's somewhere in .zig-cache
+
+1729271939
+grayhatter!~grayhatte@user/grayhatter
+I'm trying to create a "typed html template" engine, and I'd like to generate human readable structs from the HTML template. I'd like that to be a build step
+
+1729271990
+grayhatter!~grayhatte@user/grayhatter
+I have the controversial opinion that human readable build generated files belong in the source repo, so that's what I'd like to do if anyone has any ideas
+
+1729272058
+ifreund!2940d10f8b@user/ifreund
+grayhatter: so your question is how to do that with the zig build system?
+
+1729272066
+grayhatter!~grayhatte@user/grayhatter
+"somewhere in .zig-cache" is what I was afraid of, I tried to ls, but didn't see any obvious way of finding it (other than recursive ls)... thanks ifreund :)
+
+1729272103
+ifreund!2940d10f8b@user/ifreund
+grayhatter: find .zig-cache -name wayland.zig
+
+1729272136
+ifreund!2940d10f8b@user/ifreund
+zls should let you goto-definition into the generated code as well if it's not bugging out
+
+1729272138
+grayhatter!~grayhatte@user/grayhatter
+ifreund: correct, I'd like to create a named build step, that could [re-]generate them, while also making the main binary depend on that step 
+
+1729272154
+grayhatter!~grayhatte@user/grayhatter
+zls is **constantly** bugging out, and crashing for me
+
+1729272175
+ifreund!2940d10f8b@user/ifreund
+I don't use it any more personally...
+
+1729272189
+grayhatter!~grayhatte@user/grayhatter
+ifreund: that find command would list duplicates, wouldn't it? not just the newest/most recent version?
+
+1729272206
+ifreund!2940d10f8b@user/ifreund
+if you want just the newest version, clear the cache first?
+
+1729272247
+ifreund!2940d10f8b@user/ifreund
+anyhow, the build system isn't really setup to place intermediate artifacts that participate in the caching system outside of .zig-cache
+
+1729272281
+grayhatter!~grayhatte@user/grayhatter
+lol, I considered that too... but I'd like something more maintantable than build.zig purging the cache every build :D
+
+1729272296
+ifreund!2940d10f8b@user/ifreund
+you could, in addition to placing the generated files in .zig-cache, install them to whatever directory you like
+
+1729272311
+ifreund!2940d10f8b@user/ifreund
+e.g. install them to your source tree post-build
+
+1729272350
+grayhatter!~grayhatte@user/grayhatter
+ifreund: not really set up, meaning it's likely a fools erand to try, and having it be it's own binary, and atomic step in the process is a better option currently, or is it something easy enough, with a bit of tinkering?
+
+1729272366
+grayhatter!~grayhatte@user/grayhatter
+I don't need a concrete answer, a suggestion on the method you'd consider first would be helpful too 
+
+1729272390
+grayhatter!~grayhatte@user/grayhatter
+I didn't think install could write to the source directory?
+
+1729272539
+ifreund!2940d10f8b@user/ifreund
+grayhatter: install writes to whatever prefix you give it
+
+1729272574
+ifreund!2940d10f8b@user/ifreund
+I personally would not bother with this, it's fighting against how the cache system is designed
+
+1729272646
+grayhatter!~grayhatte@user/grayhatter
+so independent steps with the install directory for the emited structs being src/whatever.zig?
+
+1729273991
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+tranzystorekk cool thanks :)
+
+1729278808
+emigre!emigre@emigre.online
+I was reading some interesting comments from Asahi Lina earlier today about Zig and Rust https://vt.social/@lina/113324418187782727
+
+1729279105
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+I think I saw Andrew address that
+
+1729279164
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+https://mastodon.social/@andrewrk/113324681808593753
+
+1729279258
+andrewrk!~andrewrk@mail.ziglang.org
+it's unfortunate how much people treat programming languages like sports teams. I wish more people would spent the time and effort to form their own opinions by using the technology
+
+1729279648
+Amun-Ra!~amun-ra@retro.rocks
+operator overloading isn't usually regarded as one of the pros
+
+1729279893
+companion_cube!~simon@user/meow/companion-cube:68572
+lots of people like operator overloading
+
+1729279942
+andrewrk!~andrewrk@mail.ziglang.org
+lots of people whose code I will never have to read again! :-)
+
+1729280032
+Amun-Ra!~amun-ra@retro.rocks
+I mean from "language security" standpoint, that's what rust programmers usually talk about in first place ;)
+
+1729280272
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+for a second I confused operator overloading with function parameter overloading, both of which I don't miss
+
+1729280331
+Amun-Ra!~amun-ra@retro.rocks
+x + y may be just a hidden function call
+
+1729280378
+Amun-Ra!~amun-ra@retro.rocks
+default function arguments it's something I like
+
+1729280439
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+I never liked default arguments until I saw zig's structs
+
+1729281701
+andrewrk!~andrewrk@mail.ziglang.org
+most people should steer clear of default struct field inits
+
+1729281707
+Earnestly!~earnest@user/earnestly
+Amun-Ra: Amusingly, sometimes operating overloading exists solely to support interfacing with C functions using variadic parameters
+
+1729281724
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+andrewrk, worse than that I see people politicising them lol.
+
+1729281738
+andrewrk!~andrewrk@mail.ziglang.org
+what do you mean davros1?
+
+1729281752
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Associating a certain PL with a certain political faction 
+
+1729281766
+andrewrk!~andrewrk@mail.ziglang.org
+ah you're responding to my sports team comment
+
+1729281785
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+(Yes)
+
+1729284748
+torque!~tachyon@user/torque
+its pretty epic to use social media as a platform to broadcast your opinion about something you admit you are ignorant on
+
+1729284756
+torque!~tachyon@user/torque
+one might say this is the entire reason social media exists
+
+1729286328
+andrewrk!~andrewrk@mail.ziglang.org
+I thought it was to keep in touch with your friends and family?
+
+1729286596
+torque!~tachyon@user/torque
+lol. hi grandma
+
+1729286631
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+gramps don't even talk to me if you cant set up a bouncer
+
+1729292858
+LAC-Tech!~lewis@granite-phrase.bnr.la
+In Ocaml operators are functions, but they're scoped to a module. so + is integer addition at the top level, but you can do things like NumVec.(a + b); I always thought that was a pragmatic choice to over arbitrary overloading but still having nice linear algebra.
+
+1729292859
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+is there a better way to tell if two tagged-unions have the same active tag that mem.eql(u8, @tagName(foo1), @tagName(foo2));
+
+1729292904
+ifreund!2940d10f8b@user/ifreund
+The_Buhs: @as(TagType, foo1) == ...
+
+1729294230
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: I used to think overloading was fine, then I started writing zig, and this way is objectively better.
+
+1729294377
+grayhatter!~grayhatte@user/grayhatter
+I share andrew's comments; it's always feels so disheartening to see well respected people just lie carelessly :(
+
+1729294606
+companion_cube!~simon@user/meow/companion-cube:68572
+It's objectively better if you value expliciteness above all else 
+
+1729294632
+companion_cube!~simon@user/meow/companion-cube:68572
+I don't really believe in one size fits all at this point, and sometimes having nice overloading on bigints is just what you want
+
+1729294694
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: huh? on bigints?
+
+1729294728
+companion_cube!~simon@user/meow/companion-cube:68572
+Sure, it's nice to have + and * and all that work on bigints 
+
+1729294735
+grayhatter!~grayhatte@user/grayhatter
+what is a bigint?
+
+1729294738
+companion_cube!~simon@user/meow/companion-cube:68572
+Or matrices or whatever 
+
+1729294751
+companion_cube!~simon@user/meow/companion-cube:68572
+Hu. An arbitrary precision integer
+
+1729294767
+LAC-Tech!~lewis@granite-phrase.bnr.la
+companion_cube: are you the ocaml containers guy?
+
+1729294808
+companion_cube!~simon@user/meow/companion-cube:68572
+Yep
+
+1729294995
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: what kind of values are you working with where i512 would overrun? 
+
+1729295197
+companion_cube!~simon@user/meow/companion-cube:68572
+Typically you use these for symbolic computations :) but can also be useful for scientific stuff of all kinds, and compilers occasionally (compute with arbitrary precision then check if the result fits) 
+
+1729295289
+companion_cube!~simon@user/meow/companion-cube:68572
+The classic library for this stuff has been GMP for quite a while really
+
+1729295427
+grayhatter!~grayhatte@user/grayhatter
+I don't think it's fair or even accurate to dismiss the objection to overloading as a singular desire for explicitness 
+
+1729295674
+companion_cube!~simon@user/meow/companion-cube:68572
+I'm talking about the "a + b could be a hidden function call" thing :) 
+
+1729295685
+grayhatter!~grayhatte@user/grayhatter
+so am I
+
+1729295719
+grayhatter!~grayhatte@user/grayhatter
+I'm thinking about the operating overloading use that I'm most familiar with, and thought was cute the python lib SQLAlchemy
+
+1729295822
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I prefer operator overloading - specifically the ocaml model - but it's not that big a deal tbh
+
+1729295840
+grayhatter!~grayhatte@user/grayhatter
+where you could write select.where(SomeSQLA.Type == 3 | Other == 6)
+
+1729295931
+grayhatter!~grayhatte@user/grayhatter
+it's a cute idea, only until you have to debug it.
+
+1729295996
+companion_cube!~simon@user/meow/companion-cube:68572
+Like many things it can be abused, yeah
+
