@@ -2,3 +2,91 @@
 d76d5!~d76d5@user/d76d5
 I recently ran into an issue where I called a C function from inside of a Zig function. The C function spawns a new thread, and took pointers to some variables to keep state. I passed it the addresses to Zig function local variables, and unsurprisingly it broke. Is there a language mechanic/paradigm to prevent this, or was it just a skill issue on my part?
 
+1729476440
+d76d5!~d76d5@user/d76d5
+(the Zig function returned, but the thread started from the C function continued trying to read/write those stack-local variables)
+
+1729476463
+grayhatter!~grayhatte@user/grayhatter
+if the local thread vars went out of scope... that's exactly what would happen in C as well, so skill issue?
+
+1729476481
+grayhatter!~grayhatte@user/grayhatter
+maybe I'm missing something though, you seem famaliar with C, what did you exect to happen?
+
+1729476530
+d76d5!~d76d5@user/d76d5
+It was just an oopsie I had when looking at the sample code for C, where they did have stack variables, but they also had an infinite loop right after that keeps the function running, so I had a cognitive dissonance
+
+1729476566
+grayhatter!~grayhatte@user/grayhatter
+we've all been there
+
+1729476577
+d76d5!~d76d5@user/d76d5
+I'm asking if there's semantic analysis currently/in the future that'll notice you're passing stack-local variables to a C function that spawns a thread, though that may be very difficult to detect
+
+1729476594
+d76d5!~d76d5@user/d76d5
+since it, at the zig level, seems no different from just calling a function and the function returning.
+
+1729476607
+d76d5!~d76d5@user/d76d5
+I didn't know that the function spawned a new thread until I poked around in GDB
+
+1729476635
+grayhatter!~grayhatte@user/grayhatter
+the C API didn't document that?
+
+1729476668
+d76d5!~d76d5@user/d76d5
+it was miniaudio, which abstracted over pulseaudio. the miniaudio docs seem to assume you know how the pulseaudio functions act
+
+1729476672
+grayhatter!~grayhatte@user/grayhatter
+what kinda lib spawns it's own thread without warning, that feels kinda rude tbh
+
+1729476723
+grayhatter!~grayhatte@user/grayhatter
+does it not give you a thread handle you can wait on?
+
+1729476877
+grayhatter!~grayhatte@user/grayhatter
+d76d5: I don't think there's any way to detect that... one of Zig's core assumption is that it's the programmers job to manage the memory
+
+1729476916
+d76d5!~d76d5@user/d76d5
+no thread handle, and yeah skill issue on my part I guess
+
+1729476947
+d76d5!~d76d5@user/d76d5
+at least it crashed instantly without silently messing with data so that's a plus I guess
+
+1729476953
+grayhatter!~grayhatte@user/grayhatter
+I'd assume if you were to write a Zig abstraction layer around the C API, it would take an allocator, which would be a sign about where the memory needs to live, (and needs to outlive the function call) 
+
+1729476973
+d76d5!~d76d5@user/d76d5
+yeah that's what I was thinking, a zig wrapper would make this kind of mistake a lot harder
+
+1729477044
+grayhatter!~grayhatte@user/grayhatter
+I would suggest writing one, but I wouldn't wanna use pulseaudio... for all it's faults (and it has many) pipewire is so much better
+
+1729477089
+d76d5!~d76d5@user/d76d5
+yeah, I tried using miniaudio since it supposedly makes things easier, but it only supports pulse as a backend, not pipewire
+
+1729477100
+d76d5!~d76d5@user/d76d5
+maybe next time I'll just go for pipewire directly
+
+1729477111
+d76d5!~d76d5@user/d76d5
+though there is a fair bit more boilerplate involved
+
+1729477276
+grayhatter!~grayhatte@user/grayhatter
+maybe soundio? that's what's used in groovebasin, I've been looking for an excuse to play with it a bit
+
