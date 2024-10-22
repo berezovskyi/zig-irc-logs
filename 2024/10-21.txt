@@ -1,0 +1,396 @@
+1729476409
+d76d5!~d76d5@user/d76d5
+I recently ran into an issue where I called a C function from inside of a Zig function. The C function spawns a new thread, and took pointers to some variables to keep state. I passed it the addresses to Zig function local variables, and unsurprisingly it broke. Is there a language mechanic/paradigm to prevent this, or was it just a skill issue on my part?
+
+1729476440
+d76d5!~d76d5@user/d76d5
+(the Zig function returned, but the thread started from the C function continued trying to read/write those stack-local variables)
+
+1729476463
+grayhatter!~grayhatte@user/grayhatter
+if the local thread vars went out of scope... that's exactly what would happen in C as well, so skill issue?
+
+1729476481
+grayhatter!~grayhatte@user/grayhatter
+maybe I'm missing something though, you seem famaliar with C, what did you exect to happen?
+
+1729476530
+d76d5!~d76d5@user/d76d5
+It was just an oopsie I had when looking at the sample code for C, where they did have stack variables, but they also had an infinite loop right after that keeps the function running, so I had a cognitive dissonance
+
+1729476566
+grayhatter!~grayhatte@user/grayhatter
+we've all been there
+
+1729476577
+d76d5!~d76d5@user/d76d5
+I'm asking if there's semantic analysis currently/in the future that'll notice you're passing stack-local variables to a C function that spawns a thread, though that may be very difficult to detect
+
+1729476594
+d76d5!~d76d5@user/d76d5
+since it, at the zig level, seems no different from just calling a function and the function returning.
+
+1729476607
+d76d5!~d76d5@user/d76d5
+I didn't know that the function spawned a new thread until I poked around in GDB
+
+1729476635
+grayhatter!~grayhatte@user/grayhatter
+the C API didn't document that?
+
+1729476668
+d76d5!~d76d5@user/d76d5
+it was miniaudio, which abstracted over pulseaudio. the miniaudio docs seem to assume you know how the pulseaudio functions act
+
+1729476672
+grayhatter!~grayhatte@user/grayhatter
+what kinda lib spawns it's own thread without warning, that feels kinda rude tbh
+
+1729476723
+grayhatter!~grayhatte@user/grayhatter
+does it not give you a thread handle you can wait on?
+
+1729476877
+grayhatter!~grayhatte@user/grayhatter
+d76d5: I don't think there's any way to detect that... one of Zig's core assumption is that it's the programmers job to manage the memory
+
+1729476916
+d76d5!~d76d5@user/d76d5
+no thread handle, and yeah skill issue on my part I guess
+
+1729476947
+d76d5!~d76d5@user/d76d5
+at least it crashed instantly without silently messing with data so that's a plus I guess
+
+1729476953
+grayhatter!~grayhatte@user/grayhatter
+I'd assume if you were to write a Zig abstraction layer around the C API, it would take an allocator, which would be a sign about where the memory needs to live, (and needs to outlive the function call) 
+
+1729476973
+d76d5!~d76d5@user/d76d5
+yeah that's what I was thinking, a zig wrapper would make this kind of mistake a lot harder
+
+1729477044
+grayhatter!~grayhatte@user/grayhatter
+I would suggest writing one, but I wouldn't wanna use pulseaudio... for all it's faults (and it has many) pipewire is so much better
+
+1729477089
+d76d5!~d76d5@user/d76d5
+yeah, I tried using miniaudio since it supposedly makes things easier, but it only supports pulse as a backend, not pipewire
+
+1729477100
+d76d5!~d76d5@user/d76d5
+maybe next time I'll just go for pipewire directly
+
+1729477111
+d76d5!~d76d5@user/d76d5
+though there is a fair bit more boilerplate involved
+
+1729477276
+grayhatter!~grayhatte@user/grayhatter
+maybe soundio? that's what's used in groovebasin, I've been looking for an excuse to play with it a bit
+
+1729477410
+d76d5!~d76d5@user/d76d5
+I don't think that supports pipewire either, but yeah looks interesting
+
+1729477431
+d76d5!~d76d5@user/d76d5
+miniaudio was just a little easier to integrate into zig, even if I did have to change around some of its code to let zig compile it ok
+
+1729477451
+grayhatter!~grayhatte@user/grayhatter
+d76d5: not directly, but I've used it, running just pipewire, and it works... so it works somehow
+
+1729477475
+d76d5!~d76d5@user/d76d5
+pipewire has a pulseaudio compatibility layer
+
+1729477479
+d76d5!~d76d5@user/d76d5
+pipewire-pulse
+
+1729477528
+grayhatter!~grayhatte@user/grayhatter
+that was my assumption... might also be going driectly to alsa
+
+1729477578
+d76d5!~d76d5@user/d76d5
+afaik if it's using alsa then no other process can use that device
+
+1729477613
+d76d5!~d76d5@user/d76d5
+learned this the hard way when I first installed arch and wondered why my sound kept getting messed up (I didn't install pulseaudio because I didn't know what it was)
+
+1729477677
+d76d5!~d76d5@user/d76d5
+but yeah couple of bugs that zig needs to iron out but I definitely think that it's more than usable for projects, especially if you're willing to find workarounds
+
+1729477686
+d76d5!~d76d5@user/d76d5
+excited to see 0.14.0
+
+1729477743
+d76d5!~d76d5@user/d76d5
+bugs I ran into integrating miniaudio: https://github.com/ziglang/zig/issues/19392 and https://github.com/ziglang/zig/issues/21751
+
+1729477898
+grayhatter!~grayhatte@user/grayhatter
+I don't think that's true about alsa? I remember using mpd and browsing with firefox before pulseaudio
+
+1729477921
+d76d5!~d76d5@user/d76d5
+I may be misremembering
+
+1729477924
+grayhatter!~grayhatte@user/grayhatter
+that was so long ago, I might be wrong though 
+
+1729477944
+d76d5!~d76d5@user/d76d5
+yeah haha
+
+1729486325
+d76d5!~d76d5@user/d76d5
+what's the point of the :labels? what's a usecase for them that can't be solved without them?
+
+1729490330
+d76d5!~d76d5@user/d76d5
+I see, labeled switches are a lot nicer
+
+1729490332
+d76d5!~d76d5@user/d76d5
+and cleaner
+
+1729493333
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Question: are the people working on this page https://ziglang.org/documentation/master/std/ looking for help?
+
+1729493988
+squeek502!~squeek502@user/squeek502
+LAC-Tech, https://github.com/ziglang/zig/wiki/Contributing#autodoc
+
+1729494100
+LAC-Tech!~lewis@granite-phrase.bnr.la
+thanks. general impression reading that is they're basically happy with how it works now.
+
+1729494637
+squeek502!~squeek502@user/squeek502
+LAC-Tech, there's plenty of improvements wanted: https://github.com/ziglang/zig/issues?q=is%3Aissue+is%3Aopen+label%3Aautodoc
+
+1729494708
+squeek502!~squeek502@user/squeek502
+if you mean how it functions in general, then see https://github.com/ziglang/zig/pull/19208 for context
+
+1729494982
+LAC-Tech!~lewis@granite-phrase.bnr.la
+squeek502: yeah I guess to put it delicately I don't think the way it works is a good idea at all. wondering if anyone else important thought that. if not, that's fine.
+
+1729501926
+ifreund!2940d10f8b@user/ifreund
+LAC-Tech: if you demonstrate that some other approach is fundamentally better in every way I see no reason it wouldn't be adopted
+
+1729501958
+ifreund!2940d10f8b@user/ifreund
+every approach will have tradeoffs though, and it's up to andrew and the zig core team to decide which tradeoffs to make given the context
+
+1729520170
+ashie!~ashie@user/ashie
+I am using readStruct to convert part of buffer into a struct and the struct contains an enum, how would I validate that the enum value is correct?
+
+1729524425
+grayhatter!~grayhatte@user/grayhatter
+ashie: if you're concerned that the data from readStruct may be corrupted, you should read in it "byte by byte" validate, and then construct the struct
+
+1729524456
+grayhatter!~grayhatte@user/grayhatter
+if you don't like that idea, you could add a checksum field to the struct, and calculate it on read, and on write
+
+1729524546
+grayhatter!~grayhatte@user/grayhatter
+if you don't like that idea, you could readStruct(), and validate the enum with an @as(struct_size, struct.maybe_invalid_enum), which you could pass into a validator
+
+1729524570
+grayhatter!~grayhatte@user/grayhatter
+err, that @as should have been enum_size, not struct size :/
+
+1729526828
+ashie!~ashie@user/ashie
+grayhatter: thanks for all the suggestions <3
+
+1729529072
+bblack!~bblack@wikimedia/bblack-WMF
+it might be kind of interesting to wrap up a standard solution to that problem though.  A variant or wrapper of readStruct() that scans the typeinfo of the struct, finds the enum fields, and then passes their read values through some conversion that will generate the appropriate error (@enumFromInt?).
+
+1729529132
+bblack!~bblack@wikimedia/bblack-WMF
+std.meta.inttoEnum maybe does it better
+
+1729529153
+bblack!~bblack@wikimedia/bblack-WMF
+std.meta.intToEnum :)
+
+1729531839
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ifreund: if there's one thing i've learned it's never try and convince people they have a technical problem
+
+1729542247
+reykjalin!7e28cf3a41@user/reykjalin
+I'm trying to load up a std.StringArrayHashMap where each value is a std.ArrayList(struct { title, tags }). The title and the tags are both []const u8.
+
+1729542294
+reykjalin!7e28cf3a41@user/reykjalin
+But while loading up the hashmap I get an error saying the retrieved std.ArrayList is const so I can't append elements to it. Do I really need to create the complete array lists before I add them to the hash map?
+
+1729542364
+reykjalin!7e28cf3a41@user/reykjalin
+I was fully expecting I could, at runtime, initialize an empty std.ArrayList whenever I hit a key that doesn't exist yet and then just append to that key in future iterations of the loop
+
+1729542458
+reykjalin!7e28cf3a41@user/reykjalin
+for a little more context, I'm trying to take a flat list of structs, each with a date field, and creating a hash map where the keys are the date fields and each value is a list of elements for that date.
+
+1729542551
+reykjalin!7e28cf3a41@user/reykjalin
+The error I'm seeing is "expected type '*array_list.ArrayListAligned( /* ... */ )', found '*const array_list.ArrayListAligned( /* ... */ )'"
+
+1729542780
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+reykjalin: how are you initializing it? you have a const somewhere that should be a bar
+
+1729542782
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+var 
+
+1729542966
+reykjalin!7e28cf3a41@user/reykjalin
+rockorager: var task_list = std.StringArrayHashMap(std.ArrayList(struct { title: []const u8, tags: []const u8 })).init(draw_table_allocator);
+
+1729542975
+reykjalin!7e28cf3a41@user/reykjalin
+draw_table_allocater is in this case an arena allocator
+
+1729542989
+reykjalin!7e28cf3a41@user/reykjalin
+not that I think that makes a difference here, but figured that context wouldn't hurt
+
+1729543168
+reykjalin!7e28cf3a41@user/reykjalin
+When inserting into the hash map I first try to get the arraylist for a given key: `const tasks_completed_on_date = task_list.get(date_str);`
+
+1729543198
+reykjalin!7e28cf3a41@user/reykjalin
+From there I check if I got a value out of that. If I did get a value I call .append on that array list, and that's where I get the const issue
+
+1729543223
+reykjalin!7e28cf3a41@user/reykjalin
+If I don't get a value I create a new array list (with var) and call `.put` on the hash map to insert it
+
+1729543255
+reykjalin!7e28cf3a41@user/reykjalin
+`task_list` in this context is the hash map
+
+1729543281
+reykjalin!7e28cf3a41@user/reykjalin
+You know what, let me see if I can just get a paste up of the function, that might be easier to view...
+
+1729543284
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the type in your hash map is a value, and append requires a mutable pointer
+
+1729543390
+reykjalin!7e28cf3a41@user/reykjalin
+Here's the paste: https://paste.sr.ht/~reykjalin/eb4d055496f7729305d96415ba5b64930c2b96db
+
+1729543451
+reykjalin!7e28cf3a41@user/reykjalin
+hmmm, so I need to declare the hashmap as `std.StringArrayHashMap(*std.ArrayList( ... ))`?
+
+1729543516
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think you could |*list| on line 10
+
+1729543602
+reykjalin!7e28cf3a41@user/reykjalin
+hmmm, that did not work. I guess I also need to declare the map with a pointer?
+
+1729543800
+reykjalin!7e28cf3a41@user/reykjalin
+ok, declaring the hash map with a pointer and using that seems to have worked, thanks for the help rockorager!
+
+1729544070
+reykjalin!7e28cf3a41@user/reykjalin
+Although now I just need to figure out why it looks like the same array list is being set at each key, but I should be able to figure that out myself :)
+
+1729544074
+torque!~tachyon@user/torque
+note that declaring it with a pointer means that the map will not actually store the key memory
+
+1729544107
+torque!~tachyon@user/torque
+so you have to either heap allocate each ArrayList itself or otherwise ensure that the memory remains valid
+
+1729544129
+torque!~tachyon@user/torque
+this sounds like kind of an odd datastructure, though
+
+1729544151
+reykjalin!7e28cf3a41@user/reykjalin
+Yeah, both the array list and the hashmap are allocated on the heap with an arena allocator
+
+1729544211
+reykjalin!7e28cf3a41@user/reykjalin
+It's to sort tasks by date for rendering in a TUI. Which I guess I could do in the flat list, the rendering loops just make a little more sense to me when I can loop over the dates, and then for each date loop over a list
+
+1729544242
+reykjalin!7e28cf3a41@user/reykjalin
+not the most efficient way of doing things, it just reads a bit better to me
+
+1729544645
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+can you keep all of the tasks in a flat list, sorted, and then find a sub-slice that represents a single date?
+
+1729544704
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+then it’s pretty much an iterative that returns a slice of tasks that occurred on the same date
+
+1729544724
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+s/iterative/iterator 
+
+1729544822
+reykjalin!7e28cf3a41@user/reykjalin
+Oooh I like that idea. Yeah I could probably do that
+
+1729551250
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Does zig have anything like newtypes, e.g. trivially wrapping any type to add more semantic info (I've found this really useful in refactors)
+
+1729551275
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+"Trace through everywhere this value gets passed or used.."
+
+1729551369
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+'This value is an int' -> 'This value is an index' -> 'this value is an index into specific arrays'
+
+1729552982
+squeek502!~squeek502@user/squeek502
+davros1, non-exhaustive enums can be used for that purpose, that's what the zig compiler does fairly often, for example: https://github.com/ziglang/zig/blob/9f84f7f921d8a74926bb2f0ca1969b7b00f08172/src/InternPool.zig#L1477
+
+1729553022
+squeek502!~squeek502@user/squeek502
+there's also a talk that details this strategy a bit: https://www.youtube.com/watch?v=KOZcJwGdQok
+
+1729553100
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Ok nice
+
+1729553138
+squeek502!~squeek502@user/squeek502
+for context, there was a proposal for distinct types but it was rejected in favor of non-exhaustive enums/packed structs: https://github.com/ziglang/zig/issues/1595
+
+1729553218
+davros1!~davros2@host86-183-61-134.range86-183.btcentralplus.com
+Hah I see gl example quoted, and I had indeed specifically used it to solidify gl bindings aswell myself
+
