@@ -1,0 +1,136 @@
+1729730287
+andrewrk!~andrewrk@mail.ziglang.org
+aet: just like every other programming language, function calls and loops are runtime constructs
+
+1729732027
+d76d5!~d76d5@user/d76d5
+ie see that the for loop is in a comptime function/block and inline it automatically
+
+1729733782
+torque!~tachyon@user/torque
+`inline for` is a way to bridge compile time data to runtime. you can think of it as generating code for the loop body for every time the loop runs
+
+1729733822
+torque!~tachyon@user/torque
+so in your example, since the struct has two fields, the code would effectively be evaluated down to two separate `debug.print` statements
+
+1729733895
+torque!~tachyon@user/torque
+note that there is also `comptime for`, but of course this requires the for loop body to also be able to be evaluated at comptime. since `debug.print` is a runtime-only function, that doesn't work in this case
+
+1729735929
+d76d5!~d76d5@user/d76d5
+I see, thanks for explaining!
+
+1729737090
+aet!~debian@user/aet
+This seems a little confusing. I am still not sure why some expressions are implicitly comptime (e.g compound expressions on comptime variables) but other  expressions (for loops) need special keywords to be evaluated at compile time.
+
+1729738795
+torque!~tachyon@user/torque
+I think it's primarily about expressing intent clearly. most expressions are not eagerly evaluated at comptime unless you set them up so that they have to be
+
+1729738807
+torque!~tachyon@user/torque
+not sure what you mean by "compound expressions on comptime variables"
+
+1729740483
+aet!~debian@user/aet
+torque: I just means something like const foo = x+y where x and/or y are comptime
+
+1729776558
+cancername!~cancernam@user/cancername
+sup! is returning a pointer to a local from a function marked `inline` legal?
+
+1729776609
+cancername!~cancernam@user/cancername
+that would match my mental model of `inline`, but I'm not sure whether the language allows for it
+
+1729791437
+andrewrk!~andrewrk@mail.ziglang.org
+it's legal but the pointer must be comptime known
+
+1729791457
+andrewrk!~andrewrk@mail.ziglang.org
+sorry, I misread and thought you meant a pointer to an inline function
+
+1729791499
+andrewrk!~andrewrk@mail.ziglang.org
+no, that pointer will be dead after the return, because the variable scope ends
+
+1729800487
+aet!~debian@user/aet
+I'm struggling to get struct packing to work. The following example should print 5, but it prints 8: https://0x0.st/XUBM.zig
+
+1729800558
+aet!~debian@user/aet
+Sorry, that should be https://0x0.st/XUBS.zig
+
+1729800850
+cancername!~cancernam@user/cancername
+aet: this is expected: "packed struct" is integer backed. the size of the "u40" backing this struct is 8 bytes, with 40 data bits and 24 padding bits, since your hardware can't actually deal with 40-bit integers, and instead works with 64-bit ones. if you want "packed" in the C sense, use "extern struct" and adorn members with "align(1)".
+
+1729800937
+cancername!~cancernam@user/cancername
+you can check the bit size of your packed struct with "@bitSizeOf", which should indeed give 40.
+
+1729801035
+cancername!~cancernam@user/cancername
+most likely, you want "extern struct {a: u8, b: u32 align(1)}", which should be 5.
+
+1729801044
+cancername!~cancernam@user/cancername
+bytes large*
+
+1729802454
+dmoerner!~dmoerner@fedora/dmoerner
+i just actually looked at the docs, and i realized that when i run zig test, i'm only getting the last line "All n tests passed", I don't get the names of the tests like in the example in the docs. https://ziglang.org/documentation/0.13.0/#Zig-Test (my tests do have names)
+
+1729802527
+dmoerner!~dmoerner@fedora/dmoerner
+on fails I do get names though
+
+1729808546
+aet!~debian@user/aet
+cancername: Thanks. If my understand is correct, the implication of what you are saying is that struct members are still packed in the C sense, but the total size of the struct is padded out to the nearest word. Is this correct?
+
+1729810435
+squeek502!~squeek502@user/squeek502
+aet, see the @sizeOf docs: https://ziglang.org/documentation/master/#sizeOf
+
+1729810438
+squeek502!~squeek502@user/squeek502
+> This size may contain padding bytes. If there were two consecutive T in memory, the padding would be the offset in bytes between element at index 0 and the element at index 1.
+
+1729810726
+aet!~debian@user/aet
+squeek502: That doesn't describe how packed structs are padded
+
+1729810827
+squeek502!~squeek502@user/squeek502
+aet, my understanding is packed structs aren't padded, the return of @sizeOf doesn't return the size of the struct, but instead the difference between index 0 and 1 in a [N]T array, which can include 'padding'
+
+1729810996
+aet!~debian@user/aet
+squeek502: Which implies that packed structs are indeed padded if @sizeOf(packed struct{ x: u8, y: i32 }) == 8
+
+1729811052
+squeek502!~squeek502@user/squeek502
+would you say a u40 is padded?
+
+1729811111
+aet!~debian@user/aet
+If my understanding is correct, then it would appear to be in zig, yes
+
+1729811241
+squeek502!~squeek502@user/squeek502
+afaik packed structs have the same properties as their backing integer, so your example and u40 are treated the same way
+
+1729811534
+squeek502!~squeek502@user/squeek502
+side note: there used to be a `std.packed_int_array` namespace to help with packing contiguous elements, but that got removed recently in favor of std.mem.read/writePackedInt: https://github.com/ziglang/zig/issues/21676
+
+1729811836
+aet!~debian@user/aet
+My problem is that std.mem.asBytes(T) returns a slice of size @sizeOf(T), which makes it unsuitable for writing a packed struct to disk in the way it is laid out (since it includes padding to the nearest word)
+
