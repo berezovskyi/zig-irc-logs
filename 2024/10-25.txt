@@ -1,0 +1,128 @@
+1729830540
+torque!~tachyon@user/torque
+for packed stuff, you typically want @bitSizeOf, not @sizeOf
+
+1729830699
+torque!~tachyon@user/torque
+note that for a packed struct, you can directly bitcast it into an array. in your case @as([5]u8, @bitCast(my_struct)) would work fine.
+
+1729830744
+torque!~tachyon@user/torque
+you probably want to use std.mem.writePackedInt etc, which will not consume padding bits
+
+1729844027
+aet!~debian@user/aet
+torque: bitcasting requires me to keep track of the desired size and is equivalent to manually removing the padding
+
+1729844058
+aet!~debian@user/aet
+I could also just slice the std.mem.asBytes output of a packed struct to shave off the padded bytes (if my understanding is correct)
+
+1729844069
+aet!~debian@user/aet
+I am just confused about why the padding exists in the first place
+
+1729844093
+aet!~debian@user/aet
+In C this works as expected
+
+1729844130
+aet!~debian@user/aet
+packed means something like 'exactly the representation describes by the struct, no more, no less'
+
+1729844810
+ifreund!2940d10f8b@user/ifreund
+aet: the padding exists because alignment is a thing
+
+1729844894
+ifreund!2940d10f8b@user/ifreund
+the u40 is a u64 as far as the hardware is concerned
+
+1729844969
+ifreund!2940d10f8b@user/ifreund
+it kind of sounds like you want a MultiArrayList to me
+
+1729845099
+ifreund!2940d10f8b@user/ifreund
+see also: https://github.com/ziglang/zig/pull/21741
+
+1729875918
+Amun-Ra!~amun-ra@retro.rocks
+aet: for example - for performance reasons
+
+1729884022
+aet!~debian@user/aet
+ifreund: If you are packing a struct you are already throwing away alignment of the members, why would you care if the boundaries are aligned?
+
+1729884042
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Anyone have input on zig packaging? Working on getting Ghostty ready for 1.0 and want to make sure all ducks are in a row for any distro that wants to package it
+
+1729884252
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Well BratishkaErik has been doing the groundwork for improving the zig packaging experience on Gentoo :D https://github.com/gentoo/gentoo/pull/37283
+
+1729884342
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The_Buhs: thanks, I’ll check that out
+
+1729884901
+dmoerner!~dmoerner@fedora/dmoerner
+that's great news. not zig-specific, but make sure you have some sort of man page for distributions like Debian
+
+1729885308
+bblack!~bblack@wikimedia/bblack-WMF
+AFAIK there's still a lot of issues with packaging zig for Debian, because debian has a lengthy list of fairly onerous standards for a project like this.
+
+1729885330
+bblack!~bblack@wikimedia/bblack-WMF
+https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=1012286 + https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=995670
+
+1729885417
+bblack!~bblack@wikimedia/bblack-WMF
+seems like nick hastings was still trying to work through this as recently as July in those tickets.  He's been at it for a couple years
+
+1729885646
+dmoerner!~dmoerner@fedora/dmoerner
+interesting, i didn't realize zig wasn't actually in debian yet. for the record i will point out that the first comment in the thread does note debian's manpage expectations :)
+
+1729885869
+bblack!~bblack@wikimedia/bblack-WMF
+yeah the tricky and lengthy issues in that last review seem to mostly revolve around licensing and/or binary blobs and/or reproducible builds
+
+1729885980
+dmoerner!~dmoerner@fedora/dmoerner
+handling dependencies may be a further hurdle down the line, i noticed that on Fedora the river package basically manually vendors dependencies into the rpm source instead of packaging them separately. i haven't worked on debian development in more than a decade but i think they are much stricter about that sort of thing.
+
+1729887116
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+dmoerner: yeah, Debian was my main concern wrt dependencies
+
+1729887335
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I fully expect needing to package each dependency separately for debian
+
+1729887961
+bblack!~bblack@wikimedia/bblack-WMF
+I think they can make allowances for vendoring, but I'm not a debian maintainer, so take that with a grain of salt.
+
+1729888241
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think we can resolve most dependencies to system libs, but we have a few zig libraries that likely need to be packaged similar to go - but if Debian hasn’t gone through this before for zig it could become quite the process 
+
+1729888279
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I was hopeful that zig, river, or bun had been packaged for Debian already
+
+1729893497
+d76d5!~d76d5@user/d76d5
+is it normal for gcc to take so much memory when compiling stage1
+
+1729895140
+freshcoffee1!~fresh@user/freshcoffee
+d76d5: yes; I see < 2GB for stage1, < 5GB for stage2 w/ gcc 14.2.1
+
+1729895546
+d76d5!~d76d5@user/d76d5
+might have to bump up the ram on my ci server then
+
