@@ -1,0 +1,60 @@
+1729941768
+ashie!~ashie@user/ashie
+is the memory layout of slice guaranteed to be a pointer followed by a length? I am using a c library which has `struct { const char* buf, size_t len }`. Would it be safe to @ptrCast the slice to said type?
+
+1729941790
+ashie!~ashie@user/ashie
+a u8 slice to be exact
+
+1729942622
+ifreund!2940d10f8b@user/ifreund
+ashie: no, the memory layout of slices is not well-defined
+
+1729942720
+ifreund!2940d10f8b@user/ifreund
+rockorager: iirc debian is hung up on the fact that zig requires a wasm blob to bootstrap
+
+1729942759
+ifreund!2940d10f8b@user/ifreund
+and aren't yet motivated enough by the existence of popular zig project to find some kind of acceptable compromise
+
+1729942838
+ashie!~ashie@user/ashie
+ifreund: I was hoping to have a function that takes a []u8 and translates it internally to the c struct, if it is not well defined does that mean I'll have to allocate another buffer of the c type and copy things to it accordingly?
+
+1729942960
+ifreund!2940d10f8b@user/ifreund
+ashie: no, you don't have to allocate, just copy the ptr and len to the C struct
+
+1729942965
+ifreund!2940d10f8b@user/ifreund
+there's no need to change the pointer
+
+1729943022
+ifreund!2940d10f8b@user/ifreund
+for example: fn foo(s: []u8) CSlice { return .{ .ptr = s.ptr, .len = s.len }; }
+
+1729943223
+ashie!~ashie@user/ashie
+I think I should have been more specific, I need [][]u8 to transform into **CSlice, that probably cannot be done in the function on the stack without an additional buffer, right?
+
+1729943309
+ifreund!2940d10f8b@user/ifreund
+ashie: yeah that's correct
+
+1729943400
+ashie!~ashie@user/ashie
+oki, thanks
+
+1729943401
+ifreund!2940d10f8b@user/ifreund
+I'd probably store []CSlice and have a CSlice.toZigSlice() helper fwiw
+
+1729943433
+ifreund!2940d10f8b@user/ifreund
+needing to allocate for this kind of thing isn't very nice
+
+1729956373
+benl!~benl@184.22.113.146
+m
+
