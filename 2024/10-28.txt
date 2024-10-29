@@ -1,0 +1,252 @@
+1730074987
+torque!~tachyon@user/torque
+your `decl` declaration is weird, you're not creating a function pointer there, you're returning from the `declaration` function
+
+1730075244
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque oops
+
+1730075556
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Oh also I’m dumb anyways, function pointers can’t have an inferred error set, right? so that’s why I used anyerror in there. I suppose I can just manually catch on both of the trys, I just had been trying to combine them into a single catch since they both get handle the same.
+
+1730077845
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+torque: https://zigbin.io/ca140c does something like this make more sense?
+
+1730077869
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+If I just want to catch the errors from two function calls the same way, that is. If there's a better way to do it I'm all ears
+
+1730087820
+torque!~tachyon@user/torque
+you may be able to use a block to handle the error (e.g. https://zig.godbolt.org/z/bc4vK1Yoo) but in general a wrapping a function is probably more readable imo
+
+1730087922
+torque!~tachyon@user/torque
+I don't think constructing a function inside of a function reads well and there's no real advantage to doing it if the internal function is not capturing some comptime information
+
+1730087940
+torque!~tachyon@user/torque
+so I'd probably just declare it as a top-level function instead
+
+1730123551
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Okay that's fair, thanks! 
+
+1730127431
+grayhatter!~grayhatte@user/grayhatter
+with for (left, right); left and right must be the same length. Does that change under release fast/small/safe?
+
+1730127667
+ifreund!2940d10f8b@user/ifreund
+grayhatter: no, though the safety check will only trigger in safe build modes of course
+
+1730127990
+grayhatter!~grayhatte@user/grayhatter
+is syntax similar to `for (count_small, count_big) |l, r| {...} else |err| { if (err == err.NonMatchingLengths) ... }` possible? IIRC the else in for else can't be capturing the way while can be, but is that a reasonable syntax request/issue?
+
+1730128349
+ifreund!2940d10f8b@user/ifreund
+I don't think so, the assertion that lengths match is intentional
+
+1730128395
+grayhatter!~grayhatte@user/grayhatter
+is there any documentation about the semantics of "illegal behavior"? (the docs on ziglang only mention it 4 times without ever describing it)
+
+1730128549
+ifreund!2940d10f8b@user/ifreund
+it's safety checked if possible in debug/release safe and undefined in release small/fast
+
+1730128559
+ifreund!2940d10f8b@user/ifreund
+not sure what else you want to know about it...
+
+1730128614
+dutchie!~dutchie@user/dutchie
+I guess the docs call it both "undefined behaviour" and "illegal behaviour" and it's not 100% clear that they are the same thing
+
+1730128622
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/issues/2402
+
+1730128650
+grayhatter!~grayhatte@user/grayhatter
+no, undefined behavior and illegal behavior should **not** be the same thing
+
+1730128670
+grayhatter!~grayhatte@user/grayhatter
+illegal behavior should be well defined
+
+1730128705
+dutchie!~dutchie@user/dutchie
+that's the point of the issue ifreund just linked
+
+1730128747
+grayhatter!~grayhatte@user/grayhatter
+ifreund: this seems to contradict what you'd said about the behavior not changing by release mode?
+
+1730128758
+ifreund!2940d10f8b@user/ifreund
+how?
+
+1730128778
+grayhatter!~grayhatte@user/grayhatter
+> because in the safe build modes, it's actually completely well-defined behavior.
+
+1730128793
+ifreund!2940d10f8b@user/ifreund
+I don't think I said anything to contradict that?
+
+1730128826
+grayhatter!~grayhatte@user/grayhatter
+this implies that in the fast/small release modes, differing lengths becomes undefined behavior?
+
+1730128868
+ifreund!2940d10f8b@user/ifreund
+yes
+
+1730128875
+ifreund!2940d10f8b@user/ifreund
+just like unreachable
+
+1730128878
+ifreund!2940d10f8b@user/ifreund
+and every other assertion
+
+1730128884
+grayhatter!~grayhatte@user/grayhatter
+:(
+
+1730128895
+ifreund!2940d10f8b@user/ifreund
+this is fundamentally what safety checks are
+
+1730128909
+ifreund!2940d10f8b@user/ifreund
+I'm not sure where your misunderstanding is
+
+1730128939
+grayhatter!~grayhatte@user/grayhatter
+I asked if the behavior will change, you said "no" [it will not change] 
+
+1730128964
+ifreund!2940d10f8b@user/ifreund
+I said "no, though the safety check will only trigger in safe build modes of course"
+
+1730128988
+ifreund!2940d10f8b@user/ifreund
+I guess that wasn't clear enough
+
+1730129010
+ifreund!2940d10f8b@user/ifreund
+the "no" means that it is illegal behavior in both
+
+1730129024
+grayhatter!~grayhatte@user/grayhatter
+No, that's probably my mistake.... I'm glad I was right not to trust godbolt (which refused to generate code for both small and fast)
+
+1730129073
+grayhatter!~grayhatte@user/grayhatter
+correct me if I'm wrong, but illegal behavior means detectable, and always disallowed. There's no way to get the compiler to generate code that violates this constraint 
+
+1730129133
+ifreund!2940d10f8b@user/ifreund
+illegal behavior is not always detectable or checked
+
+1730129145
+ifreund!2940d10f8b@user/ifreund
+give the issue I linked a good read, it might clear things up
+
+1730129163
+ifreund!2940d10f8b@user/ifreund
+illegal behavior is indeed always disallowed
+
+1730129198
+ifreund!2940d10f8b@user/ifreund
+that is to say, if your program exhibits illegal behavior it is a bug in your program
+
+1730129213
+grayhatter!~grayhatte@user/grayhatter
+disallowed != undefined
+
+1730148259
+src!~src@user/src
+`myU32 = myU8 * 5` is an integer overflow if `myU8 * 5` goes out of bounds of the unsigned int?
+
+1730148309
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+myU8 * 5 is an integer overflow if it goes outside a u8
+
+1730148459
+src!~src@user/src
+Ah, and in an expression number literals are implicitly cast to a fitting type
+
+1730148485
+src!~src@user/src
+so `myU8 + 300 - 300` says `300` can't be represented by a u8, compiler error
+
+1730148525
+src!~src@user/src
+well I guess `myU8 + 300` results in a u8 w/ an out of bounds value...
+
+1730148530
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, both operands to + must have the same type, so it picks u8 for 5
+
+1730148550
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and `myU8 + 300` is indeed a compile error
+
+1730148559
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+error: type 'u8' cannot represent integer value '300'
+
+1730148559
+src!~src@user/src
+alright
+
+1730148563
+src!~src@user/src
+ty Gliptic 
+
+1730148573
+src!~src@user/src
+sorry for the stupid questions
+
+1730148616
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not stupid, there are other ways it could work
+
+1730149250
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+You could do `@as(u32, myU8) * 5` though right
+
+1730149429
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1730149483
+src!~src@user/src
+another confusing thing: `for (&myArr) |elem|` means `elem` is? a pointer? a copy? as opposed to `for (&myArr) |&elem|` ...?
+
+1730149532
+src!~src@user/src
+... `for (&myArr) |*elem|` is what I meant w/ "as opposed to"
+
+1730149560
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+src: for (myArr) |*elem|, elem is a pointer to the element in myArr
+
+1730149629
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+for (&myArr) would be the same as for (myArr) - & turns it into a slice, but in this case it doesn't matter
+
+1730150598
+src!~src@user/src
+yeah I'm hopeful thinks will be intuitive soon enough
+
+1730150659
+src!~src@user/src
+plights of learning a new low leve lang simply... took me quite a bit to get this working just now https://dpaste.com/6C3C44ZWH It's not immediately intuitive yet when to declare something explicitly a pointer when not, etc pp but I'll get there
+
