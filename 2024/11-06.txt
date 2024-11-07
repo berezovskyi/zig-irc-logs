@@ -1,0 +1,316 @@
+1730851201
+hadronized!~hadronize@2001:41d0:a:fe76::1
+especially regarding crates.io
+
+1730851212
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s funny because, as time passes, I start to get a bit annoyed by crates.io
+
+1730851228
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for instance, it requires a github account to be able to get a token for publishing packages, and I started moving away from GitHub a while
+
+1730851246
+hadronized!~hadronize@2001:41d0:a:fe76::1
+same thing goes for the cargo index IIRC (it’s hosted on GitHub I think)
+
+1730851249
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think ziglist looks for the zig-package tag
+
+1730851253
+hadronized!~hadronize@2001:41d0:a:fe76::1
+having something more decentralized makes more sense I think
+
+1730851266
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but on the same time, I wonder how people organize :)
+
+1730851329
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the new http cargo index is a bit more clever than the old github solution
+
+1730853683
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is there some flattening happening on ArrayList(ArrayList(T))?
+
+1730853747
+hadronized!~hadronize@2001:41d0:a:fe76::1
+self.items is an ArrayList(ArrayList(style.StyledString)); if I do a for (self.items.items) |item| { … }, item is of type style.StyledString ?!
+
+1730853755
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(at least that’s what zls thinks)
+
+1730853794
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, yeah, probably a zls bug
+
+1730853798
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the code seems to be compiling fine
+
+1730853816
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah actually maybe it’s not compiled
+
+1730853824
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(damn that lazy compilation thing is one of the worst part of Zig :( )
+
+1730856815
+reykjalin!7e28cf3a41@user/reykjalin
+I don't think you can do for (self.items.items) |item|. You'd have to nest the loops to get to the inner array list
+
+1730856992
+grayhatter!~grayhatte@user/grayhatter
+root = ArrayList(ArrayList(String); @typeOf(root.items) == []ArrayList(T) // (which is an array of a struct); @typeOf(root.items.items) |this| {...} is invalid because root.items is a slice, and an slice has no member `.items`, it has .ptr, and .len only
+
+1730857089
+grayhatter!~grayhatte@user/grayhatter
+pretend I said slice of structs
+
+1730857136
+grayhatter!~grayhatte@user/grayhatter
+I wish zig had a good language server
+
+1730857361
+andrewrk!~andrewrk@mail.ziglang.org
+it's the primary focus of the core team right now. well, incremental compilation is, which is the current plan for what to base a compiler server on
+
+1730866365
+d76d5!~d76d5@user/d76d5
+hm, during bootstrapping, does zig2 not use multicore?
+
+1730866889
+andrewrk!~andrewrk@mail.ziglang.org
+d76d5: when using zig2 to build, it uses the standard zig build system script. If you look at ZIG_BUILD_ARGS in CMakeLists.txt you can see that it does not override the default value for -Dsingle-threaded, and in build.zig it defaults to false (multi-threaded enabled)
+
+1730867629
+d76d5!~d76d5@user/d76d5
+got it, thanks
+
+1730893549
+nephele!~quassel@2001:9e8:6ccd:b200:f6b5:20ff:fe2b:d0e5
+Hi there! How does the interop with C++ with zig look nowadays? I'm looking to start a project based on vulcanscenegraph. A couple of years ago it was only interopable in the "it also has a C ABI" sense IIRC
+
+1730894152
+ekaitz!~Ekaitz@94.73.33.227
+nephele: the way i did it last time was to extern "C" {} a piece of C++ code and then use that C part from Zig
+
+1730894513
+nephele!~quassel@2001:9e8:6ccd:b200:f6b5:20ff:fe2b:d0e5
+ekaitz: Hmm, sounds like writing my "main" code in zig would be a huge effort for C++ with lots of glue code for vsg then. I will stick with zig for the library code for now. Oh well
+
+1730894619
+ekaitz!~Ekaitz@94.73.33.227
+nephele: this is how I did it: https://github.com/ekaitz-zarraga/karkarkar/blob/master/ahotts_c/htts.cpp
+
+1730894646
+ekaitz!~Ekaitz@94.73.33.227
+i'd bet there are code generators that can make that for you
+
+1730894685
+nephele!~quassel@2001:9e8:6ccd:b200:f6b5:20ff:fe2b:d0e5
+Probably. But why can't that code generator be my compiler? :P
+
+1730894860
+ekaitz!~Ekaitz@94.73.33.227
+nephele: :)
+
+1730895683
+Amun-Ra!~amun-ra@retro.rocks
+unless you plan to use dlopen then you might be out of luck
+
+1730903597
+hadronized!~hadronize@2001:41d0:a:fe76::1
+reykjalin | I don't think you can do for (self.items.items) |item|.
+
+1730903601
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you’re mistaken there
+
+1730903606
+hadronized!~hadronize@2001:41d0:a:fe76::1
+self.items: ArrayList(ArrayList(T))
+
+1730903612
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I should have named it self.the_array
+
+1730903623
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it would be for (self.the_array.items) |item| { … }
+
+1730903640
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m not sure whether zls is confused by the names or something
+
+1730903644
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but it’s not behaving correctly here
+
+1730903650
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(but zig does; my code compiles)
+
+1730903762
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I have noticed zls struggles with resolving the type in captured for loops for array lists
+
+1730904027
+d76d5!~d76d5@user/d76d5
+what versions of zls/zig
+
+1730904057
+hadronized!~hadronize@2001:41d0:a:fe76::1
+zls 0.13.0, same for zig
+
+1730904987
+d76d5!~d76d5@user/d76d5
+try the nightly zls?
+
+1730905011
+d76d5!~d76d5@user/d76d5
+if by any chance you're using nix, I have a package for that
+
+1730905522
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Archlinux / macOS (work), I’ll see later!
+
+1730905560
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, I’m commenting on this https://github.com/ziglang/zig/issues/3690#issuecomment-2460002809 because I do think such a thing would be very valuable (and would honestly make RAII / Drop completely unnecessary and yet yield same if not better resource cleanup guarantees)
+
+1730905576
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(not pointer but ownership, I make a distinction between both)
+
+1730916366
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+A while ago Andrew linked me an issue (or a PR) where he was describing an update to the filename format of cached files in the zig build system. If someone could drop that in the chat again, I'd appreciate it. I'd like to reference it for a colleague who is authoring module tools for Raku. 
+
+1730916429
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+if it's too annoying to find, NBD 🤗
+
+1730917809
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+coleman https://github.com/ziglang/zig/issues/20178 ?
+
+1730918225
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+that's it The_Buhs and it links to related work. Thank you very much.
+
+1730918340
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+np
+
+1730930187
+src!~src@user/src
+the risk of making a fool of myself is high w/ this one
+
+1730930194
+src!~src@user/src
+https://dpaste.com/H7DX9LLAX
+
+1730930229
+src!~src@user/src
+wtf am I not seeing... the first assertion fails (unreachable code), if I comment it out, the second one seems to succeed...
+
+1730930434
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the two arrays aren't equal?
+
+1730930469
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+'a', 'b', 'c' and 'x', 'y', 'z'
+
+1730930479
+src!~src@user/src
+...
+
+1730930500
+src!~src@user/src
+well, I called it
+
+1730930510
+hadronized!~hadronize@2001:41d0:a:fe76::1
+don’t be too hard on yourself, that happens
+
+1730930520
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you asked for a debug duck :D
+
+1730930551
+src!~src@user/src
+`mem.eql` immediately had me not think about the actual content
+
+1730930564
+src!~src@user/src
+rockorager: ... ty
+
+1730930571
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+lol no problem
+
+1730930574
+hadronized!~hadronize@2001:41d0:a:fe76::1
+— expires in 7 days
+
+1730930579
+hadronized!~hadronize@2001:41d0:a:fe76::1
+long way to wait src, long way to go :D
+
+1730930597
+src!~src@user/src
+for what? for my stupidity to be on show?
+
+1730930600
+src!~src@user/src
+:D
+
+1730930602
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:D
+
+1730930657
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I just used the -|= operator for the first time
+
+1730930707
+src!~src@user/src
+how does that make you feel? what kind of emotions does that stir up?
+
+1730930726
+hadronized!~hadronize@2001:41d0:a:fe76::1
+a mix between feeling like a cool kid, and a mad scientist
+
+1730930746
+hadronized!~hadronize@2001:41d0:a:fe76::1
+there’s a built-in for that, no?
+
+1730930758
+hadronized!~hadronize@2001:41d0:a:fe76::1
+@clampedMinus or something like that, I never recall
+
+1730930825
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, is @min comptime? can I use it on runtime values?
+
+1730933395
+grayhatter!~grayhatte@user/grayhatter
+@min works at runtime as well
+
+1730933427
+grayhatter!~grayhatte@user/grayhatter
+most @directives function at runtime, or will warn you (by warn, I mean refuse to compile)
+
+1730937033
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I wish Zig allowed shadowing
+
+1730937055
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s a bit annoying to have to come up with variable names for stuff that is so short-lived it doesn’t really make sense to give it a name
+
