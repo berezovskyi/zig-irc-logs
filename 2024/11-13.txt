@@ -1,0 +1,452 @@
+1731462949
+torque!~tachyon@user/torque
+since a lot of zig's comptime features rely on lazy evaluation, if you tried to remove it, you'd end up with a different language
+
+1731463098
+torque!~tachyon@user/torque
+I haven't personally run into issues with it, but I don't really understand the problem of having a ton of code that is completely unreferenced and thus possibly broken, but that may just be my process
+
+1731463222
+torque!~tachyon@user/torque
+a couple of times I've ran into things that I thought were being tested that weren't, and were buggy as a result. on the other hand, they didn't cause compilation errors until I tried to use them, which was nice
+
+1731478696
+motiejus!~motiejus@88.223.107.21
+ifreund: compared the resulting zig1.wasm last night, they are the identical! https://jakstys.lt/2024/zig-reproduced-without-binaries/
+
+1731479958
+andrewrk!~andrewrk@mail.ziglang.org
+and I almost got away with it too, if it weren't for scooby do--- oh, you said it's identical? never mind :-)
+
+1731481472
+motiejus!~motiejus@88.223.107.21
+is lib/libc/glibc/abilists used by zig2 with `-Dtarget=native` when the "native" target is glibc?
+
+1731481772
+motiejus!~motiejus@88.223.107.21
+looks like no, as it doesn't seem to generate glibc stubs on my glibc system.
+
+1731483233
+motiejus!~motiejus@88.223.107.21
+One less thing to worry about when bootstrapping. Thanks Andrew. :)
+
+1731490008
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: it happens all the time on my side; writing some code “for later”, because I know I’ll eventually need / use it
+
+1731516568
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+where do i find test binary if i run `zig test --tess-no-exec foo.zig`?  (i was just curious how long my tests run, so wanted to run `time the_test_binary`..)
+
+1731516582
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+s/ss/st/
+
+1731516655
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+oh, I see it as .zig-cache/o/746c60866f21dfe8f8dfad92a650ed1b/test 
+
+1731522896
+squeek502!~squeek502@user/squeek502
+netvor, you can also use `zig test -femit-bin <name>` to control where to output the test binary
+
+1731526593
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+thanks, that looks like the right thing in case i wanted to add it to script or something
+
+1731532817
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, is there a way to have @intCast with a comptime T?
+
+1731532825
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s super annoying to have to assign the cast to a variable
+
+1731532857
+grayhatter!~grayhatte@user/grayhatter
+@as(T, @intCast());?
+
+1731532909
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah it works with that?
+
+1731532914
+hadronized!~hadronize@2001:41d0:a:fe76::1
+thanks
+
+1731537636
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+Is there a specific official raylib binding for zig?
+
+1731537653
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+If not is there a specific binding that is recommended to use?
+
+1731537688
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+I am using this one right now: https://github.com/Not-Nik/raylib-zig
+
+1731537697
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+I believe this is the official one
+
+1731537701
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I just got it by a nice panic because of using the Dir.Entry.name
+
+1731537726
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s not in the documentation of neither Dir.iterate() and Dir.Entry, but calling next() invalidates entries’ memory
+
+1731537809
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that ownership problem is something I mentioned couple times in this channel, and besides the Zig Zen “communicate intent precisely” (which is not really respected here since I had to dig down to a comment on the Dir.Iterator.next() function”, it’s pretty hard to know what to do when we receive a structure owning a pointer-like type
+
+1731537820
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s sad to say that but I do think Zig is not for me
+
+1731537825
+grayhatter!~grayhatte@user/grayhatter
+hadronized: that's gnu/posix for you... but that is the behavior I'd expect
+
+1731537851
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah I mean I have no problem with the behavior, it was just not really mentioned
+
+1731537858
+grayhatter!~grayhatte@user/grayhatter
+hadronized: yeah keeping track of where memory lives isn't for everyone
+
+1731537860
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and I’m too used to know what to do based on the type
+
+1731537862
+hadronized!~hadronize@2001:41d0:a:fe76::1
+&str -> borrowed
+
+1731537865
+hadronized!~hadronize@2001:41d0:a:fe76::1
+String -> owned
+
+1731537882
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I'm not sure this is Zig's fault for rust teaching you bad habits
+
+1731537889
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: yes, and the mere idea that forgetting it once could lead to hidden ugs
+
+1731537891
+hadronized!~hadronize@2001:41d0:a:fe76::1
+bugs=
+
+1731537898
+hadronized!~hadronize@2001:41d0:a:fe76::1
+here I’m lucky it’s about memory
+
+1731537904
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the code broke in… statFile
+
+1731537910
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(because I used the path name there)
+
+1731537924
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: it’s a habit thing
+
+1731537932
+hadronized!~hadronize@2001:41d0:a:fe76::1
+when I looked at the fn next(), I saw the entry
+
+1731537935
+hadronized!~hadronize@2001:41d0:a:fe76::1
+which has a []const u8 in it
+
+1731537949
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and I saw no documentation, and I didn’t use any allocator
+
+1731537957
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I thought “yeah, it’s just borrowed, should be fine”
+
+1731537959
+grayhatter!~grayhatte@user/grayhatter
+hadronized: typeof(Dir.Entry) is a struct right? where typeof(Dir.Entry.name) is a pointer?
+
+1731537991
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s a fat pointer, yes
+
+1731538076
+grayhatter!~grayhatte@user/grayhatter
+right, that's what I'm trying to point out.. in zig slices are pointers, so every pointer in Zig would be like `&str` 
+
+1731538101
+hadronized!~hadronize@2001:41d0:a:fe76::1
+no I don’t think so no
+
+1731538105
+hadronized!~hadronize@2001:41d0:a:fe76::1
+&str has more semantics
+
+1731538118
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it would more likely be a *const u8
+
+1731538140
+hadronized!~hadronize@2001:41d0:a:fe76::1
+&str is a slice pointer too
+
+1731538161
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but if you have a &str, you know for sure the memory is borrowed and exists
+
+1731538166
+grayhatter!~grayhatte@user/grayhatter
+I would encourage you not to give up on zig just beacause you're not used to understanding memory, it's a learning curve, but it's something you can learn
+
+1731538182
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so you know you can use it as long as you keep the source object alive (and you know which one it is / for how long it lives because of the lifetime)
+
+1731538198
+grayhatter!~grayhatte@user/grayhatter
+hadronized: it exists until you mutate the struct where it lives, which you did by calling next()
+
+1731538204
+hadronized!~hadronize@2001:41d0:a:fe76::1
+eh, I’ve been writing C for like more than 20 years
+
+1731538219
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I was able to fix my issue in 10s once I spotted it
+
+1731538225
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the problem is that the issue was there in the first place
+
+1731538242
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: yes, and that behavior is not easy to pick
+
+1731538247
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you have to read the source code of the standard library
+
+1731538253
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it would make more sense to put that doc on the iterate() function
+
+1731538258
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and/or Dir.Entry
+
+1731538309
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.fs.Dir.Iterator
+
+1731538327
+grayhatter!~grayhatte@user/grayhatter
+        /// Memory such as file names referenced in this returned entry becomes invalid
+
+1731538329
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, source code
+
+1731538329
+grayhatter!~grayhatte@user/grayhatter
+        /// with subsequent calls to `next`, as well as when this `Dir` is deinitialized.
+
+1731538330
+squeek502!~squeek502@user/squeek502
+hadronized, there is a doc comment on each `next` function, but autodocs doesn't handle Iterator well yet due to the conditional compilation
+
+1731538334
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that item is not present in the doc
+
+1731538340
+grayhatter!~grayhatte@user/grayhatter
+this seems like bug in the autodocs
+
+1731538352
+grayhatter!~grayhatte@user/grayhatter
+because you're right, it's not here https://ziglang.org/documentation/master/std/#std.fs.Dir.Entry
+
+1731538387
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I mean, you are right on one thing though, Zig is probably not for me; you are not right about the reasons why it’s not for me, though; I know exactly how to deal with memory and that’s because I just don’t want to have to deal with that kind of details anymore
+
+1731538396
+squeek502!~squeek502@user/squeek502
+the relevant issue is likely https://github.com/ziglang/zig/issues/3028
+
+1731538411
+hadronized!~hadronize@2001:41d0:a:fe76::1
+as a motivation example; I tried to think in terms of what a Drop-based implementation would look like vs. the code I have in Zig
+
+1731538413
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and it would be exactly the saem
+
+1731538415
+hadronized!~hadronize@2001:41d0:a:fe76::1
+same*
+
+1731538438
+hadronized!~hadronize@2001:41d0:a:fe76::1
+now I try to think more in terms of “is there a manual implementation — so Drop wouldn’t be easy to do — that would do something differently than Drop?
+
+1731538462
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and so far, both implementations are just the same
+
+1731538501
+grayhatter!~grayhatte@user/grayhatter
+I'm not sure I have any better advice... I don't view bugs as something that needs to be made impossible by the language, and have a really hard time understanding that idea at all. 
+
+1731538519
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, we differ on that
+
+1731538524
+grayhatter!~grayhatte@user/grayhatter
+is Drop a rust-ism?
+
+1731538528
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s fine, you have found a language perfect for you
+
+1731538534
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: it’s just basically destructors
+
+1731538546
+hadronized!~hadronize@2001:41d0:a:fe76::1
+implementing Drop for T means that whenever T goes out of scope, Drop::drop() is called on it
+
+1731538556
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(it’s destructors done the right way… I hate C++ way of doing it)
+
+1731538625
+grayhatter!~grayhatte@user/grayhatter
+I've yet to see anything implemented in rust that's the "right" way
+
+1731538649
+grayhatter!~grayhatte@user/grayhatter
+but to be far, I've not had cause to spend any time looking into rust's destructors yet so maybe they're good?
+
+1731538899
+andrewrk!~andrewrk@mail.ziglang.org
+"good destructor" sounds like a contradiction to me
+
+1731539205
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: they are pretty good, yes
+
+1731539455
+companion_cube!~simon@user/meow/companion-cube:68572
+If you assume that RAII is good, then rust does it well
+
+1731539468
+companion_cube!~simon@user/meow/companion-cube:68572
+If you don't, well, then the question doesn't really apply 
+
+1731539697
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, yes, I do think RAII is a good thing in most languages
+
+1731539713
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the thing is, if you do not want RAII, then no language really does the alternative well at all
+
+1731539715
+grayhatter!~grayhatte@user/grayhatter
+RAII is one of thoes things that I assume is taught during university, and no where else. Nearly everyone I talk to, who mentions it, uses it like it's a meaningful phrase, that conveys something. But it's something that has never made sense to me. 
+
+1731539716
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the only one I know is ATS
+
+1731539728
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and Haskell with -XLinearTypes
+
+1731539733
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(and Idris, since it has linear types by default)
+
+1731539751
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I don’t see RAII but destructors.
+
+1731539757
+hadronized!~hadronize@2001:41d0:a:fe76::1
+RAII as a concept is pretty dumb honestly.
+
+1731540162
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+How do I properly delclare a struct in zig? I want to declare a compound literal but the compiler keeps saying the struct doesn't support array initialization syntax.
+
+1731540184
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+what is the proper way to declare the struct?
+
+1731540230
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+(I am trying to properly try out the language now as it has been on my bucket list for a while)
+
+1731540268
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+for reference I am trying to do this: rl.Vector3{ 0.2, 0.4, 0.2 }
+
+1731540396
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+do I use rl.Vector3.init?
+
+1731540402
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+seems like a bit of a mouthful
+
+1731540471
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/#struct
+
+1731540636
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+yes I did take a look at that. Having namespaced methods on functions is cool.
+
+1731540675
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+so array like initializing is not available for structs?
+
+1731540695
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+instead I would just use the namespaced init method?
+
+1731541049
+andrewrk!~andrewrk@mail.ziglang.org
+field names are required to make a struct literal because in zig it is not a footgun to re-order struct fields
+
+1731541120
+m257!~maaz@bras-base-hspron0502w-grc-14-142-198-115-223.dsl.bell.ca
+oh okay that makes sense
+
+1731541684
+companion_cube!~simon@user/meow/companion-cube:68572
+grayhatter: maybe you should learn what it means, RAII is not a difficult concept 
+
+1731541731
+companion_cube!~simon@user/meow/companion-cube:68572
+I didn't learn it at university either. It's a kind of bad name (like many C++ things) but it might be one of C++'s best contributions to language design 
+
+1731541970
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: What do you think of a Nix flake in the Zig repo?
+
