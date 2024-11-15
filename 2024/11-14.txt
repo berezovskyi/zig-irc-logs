@@ -1,0 +1,284 @@
+1731544012
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: I know what RAII *is*, that's not what I meant. The problem with just saying "RAII" is there are a few aspects to RAII, none of them universal. 
+
+1731544088
+grayhatter!~grayhatte@user/grayhatter
+RAII is a closer synonym to "abstraction" than to any of the aspects that togther make up said implentation/use.
+
+1731544165
+grayhatter!~grayhatte@user/grayhatter
+> If you assume that "set of abstractions" is good, then rust does it well
+
+1731544225
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: I think it's better without. Zig has no dependency on nix, and only has 1 system dependency which is planned to be removed anyway
+
+1731544245
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1731544253
+andrewrk!~andrewrk@mail.ziglang.org
+personally, as a nixos user, when I see a flake in a project repo I ignore it and make my own shell
+
+1731544321
+andrewrk!~andrewrk@mail.ziglang.org
+I also don't want to tip the balance of encouraging system dependency on llvm vs building from source. generally we get fewer bug reports from the latter workflow
+
+1731544328
+grayhatter!~grayhatte@user/grayhatter
+so, this may be a stupid question... but isn't nixos, linux with the nix package manager? Why would you want your a source repo to hold the package config file instead of your package manager? 
+
+1731544334
+clevor!sid649024@id-649024.hampstead.irccloud.com
+A flake would be useful if someone wants to use the nightly build of Zig without any third-party repos, or maybe to create a devshell for Zig development.
+
+1731544340
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Zig compiler development*
+
+1731544421
+andrewrk!~andrewrk@mail.ziglang.org
+if you build llvm from source you can use the same dev shell to build zig. for master branch development that workflow is often needed when LLVM releases have not been packaged yet
+
+1731544433
+clevor!sid649024@id-649024.hampstead.irccloud.com
+grayhatter: The Nixpkgs repo only keeps the latest stable version of Zig (and previous stable versions), but not nightly versions.
+
+1731544557
+andrewrk!~andrewrk@mail.ziglang.org
+I also don't want to add ubuntu, debian, fedora, redhat, archlinux, alpine, etc., dependency lists to the readme
+
+1731544575
+andrewrk!~andrewrk@mail.ziglang.org
+anyway soon enough llvm won't be a dep anymore
+
+1731544593
+clevor!sid649024@id-649024.hampstead.irccloud.com
+You can create the package definition for LLVM and stick it into a Nix flake. I have a fork of LLVM by jacobly already packaged as a flake.
+
+1731544643
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Speaking of that repo, I need to update the CE C toolchain package.
+
+1731545102
+companion_cube!~simon@user/meow/companion-cube:68572
+grayhatter: is it that abstract? It's always about calling a type-bound function on a value when it becomes unreachable. Like a destructor. That's fairly specific imho 
+
+1731545570
+grayhatter!~grayhatte@user/grayhatter
+if something has more exceptions, than rules... it's hard for me to call it specific 
+
+1731545603
+companion_cube!~simon@user/meow/companion-cube:68572
+What exceptions are you thinking of? 
+
+1731545637
+companion_cube!~simon@user/meow/companion-cube:68572
+In rust at least it's fairly simple: when a value is destroyed (goes out of scope etc) its Drop function is called. That's it. 
+
+1731545997
+grayhatter!~grayhatte@user/grayhatter
+using a library/api that doesn't support it? specific behaviors around resources? speration of concerns, but more to the point, collocation of concerns? 
+
+1731546033
+grayhatter!~grayhatte@user/grayhatter
+But RAII is wider of a concept than just destructors
+
+1731546941
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I fail to see the point you’re trying to make here grayhatter 
+
+1731546966
+hadronized!~hadronize@2001:41d0:a:fe76::1
+> a library that doesn’t support Drop
+
+1731546975
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s… just fine?
+
+1731547009
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it will probably expose an open()/close() pair of functions, or whatever, and I’ll be able to make my own version with a Drop impl… not, if it doesn’t really make sense
+
+1731547018
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Drop / RAII is a tool
+
+1731547025
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it doesn’t mean it’s the right answer all the time
+
+1731547036
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but for 99% of the resource situation, it is
+
+1731547043
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the same way that defer is 99% the right tool
+
+1731547056
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but sometimes it’s not (fallible resource cleanup for instance)
+
+1731547079
+hadronized!~hadronize@2001:41d0:a:fe76::1
+or not*
+
+1731547098
+hadronized!~hadronize@2001:41d0:a:fe76::1
+> specific behavior around resources
+
+1731547127
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, given that you have the choice of forgetting in Zig and having a leak, I don’t really understand your point
+
+1731547158
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if a resource cannot / shouldn’t be dropped at the end of its lifetime, I really need an explanation about why
+
+1731547201
+hadronized!~hadronize@2001:41d0:a:fe76::1
+something I often see is a resource that needs extra logic before being destructed; there are many patterns you can implement to do that, and even without Drop
+
+1731547223
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the most important thing is this: grayhatter | if something has more exceptions, than rules...
+
+1731547254
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I do agree with that and I think it’s important to reflect on what I said earlier; I find it very rare when the manual resource cleanup I write is different from what Drop would do
+
+1731547260
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hence… why not simply have Drop do it for me?
+
+1731547274
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Drop is actually a pretty amazing tool for 1. doing it automatically for me and 2. preventing forgetting
+
+1731547326
+grayhatter!~grayhatte@user/grayhatter
+hadronized: most of my understanding of RAII comes from c++. the core guidlines for RAII is mostly examples of what never to do
+
+1731547343
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you have a resource that you want to manually deallocate instead of using Drop? just don’t implement Drop! you have a resource that 95% of the time you want Drop to be called on, but sometimes you want a manual cleanup? just implement a function that moves out of it and yield the raw resource (example: fn into_fd(foo) -> c_int), etc.
+
+1731547399
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what I think is happening is that people refuse to learn how to deal with those questions in Rust because it’s different
+
+1731547412
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for instance, for the last example I gave, implementing into_fd() might be a bit weird for non-used people
+
+1731547439
+hadronized!~hadronize@2001:41d0:a:fe76::1
+because you have Drop implemented for your thing, Drop will still be called on your self value, so after you have taken out the fd, you need to std::mem::forget(self), etc.
+
+1731547446
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but all of that is just learning
+
+1731547459
+hadronized!~hadronize@2001:41d0:a:fe76::1
+exactly the same way you need to learn specities to C or Zig
+
+1731547525
+grayhatter!~grayhatte@user/grayhatter
+feels wrong to have to implement more code to make something *not* happen
+
+1731547545
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter | if something has more exceptions, than rules..
+
+1731547552
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you’re counter-arguing with yourself
+
+1731547555
+grayhatter!~grayhatte@user/grayhatter
+generally.... more code shoudn't make fewer things happen
+
+1731547589
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think it’s actually a great design
+
+1731547603
+hadronized!~hadronize@2001:41d0:a:fe76::1
+values are dropped at the end of their lifetime (most of the time, the lexical scope)
+
+1731547618
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you can pass them to the std::mem::drop() function, which is just implemented as fn drop(self) {}
+
+1731547627
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(so it moves the value in, and just drops it at the end of the scope)
+
+1731547646
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(it’s sometimes very useful on locks to pre-drop them in some situations)
+
+1731547776
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and then, the thing I would agree on regarding “boo destructors bad boo” is that they have imply implicit code that is called invisibly
+
+1731547787
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but using that argument against destructors from a Zig perspective is really twisted
+
+1731547805
+hadronized!~hadronize@2001:41d0:a:fe76::1
+given how mega complex defer is super complex in some situations
+
+1731547864
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I find it easier to think of a resource as something that will be deallocated when it goes out of scope, rather than thinking in terms of conditional deallocation
+
+1731547866
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(i.e. errdefer)
+
+1731547917
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, gcc has __attribute__((__cleanup__))
+
+1731547920
+hadronized!~hadronize@2001:41d0:a:fe76::1
+which I find interesting
+
+1731547957
+grayhatter!~grayhatte@user/grayhatter
+yeah, I get the impression that you're just arguing with a strawman of what I'm trying to explain... probably because I'm just bad at explaining it. I'mma blame it on being destracted by this refactor, so I don't have time to try again... good luck though! :)
+
+1731549600
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One of the things I want in a programming language (for small/medium personal projects) is to be able to give the compiler as much information as possible. Either that, or be able to declaratively say what to do, like in Haskell.
+
+1731550560
+andrewrk!~andrewrk@mail.ziglang.org
+in other words, "specify intent precisely"
+
+1731593183
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1731603539
+viscous24!~viscous24@user/viscous24
+any good rss/blogs about zig  or related topics?
+
+1731603796
+d76d5!~d76d5@user/d76d5
+mitchell hashimoto has some good ones
+
+1731604157
+viscous24!~viscous24@user/viscous24
+yes, Mitchell is amazing, this one is interesting as well:
+
+1731604159
+viscous24!~viscous24@user/viscous24
+https://gaultier.github.io/blog/
+
