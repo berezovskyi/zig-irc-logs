@@ -1,0 +1,52 @@
+1731795801
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+i feel dumb now, but ... if i create hashmap by std.StringHashMap(Foo).init(allocator) and then use .put(key, Foo{...}) to add values, aren't those copied to the hashmap?  i mean, i was assuming the allocator will be used to allocate memory for the keys / values, but is that wrong?
+
+1731795828
+andrewrk!~andrewrk@mail.ziglang.org
+netvor: that data structure does no deep copying
+
+1731795876
+andrewrk!~andrewrk@mail.ziglang.org
+indeed the allocator will be used to store key and value data, but it will not copy the string bytes
+
+1731795928
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+so if i'm loading the data from a buffer which i want to free, i need to copy each, right?
+
+1731795961
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+(funny that it looks like i had bug -- i was not freeing the memory, which kept me wrong :D)
+
+1731795987
+andrewrk!~andrewrk@mail.ziglang.org
+each key will have a reference to the string used during put
+
+1731795999
+andrewrk!~andrewrk@mail.ziglang.org
+so you need to make sure that reference outlives the hash map
+
+1731796051
+andrewrk!~andrewrk@mail.ziglang.org
+copying each key would work. as would using an arena for the strings and freeing the arena with the hash map. there's also the string table strategy
+
+1731796070
+andrewrk!~andrewrk@mail.ziglang.org
+or you might happen to know that your buffer will outlive the hash map
+
+1731796117
+andrewrk!~andrewrk@mail.ziglang.org
+each strategy has different tradeoffs
+
+1731796197
+netvor!~netvor@2a00:ca8:a1f:cd0:188d:bd0c:240f:86fd
+i see, thanks!
+
+1731798483
+grayhatter!~grayhatte@user/grayhatter
+I've stepped on that bug too, probably means the docs are unclear
+
+1731800937
+currenthandle!~textual@2600:8800:61a5:a700:b0b8:301d:c391:7107
+What's up zig ppl
+
