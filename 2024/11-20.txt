@@ -1,0 +1,220 @@
+1732106164
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I had a look at that struct literal issue (field swapping), and it’s interesting to see that I don’t reproduce if the struct literal is annotated with the type (S{} vs. .{}; the latter doesn’t work as expected)
+
+1732119047
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: I know it'
+
+1732119057
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+s early, but do you have an estimate on 0.14 release?
+
+1732119084
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+(EOY, 6 months, etc)
+
+1732119212
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Actually, I only care if you think it's within 6ish weeks - if it's within that I want to port libraries to test + be ready at release time...farther than that I don't care when it is
+
+1732127769
+squeek502!~squeek502@user/squeek502
+rockorager, last i saw the goal was January 01, 2025, which is still the date set on the milestone: https://github.com/ziglang/zig/milestones
+
+1732127790
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+squeek502: thanks
+
+1732135708
+grayhatter!~grayhatte@user/grayhatter
+have there been any mentionable updates to stack recursion in zig since v0.3 (the last time that section of the docs was updated?)
+
+1732136065
+grayhatter!~grayhatte@user/grayhatter
+corrupt data, or an easy to miss programming bug could lead to `error: the following command terminated unexpectedly:` and I'm trying to find a way to address that issue holisticly... ideally without needing to thread down the call/recursion count
+
+1732142684
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I just found a weird situation in Zig
+
+1732142694
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I have sum: i64, first: u8 and last: u8
+
+1732142698
+hadronized!~hadronize@2001:41d0:a:fe76::1
+this:
+
+1732142713
+hadronized!~hadronize@2001:41d0:a:fe76::1
+sum += (first - '0') * 10 + last - '0';
+
+1732142723
+hadronized!~hadronize@2001:41d0:a:fe76::1
+compiles, and I don’t get why
+
+1732142725
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it shouldn’t typecheck to me
+
+1732142734
+hadronized!~hadronize@2001:41d0:a:fe76::1
+since I’m trying to assign a u8 to a i64
+
+1732142757
+grayhatter!~grayhatte@user/grayhatter
+any valid u8 will fit within a i64
+
+1732142763
+grayhatter!~grayhatte@user/grayhatter
+the other way shouldn't compile 
+
+1732142871
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so that implicit coercion is allowed here?
+
+1732142899
+grayhatter!~grayhatte@user/grayhatter
+it's promotion, not coercison, but yes
+
+1732143002
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, I would expect that to then have a small cost at runtime, no?
+
+1732143008
+hadronized!~hadronize@2001:41d0:a:fe76::1
+weird that it’s implicit to me
+
+1732143032
+grayhatter!~grayhatte@user/grayhatter
+it should have no runtime cost above what using an i64 would have
+
+1732143065
+grayhatter!~grayhatte@user/grayhatter
+I'm assuming i64 is isize on whatever your code is running on
+
+1732143071
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, is a - '0' the idiomatic way to get the numerical value of a digit?
+
+1732143120
+grayhatter!~grayhatte@user/grayhatter
+'0' is the ascii char, or 0x30
+
+1732143196
+grayhatter!~grayhatte@user/grayhatter
+it depends on the context of the surrounding code, I use 0x00 for ascii control char's but 'L' when I care about the letter more than the hex number
+
+1732143220
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah I just to get 1 out of '1' basically
+
+1732143259
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I was wondering whether there was something in the std already doing that
+
+1732143259
+grayhatter!~grayhatte@user/grayhatter
+if you want 1 you probably want std.fmt.parseInt()
+
+1732143280
+grayhatter!~grayhatte@user/grayhatter
+'1' is 0x31
+
+1732143307
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah but '1' is not a []const u8
+
+1732143309
+grayhatter!~grayhatte@user/grayhatter
+so `50 - '1' == 1`
+
+1732143333
+grayhatter!~grayhatte@user/grayhatter
+"1" can be  `[]const u8`
+
+1732143383
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah but I have '1', not "1"
+
+1732143395
+grayhatter!~grayhatte@user/grayhatter
+`[_]u8{ '1' }`
+
+1732143404
+hadronized!~hadronize@2001:41d0:a:fe76::1
+anyway, I think it’s probably way faster to do the subtraction 
+
+1732144007
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Is there a possibility that zig could ever have 'catch' after a block? Sometimes I want to handle error for a bunch of expressions in a row the same way but I also know I won't need to re-use that code so I don't *love* having to move it to a separate function (or just duplicate the catch logic)
+
+1732144092
+grayhatter!~grayhatte@user/grayhatter
+I can't find the resource I want that `mov rax, cl` is a single micro-op, but I think it is
+
+1732144123
+grayhatter!~grayhatte@user/grayhatter
+The_Buhs: I also would love to use that pattern
+
+1732144131
+grayhatter!~grayhatte@user/grayhatter
+I've been using functions instead
+
+1732144176
+grayhatter!~grayhatte@user/grayhatter
+then I can just try within the function and then `somefunction() catch { list }`
+
+1732144239
+The_Buhs!~The_Buhs@user/The-Buhs/x-5080862
+Yeah, that's what I've been doing, I just don't love having functions that only exist for that purpose 
+
+1732144261
+grayhatter!~grayhatte@user/grayhatter
+to be fair... that is often much better code
+
+1732144320
+grayhatter!~grayhatte@user/grayhatter
+I have a funciton that I wrote in the wrong file, and will move to where it actually belongs once another file needs it... until then, it's often better to write code in a way that's easy to delete
+
+1732144329
+grayhatter!~grayhatte@user/grayhatter
+even if that means you have extra functions
+
+1732144614
+grayhatter!~grayhatte@user/grayhatter
+hadronized: can confirm, it's the same as a `mov` with a few extra bytes to encode the asm
+
+1732144996
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you mean the [_]u8{ '1' }?
+
+1732145006
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah that makes sense it’s just a mov
+
+1732145083
+grayhatter!~grayhatte@user/grayhatter
+well `[_]u8{ '1' }` is just expressing the idea of a byte to the compiler. that'll be free, and if it's not a runtime value, it'll be converted at comptime (probably)
+
+1732145091
+grayhatter!~grayhatte@user/grayhatter
+but I meant moving a u8 into an i64
+
+1732145156
+grayhatter!~grayhatte@user/grayhatter
+because zig is allowed to promote, it'll be the same cost as any variable assigment. which means less than a single asm instruction on average
+
+1732145158
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh yeah okay
+
+1732145170
+hadronized!~hadronize@2001:41d0:a:fe76::1
+pretty cheap then
+
+1732145183
+grayhatter!~grayhatte@user/grayhatter
+~free, yeah
+
