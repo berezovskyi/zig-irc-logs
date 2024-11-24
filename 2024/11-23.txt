@@ -1,0 +1,1196 @@
+1732320709
+hadronized!~hadronize@2001:41d0:a:fe76::1
+we cannot switch on strings? :(
+
+1732322230
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+hadronized: nope. If you know them ahead of time, make an enum and use the enumFromString or whatever the name is
+
+1732322265
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I see
+
+1732323889
+grayhatter!~grayhatte@user/grayhatter
+that is a really nice feature of go, `switch (user_string) { list of strings }` I get why Zig doesn't support it... but IMO that's a mistake
+
+1732323988
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m used to it from Rust
+
+1732323994
+hadronized!~hadronize@2001:41d0:a:fe76::1
+string slice and regular slices
+
+1732324006
+grayhatter!~grayhatte@user/grayhatter
+I can't be arsed to build an optimal search tree, and the if else trees that I do write are remarkably ugly
+
+1732324184
+grayhatter!~grayhatte@user/grayhatter
+hadronized: the ergonomics of `for (slices) |slice|` is one of the primary reasons I'm a fan of the language. It's one of the rare places where I agree the compiler can do it better than I can
+
+1732324215
+grayhatter!~grayhatte@user/grayhatter
+ifreund: that's disapointing 
+
+1732324227
+grayhatter!~grayhatte@user/grayhatter
+but thanks for the heads up :)
+
+1732324231
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: but not for iterators?
+
+1732324403
+hadronized!~hadronize@2001:41d0:a:fe76::1
+note: argument to function being called at comptime must be comptime-known
+
+1732324416
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t understand that; there is nothing comptime in my current code (well nothing I can think of actually)
+
+1732324416
+grayhatter!~grayhatte@user/grayhatter
+meh, if I understand what you mean, I agree, but also that's not a hill I care enough to die on. When I read code, I read `while something_is_true`, which is different from `for each_thing in known_size` so it makes enough sense to me
+
+1732324427
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m just passing a struct to a function
+
+1732324441
+grayhatter!~grayhatte@user/grayhatter
+your function, or someone elses?
+
+1732324457
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m trying to implement some code reuse by using the context thing
+
+1732324481
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so basically, since Zig doesn’t have lambdas / closures, I’m just passing a small struct with function pointers and erased data
+
+1732324496
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that error is weird
+
+1732324500
+grayhatter!~grayhatte@user/grayhatter
+I have no context that I can use to help you... but guessing, maybe it's a @typeof  all types must be comptime known
+
+1732324514
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m using nothing of that kind
+
+1732324630
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: https://git.sr.ht/~hadronized/advent-of-code-2023/tree/master/item/zig/src/day02.zig#L46
+
+1732324714
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(refresh, I just updated)
+
+1732324719
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I get the error on this line: https://git.sr.ht/~hadronized/advent-of-code-2023/tree/master/item/zig/src/day02.zig#L41
+
+1732324734
+hadronized!~hadronize@2001:41d0:a:fe76::1
+error: unable to resolve comptime value
+
+1732324746
+hadronized!~hadronize@2001:41d0:a:fe76::1
+why does zig think it’s a comptime value?
+
+1732325156
+grayhatter!~grayhatte@user/grayhatter
+oh
+
+1732325168
+grayhatter!~grayhatte@user/grayhatter
+this is the thing where you try to execute the code at comptime?
+
+1732325184
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t, I just want to get that thing compiled and run :D
+
+1732325218
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I mean, both functions are passed to a comptime function, yeahh
+
+1732325227
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but how would that matter?
+
+1732325235
+hadronized!~hadronize@2001:41d0:a:fe76::1
+lib.Solution is this:
+
+1732325246
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://git.sr.ht/~hadronized/advent-of-code-2023/tree/master/item/zig/src/lib.zig#L36
+
+1732325609
+grayhatter!~grayhatte@user/grayhatter
+line 8, Solution = lib.Solution(...); has to resolve at comptime, which IIUC dispatchInputMethod tries to evalute it at comptime
+
+1732325657
+grayhatter!~grayhatte@user/grayhatter
+yeah,  try adding src/lib.zig:30  `    if (true) return 33;`
+
+1732325664
+grayhatter!~grayhatte@user/grayhatter
+it'll build
+
+1732325730
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what? I need to return R, it won’t compile
+
+1732325796
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, what would that do to the compiler (your if (true) return 33;)
+
+1732325812
+grayhatter!~grayhatte@user/grayhatter
+R is always u32, which is why it'll compile
+
+1732325847
+grayhatter!~grayhatte@user/grayhatter
+for some reason the compiler thinks `if (true) comptime_int`; is a runtime value
+
+1732325858
+hadronized!~hadronize@2001:41d0:a:fe76::1
+from the perspective of the function body, it’s not possible to know that
+
+1732325873
+grayhatter!~grayhatte@user/grayhatter
+hadronized: have you learned haskell yet?
+
+1732325890
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I spent more than 15 years working with Haskell, both on spare-time projects and professionally
+
+1732325892
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so yes
+
+1732325984
+grayhatter!~grayhatte@user/grayhatter
+dope, zig's compiler works similarly. If it doesn't *need* to know a question, it doesn't attempt to ask. For every value/call of dispatchInputMothed, return 33; results in valid code, so it'll ignore the cases where it wouldn't be... in theory, R might be a bool, but because it never happens, the compiler ignores it
+
+1732326067
+grayhatter!~grayhatte@user/grayhatter
+`if (true) return 33;` has the type (runtime comptime_int) because comptime int can fit into a 32, it's valid code. change day2's R from u32 to bool, and it'll complain again
+
+1732326069
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I mean, I’m pretty sure zig doesn’t work like ghc
+
+1732326078
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ghc would compile that code, which wouldn’t typecheck
+
+1732326132
+grayhatter!~grayhatte@user/grayhatter
+similarly, ghc is actully less restrictive, and would gladly explode at runtime for you. Thankfully zig is more sane
+
+1732326149
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it would explode at runtime?
+
+1732326216
+grayhatter!~grayhatte@user/grayhatter
+I've had haskell code explode at runtime for something in knew when building, yes. I remember being annoyed, because I was expecting that bug at compile time, but it didn't show up, so I assumed I just didn't undrestand the language
+
+1732326236
+grayhatter!~grayhatte@user/grayhatter
+then it crashed months later at runtime... turns out I didn't understand the language for a different reason :D
+
+1732326261
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://play.haskell.org/saved/VghZSFEI
+
+1732326290
+hadronized!~hadronize@2001:41d0:a:fe76::1
+even though it’s obvious that foo will never be called with anything else than a ~ Integer (and 12 can be coerced to Integer), ghc still refuses to compile
+
+1732326313
+grayhatter!~grayhatte@user/grayhatter
+similar, not exact... I guess zig is more lazy than haskell? 
+
+1732326314
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you’re probably confusing Haskell’s graph evaluation, which indeed is lazy
+
+1732326316
+grayhatter!~grayhatte@user/grayhatter
+*shrug*
+
+1732326326
+hadronized!~hadronize@2001:41d0:a:fe76::1
+no, I think it has completely nothing similar
+
+1732326328
+grayhatter!~grayhatte@user/grayhatter
+I barely understand either myself
+
+1732326352
+hadronized!~hadronize@2001:41d0:a:fe76::1
+from what I understood from the result location thing, I think the way Zig resolves types is a bit weird
+
+1732326382
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it probably removes all the code that is not really useful for its current unit of compilation, and that code might actually be something that requires typechecking
+
+1732326398
+grayhatter!~grayhatte@user/grayhatter
+the way zig resolves types *is* a bit weird... I kinda like it... except for that + comptime_int thing :D
+
+1732326413
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so… how do I fix that issue I’m having?
+
+1732326490
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+hadronized: your params that are functions are the issue I think?
+
+1732326518
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://git.sr.ht/~hadronized/advent-of-code-2023/tree/master/item/zig/src/lib.zig#L41
+
+1732326533
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+that has to be *const fn
+
+1732326581
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The callsite will stay the same since it will coerce to *const just fine
+
+1732326598
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But functions aren't values, so you can't pass one to another function
+
+1732326737
+hadronized!~hadronize@2001:41d0:a:fe76::1
+*const fn … ?
+
+1732326765
+grayhatter!~grayhatte@user/grayhatter
+here: try var c = C{}; const ctx = c.ctx();
+
+1732326779
+grayhatter!~grayhatte@user/grayhatter
+err, I mean here, try this: ^
+
+1732326787
+grayhatter!~grayhatte@user/grayhatter
+src/day02.zig:31:29: note: expression is evaluated at comptime because the function returns a comptime-only type 'day02.Ctx'
+
+1732326864
+grayhatter!~grayhatte@user/grayhatter
+this seems like a bug in the compiler error helper, because there's a lot of helpful information that's not printed in your code, but the compiler is able to resolve
+
+1732326883
+hadronized!~hadronize@2001:41d0:a:fe76::1
+a comptime-only type… what in the … :D
+
+1732327098
+torque!~tachyon@user/torque
+`fn (args) returntype` is a function prototype. `*const fn (args) returntype` is a pointer to a function with the specified signature
+
+1732327111
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/gist/9f4aeba9a396a5faaf23f812c2fe360270bbe7e8b5897826a5f513dfa24f4473
+
+1732327131
+torque!~tachyon@user/torque
+if you're accepting/storing a callback to be called, you need the latter, not the former
+
+1732327177
+hadronized!~hadronize@2001:41d0:a:fe76::1
+interesting, I wonder why the previous day worked then?
+
+1732327187
+hadronized!~hadronize@2001:41d0:a:fe76::1
+does it mean it ran fully at comptime?
+
+1732327234
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I don't see a call to ctx in day01?
+
+1732327298
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yea you never ref or use that struct, so it doesn't matter
+
+1732327310
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Your day2 files are missing from your remote, btw
+
+1732327360
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+hadronized: are you trying to solve this all at comptime or something?
+
+1732327381
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rockorager: the inputs?
+
+1732327392
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I do not commit them (I need to remove the day 1 now that I think about it)
+
+1732327399
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so yeah, using *const fn fixed the problem
+
+1732327415
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rockorager: no no, I just want to see how things feel in zig
+
+1732327425
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+hadronized: yeah...i made the same diff as grayhatter but tests still failed since missing input
+
+1732327438
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I had some fun yesterday just creating some infrastructure with the Solution thing to get interesting things
+
+1732327550
+hadronized!~hadronize@2001:41d0:a:fe76::1
+honestly, the lack of lambda hurts really bad :D
+
+1732327555
+hadronized!~hadronize@2001:41d0:a:fe76::1
+my Ctx thing looks pretty bad 
+
+1732327644
+grayhatter!~grayhatte@user/grayhatter
+hadronized: it does
+
+1732327655
+grayhatter!~grayhatte@user/grayhatter
+but, I wouldn't say bad, I'd say "new"
+
+1732327665
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what do you mean?
+
+1732327684
+grayhatter!~grayhatte@user/grayhatter
+It looks a lot like code from someone who isn't used to using zig's comptime features optimally 
+
+1732327695
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+hadronized: I wouldn't say Ctx is bad, it just seems like you are trying to use a lot of callbacks and maybe you don't need to
+
+1732327734
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I don't think I've ever seen this many callbacks in zig
+
+1732327739
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I mean in Rust I’d just factor in the code I have in runGame into either an owned iterator (so that I can move the data in the iterator and return it from the function), or use two lambdas
+
+1732327807
+grayhatter!~grayhatte@user/grayhatter
+you're using comptime to generate function types/calling conv in many different places. the "correct" way would be closer to how AnyReader or AnyWriter work. where you call makeSolver(stuff ...) which returns a type, with many functions instead of a "main"
+
+1732327822
+grayhatter!~grayhatte@user/grayhatter
+you call it displayToStdOut... but a better name for it would be main()
+
+1732327889
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, that’s what my Solution type does, no?
+
+1732327922
+grayhatter!~grayhatte@user/grayhatter
+I find a good heuristic for the right way to use comptime, is you shouldn't have to use the word comptime. The compiler should be able to figure out what parts you want to be comptime
+
+1732327941
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, I’m probably annotating them too much for now
+
+1732327969
+grayhatter!~grayhatte@user/grayhatter
+the notible exclusion is function params, where you want your API to decide how to behave at comptime, ignoring what the caller wants
+
+1732328038
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+hadronized: for me, it looks like you are trying to solve a problem that doesn't exist
+
+1732328082
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But - aoc is a problem that doesn't exist, so it's hard to separate "seeing what's possible" from "why the hell did they do it this way?"
+
+1732328109
+grayhatter!~grayhatte@user/grayhatter
+instead of calling `try day01.Solution.displayToStdOut();` `const day01 = try Solution(...); try day01.solve1(); try day02.solve2()`
+
+1732328151
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rockorager: yeah, the goal here is just to familiarize myself with the concepts and see how powerful they can be
+
+1732328168
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the “problem” I want to solve is not to have to write the same code everyday for all exercises
+
+1732328189
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the only differences between days’ exercises are the actual functions to solve the problem, the expected output values, and their types
+
+1732328191
+grayhatter!~grayhatte@user/grayhatter
+that'll give you an API where you build everything at comptime, and then run the core of the code at runtime. If you really wanted to do all of it at comptime, then you can still do `comptime try day01.solve1();` 
+
+1732328202
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so that’s the API I want
+
+1732328221
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I want the day, the expected values, return type, solve part 1, solve part 2
+
+1732328223
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and that’s all
+
+1732328237
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I added a bunch of stuff to have fun, like that InputMethod thing
+
+1732328246
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that one is silly :) 
+
+1732328285
+grayhatter!~grayhatte@user/grayhatter
+I mean, AoC is supposed to be fun and silly, so why not? 
+
+1732328290
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I like that just passing values to that Solution(…) thing runs the tests for me
+
+1732328798
+hadronized!~hadronize@2001:41d0:a:fe76::1
+tps://git.sr.ht/~hadronized/advent-of-code-2023/tree/master/item/zig/src/day02.zig
+
+1732328806
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, the final thing compared to Rust is bit… well, verbose :D
+
+1732328825
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I allocate in Rust, so it’s easier to craft a solution that is easy to come up with
+
+1732328832
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but the iterator API in Rust is so much better for that kind of stuff
+
+1732329097
+grayhatter!~grayhatte@user/grayhatter
+better in what way?
+
+1732329129
+hadronized!~hadronize@2001:41d0:a:fe76::1
+closures being used where they are called
+
+1732329143
+hadronized!~hadronize@2001:41d0:a:fe76::1
+shadowing of variables, which prevent having to come up with stupid names for short-lived stuff
+
+1732329146
+hadronized!~hadronize@2001:41d0:a:fe76::1
+etc.
+
+1732329187
+grayhatter!~grayhatte@user/grayhatter
+better because it does more for you?
+
+1732329247
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m trying to think about whether it provides any advantage to manually come up with the stuff rustc generates for me
+
+1732329252
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like, for instance, closures, yes
+
+1732329256
+hadronized!~hadronize@2001:41d0:a:fe76::1
+or Drop calls
+
+1732329276
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so far, I don’t really have a forged opinion, but it still tends on “there is no advantage at doing it manually, especially if the compiler doesn’t really help with it”
+
+1732329285
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for that last part of the sentence, ATS is doing it the right way
+
+1732329324
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you have to deal with some stuff manually (like memory allocation), but ATS has a type system that tracks resources (linear), so even though it’s your responsibility to deallocate at the right place eventually, if you forget to do it, ATS will not compile
+
+1732329328
+grayhatter!~grayhatte@user/grayhatter
+if those are your metrics, then python is even better
+
+1732329336
+hadronized!~hadronize@2001:41d0:a:fe76::1
+nah, I have more metrics
+
+1732329349
+hadronized!~hadronize@2001:41d0:a:fe76::1
+predictive behavior and performances are important 
+
+1732329351
+grayhatter!~grayhatte@user/grayhatter
+yeah, I think you mean easier to write
+
+1732329355
+hadronized!~hadronize@2001:41d0:a:fe76::1
+on that, Rust is really, really good
+
+1732329373
+hadronized!~hadronize@2001:41d0:a:fe76::1
+something else that starts to bother me a bit with Zig is that I’m not sure it will fit my need for vertical abstractions
+
+1732329383
+grayhatter!~grayhatte@user/grayhatter
+for you... I don't find rust's behavior easy to predict at all
+
+1732329397
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s nice to be able to write low-level code, but it’s also nicer to wrap that in a nice and safe abstraction that can be used in higher-level code while still retaining the same language
+
+1732329410
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: really?
+
+1732329421
+hadronized!~hadronize@2001:41d0:a:fe76::1
+maybe you haven’t learned the language?
+
+1732329424
+grayhatter!~grayhatte@user/grayhatter
+hadronized: really
+
+1732329440
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for most of it, what it does is what I’m manually doing in Zig
+
+1732329441
+grayhatter!~grayhatte@user/grayhatter
+no, my brain just works fundementally differently from people who enjoy rust
+
+1732329445
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I’m not sure what you’re talking about
+
+1732329458
+hadronized!~hadronize@2001:41d0:a:fe76::1
+> people who enjoy rust
+
+1732329468
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you’re putting everyone in the same basket?
+
+1732329493
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I like the way Rust works because it does exactly what I would do manually, without requiring me to do it manually
+
+1732329504
+grayhatter!~grayhatte@user/grayhatter
+people who think rust allows them to write good code (people who enjoy rust) and people who think rust makes it hard to write good code (people who don't enjoy it)
+
+1732329514
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like, something I mentioned before, having an array of strings; deinit the array -> loop over the content and deinit the strings before
+
+1732329515
+hadronized!~hadronize@2001:41d0:a:fe76::1
+etc.
+
+1732329541
+hadronized!~hadronize@2001:41d0:a:fe76::1
+there is no language that “allows you to write good code”
+
+1732329546
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you can write good code in any langage
+
+1732329560
+hadronized!~hadronize@2001:41d0:a:fe76::1
+good or bad code is just a human apprecition
+
+1732329563
+hadronized!~hadronize@2001:41d0:a:fe76::1
+appreciation
+
+1732329563
+grayhatter!~grayhatte@user/grayhatter
+hadronized: what's the most complicated thing you've ever written using rust?
+
+1732329570
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it has no meaningful and objective value
+
+1732329585
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh I wrote many different things in Rust
+
+1732329621
+grayhatter!~grayhatte@user/grayhatter
+yeah, I disagree with that argument on a fundemental level. There's objectively good, and objecitvely bad code. And humans are capable of writing both. And writing good code is a learned skill
+
+1732329643
+hadronized!~hadronize@2001:41d0:a:fe76::1
+realtime graphics, distributed systems at work (bindings with C / librdkafka / JNI / cgo / etc.), many CLI / terminals stuff / tons of async/await code / I also gave in to the more barebone and metal async IO directly (mostly epoll-like)
+
+1732329665
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, “good code” is still a human appreciation
+
+1732329683
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for some people, good code will be readable and maitenable code
+
+1732329691
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for some others, it’ll be just oneshot doing the job right
+
+1732329693
+hadronized!~hadronize@2001:41d0:a:fe76::1
+etc.
+
+1732329694
+grayhatter!~grayhatte@user/grayhatter
+nah, again, I don't agree
+
+1732329714
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but whatever we decide to set value on here, langages have no impact on that
+
+1732329719
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what they have impact on is correctness
+
+1732329740
+hadronized!~hadronize@2001:41d0:a:fe76::1
+whether whatever you think you’re asking the computer is actually going to be implemented as such, and in a correct way
+
+1732329758
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and on that side of things, languages who actually remove power / constrain you are actually better to me
+
+1732329783
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the more unconstrained power you have, the more likely you will write bugs and unwanted code
+
+1732329795
+grayhatter!~grayhatte@user/grayhatter
+yeah, I disagree with that as well
+
+1732329812
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, I’ve learned to understand how you think as we spoke here
+
+1732329825
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I have a couple of buddies (mostly coding in C / asm) who think the same
+
+1732329844
+companion_cube!~simon@user/meow/companion-cube:68572
+(also, lispers)
+
+1732329844
+grayhatter!~grayhatte@user/grayhatter
+I don't think it's impossible to write bug free code... in fact, I hate that meme. I consider it one of the most toxic ones that's commonly passed around software dev
+
+1732329884
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, I like talking about stuff with actual data and facts
+
+1732329902
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the famous paper from Microsoft and their CVE percentage thing (the 60% due to memory issues) 
+
+1732329912
+companion_cube!~simon@user/meow/companion-cube:68572
+is the bug free code in the room with us? 🙃
+
+1732329923
+companion_cube!~simon@user/meow/companion-cube:68572
+(jk, but I've never seen a bug free project)
+
+1732329932
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah
+
+1732329934
+grayhatter!~grayhatte@user/grayhatter
+it's impossible for a company to create bug free code. yes... but a company doesn't want bug free code
+
+1732329937
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so even the best programmers will write bugs
+
+1732329944
+companion_cube!~simon@user/meow/companion-cube:68572
+maybe zlib is bug free now? hmm
+
+1732329954
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so it’s easy to understand why we would want to prevent them from writing the bugs in the first place
+
+1732329961
+companion_cube!~simon@user/meow/companion-cube:68572
+why wouldn't a company want bug free code?!
+
+1732329965
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if the compiler can see you’re writing a bug, then why would you not want that?
+
+1732329979
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: a company usually, exists to make money, not produce code
+
+1732330012
+companion_cube!~simon@user/meow/companion-cube:68572
+sure, but bug free code helps towards that
+
+1732330032
+companion_cube!~simon@user/meow/companion-cube:68572
+I mean it's not the one thing they want the most, but it's like saying I don't want bug free code because I value food and shelter more
+
+1732330046
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for instance, lifetimes in Rust can get tedious, yes, but so far, it’s one of the only languages out there that completely eliminates many memory-related bugs from runtime, as they are not statically constructable anymore
+
+1732330054
+companion_cube!~simon@user/meow/companion-cube:68572
+pretty sure cloudflare would like their web proxies to be bug free, if they could
+
+1732330056
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and we’ve had that knowledge for more than a decade now
+
+1732330064
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and there is no runtime cost to that
+
+1732330080
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I don't want my compiler to prevent me from writing code because it *might* contain a bug. I find it annoying when anyone, or anything tries to stop me from doing something I know is correct. because it can't understand what I'm doing
+
+1732330084
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so yeah, I just wished people were more concerned about the fact bugs are actively written by developers, even the best ones
+
+1732330117
+hadronized!~hadronize@2001:41d0:a:fe76::1
+“I KNOW THAT CLIFF IS NOT THAT HIGH; LET ME RUN TOWARDS THE LEDGE UNDER THE RAIN!”
+
+1732330146
+grayhatter!~grayhatte@user/grayhatter
+yeah, if you're only gonna strawman my arguments... I'm good
+
+1732330155
+grayhatter!~grayhatte@user/grayhatter
+good luck with your AoC
+
+1732330156
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, situations where the compiler thinks there might be a bug but there is none can happen, and there are primitives to tell the compiler about it
+
+1732330166
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and it’s mostly exceptional, it doesn’t happen that often
+
+1732330176
+companion_cube!~simon@user/meow/companion-cube:68572
+it's certainly a balance between expressiveness and safety
+
+1732330191
+companion_cube!~simon@user/meow/companion-cube:68572
+but I find it interesting to say that less compiler-enforced safety will help you write bug free code
+
+1732330209
+hadronized!~hadronize@2001:41d0:a:fe76::1
+companion_cube: I love just having a look at other domains
+
+1732330213
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like, for instance, nuclear engineering
+
+1732330228
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you will never convince them that “you know what you’re doing; please remove the safety”
+
+1732330488
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You *will* find that in domains that carry less risk, though
+
+1732330524
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+We don't design manufacturing plants to all be as safe as nuclear plants
+
+1732330619
+torque!~tachyon@user/torque
+i like writing bugs personally
+
+1732332451
+companion_cube!~simon@user/meow/companion-cube:68572
+rockorager: the claim was that bug free code is doable, though :D
+
+1732332475
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+who is claiming that?
+
+1732332534
+grayhatter!~grayhatte@user/grayhatter
+I am
+
+1732332827
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Writing bug-free code is easy when it's not a bug; it's a feature.
+
+1732333583
+torque!~tachyon@user/torque
+it's trivial to demonstrate that it's possible to write bug free code
+
+1732333591
+torque!~tachyon@user/torque
+all of the code that doesn't have bugs in it is bug free
+
+1732333609
+torque!~tachyon@user/torque
+typically only small parts of larger codebases have problems
+
+1732333706
+grayhatter!~grayhatte@user/grayhatter
+the more I think about it, the more I become convinced the problem isn't if some code has a bug, the problem is if some code has a meaningful bug. unfortunatly, few people seem to be able to the difference between the two
+
+1732333742
+torque!~tachyon@user/torque
+I would argue that most memory safety issues in C++ are due to the horrible complexity of the language which make it impossible to a) read any C++ and understand what is doing and b) understand what the C++ you've just written is doing
+
+1732333868
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: I would agree with that 
+
+1732333870
+grayhatter!~grayhatte@user/grayhatter
+I'd disagree that most "memory safety" bugs are significant
+
+1732333889
+companion_cube!~simon@user/meow/companion-cube:68572
+a lot of buffer overflows would disagree with you
+
+1732333900
+companion_cube!~simon@user/meow/companion-cube:68572
+(ofc bound checking takes care of that
+
+1732333902
+companion_cube!~simon@user/meow/companion-cube:68572
+)
+
+1732333944
+torque!~tachyon@user/torque
+it's crazy to me that buffer overflows are a real problem because it indicates lazy/sloppy programming. it's very easy to just use a struct with a pointer and a length in C instead of just passing around pointers
+
+1732333969
+torque!~tachyon@user/torque
+using macros to handle memory checking boilerplate is also one of the few things macros are actually good for
+
+1732333998
+grayhatter!~grayhatte@user/grayhatter
+I've seen someone try to lecuture me, while writing rust, on how it's impossible to write memory safe code in C, which is why programs crash... while he was also unironically using unwrap() everywhere
+
+1732334009
+torque!~tachyon@user/torque
+even though people like to act like rust is the holy grail of Safe Programming™, I suspect there are a lot of logical error bugs that it does nothing about, like integer overflow
+
+1732334039
+companion_cube!~simon@user/meow/companion-cube:68572
+and? unwrap() will crash cleanly, not cause UB or a segfault or memory corruption
+
+1732334067
+torque!~tachyon@user/torque
+if you're writing software that works with hardware, uncontrolled panicking is usually not what you want at all since it can leave your hardware in an indeterminate (read: unsafe) state
+
+1732334108
+torque!~tachyon@user/torque
+the program just sort of shitting the bed is not really better than it continuing with bogus memory in a lot of cases
+
+1732334110
+grayhatter!~grayhatte@user/grayhatter
+torque: that's my problem... there's so many critical security defects in so many rust libs, that have nothing to do with memory safety. In fact, I'd rather my code crash, because then I can get a coredump, and have a chance to catch some APT... if the application never exist abnoramlly, you never get to find that bug
+
+1732334131
+companion_cube!~simon@user/meow/companion-cube:68572
+[citation needed]
+
+1732334137
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: if your program crashing is a bad thing, and you use unwrap... how is that better
+
+1732334146
+companion_cube!~simon@user/meow/companion-cube:68572
+there's various ways of crashing is what
+
+1732334160
+companion_cube!~simon@user/meow/companion-cube:68572
+but yeah, sure, I'd not use unwrap() for error handling, personally
+
+1732334166
+clevor!sid649024@id-649024.hampstead.irccloud.com
+You don't have to unwrap if you don't want to
+
+1732334178
+torque!~tachyon@user/torque
+now it's true that eliminating memory safety as a class of bug does reduce the surface area in which you can introduce bugs
+
+1732334180
+companion_cube!~simon@user/meow/companion-cube:68572
+it's useful for things like mutex acquisition 
+
+1732334205
+grayhatter!~grayhatte@user/grayhatter
+I'm aware you don't need to unwrap... y'all seem to be missing my point about the disconnect between bugs... and bugs that matter.
+
+1732334205
+companion_cube!~simon@user/meow/companion-cube:68572
+for integer overflow, rust is like zig in that it gives you an opt-in way of doing checked arithmetic
+
+1732334234
+torque!~tachyon@user/torque
+unless the "safety" you get means uncontrollable program behavior
+
+1732334347
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: my citation is myself... I do security engineering for a FAANG company. We have a team where a portion of their job is inspecting coredumps for malicious activity. Plus when I used to be a vulnerability researcher for a us gov contractor, most of the exploits I wrote had nothing to do with memory safety. the vast majority were application logic defects
+
+1732334435
+companion_cube!~simon@user/meow/companion-cube:68572
+I don't doubt you, it's just surprising in light of the microsoft and google reports on memory safety
+
+1732334436
+grayhatter!~grayhatte@user/grayhatter
+today, the leading cause of security issues, is something like `system(user_input)` or `import pickle`
+
+1732334452
+companion_cube!~simon@user/meow/companion-cube:68572
+😅 yeah that's certainly another level of problem
+
+1732334468
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Yum
+
+1732334479
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: because they're detectable at scale... it's sample bias turned into a whitepaper for the clout
+
+1732334492
+torque!~tachyon@user/torque
+what language do ms and google use a lot of..... hmmm.... anyway, I'm not biased.
+
+1732334538
+torque!~tachyon@user/torque
+microsoft and google: it turns out we chose the stupidest possible language to write roughly 100 million lines of code in and that has caused us problems
+
+1732334549
+grayhatter!~grayhatte@user/grayhatter
+fuzzing detects memory safety violations; thus they find a lot of memory safety violations. There's nothing that can detect application logic defects at scale; thus, they find fewer of them. 
+
+1732334569
+grayhatter!~grayhatte@user/grayhatter
+now, just look at defects that were *actively exploited*, and tell me the ratio?
+
+1732334578
+companion_cube!~simon@user/meow/companion-cube:68572
+I mean I had to upgrade firefox recently because of a high severity CVE caused by a use after free
+
+1732334585
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The biggest problem I have with Rust is that a Hello World progtam with the standard library takes up around 1 MB.
+
+1732334599
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: I heard about that... chrome had another one recently too (that one was worse)
+
+1732334621
+grayhatter!~grayhatte@user/grayhatter
+I've still yet to see POC shell code for either, even though people claim it's really bad
+
+1732334635
+companion_cube!~simon@user/meow/companion-cube:68572
+1MB? I see 320kB stripped
+
+1732334640
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Huh
+
+1732334641
+companion_cube!~simon@user/meow/companion-cube:68572
+there's also ways to shrink it
+
+1732334650
+grayhatter!~grayhatte@user/grayhatter
+really bad [citation needed] (I find the FF bug being a critical defect hard to believe)
+
+1732334659
+companion_cube!~simon@user/meow/companion-cube:68572
+https://www.mozilla.org/en-US/security/advisories/mfsa2024-55/#CVE-2024-10459
+
+1732334679
+grayhatter!~grayhatte@user/grayhatter
+clevor: the problem I have is that is uses stdout locking
+
+1732334693
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1732334717
+grayhatter!~grayhatte@user/grayhatter
+> leading to a potentially exploitable crash.[citation needed]
+
+1732334719
+companion_cube!~simon@user/meow/companion-cube:68572
+you can acquire a stdout lock once and just use that, too
+
+1732334720
+torque!~tachyon@user/torque
+if you never free memory, you can never UAF, which I am pretty sure is exactly how web browsers work, looking at my system resource usage, so I'm calling this Myth busted
+
+1732334738
+grayhatter!~grayhatte@user/grayhatter
+torque: lmao, I'd buy that :D
+
+1732334754
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I made a 96 byte Hello World program once, so I don't see why a Rust or Zig program should take kilobytes.
+
+1732334766
+grayhatter!~grayhatte@user/grayhatter
+leading to a crash != leading to an exploitable crash
+
+1732334770
+grayhatter!~grayhatte@user/grayhatter
+those are different things
+
+1732334837
+companion_cube!~simon@user/meow/companion-cube:68572
+I'm sure  you can make a no_std hello world rust program that weights very little by using the syscall directly, sure, but is that really useful
+
+1732334892
+torque!~tachyon@user/torque
+i'm going to distribute my 400 MB hello world electron app
+
+1732334971
+companion_cube!~simon@user/meow/companion-cube:68572
+400MB = 300kB, got it
+
+1732334988
+torque!~tachyon@user/torque
+what's three orders of magnitude between friends
+
+1732334996
+grayhatter!~grayhatte@user/grayhatter
+companion_cube: > sure, you can by [disabling most features of the language] but is that really useful?
+
+1732335039
+companion_cube!~simon@user/meow/companion-cube:68572
+you just lose the stdlib, the language is the same
+
+1732335043
+grayhatter!~grayhatte@user/grayhatter
+that's the nice thing about zig... I don't have to disable any of the language to get it to behave the way I want it to
+
+1732335105
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I want to be able to have smaller binaries AND the full standard library, while also having Rust's borrow checker and features.
+
+1732335149
+companion_cube!~simon@user/meow/companion-cube:68572
+I agree it'd be nice 🤷
+
+1732335192
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Time for me to sleep
+
+1732335195
+grayhatter!~grayhatte@user/grayhatter
+I can manage my own memory thank you very much
+
+1732335211
+grayhatter!~grayhatte@user/grayhatter
+cheers clevor, have a nice night dude :)
+
+1732335453
+companion_cube!~simon@user/meow/companion-cube:68572
+I wonder what's in the 300kB, if it's all locks and stdout in it actually
+
+1732360079
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: yeah, unwrap() is bad in Rust
+
+1732360082
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think the right approach, again, is ATS
+
+1732360095
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it has compile-time system proofs
+
+1732360100
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(Idris also has it, and Liquid Haskell)
+
+1732360115
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it makes it nice to prove that you can actually call .unwrap() (or .? in Zig)
+
+1732373234
+companion_cube!~simon@user/meow/companion-cube:68572
+Look into Ada/Spark, not ats, for a system with proofs that's used in production 
+
+1732373510
+Earnestly!~earnest@user/earnestly
+The key aspect of spark is that the code can be gradually proven without introducing much in the way of annotation that ada 2012 doesn't already have
+
+1732373542
+Earnestly!~earnest@user/earnestly
+That is, being able to define loop invariants, pre and post conditions, etc. are all part of ada 2012 which spark leverages
+
+1732373706
+Earnestly!~earnest@user/earnestly
+(And certainly doesn't use hacks like embedding type information in comments)
+
+1732375774
+companion_cube!~simon@user/meow/companion-cube:68572
+I hope unsafe rust gets similar things eventually 
+
+1732402383
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+What would the Zig equivalent of something like `#define DEBUG_TRACE` and then doing `#ifdef DEBUG_TRACE \ .... \ #endif` be? 
+
+1732402502
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+const builtin = @import("builtin"); .... switch (builtin.mode) {.Debug => {// your debug stuff}}
+
+1732402604
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Thanks, I knew there was something like that but couldn't remember exactly what it was. If I do that, it's just based off -Doptimize, right? 
+
+1732402634
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you need custom flags, you can look at `Options for Conditional Compilation` in https://ziglang.org/learn/build-system/
+
+1732402695
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+bwbuhse: yeah, builtin.mode is the same enum as -Doptimize
+
+1732402886
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+rockorager & Gliptic: sweet, thanks y'all 😄
+
