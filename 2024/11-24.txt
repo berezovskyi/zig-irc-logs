@@ -1,0 +1,96 @@
+1732424682
+grayhatter!~grayhatte@user/grayhatter
+I'm writing an HTML template engine that supports zig types. (It generats structs for the required HTML variables at comptime) The original implementation used a StringHashMap, but now that it supports usize and ?usize (so I'm fighting the compiler) I'm wondering if anyone thinks being able to generate templates at runtime, and thus also needing dynamiclly created page variables is a requried feature?
+
+1732424684
+grayhatter!~grayhatte@user/grayhatter
+General question for anyone that might create a webapp of some kind?
+
+1732446353
+hadronized!~hadronize@2001:41d0:a:fe76::1
+when typing a function that is not complete yet, ZLS puts in the inlay hints the body of the function
+
+1732446364
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s terrible as it shifts my editor to the right to an extreme extent
+
+1732446374
+hadronized!~hadronize@2001:41d0:a:fe76::1
+does that ring a bell to anyone? anyway to fix that?
+
+1732446380
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(I can open an issue if it’s not already known)
+
+1732446597
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I have not found one; here’s mine :) https://github.com/zigtools/zls/issues/2092
+
+1732447304
+zenomat!36eb415140@user/zenomat
+hey, i am currently trying to write a heap allocator for a bare metal esp32c3. i got booting and serial logging working, and also got a super rudimentarry alloc working, but that allocator panics, when I try to alloc 0x11 to 0x14 bytes big buffers. and I cant figure out why. Attaching with a debugger shows that it errors on the line where I do a `@ptrFromInt` conversion, but only when I add that len to a pointer, I previously converted to an int. I checked, a
+
+1732447304
+zenomat!36eb415140@user/zenomat
+n no overflow or anything like that should occur. You can find the code here: https://git.sr.ht/~zenomat/yanos/tree/main/item/src/heap_allocator.zig#L73
+
+1732447320
+zenomat!36eb415140@user/zenomat
+I would be really thankful for any tips
+
+1732449331
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is the person responsible for zip-mode in this IRC channel? It's part of ziglang on github so I assume its official in some capacity and perhaps said person would be here?
+
+1732449371
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+want to discuss some changes to the package in a slightly more realtime format than via GH issues for now
+
+1732449926
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zenomat, does it have the right alignment? I don't know if @ptrFromInt safety checks that though
+
+1732450024
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+docs don't mention it, but I think it makes sense that it would
+
+1732450241
+zenomat!36eb415140@user/zenomat
+Gliptic: i have been thinking about alignment, but I don't know how to properly verify that, or ensure it is aligned. @alignCast only works after it has been cast to pointer. what are other options?
+
+1732450355
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if it works without `+ len`, that suggests that `self.next_free` is properly aligned
+
+1732450373
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so what you need to do is round `len` up to a multiple of @sizeOf(usize) (I assume 4?)
+
+1732450458
+zenomat!36eb415140@user/zenomat
+I'll try that, thanks. Just for my understanding: I need to align memory addresses and instructions as well(?), because the CPU tries to access them at aligned boundaries? If it can't (how does it know) it panics?
+
+1732450512
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the compiler takes care of instructions
+
+1732450590
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+typically the CPU can only read from memory at addresses that are a multiple of the size of the read, e.g. 4 for 32-bit reads, 2 for 16-bit reads
+
+1732450629
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in this case, if it happens already in @ptrFromInt, I think it's zig that has inserted a check to catch the error early
+
+1732450715
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and because HeapNode contains usize, that has the largest alignment @alignOf(usize) == 4, pointers to HeapNode need to be aligned on 4 byte boundaries
+
+1732450731
+zenomat!36eb415140@user/zenomat
+alright, thank you a lot. that makes sense
+
+1732450772
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+an alternative would be to force HeapNode to have alignment 1, but that would also force zig to use byte-sized reads to access it, which would be much slower
+
