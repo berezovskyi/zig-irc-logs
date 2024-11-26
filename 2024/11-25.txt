@@ -1,0 +1,296 @@
+1732559618
+grayhatter!~grayhatte@user/grayhatter
+are format functions not allowed to return errors?
+
+1732560057
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/blob/master/lib/std/fmt.zig#L1805 
+
+1732560686
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: I think the assumption is that they can only fail if the writer fails (and countingWriter doesn't fail)
+
+1732560741
+grayhatter!~grayhatte@user/grayhatter
+wanna bet?
+
+1732560756
+grayhatter!~grayhatte@user/grayhatter
+oh, if the dest writer fails
+
+1732560760
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you saying countingWriter fails?
+
+1732560796
+grayhatter!~grayhatte@user/grayhatter
+yeah, I don't think that's a sane assumption
+
+1732560851
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for what other reason does format fail?
+
+1732560906
+grayhatter!~grayhatte@user/grayhatter
+a custom formatter that returns an error instead of invalid data
+
+1732560907
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you mean if you define your own .format and do something else?
+
+1732560930
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you would have to return a writer error
+
+1732560979
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@TypeOf(writer).Error
+
+1732561054
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for something that isn't a writer error
+
+1732561068
+grayhatter!~grayhatte@user/grayhatter
+that's very disapointing 
+
+1732561114
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+isn't the custom formatter supposed to be able to format any value of that type?
+
+1732561124
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in which cases do you want to error
+
+1732561176
+grayhatter!~grayhatte@user/grayhatter
+in my case, no. I have "user data" that doesn't match the "format specifier"
+
+1732561250
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that doesn't seem like something you'd use format for then
+
+1732561298
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because there's no way to handle that error
+
+1732561484
+grayhatter!~grayhatte@user/grayhatter
+well... there is... fmt.format just isn't written that way
+
+1732561584
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was talking about fmt.format
+
+1732561872
+tsmanner!~tsmanner@mkmvpn.amd.com
+I like the fact that it disallows errors because it means you can reliably log out the fact that a value is invalid - e.g. you have an invalid parameter, and are about to return an error (or @panic), you can safely print to always stderr before the error.
+
+1732561894
+tsmanner!~tsmanner@mkmvpn.amd.com
+*always safely print to* - dunno what happened in my brain there lol
+
+1732561901
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I agree
+
+1732561954
+grayhatter!~grayhatte@user/grayhatter
+well... first... you can't always safely print to stderr
+
+1732561989
+grayhatter!~grayhatte@user/grayhatter
+but also, I don't like it when my code @panics... I generally find that to be something that shouldn't happen
+
+1732561995
+tsmanner!~tsmanner@mkmvpn.amd.com
+That's not a userland issue though, it has to do with the environment
+
+1732562027
+tsmanner!~tsmanner@mkmvpn.amd.com
+Even returning an error though, in zig we only have the error enum so additional information has to be provided by writing something out manually
+
+1732562052
+tsmanner!~tsmanner@mkmvpn.amd.com
+At the end of the day, it's a preference though, I won't pretend that my view is any more correct
+
+1732562132
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+What are the args in build.dependency? 
+
+1732562141
+tsmanner!~tsmanner@mkmvpn.amd.com
+Agreed on @panic in most code, returning an error or using unreachable covers almost all cases better
+
+1732563455
+grayhatter!~grayhatte@user/grayhatter
+how is `write(2, ptr, length)` returning an error not a userland issue?
+
+1732563665
+grayhatter!~grayhatte@user/grayhatter
+you have an API, it can either return an error, or crash the whole program... IMO stdlib shouldn't ever call `@panic()`[^1], it's especially annoying that every time I see stdlib hitting unreachable, it's because someone wanted to ignore rules the compiler would otherwise require
+
+1732563675
+Earnestly!~earnest@user/earnestly
+cat --help > /dev/full
+
+1732564720
+tsmanner_!~tsmanner@mkmvpn.amd.com
+grayhatter - by issue I mean it is unlikely that the code that calls `write` is responsible for that error.  Passing a malformed struct in is.  As far as unreachable goes; the stdlib can, and should, be held to a different standard than all code accepted by the compiler.  Unfortunately, we're not there yet, it does what it needs to to support the project, and not a TON else.
+
+1732564883
+tsmanner!~tsmanner@mkmvpn.amd.com
+`try write(2, ptr, length)` lets you handle the write errors.  It is perfectly possible to write formatting code that can error if an object is not formattable, but I can't think of a case where it makes sense to embed the correctness checking on a struct into the formatter rather than into the class' construction path directly.  `try MyType.create(...)` is a better way to check that than hoping you pass a `try write(2, my_type)`
+
+1732564899
+tsmanner!~tsmanner@mkmvpn.amd.com
+(by pass, I mean that control reaches that line of code)
+
+1732565259
+grayhatter!~grayhatte@user/grayhatter
+> "it is unlikely that the code that calls `write` is responsible for that error."
+
+1732565345
+grayhatter!~grayhatte@user/grayhatter
+if the result that; it's going to crash my app, when I could otherwise recover... it's becomes my responsability. 
+
+1732565465
+grayhatter!~grayhatte@user/grayhatter
+there is something to be said for division of responsability... but IMO, it's a higher priority to write code that works correctly for all possible states, both valid and invalid
+
+1732565547
+grayhatter!~grayhatte@user/grayhatter
+is fustrating when any lib decides to crash instead of reporting the error
+
+1732565636
+grayhatter!~grayhatte@user/grayhatter
+actually, I'll expand that out from just library, to anything all software, as well as things that aren't software... it's only complain worth when a library is doing it...
+
+1732565833
+grayhatter!~grayhatte@user/grayhatter
+re: the stdlib still being immature. I'm actually fine with that, that's why I'm asking. I got the answer I was searching for earliar from Gliptic... is it expected that stdlib should just crash (I.e. is this a documentation omissing warning that custom format() functions should never return an error other than the error type from the provided writer... which seems like something that should be
+
+1732565834
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+doesn't seem like a realistic possibility because your format function would have to directly return an error that is in the writer error set, but it can be used with any writer
+
+1732565835
+grayhatter!~grayhatte@user/grayhatter
+enforced by the compiler, instead of docs), or is this a bug in stdlib because it's immature, and I should stop writing my code, and attempt to submit a PR for stdlib?
+
+1732565867
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not just that it's not supposed to, the format function _can't_
+
+1732565878
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the compiler will error if you try
+
+1732565882
+grayhatter!~grayhatte@user/grayhatter
+it can... my program crashing has proven that it can't
+
+1732565884
+tsmanner!~tsmanner@mkmvpn.amd.com
+I agree with all of that, I don't understand the connection to the format API supporting error-unions as returns for user-defined formatters (I might have missed that we've moved past that particular concern though, if that's the case)
+
+1732565910
+grayhatter!~grayhatte@user/grayhatter
+would you like the stack trace of my test proving it?
+
+1732565918
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't see how formatType could compile in that case
+
+1732565976
+tsmanner!~tsmanner@mkmvpn.amd.com
+Ahh yeah a format function returning an error union resulting in a runtime crash does seem like a stdlib bug to me
+
+1732565977
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+i.e. https://github.com/ziglang/zig/blob/master/lib/std/fmt.zig#L494
+
+1732565994
+grayhatter!~grayhatte@user/grayhatter
+https://gist.github.com/GrayHatter/c68e1043813d97901d56daf2960b6bf0
+
+1732566016
+tsmanner!~tsmanner@mkmvpn.amd.com
+I also would not expect it to compile, but then again I'm not that surprised that it can if you get the compiler into just the right corner
+
+1732566045
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: and VariableMissing is not part of @TypeOf(writer).Error?
+
+1732566135
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+although, hard to see how it can be when the writer is countingWriter
+
+1732566208
+grayhatter!~grayhatte@user/grayhatter
+it's not, it's an error returned by my format function
+
+1732566292
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and you're not using an older zig version where formatType doesn't return `@TypeOf(writer).Error!void`?
+
+1732566329
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because sounds like a compiler bug
+
+1732566397
+grayhatter!~grayhatte@user/grayhatter
+allocPrint() and bufPrint() both can't fail
+
+1732566403
+grayhatter!~grayhatte@user/grayhatter
+other than being out of memory
+
+1732566550
+grayhatter!~grayhatte@user/grayhatter
+oh... that's very interesting... Gliptic, you're right, this probably shouldn't compile
+
+1732566599
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+NullWriter has error{} as errors, countingWriter just propagates that, although `fmt.format` itself doesn't limit the errors to `@TypeOf(writer).Error`
+
+1732566627
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+would be neat if you just compile-time unwrap an error union if the error set is empty
+
+1732566633
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*you could just
+
+1732566845
+grayhatter!~grayhatte@user/grayhatter
+I wonder if the `catch unreachable` in it is breaking the compiler?
+
+1732566874
+grayhatter!~grayhatte@user/grayhatter
+count() calls format(...), and then asserts it can never return any error
+
+1732566937
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sounds far-fetched, LLVM might do something funky, but it passes the zig frontend
+
+1732566945
+grayhatter!~grayhatte@user/grayhatter
+a compiler that was looking to screw over it's users, might use that to reason that it can't return any errors, and truncate the error set
+
+1732567006
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it does the opposite, it enlarges the error set
+
+1732567045
+grayhatter!~grayhatte@user/grayhatter
+in any case, the compiler is right, any errors after a call to `format() catch unreachable` are impossible
+
+1732567052
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the error set is supposed to be error{} in `count` from what I can tell, unless something in fmt.format enlarges it
+
+1732567244
+grayhatter!~grayhatte@user/grayhatter
+yeah, I agree, I really think there's a bug here, but it's also very far over my head.
+
