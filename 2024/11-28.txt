@@ -1,0 +1,464 @@
+1732754290
+torque!~tachyon@user/torque
+typeInfo is actually really good and theres no reason to avoid using it when you want... type information
+
+1732804440
+dnkl!86c6ab4b71@user/dnkl
+the general purpose allocator by default uses a mutex for synchronization in a multi threaded application. This means it's not fork-safe. Is this by design (i.e known limitation), or should it be considered a bug?
+
+1732804564
+dnkl!86c6ab4b71@user/dnkl
+besides switching allocator, do I have any other options?
+
+1732809882
+grayhatter!~grayhatte@user/grayhatter
+dnkl: what do you mean it's not fork safe?
+
+1732810184
+grayhatter!~grayhatte@user/grayhatter
+ah, sorry, I've been spending too much time thinking about fork&exec, I'd forgotten that you might fork and "continue". It does seem odd to not give each thread, or each fork it's own allocator though 
+
+1732810504
+Pistahh!~Pistahh@user/pistahh
+dnkl: after a fork the two processes don't see each others' memory, why would they need "fork safety"?
+
+1732810751
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Pistahh: fork only duplicates the calling thread, so if some other thread has a mutex locked, it'll be locked forever
+
+1732813152
+hadronized!~hadronize@2001:41d0:a:fe76::1
+comptime has some very powerful and interesting aspects of it
+
+1732813184
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I have a function that takes a list of coins ([]const u32 basically) and a value in cents, and outputs the number of coins to sum up to the input value
+
+1732813203
+hadronized!~hadronize@2001:41d0:a:fe76::1
+my initial function was doing something like returning ArrayList(u32), and thus required to allocate
+
+1732813208
+hadronized!~hadronize@2001:41d0:a:fe76::1
+my new implementation signature is this:
+
+1732813222
+hadronized!~hadronize@2001:41d0:a:fe76::1
+fn comptimeMakeChange(value: u32, comptime denoms: []const u32) [denoms.len]u32 { ... }
+
+1732813228
+hadronized!~hadronize@2001:41d0:a:fe76::1
+which is pretty doggamn nice
+
+1732813274
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I can do the same in Rust with const N: usize, so nothing really new here, but it’s nice to see it in Zig too
+
+1732813328
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, actually, it might not be possible to deduce the length without requiring annotating it when calling the function (I don’t think Rust has that just yet)
+
+1732813489
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah nevermind, Rust is actually able to do that 
+
+1732813495
+hadronized!~hadronize@2001:41d0:a:fe76::1
+woah nice, I didn’t know :D
+
+1732813733
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+not on stable i think?
+
+1732813753
+hadronized!~hadronize@2001:41d0:a:fe76::1
+on stable
+
+1732813852
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://gist.github.com/hadronized/71476241e3ba0bcc74241da6f7bba65b
+
+1732813880
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t like the var v = value;
+
+1732813886
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I wish I could do the same as the mut value from Rust
+
+1732813935
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah, but declaring an array variable without annotating its length isn't still possible i think
+
+1732813991
+hadronized!~hadronize@2001:41d0:a:fe76::1
+both implementations are not completely similar
+
+1732814012
+hadronized!~hadronize@2001:41d0:a:fe76::1
+in Rust, the input parameter is an array; in Zig, it’s a slice
+
+1732814164
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah, what i meant is, rust stable complains about let arr: [u64, _]
+
+1732814174
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+"using _ for array lengths is unstable"
+
+1732814370
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah, yes
+
+1732814391
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but it should be fine with let arr = [1, 2, 3]
+
+1732814401
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(it’s been like that since the beginning IIRC)
+
+1732815511
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+it's been yeah, but the jump from let arr = [...] to let arr: [type; length] = [...] feels weird, and seems like a huge internal technicality that we can't add only for some silly reason
+
+1732815558
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+especially since there was a lot of buzz and hype around all the const N feature originally
+
+1732817579
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah
+
+1732817590
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Rust doesn’t currently have stabilized using anything else but types or integers there anyway
+
+1732817600
+hadronized!~hadronize@2001:41d0:a:fe76::1
+there are some feature gates to do computations, too
+
+1732827398
+companion_cube!~simon@user/meow/companion-cube:68572
+They just stabilized using references and all that apparently 
+
+1732827436
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+not sure if it measures up to comptime even still
+
+1732829447
+ifreund!2940d10f8b@user/ifreund
+I mean, it doesn't have types as first class values at comptime or featurful reflection does it? or loop unrolling?
+
+1732829492
+ifreund!2940d10f8b@user/ifreund
+even if rust matched zig's comptime feature for feature, the result would be an even larger and more complex language
+
+1732829538
+ifreund!2940d10f8b@user/ifreund
+the wonderful thing about zigs comptime is that it also solves generics, macros, conditional compilation, and more
+
+1732829540
+hadronized!~hadronize@2001:41d0:a:fe76::1
+tranzystorekk: measure up? in what sense?
+
+1732829575
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund: yeah, that’s a very strong feature of Zig, for sure
+
+1732829580
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+pretty much what ifreund said
+
+1732829585
+ifreund!2940d10f8b@user/ifreund
+rust already has other separate language features to address those things, which can't be removed at this point
+
+1732829592
+hadronized!~hadronize@2001:41d0:a:fe76::1
+too bad it’s not something that is actually used as much as e.g. interfaces
+
+1732829608
+hadronized!~hadronize@2001:41d0:a:fe76::1
+comptime is great, but it doesn’t solve basic needs that are actually needed in 90% of codebases daily
+
+1732829623
+ifreund!2940d10f8b@user/ifreund
+citation needed
+
+1732829643
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund: resource management, interfaces / traits, to say the most important
+
+1732829674
+ifreund!2940d10f8b@user/ifreund
+I'm not going to have this debate with you for the 3rd time right now
+
+1732829699
+ifreund!2940d10f8b@user/ifreund
+there are a whole ton of tradeoffs to consider when comparing rust and zig
+
+1732829715
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it still surprises me a lot to see how powerful comptime is, while the language doesn’t have a proper way to ensure some resources are properly deallocated or not use-after-free (I tried to implement some safety with comptime, but it’s not possible since comptime var is not a thing anymore)
+
+1732829782
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+not to downplay safety too much, but in the mouths of rust developers that term has eroded into a nothingburger
+
+1732829789
+ifreund!2940d10f8b@user/ifreund
+You seem to massively underestimate the complexity of borrow checking and similar solutions every time you bring this up
+
+1732829822
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund: no, I know that it’s super complex and that it requires deep language integration (hence why Zig will probably never have it)
+
+1732829835
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so if there’s no borrow checker, there must be another way to have that safety
+
+1732829848
+ifreund!2940d10f8b@user/ifreund
+in any case, thats not a feature one decides to bolt on to a language when its as far along it its life as zig, that's a feature to be designed based on from the start
+
+1732829859
+hadronized!~hadronize@2001:41d0:a:fe76::1
+tranzystorekk: the mouth of rust developers what?
+
+1732829885
+ifreund!2940d10f8b@user/ifreund
+then you underestimate the complexity of "there must be another way to have that safety"
+
+1732829908
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+as in, there's so much hype in the rust community around safety, even when it doesn't make much sense
+
+1732829913
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s funny because every time I discuss memory safety, everyone seems to agree it’s an important think, but only Zig developers point at “Rust developers” like we are some evil and/or not-experienced-enough developers
+
+1732829918
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s not about hype
+
+1732829930
+hadronized!~hadronize@2001:41d0:a:fe76::1
+currently, Zig is more “hype” than Rust
+
+1732829935
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Rust is getting boring
+
+1732829943
+torque!~tachyon@user/torque
+can we not have this conversation again
+
+1732829950
+torque!~tachyon@user/torque
+this is not a channel for debating rust features
+
+1732829959
+ifreund!2940d10f8b@user/ifreund
+yeah Im off to bed
+
+1732829964
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+sorry
+
+1732829966
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I find it a bit sad not to be able to have that kind of debate with you without getting strawman-ed into “you Rust zealot and your safety”
+
+1732829968
+ifreund!2940d10f8b@user/ifreund
+let's not rehash this one again
+
+1732829978
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah usually I was talking about comptime and Zig
+
+1732829981
+hadronized!~hadronize@2001:41d0:a:fe76::1
+initially*
+
+1732830006
+torque!~tachyon@user/torque
+you drew the comparison to rust, all on your own
+
+1732830027
+torque!~tachyon@user/torque
+it's fine that you like a lot of features that rust has. but this has come up a lot recently and it's tiresome every time
+
+1732830060
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah maybe I’m too excited about the idea of having a simpler language like Zig and at the same time make it safe enough to actually think about really using it
+
+1732830079
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if the Zig community cares about something else, then I’m sorry and I’m truly mistaken about what’s important
+
+1732830093
+ifreund!2940d10f8b@user/ifreund
+thats a fine thing to excited about
+
+1732830105
+ifreund!2940d10f8b@user/ifreund
+its not really on topic for this channel though
+
+1732830106
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I just see the pattern in most other language that try to adopt / adapt safety features
+
+1732830140
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund: so you mean talking about possible enhancements of Zig safety should be discussed elsewhere than on Zig channels?
+
+1732830140
+ifreund!2940d10f8b@user/ifreund
+and it keeps being brought up in a way that doesn't promote productive discussion
+
+1732830168
+hadronized!~hadronize@2001:41d0:a:fe76::1
+okay, I get it
+
+1732830173
+hadronized!~hadronize@2001:41d0:a:fe76::1
+sorry, I won’t bring that up anymore
+
+1732831572
+grayhatter!~grayhatte@user/grayhatter
+reminds me of the old joke: how do you know if someone is a rust user? ...don't worry, they'll tell you!
+
+1732831579
+grayhatter!~grayhatte@user/grayhatter
+I use Zig btw!
+
+1732831632
+grayhatter!~grayhatte@user/grayhatter
+the problem is less talking about enhancements of zig safety (which you're not doing), and more that you're just complaining and comparing zig to rust.
+
+1732831679
+grayhatter!~grayhatte@user/grayhatter
+extentions, suggestions and discussions are usually welcomed
+
+1732831793
+grayhatter!~grayhatte@user/grayhatter
+complaints and, obstinance are much more often frustraiting... especially when paired with lack of curiosity
+
+1732831895
+grayhatter!~grayhatte@user/grayhatter
+speaking of curiosity though... has anyone done concurrent development on a library, and a consumer of said library? I'm looking for ideas and suggestions about what project layouts anyone uses, likes or hates?
+
+1732831959
+grayhatter!~grayhatte@user/grayhatter
+I have a build.zig.zon with a dependency path that's currently set to "../dep-name/" but that feels wrong
+
+1732832282
+torque!~tachyon@user/torque
+that's what I've done in the past
+
+1732832289
+torque!~tachyon@user/torque
+it works pretty well imo
+
+1732832575
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: lack of curiosity?
+
+1732832595
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you know since our many discussions that I don’t really like the state of Zig; it’s very unlikely I will use it
+
+1732832603
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and yet it’s been months and I’m still there trying to do something of it
+
+1732832625
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you can tell me I’m complaining or whatever, but probably not telling me I’m not curious haha :D
+
+1732832703
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I probably have not engaged the right way with the community, you are right, since I do think that Rust brought tons of good things to the software programming world, and hence why I’m often trying to compare “the level of safety” I have with it vs. the level of safety in Zig; weighing in arguments / tradeoffs and what I would gain / lose if I were to switch a Rust project to Zig
+
+1732832730
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I wanted to reify my proposal about ownership markers I shared the last day but that’s probably not a good idea anymore
+
+1732832750
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’ll look around and lurk to see how Zig evolves and will re-evaluate when it hits 1.0
+
+1732833579
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I feel like attempting to respond will be a mistake... but I don't want to be rude any simply ignore the mention either so, I guess I get to hope you prove me wrong and respond with curiosity, instead of merely claiming I'm wrong. I get the impression of lack of curiosity because you've never asked any questions about resource management, I've only ever seen you lament repeatedly that it's
+
+1732833581
+grayhatter!~grayhatte@user/grayhatter
+something the compiler should do, and any time anyone tries to contribute, you'll misunderstand what they're trying to communicated, or insist such a thing is impossible for one reason or another. You've only made comments that tell me you've already decided, and no alternitive is worth considering. It's happened a few times which is often comes across as some version of if only zig was more like
+
+1732833583
+grayhatter!~grayhatte@user/grayhatter
+rust... Even now you've made the exact same conclusion "I don't like zig, I'll [never] use it" which is a bold take to present in a channel named #zig I don't find it hard to imagine people who are active in said channel would respond poorly to such a response.
+
+1732833705
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, never, I’d love to be wrong about it
+
+1732833769
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I look at Zig with my own methods, yes; something like interfaces that do not exist, for instance; I know the alternatives and how to do that in Zig, but something like statically dispatching via anyopaque and writing the contract as comment / documentation is not correct (read correctness) to me
+
+1732833790
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I see what you’re saying about me, but I do want to be proven wrong about the stuff I mention 
+
+1732834146
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: I do a lot of that, zig fetch —save <path> is what I use a lot, otherwise creating an examples folder within said library and adding library as a module
+
+1732834333
+grayhatter!~grayhatte@user/grayhatter
+rockorager: I'm considering git submodules... but solving a problem with git submodules is often positive sum solution :D
+
+1732834527
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+🤮
+
+1732834611
+grayhatter!~grayhatte@user/grayhatter
+lol, yeah that's how I feel too 
+
+1732834879
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+why dont you like the path method? that one works pretty well IMO
+
+1732834898
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it’s very similar to how you would do the same thing in more mature languages like go
+
+1732835313
+grayhatter!~grayhatte@user/grayhatter
+I find go's import design to be an example of what not to do... but I don't like the path option because then you can't just `zig build run` after `git clone`
+
+1732835712
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ah, I only use path locally. then when I’m happy with library changes they get pushed up to the remote
+
+1732838203
+torque!~tachyon@user/torque
+submodules for dependency management are gross
+
+1732838296
+torque!~tachyon@user/torque
+and yeah, using the path for local integrated testing but not committing it is how I've done it also
+
+1732838351
+torque!~tachyon@user/torque
+<hadronized> so I see what you’re saying about me, but I do want to be proven wrong about the stuff I mention
+
+1732838363
+torque!~tachyon@user/torque
+this is a philosophical difference, there's no proving right or wrong here
+
