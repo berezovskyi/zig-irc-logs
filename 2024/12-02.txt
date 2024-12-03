@@ -1,0 +1,200 @@
+1733097662
+grayhatter!~grayhatte@user/grayhatter
+hadronized: you can import on comptime logic
+
+1733097926
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I was able to make it
+
+1733097934
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://git.sr.ht/~hadronized/advent-of-code-2024/tree/master/item/src/main.zig
+
+1733143407
+aquamo4k!~mross@162.222.54.134
+andrewrk: thank you for zig and for posting loris' aoc link above
+
+1733160687
+grayhatter!~grayhatte@user/grayhatter
+how do I support accepting SIGINT to stop a listening server?
+
+1733160740
+ifreund!2940d10f8b@user/ifreund
+grayhatter: either add a signalfd to your event loop or set up a signal handler?
+
+1733160753
+grayhatter!~grayhatte@user/grayhatter
+I have a signal handler 
+
+1733160805
+grayhatter!~grayhatte@user/grayhatter
+it stays stuck in `INTR => continue`
+
+1733160820
+ifreund!2940d10f8b@user/ifreund
+ah, you're hitting that std design choice
+
+1733160827
+grayhatter!~grayhatte@user/grayhatter
+again... yes....
+
+1733160835
+grayhatter!~grayhatte@user/grayhatter
+and I'm gonna keep complaining about it every time I do
+
+1733160865
+grayhatter!~grayhatte@user/grayhatter
+I don't wanna write a signalfd & poll... but I guess that *is* what I get to do
+
+1733160890
+ifreund!2940d10f8b@user/ifreund
+either that or drop down to the lower-level accept() interface
+
+1733160908
+ifreund!2940d10f8b@user/ifreund
+(i.e. copy the accept() function from std.posix)
+
+1733160920
+grayhatter!~grayhatte@user/grayhatter
+ifreund: that's what I had to do for my shell ( reimplement my own read() )
+
+1733160921
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what is that std design choice issue?
+
+1733160948
+ifreund!2940d10f8b@user/ifreund
+std.posix is a bit opinonated about errno handling currently
+
+1733160976
+ifreund!2940d10f8b@user/ifreund
+it does what you want 95% percent of the time, but there are exceptions
+
+1733161021
+ifreund!2940d10f8b@user/ifreund
+I have some plans to improve this but need to find time to dig in
+
+1733161022
+grayhatter!~grayhatte@user/grayhatter
+hadronized: if a process "sleeping" is in a blocking system call, if that process gets a signal, the kernel will abort that syscall with error INTR, stdlib sees that error, an swallows it with `INTR => continue` so that it will never return to the caller
+
+1733161043
+grayhatter!~grayhatte@user/grayhatter
+if you try to do *anything* with signals, the result is a stdlib's introduced deadlock
+
+1733161066
+ifreund!2940d10f8b@user/ifreund
+doing this by default almost certainly prevents bugs, I've seen many read/write calls without proper EINTR handling in the wild
+
+1733161092
+grayhatter!~grayhatte@user/grayhatter
+ifreund: perhaps shockingly.... I actually like this design for stdlib
+
+1733161106
+ifreund!2940d10f8b@user/ifreund
+grayhatter: tbh, I think the proper solution is to use an event loop library with signal handling integration
+
+1733161109
+grayhatter!~grayhatte@user/grayhatter
+the problem I have it that stdlib has no easy to use "event system"
+
+1733161167
+ifreund!2940d10f8b@user/ifreund
+libxev is probably the best zig event loop library around currently if you're looking for one
+
+1733161192
+grayhatter!~grayhatte@user/grayhatter
+if stdlib had a nice ergonomic way to manage this, I wouldn't be complaining about it... I'm annoyed that stdlib is making this decision for me... but as you said 95% of the time it's right
+
+1733161196
+ifreund!2940d10f8b@user/ifreund
+i don't remember if it has signal handling yet though
+
+1733161294
+grayhatter!~grayhatte@user/grayhatter
+ifreund: I'm not looking to add a dep that should exist in stdlib
+
+1733161300
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: interesting, thanks
+
+1733161346
+ifreund!2940d10f8b@user/ifreund
+I wonder if I can bring up the time EINTR handling bit me in rust without starting a flamewar
+
+1733161348
+ifreund!2940d10f8b@user/ifreund
+https://codeberg.org/ifreund/waylock/commit/11b4bae7b3bc0019da0b12196a2a48816f32fa97
+
+1733161362
+ifreund!2940d10f8b@user/ifreund
+(from back before I rewrote waylock in zig)
+
+1733161383
+ifreund!2940d10f8b@user/ifreund
+this could cause the lockscreen to exit prematurely when the system was suspended
+
+1733161398
+ifreund!2940d10f8b@user/ifreund
+which is a pretty bad bug for a lockscreen
+
+1733161515
+ifreund!2940d10f8b@user/ifreund
+this was of course before I wrote the ext-session-lock-v1 protocol which made the lockscreen exiting not a security problem
+
+1733167331
+andrewrk!~andrewrk@mail.ziglang.org
+oh that's interesting
+
+1733171852
+Earnestly!~earnest@user/earnestly
+ifreund: (That eintr issue is also quite common with ioctls)
+
+1733180547
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what does a fs.Dir { .fd = -100 } mean?
+
+1733180551
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(I’m using std.fs.cwd())
+
+1733180573
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(I have a error.FileNotFound on trying to open a file from that dir)
+
+1733180818
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess it’s AT_FDCWD
+
+1733182004
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+Is there a way to duplicate an iterator?
+
+1733182050
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why is the file descriptor -100? On Linux, the lowest available file descriptor is usually given when you open something, and (unsigned) -100 is greater than 4 billion.
+
+1733182185
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Source: open(2)
+
+1733182193
+clevor!sid649024@id-649024.hampstead.irccloud.com
+(man page)
+
+1733182274
+clevor!sid649024@id-649024.hampstead.irccloud.com
+( hadronized )
+
+1733182317
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah yeah I actually looked at the source haha
+
+1733182323
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and my problem was linked to something else
+
+1733182325
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I wrong symlink
+
