@@ -1,0 +1,200 @@
+1733286936
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: you can already catch those if you just run under `valgrind` IIRC
+
+1733286964
+grayhatter!~grayhatte@user/grayhatter
+daurnimator: only if you reach that code though right?
+
+1733286988
+grayhatter!~grayhatte@user/grayhatter
+I haven't used valgrind in years, I suspect I'm likely missing out on some of it's features
+
+1733287133
+grayhatter!~grayhatte@user/grayhatter
+but full disclosure; I was also trying to trick a dev into making `return undefined;` a compile error
+
+1733290413
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter: yes only if the code is executed
+
+1733308902
+piero!~piero@user/piero-libero:64896
+Hello, beginner question - my zig version is 0.14.0-dev, where would the doc be? (0.13 is notably missing unicode.isUpper() )
+
+1733309037
+piero!~piero@user/piero-libero:64896
+and, another beginner question...zig is now self-hosted, but (coming from go) in my understanding, self-hosted is when you don't use llvm at all. Is that a goal of the language?
+
+1733309277
+squeek502!~squeek502@user/squeek502
+piero, 0.14.0-dev docs would be the master branch docs: https://ziglang.org/documentation/master/std/
+
+1733309310
+squeek502!~squeek502@user/squeek502
+however, there is still no `std.unicode.isUpper` and most likely never will be, since Zig is not currently planning on depending on the unicode data
+
+1733309398
+squeek502!~squeek502@user/squeek502
+see https://codeberg.org/atman/zg if you need a unicode isUpper function, or std.ascii.isUpper if you only actually care about ASCII
+
+1733309562
+squeek502!~squeek502@user/squeek502
+for your second question, being self-hosted and using LLVM are unrelated concepts, see https://ziglang.org/news/goodbye-cpp/ for a description of Zig's self-hosting
+
+1733309620
+squeek502!~squeek502@user/squeek502
+no longer depending on LLVM does happen to be a long-term goal, though, see https://github.com/ziglang/zig/issues/16270
+
+1733309790
+piero!~piero@user/piero-libero:64896
+@squeek502 thanks!
+
+1733313373
+piero!~piero@user/piero-libero:64896
+what does the context parameter mean here?
+
+1733313375
+piero!~piero@user/piero-libero:64896
+pub fn sort( comptime T: type, items: []T, context: anytype, comptime lessThanFn: fn (@TypeOf(context), lhs: T, rhs: T) bool, ) void
+
+1733314627
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+piero, it's whatever context the comparison function needs to do its job, often nothing is needed
+
+1733315311
+piero!~piero@user/piero-libero:64896
+ok thanks
+
+1733315536
+piero!~piero@user/piero-libero:64896
+also...I see a list of formatting options for print here: https://github.com/ziglang/zig/blob/master/lib/std/fmt.zig but this list does not make it to the documentation AFAICS
+
+1733317501
+squeek502!~squeek502@user/squeek502
+piero, https://ziglang.org/documentation/master/std/#std.fmt.format
+
+1733340881
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Hmm, I'm trying to build a C library that uses CMake as its build system, and then use that with Zig, ideally without reworking things to use a different build system (because I might update again later/might have the same issue with other libraries). Does anyone have experience with doing this from a Windows-based environment?
+
+1733340968
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+I found a few articles that suggest to remap CC/CXX/etc to remap to `zig cc`, and make wrapper scripts to run `zig ar`/`zig ranlib`, but when I try this on windows, CMake completely ignores the environment variable side of things and just builds stuff with Visual Studio anyways
+
+1733341149
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Ultimately I want to try out SDL3, but from Zig, and ideally without depending on a third-party wrapper lib that could always stop being maintained at some point. As a temporary measure, I suppose I can manually build SDL first with native compiler and then use it afterwards, but ideally I want to be able to take advantage of zig cc to simplify cross-platform building.
+
+1733341755
+grayhatter!~grayhatte@user/grayhatter
+Overkill: how confident are you that' cmake isn't, either caching previous pre-compilation steps/configs? and b) that there's not another magic cmake variable somewhere that's explicitly overriding your cc config? 
+
+1733341818
+grayhatter!~grayhatte@user/grayhatter
+fallback question, have you considered replacing cmake with zig's build system? The idea I'm thinking of is https://github.com/allyourcodebase/
+
+1733341820
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+is there any to convert an iterator to a 2d array?
+
+1733341861
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+I am splitting a text file by newlines and want an array of the lines
+
+1733341931
+grayhatter!~grayhatte@user/grayhatter
+m257: not normally. Some iterators can provide it, but the point of an iterator is to do lazy evaluation. if you're going to exit half way through, you don't want to process the whole datasource, or if you need to verify the last line is valid, before processing the first line, you don't want to use an iterator
+
+1733342030
+grayhatter!~grayhatte@user/grayhatter
+if you're **sure** you want an array of lines, `std.mem.count(u8, source, "\n");` and `allocator.alloc([]const u8, count);`
+
+1733342115
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+thank you
+
+1733342117
+grayhatter!~grayhatte@user/grayhatter
+m257: is there a specific problem you're trying solve with a 2d array? or are you just looking for a format you're more comfortable with?
+
+1733342126
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+grayhatter: Not very confident yet! Basically, I don't use CMake for much of anything on my own stuff. I was trying a Windows batch file that did `set CC="zig cc"` etc, and then did a few of the ideas I found in this article here: https://dev.to/hamishmilne/zig-cmake-4pmc
+
+1733342139
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+I am doing AoC day4
+
+1733342140
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+but it seems like CMake disregards the environment CC setting on Windows, so I'm wondering if maybe I need the same workaround they did for ar/ranlib, wrapping it in a script and then use a commandline arg that uses absolute path to the executable. And other people were telling me maybe a toolchain file might be a better idea?
+
+1733342187
+grayhatter!~grayhatte@user/grayhatter
+Overkill: cmake will ignore config changes in a non-deterministic way (or perhaps I'm just not smart enough to predict cmake)
+
+1733342209
+grayhatter!~grayhatte@user/grayhatter
+I've taken to deleting the build directory everytime I make *any* changes to cmake
+
+1733342232
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Yeah I'm doing something similar here whenever I re-invoke cmake just in case
+
+1733342236
+grayhatter!~grayhatte@user/grayhatter
+well... actually, I've taken to avoiding cmake 
+
+1733342266
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Hahah yeah that's fair.
+
+1733342280
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+I'm so far trying to avoid convert upstream library dependencies to Zig's build system, if I can avoid it. Because if I ever update, I need to mirror any changes to the build settings to my version, which sounds like its own can of worms.
+
+1733342293
+grayhatter!~grayhatte@user/grayhatter
+Overkill: cmake likes to ignore a lot of env vars. I'd try setting the cc directly within the root cmakelists.txt
+
+1733342353
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Ahhh that's worth a shot. Yeah I'll see what I can come up with here.
+
+1733342438
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+But that github you linked looks like a promising alternative too... I'd like to still give this a go first, but I guess SDL's a common enough project that if it has community support already, that's nice. (I've been curious about the SDL3 previews, particularly because of its GPU API stuff)
+
+1733342451
+grayhatter!~grayhatte@user/grayhatter
+Overkill: I'm not sure the exact scope you're looking at, but did wanna confirm that you saw SDL already has a build.zig version?
+
+1733342524
+grayhatter!~grayhatte@user/grayhatter
+which if you're looking to use SDL, in a different project, and not just build SDL, it might be a useful starting point too
+
+1733342686
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Yep I saw the SDL2 repo by ikskuh + andrew kelley's SDL thing too. Wanted to try SDL3 specifically though. I saw a project by Gota7, but the repo explicitly mentions it's not production-ready. So I'd ideally like to just build SDL from source myself and use it that way. Plus I figured it'd be useful exercise to learn in case there's ever another CMake-based library I want to use.
+
+1733342760
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+I guess I could start with smallest steps, just getting literally anything building here with zig cc invoked through CMake. And this at least gives some starting ideas there.
+
+1733342789
+grayhatter!~grayhatte@user/grayhatter
+interesting... I wonder why the SDL repo has diverged by 6.1k commits 
+
+1733345980
+motiejus!~motiejus@88.223.107.21
+Is Arocc a "good" place to look for data-oriented-design practical examples? I know zig/src has some good stuff, but trying to understand lexer so far has been.. overwhelming; whereas I find arocc quite approachable.
+
+1733346000
+motiejus!~motiejus@88.223.107.21
+In other words, are there areas in arocc I should *not* look as inspiration? :)
+
+1733354840
+aquamo4k!~mross@162.222.54.134
+what's arocc?
+
