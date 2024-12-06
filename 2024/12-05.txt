@@ -1,0 +1,424 @@
+1733359979
+torque!~tachyon@user/torque
+https://github.com/Vexu/arocc
+
+1733372644
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+in c++ I'm used to passing "big" values around by const reference to save on unecessary copies. is there a similar mechanism in zig? I think in go they tend to pass things around by pointer for the same reason
+
+1733372918
+torque!~tachyon@user/torque
+the compiler can decide automatically whether to pass types by reference or value
+
+1733372929
+torque!~tachyon@user/torque
+you can always explicitly pass a pointer if you want to
+
+1733373364
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+is there a way to force it to pass by value?
+
+1733373377
+m257!~maaz@bras-base-hspron0502w-grc-17-174-91-157-49.dsl.bell.ca
+(just wondering)
+
+1733373407
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: ah nice nice
+
+1733373412
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+one less thing to worry about
+
+1733373440
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+parameters are always immutable (right?) so why would it ever make sense to pass by value?
+
+1733373471
+torque!~tachyon@user/torque
+implicit pass by reference can be a minor footgun if you have two parameters that alias
+
+1733373504
+torque!~tachyon@user/torque
+I've never run into that problem, though, I think it's a very uncommon case
+
+1733373669
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+footguns are the worst
+
+1733373672
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I have many holes in my foot
+
+1733373747
+torque!~tachyon@user/torque
+I don't think there's any way to enforce passing by value (you can make a function use the C calling convention, but then it can only take C abi types like extern structs)
+
+1733373888
+torque!~tachyon@user/torque
+basically if you have `fn dangerous(a: Complex, b: *Complex) void` and you call it with `dangerous(foo, &foo)` and it modifies b through the pointer, if a was passed by reference, those changes will be visible in a, even though a appears to be constant from the signature
+
+1733381989
+andrewrk!~andrewrk@mail.ziglang.org
+motiejus: I can't speak for the code quality of arocc 
+
+1733382087
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps you might get something out of https://codeberg.org/andrewrk/player/src/branch/main/shared/Db.zig
+
+1733396525
+Earnestly!~earnest@user/earnestly
+torque: (Ada has 'in' 'out' and 'in out' annotations for the parameters in functions/procedures. in is readonly, out is writeonly, in out is readwrite)
+
+1733402662
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Earnestly: That smells like Rust borrowing. `&var` vs `&mut var`
+
+1733402700
+piero_libero!~piero@user/piero-libero:64896
+hello...I don't understand why this compiles:
+
+1733402709
+piero_libero!~piero@user/piero-libero:64896
+var b_r = std.io.bufferedReader(std.io.getStdIn().reader());
+
+1733402710
+piero_libero!~piero@user/piero-libero:64896
+	var r = b_r.reader();
+
+1733402719
+piero_libero!~piero@user/piero-libero:64896
+but this does not:
+
+1733402739
+piero_libero!~piero@user/piero-libero:64896
+	var r = std.io.bufferedReader(std.io.getStdIn().reader()).reader();
+
+1733402769
+piero_libero!~piero@user/piero-libero:64896
+readln.zig:4:59: error: expected type '*io.buffered_reader.BufferedReader...
+
+1733403890
+piero_libero!~piero@user/piero-libero:64896
+ok I got it myself...I should have called unbufferedReader()
+
+1733408427
+Anthony-J-G!~Anthony-J@user/Anthony-J-G
+My internet has been bugging today so not sure if this sent and I'm not sure if this is the correct place, but I'm new to using Zig, is this the right place to come if you need help with something that's not a bug or technically a language proposal?
+
+1733408502
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Anthony-J-G: yes. If you are actively working on stdlib or compiler dev then zulip is the right place, but this place is good for general help
+
+1733408597
+Anthony-J-G!~Anthony-J@user/Anthony-J-G
+At the moment my goal was customizing stdlib for my own purposes and if it seemed performant/useful enough then considering making something more official. I'm trying to figure out a way to use my fork of stdlib as a dependency and using that inside of a `build.zig` instead of the canonical stdlib but I feel as if I'm doing it wrong
+
+1733409062
+Anthony-J-G!~Anthony-J@user/Anthony-J-G
+rockorager I opened a conversation on zulip, thanks for the direction!!
+
+1733415009
+interpunct!cc60843162@user/interpunct
+if your library only depends on something when it runs a specific step that many people might not need, is the right way to do it just always have it as a dependency anyway, or is there a way to declare a lazyDependency that only is included when a step is run?
+
+1733415643
+Earnestly!~earnest@user/earnestly
+clevor: more, 'out' acts similar out pointers in C and so the value will be available after the func/proc ends. E.g. https://0x0.st/X7xY.txt
+
+1733417423
+Krajina!~Krajina@user/Krajina
+hi guys, can I get a quick check on how stupid I am please?  I'm trying to learn zig via advent of code, and ingesting the text files is killing me.  i feel like it shouldn't be this hard (because this stuff is quick and easy in python, which is my bias) https://pastebin.com/rAu5DWwF <-- this is to try to grab the data for day 5 https://adventofcode.com/2024/day/5
+
+1733417481
+Krajina!~Krajina@user/Krajina
+I get to the end of the function and then see segmentation fault, so something to do with allocation and lifetimes or such must be happening, but also I mean generally, this all feels massively hammed up, is this just the reality of low-level stuff like zig or am I missing somethign
+
+1733417574
+grayhatter!~grayhatte@user/grayhatter
+Krajina: it's a totally normal part/process in coming from python. I've had, and still have the exact same issues when I'm trying to solve a problem like python. 
+
+1733417624
+grayhatter!~grayhatte@user/grayhatter
+I normally attribute it to expecting the code do to something that I didn't specifically ask it to do. Python can guess more than Zig will try to
+
+1733417682
+grayhatter!~grayhatte@user/grayhatter
+where's the segfault you're getting? (does the stack dump give you a line number?)
+
+1733418014
+Krajina!~Krajina@user/Krajina
+it's in zig_install/lib/compiler_rt/memset.zig:19:14: so like, not inside the code i am showing, but the print statements near the bottom show the right stuff so i assume it's right at the end
+
+1733418040
+Krajina!~Krajina@user/Krajina
+i also put a print statement right after i call the function inside main() or solve() or whatever and that never fires, so it's like, pinned down to the return?
+
+1733418056
+grayhatter!~grayhatte@user/grayhatter
+does it have a line with your code in it?
+
+1733418079
+grayhatter!~grayhatte@user/grayhatter
+could you put the whole error into another paste?
+
+1733418212
+grayhatter!~grayhatte@user/grayhatter
+also, as a pro tip, you're using a count iterator, but it' probably be easier to read (and faster) if you used std.mem.count() e.g. `const rules_count = std.mem.count(u8, rules_section, "\n");`
+
+1733418256
+Krajina!~Krajina@user/Krajina
+Oh! in the middle of the stack it's upset about the defer, it works if I remove the line "defer allocator.free(input);" x_x
+
+1733418257
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Krajina: I suggest you use an arena allocator; it’s a pain to keep having to defer *.deinit() everywhere, especially for AoC where we don’t care that much about memory
+
+1733418301
+Krajina!~Krajina@user/Krajina
+yeah so I definitely have no idea what the difference between the allocators are, in my main function i have `const allocator = std.heap.page_allocator;` and that's what I'm passing in
+
+1733418329
+grayhatter!~grayhatte@user/grayhatter
+Krajina: so, this is something I only suggest because AOC solutions are linear, and the program exits after completing, but I wouldn't free any memory you allocate 
+
+1733418387
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Krajina: the page allocator is the most basic thing you can think of; you allocate memory with it by asking pages to the kernel
+
+1733418393
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and you deallocate when you want to get rid of the memory
+
+1733418406
+hadronized!~hadronize@2001:41d0:a:fe76::1
+an arena allocator is just a way to leak memory so that you don’t need to free everywhere
+
+1733418409
+grayhatter!~grayhatte@user/grayhatter
+you can just let the OS clean up the memory/files for you... this is almost always a mistake with bigger problems, or programs that aren't quick one shots, so buyer beware for this suggestion, but for AOC, you almost never want to free
+
+1733418420
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but once you deinit() the arena allocator, it frees the memory for you
+
+1733418430
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://ziglang.org/documentation/0.13.0/#Choosing-an-Allocator
+
+1733418432
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you can also indeed just never deallocate, since the OS will do it for you anyway
+
+1733418480
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Number 4 in that list of choosing an allocator has an example of arena allocator
+
+1733418599
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for AoC, my code around memory handling: https://git.sr.ht/~hadronized/advent-of-code-2024/tree/master/item/zig/src/lib.zig
+
+1733418634
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also Krajina, you can have a look at @embedFile; it can make your life easier if you don’t care too much about testing on many different inputs
+
+1733418831
+Krajina!~Krajina@user/Krajina
+yeah i'm embedding the main solution but i'm also adding tests along the way, but all this is only to take the string ([]const u8 I suppose) and extract the numbers, compared to this the actual puzzle is kind of trivial :D
+
+1733418858
+Krajina!~Krajina@user/Krajina
+that won't be as true towards the end of the month though to be fair, last year it got pretty headscratchy
+
+1733418962
+Krajina!~Krajina@user/Krajina
+anyway thanks for this guys, amazing
+
+1733418993
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Krajina: do you have any experience with low-level languase?
+
+1733418995
+hadronized!~hadronize@2001:41d0:a:fe76::1
+languages*
+
+1733419044
+Krajina!~Krajina@user/Krajina
+hadronized: absolutely none, i learned python for fun, then i learned pl/sql and c# for work
+
+1733419060
+hadronized!~hadronize@2001:41d0:a:fe76::1
+interesting :)
+
+1733419063
+hadronized!~hadronize@2001:41d0:a:fe76::1
+not even C?
+
+1733419074
+hadronized!~hadronize@2001:41d0:a:fe76::1
+there are a bunch of languages out there like Zig
+
+1733419077
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Hare, Nim, C3
+
+1733419086
+hadronized!~hadronize@2001:41d0:a:fe76::1
+lots of stuff to look around :)
+
+1733419112
+Krajina!~Krajina@user/Krajina
+...and then we did some react when we found out that front-end was being slow and we could pitch in, lol, but I mean I chose zig precisely because I learned enough to become aware that I was ignorant of low-level concepts
+
+1733419143
+Krajina!~Krajina@user/Krajina
+I skipped C because zig is supposed to be better, it's C with the problems fixed, and it's interoperable, so why not
+
+1733419208
+grayhatter!~grayhatte@user/grayhatter
+Krajina: as someone that enjoys C, that's exactly what appealed to me. The control and flexability of C, but with modern langauge features
+
+1733419257
+grayhatter!~grayhatte@user/grayhatter
+It would be unfair to both langs to say Zig is a better version of C, but is kinda how it feel :D
+
+1733421538
+ifreund!2940d10f8b@user/ifreund
+Ke
+
+1733421569
+ifreund!2940d10f8b@user/ifreund
+Krajina: it sounds like you were freeing the result of @embedFile()
+
+1733421623
+ifreund!2940d10f8b@user/ifreund
+thats not allowed, you may only free memory allocated using the same allocator as the one used to free it
+
+1733421685
+grayhatter!~grayhatte@user/grayhatter
+^ another reason to avoid embedFile 
+
+1733421798
+ifreund!2940d10f8b@user/ifreund
+I dont think there's any problem with using @embedFile
+
+1733421821
+ifreund!2940d10f8b@user/ifreund
+the issue here was that the parsing function free'd memory it didn't allocate
+
+1733421997
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, Zig doesn’t have the information at the type-level to know whether a pointer was allocated (owns memory) or not (borrows memory)
+
+1733422290
+grayhatter!~grayhatte@user/grayhatter
+using @embedFile, which stores data in the .text (IIRC) section requires understanding the differences between heap allocated data, and .text data. The former being a lot easier to understand and reason about given it's *significantly* less esoteric 
+
+1733422403
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+do you apply that logic to string literals too
+
+1733422404
+grayhatter!~grayhatte@user/grayhatter
+avoid @embedFile unless you have a specific reason to use it, is generally good advice
+
+1733422446
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: yes, I do
+
+1733422509
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you avoid string literals and allocate strings on the heap instead?
+
+1733422511
+grayhatter!~grayhatte@user/grayhatter
+but string literals are slightly different than @embedFile
+
+1733422564
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they're literally the same as a string literal, with contents from the file
+
+1733422583
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: if I'm using strings as part of code, no, they belong in the code, or in the .text. If I'm using them as data, and that data by intent lives outside of the binary? I don't include them, and will allocate and read them
+
+1733422693
+grayhatter!~grayhatte@user/grayhatter
+if you wanted to give someone general advice on how to write a well formed AOC solution, would you tell them to use embedFile, or would you tell them to read the input from the file given as argv[number]?
+
+1733422749
+grayhatter!~grayhatte@user/grayhatter
+there's nothing wrong with using @embedFile, but when your program won't/cant function without **that** data, and you're confident that data wont change
+
+1733423231
+grayhatter!~grayhatte@user/grayhatter
+hell, there's nothing wrong with using @embedFile, because you wanna play around with cool lanugage features, and I'd encourage everyone to play around with the cool and esoteric features of a language. But generally telling people new to programming, or just learning their 2nd lanugage, or learning their first systems/compiler langugae, that the "correct" way, is to use @embedFile, is rude given it's
+
+1733423233
+grayhatter!~grayhatte@user/grayhatter
+more likely to mess them up later down the line. I'm not discounting @embedFile being useful, I'm using it in include html myself. It's fun to use it for AOC, but it's a funny hacky method, and it should come with that disclaimer. "The right way would be readFileAlloc() but you can also use @embedFile which is a cool hacky way to do it quickly"
+
+1733423439
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: more specifically, the string literal analog for data (instead of code control flow), that I'm thinking of is human readable strings. You might want to embed them into the binary, but translatations shouldn't live within the source code, they should live along side. It's much easier on translators if they don't have to understand the source code for your language
+
+1733423647
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+embedFile doesn’t seem like the wrong thing in these cases
+
+1733423686
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: at work we store translations in separate files that are embedded in the binaries at build time, so equivalent to embedFile
+
+1733423731
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+my point was that it's not "esoteric" at all
+
+1733423895
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: that's my point. Strings or data that is not part of the code, but needs to exist for the code to run, should be embedded
+
+1733423978
+grayhatter!~grayhatte@user/grayhatter
+But does your code ever alter it's program flow based on said translations? Or does it transform the tranlation-strings at runtime?
+
+1733424131
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't see how that's relevant
+
+1733424192
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but yes, it does
+
+1733424239
+grayhatter!~grayhatte@user/grayhatter
+....wait, I was typing a different answer, but now I have to know. Why does your program mutate tranlation strings at runtime?
+
+1733424251
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+mutate? no, but transform
+
+1733424274
+grayhatter!~grayhatte@user/grayhatter
+transform is a synonym for mutate... so I don't understand
+
+1733424278
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, it's not
+
+1733424295
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+transform implies non-destructive
+
+1733424332
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or at the very least, mutate implies destructive
+
+1733424442
+grayhatter!~grayhatte@user/grayhatter
+ok, nevermind then
+
+1733442666
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+generally, should I prefer a MultiArrayList(MyStruct) to an ArrayListUnmanaged(MyStruct)?
+
