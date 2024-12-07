@@ -1,0 +1,772 @@
+1733445276
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, my understanding is that there is no 'general' answer for that question
+
+1733445338
+squeek502!~squeek502@user/squeek502
+the MultiArrayList doc comment provides some info about when it can be useful: "This allows for memory savings if the struct or union has padding, and also improves cache usage if only some fields or just tags are needed for a computation."
+
+1733445380
+squeek502!~squeek502@user/squeek502
+i.e. if you are going to be looping over one field at a time, then it will be beneficial
+
+1733445391
+grayhatter!~grayhatte@user/grayhatter
+I'd consider the talk Andrew gave on DOD to be "required reading" if you're considering a multiarraylist
+
+1733445411
+squeek502!~squeek502@user/squeek502
+good call, here's the video: https://vimeo.com/649009599
+
+1733445610
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'll give the talk a look!
+
+1733445621
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I wonder what are the downsides to the MultiArrayList though?
+
+1733445867
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: the talk gives a lot more details way better than my feeble attempt to describe them would be. It has to do with how you're accessing data
+
+1733445990
+grayhatter!~grayhatte@user/grayhatter
+if your code needs to act on a single field across a whole array of structs, multiarraylist will drastically speed up your data access given how the memory will be loaded onto the CPU. If you're more likely to act on many fields from a single item in an array, multiarraylist will be much slower, because of the same memory loads
+
+1733446179
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah yea, that makes sense, and yea I'll definitely give the video a look
+
+1733450422
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+what's a safe way to loop through a HashMap (by Key) and pop items as I'm looping?
+
+1733450747
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, I guess I'll do `while (myMap.count() > 0) { // do stuff that pops stuff}`
+
+1733450798
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+nah but then how do I know which keys to iterate over
+
+1733450818
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you could call keys() to get a slice of the keys and then do a for loop over those
+
+1733450896
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I’m not sure if popping invalidates the key slice, actually
+
+1733450911
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+rockorager: I don't see keys() documented here https://ziglang.org/documentation/master/std/#std.hash_map.HashMapUnmanaged, though I did see it used in the source for iterator(), is it safe to use? I assumed it was meant to only be used internally
+
+1733450920
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+rockorager: right, that's what I was worried about
+
+1733451006
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I suppose I could maintain a list of keys I want to pop, and as I'm iterating, consult that list to determine if I should disregard any particular value
+
+1733451017
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+seems wasteful but at least it's a solution 😅
+
+1733452006
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, ArrayHashMap supports modification while iterating
+
+1733452140
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔 oh rly
+
+1733452159
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+maybe I want ArrayHashMap then...
+
+1733452245
+reykjalin!7e28cf3a41@user/reykjalin
+you could also make the function recursive until count == 0 I guess?
+
+1733452277
+reykjalin!7e28cf3a41@user/reykjalin
+ArrayHashMap seems more semantically correct though
+
+1733452300
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea
+
+1733452326
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+as I'm working on the problem though I think I'm realizing that mostly I want to modify the Values not the Keys, which my gut says should be safe as-is
+
+1733452424
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there a similar datastructure in zig to a std::set in c++? e.g. a 1-dimensional ordered list with fast lookup (due to hashing I guess)?
+
+1733452688
+torque!~tachyon@user/torque
+hashmaps with a value type of `void` are functionally sets
+
+1733452728
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh need, didn't realize I could set the value to type `void`
+
+1733452736
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+*neat
+
+1733454870
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+when doing something like `for (someSlice) |val| {...}` is `val` a copy, or if I mutate it in the loop will that persist?
+
+1733454888
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+where would I find documentation on this?
+
+1733454912
+torque!~tachyon@user/torque
+you cannot mutate it
+
+1733454937
+torque!~tachyon@user/torque
+however you can do `for (someSlice) |*val| {...}` to make the captured element mutable
+
+1733454986
+torque!~tachyon@user/torque
+(specifically, to make it a pointer)
+
+1733455006
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.13.0/#for you can see this in the section labeled "for reference"
+
+1733455034
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+awesome, thanks for the explanation and the link
+
+1733455338
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+in c++ I'm used to `myPtr->nestedField = "newVal"` to access fields of a pointer to a struct. in zig though I guess I just do `myPtr.nestedField = "newVal"` for the same effect? this feels odd since there's also `myPtr.*` to dereference the pointer. or is it `myPtr.*.nesteField = "newVal"`?
+
+1733455484
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Second is needed to set the value at the pointer, but you can just access the value at the pointer without de referencing 
+
+1733455564
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I see, so `myPtr.*.nestedField =...` to change the value, but `std.debug.print("{s}\n", .{myPtr.nestedField};` to access the value?
+
+1733456246
+torque!~tachyon@user/torque
+that's not correct
+
+1733456269
+torque!~tachyon@user/torque
+you can modify through the pointer with `my_ptr.nested_field = 123`
+
+1733456286
+torque!~tachyon@user/torque
+the zig compiler is smart enough to dereference the pointer through `.` automatically
+
+1733456309
+torque!~tachyon@user/torque
+you only need `.*` to explicitly dereference a pointer or set the value of the pointee directly
+
+1733456345
+torque!~tachyon@user/torque
+i.e. `const copy: u8 = my_ptr.*` or `my_ptr.* = .{ .nested_field = 123 }`
+
+1733456479
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Oh that don’t listen to me sorry
+
+1733457198
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, now I'm a little confused though
+
+1733457224
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+what do you mean "set the value of the pointee directly"? as opposed to what?
+
+1733459231
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: in the above example, my_ptr is a memory address and if you go to that memory address that's where the data actually exists. my_ptr = something, is changing the address the compiler will go to. my_ptr.* = something changes the data that exists there
+
+1733459283
+grayhatter!~grayhatte@user/grayhatter
+my_ptr = green_house vs my_ptr.* = list_of_plants
+
+1733459419
+grayhatter!~grayhatte@user/grayhatter
+torque: std.BufSet exists (and it's exactly what you described)
+
+1733459498
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: yes that makes sense to me, but `my_ptr.nestedField = val` vs `my_ptr.*.nestedField = val` is where I'm confused, are these functionally the same?
+
+1733459529
+grayhatter!~grayhatte@user/grayhatter
+ahh, ezzieyguywuf my bad, you clearly already have a handle on pointers. because in zig trying to access a field on a pointer is always invalid, as said above it will insert the pointer deref for you.
+
+1733459555
+torque!~tachyon@user/torque
+yes, they're functionally the same
+
+1733459568
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah hah, I see, so it's not a compile-time error, it's just some syntactic sugar around the long form `my_ptr.*.nestedField = val`
+
+1733459573
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+gotcha, thanks for the help :)
+
+1733459574
+torque!~tachyon@user/torque
+cases where you have pointers to pointers may require some finagling, I don't recall, that's fairly uncommon in zig thanks to having proper arrays and slices
+
+1733459576
+grayhatter!~grayhatte@user/grayhatter
+they're exactly the same, because technically your first example "would" be illegal, zig will use what is your second example
+
+1733459604
+grayhatter!~grayhatte@user/grayhatter
+makes the code a lot eaiser to read as long as you don't forget the type
+
+1733459639
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea, although honestly I'm quite fond of the post-fix dereference vs pre-fix from C/C++
+
+1733459659
+torque!~tachyon@user/torque
+yeah the post fix deref feels very natural to me
+
+1733459666
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I sort of prefer the more explicit `my_ptr.*.nestedField = val` since it makes it more obvious what's going on
+
+1733459714
+torque!~tachyon@user/torque
+eh, I always hated the `.` vs `->` distinction in C so I am glad zig unifies them
+
+1733459725
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: there's plenty of places where I agree with you, they're the same so no reason you couldn't pick which you prefer 
+
+1733459732
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1733459757
+torque!~tachyon@user/torque
+zig lets you hide a lot of typing stuff, let the compiler worry about whether or not something is a pointer
+
+1733459843
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea, I'm still getting used to that. I tend to prefer more explictness, specifically in specifying types, but I can see how the way zig is designed I shouldn't necessarily have to worry about this as much
+
+1733459974
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but e.g. one thing I tend to dislike about c++ is it's not obvious at a call site if a function is taking a reference or a copy of a parameter, e.g. `void foo(int& val)`, at the call site `foo(myInt);` it's not obvious that `myInt` can be mutated on my behalf.
+
+1733460000
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+"let the compiler worry about whether or not something is a pointer" gives me similar vibes, but I'm extremely new to zig so it could just be that I need to get more comfortable with how things are done here
+
+1733460344
+torque!~tachyon@user/torque
+well, zig will not implicitly convert non-pointers into pointers the way that references work
+
+1733460519
+grayhatter!~grayhatte@user/grayhatter
+torque: counter point, function args
+
+1733460532
+torque!~tachyon@user/torque
+also, anything declared `const` can only be turned into a pointer to a const value, which can't be modified (well, @constCast exists)
+
+1733460588
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/#Pass-by-value-Parameters
+
+1733460597
+torque!~tachyon@user/torque
+grayhatter, that's different because function args are immutable
+
+1733460616
+torque!~tachyon@user/torque
+if you want a mutable parameter you have to explicitly pass a pointer
+
+1733460630
+grayhatter!~grayhatte@user/grayhatter
+yeah, once you grok that, it's *so nice*
+
+1733460669
+torque!~tachyon@user/torque
+a better counterexample would be that the compiler will automatically reference the `self` parameter for method-like functions on types
+
+1733460687
+torque!~tachyon@user/torque
+but of course that still respects the constness of the source
+
+1733460706
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Has there been any discussion for a compiler error if a function takes a *Struct (instead of *const Struct) and doesn't mutate the arg?
+
+1733460735
+grayhatter!~grayhatte@user/grayhatter
+rockorager: SHHHHH, what are you doing!? don't give them any ideas
+
+1733460749
+torque!~tachyon@user/torque
+I suspect that might be part of the proposal for detecing unmodified variables also
+
+1733460778
+grayhatter!~grayhatte@user/grayhatter
+I'm already sad I lost my `var not_mutated`, now I havet to type 2 more char every time, and all my vars don't line up anymore :sob:
+
+1733460781
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I ran into this with one of this zig-sqlite libs...the main struct is a Db { sqlite: *anyopaque }, but all the methods required a *Db....when it really doesn't need to be
+
+1733460807
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+s/this/the
+
+1733460914
+torque!~tachyon@user/torque
+my inverse complaint on this one is fs.Dir.close setting self to undefined for some mystery reason even though like no other deinit function does this
+
+1733460935
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/vrischmann/zig-sqlite/blob/712da48cb7f48358ceaa925887c83b6d93887503/sqlite.zig#L412-L415
+
+1733460948
+grayhatter!~grayhatte@user/grayhatter
+torque: I'm with you, that's really agravating 
+
+1733461030
+torque!~tachyon@user/torque
+I bet they would take a patch for that sqlite one
+
+1733461045
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+torque: Yeah, I thought about it haha
+
+1733461084
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+That's just the one that made me realize that every where else gets checked, but args don't
+
+1733461164
+torque!~tachyon@user/torque
+well, I think the var check is done really early on in the compiler pipeline so doing the analysis on pointers is probably a lot harder
+
+1733466471
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+If I struct `CoolStruct` with a field `version: u16`, can I use one of those @ functions to get the type of this field from outside the struct definition? So far I have found `@Type(@field(...))` but this requires me to instantiate this struct. Thanks.
+
+1733466660
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You want @typeInfo https://ziglang.org/documentation/master/#typeInfo
+
+1733466943
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+Seems like the .@"struct" field is an array. I will just define the type used by the field as a constant and use that everywhere.
+
+1733467282
+torque!~tachyon@user/torque
+there's `std.meta.FieldType`
+
+1733467329
+torque!~tachyon@user/torque
+0.14-dev moved that to an `@FieldType` builtin recently
+
+1733467388
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/#FieldType
+
+1733467553
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+Thanks a lot. This looks great.
+
+1733467926
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+If I call a function `fn someFunction(para: SomeStruct)`, does the struct get copied when it is called?
+
+1733468413
+torque!~tachyon@user/torque
+not necessarily
+
+1733468447
+torque!~tachyon@user/torque
+the compiler can decide if it wants to pass by reference instead of by value
+
+1733468542
+torque!~tachyon@user/torque
+since `para` is immutable, it should be semantically the same (there is currently an edge case where you can surprise yourself if it is aliased by a mutable parameter, but this is very uncommon)
+
+1733469630
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+Thanks
+
+1733479749
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: the way the compiler decide that is by comparing the size of the type passed to the size of a pointer, right?
+
+1733479757
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if it’s the same or lower, it goes by value, otherwise by ref?
+
+1733479788
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess it can be a bit more complicated than that with all the location semantic rules
+
+1733491804
+piero_libero!~piero@user/piero-libero:64896
+Hi, is it possible in Zig to have a for with no condition, like in Go? for { do something, eventually break}
+
+1733491940
+Amun-Ra!~amun-ra@retro.rocks
+while (true) {}
+
+1733491978
+piero_libero!~piero@user/piero-libero:64896
+ah ok thanks
+
+1733492774
+piero_libero!~piero@user/piero-libero:64896
+what is the correct formatting verb (option) for an error? catch |err| { std.debug.print("{?}", .{err}); }
+
+1733493747
+meidam!~meidam@user/meidam
+{!}
+
+1733493946
+piero_libero!~piero@user/piero-libero:64896
+thanks!
+
+1733497326
+piero_libero!~piero@user/piero-libero:64896
+I'm trying to sort a slice of strings and this does not work: std.mem.sort([]const u8, items, {}, std.sort.asc([]const u8));  error: operator < not allowed for type '[]const u8'
+
+1733497536
+hadronized!~hadronize@2001:41d0:a:fe76::1
+piero_libero: it’s because std.sort.asc is only for scalar IIRC
+
+1733497581
+piero_libero!~piero@user/piero-libero:64896
+ah ok...which one should I use for strings then?
+
+1733497598
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m not an expert in Zig; I don’t think there’s one already ready for that
+
+1733497603
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I know for equality you should be using std.mem.eql
+
+1733497613
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for comparing, I think there can be many possible implementations
+
+1733497622
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so you probably need to provide your own sorting algorith
+
+1733497652
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://ziglang.org/documentation/master/std/#std.mem.order
+
+1733497654
+hadronized!~hadronize@2001:41d0:a:fe76::1
+maybe that works on strings?
+
+1733497662
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s a lexicographic sort
+
+1733497712
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think the std.mem.sort documentation should provide a bunch of examples for different possible inputs; having to search for that manually is pretty hard
+
+1733497719
+hadronized!~hadronize@2001:41d0:a:fe76::1
+lessThanFn: fn (@TypeOf(context), lhs: T, rhs: T) bool
+
+1733497733
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I guess you can forge a function that uses std.mem.order to create that
+
+1733497740
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m surprised there’s not a built-in one
+
+1733497744
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(or I guess I haven’t found it yet)
+
+1733497826
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://www.reddit.com/r/Zig/comments/17zxypc/just_an_example_of_string_sorting_because_i/
+
+1733497864
+hadronized!~hadronize@2001:41d0:a:fe76::1
+as someone mentioned in a comment, since Zig doesn’t have real strings, sorting a string as if it was a byte array is not very smart / won’t work with unicode strings
+
+1733497868
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so… good luck :D
+
+1733497881
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+piero_libero: you need to pass `u8` as the first arg
+
+1733497897
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+and as the first arg to std.sort.asc
+
+1733497939
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The signature for std.mem.sort is (T, []T....)
+
+1733497949
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+so since you are sorting a []const u8, your T is a u8
+
+1733497961
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rockorager: you misread
+
+1733497967
+hadronized!~hadronize@2001:41d0:a:fe76::1
+they are sorting [][]const u8
+
+1733497970
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Oh
+
+1733498086
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+std.ascii.orderIgnoreCase(lhs, rhs).compare(...) is useful
+
+1733498103
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If you need to ignore case, of course
+
+1733498151
+piero_libero!~piero@user/piero-libero:64896
+hadronized the reddit example looks good however sorting strings is a very common thing so I suppose there is something in stdlib
+
+1733498176
+hadronized!~hadronize@2001:41d0:a:fe76::1
+piero_libero: I mean, as I said, for ascii strings, yeah
+
+1733498178
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for unicode…
+
+1733498197
+hadronized!~hadronize@2001:41d0:a:fe76::1
+pub fn lessThanIgnoreCase(lhs: []const u8, rhs: []const u8) bool
+
+1733498314
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so, no, I don’t think there’s a direct way to compare strings; you have to work a bit
+
+1733498473
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://codeberg.org/atman/zg is the canonical Unicode library
+
+1733498541
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it should probably be in the std, no?
+
+1733498547
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+just like local time. this will be extremely annoying coming from other languages
+
+1733498562
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I actually found that one a couple weeks ago while rewriting (well, I gave up, but I had hope back then) flirt into Zig
+
+1733498573
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rockorager: what’s the issue with local time?
+
+1733498575
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Andrew doesn’t want to keep up to date with unicode 
+
+1733498594
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ok…ay, but what about all the developers that do need that to be in the standard library?
+
+1733498629
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You need to allocate to load a time zone from the tzdb 
+
+1733498654
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I mean, a third party library works just as well IMO
+
+1733498671
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It’s annoying to pull in a dependency, yes, but I get the decision
+
+1733498684
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Unicode can be a huge pain
+
+1733498739
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So both Unicode and local time require allocating data, and that means there aren’t global ready for you like other languages 
+
+1733498934
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But to be fair, I do think having the unicode data available in stdlib would be nice - it doesn’t change all *that* often and providing the primitive data at least lets people build on it
+
+1733499489
+piero_libero!~piero@user/piero-libero:64896
+so anyway I ended up with this:
+
+1733499491
+piero_libero!~piero@user/piero-libero:64896
+std.mem.sort([]const u8, list.items, {}, cmp);
+
+1733499504
+piero_libero!~piero@user/piero-libero:64896
+std.mem.sort([]const u8, list.items, {}, cmp);
+
+1733499515
+piero_libero!~piero@user/piero-libero:64896
+fn cmp( _ : void, l : []const u8, r : []const u8) bool {
+
+1733499517
+piero_libero!~piero@user/piero-libero:64896
+        return std.mem.lessThan(u8, l, r);
+
+1733499518
+piero_libero!~piero@user/piero-libero:64896
+}
+
+1733499554
+meidam!~meidam@user/meidam
+I imagine that list there is an ArrayList?
+
+1733499575
+piero_libero!~piero@user/piero-libero:64896
+sorry, yes
+
+1733499583
+meidam!~meidam@user/meidam
+cool cool
+
+1733499639
+piero_libero!~piero@user/piero-libero:64896
+I am learning zig so i am playing around with ArrayList, and it turns out that if you want to sort it, you just sort the underlying array
+
+1733499677
+meidam!~meidam@user/meidam
+Cool
+
+1733499716
+meidam!~meidam@user/meidam
+I'm gonna use zig for adventofcode. Have only done the first day though. Did it yesterday xD
+
+1733499747
+meidam!~meidam@user/meidam
+Have also done like a small personal project to try to learn it a bit. Gotta get that more functional at some point, but it works okay
+
+1733500309
+ifreund!2940d10f8b@user/ifreund
+rockorager: an official ZSF maintained unicode data package would be better, there's no reason to tie the release cadence of the std to the unicode standard or vice-versa
+
+1733500356
+ifreund!2940d10f8b@user/ifreund
+alternatively, someone could just do this and it would be pretty much just as good, would probably get included in allyourcodebase or whatever
+
+1733500366
+hadronized!~hadronize@2001:41d0:a:fe76::1
+piero_libero: are you using ZLS?
+
+1733500368
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the LSP
+
+1733500555
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ifreund: ah like “extended std”, yeah that makes sense
+
+1733500571
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I agree - in general it would be nice to separate data from the language
+
+1733500593
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think a modern language should definitely have support for the most basic thing in computing, and unicode is one
+
+1733500606
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s a bit a pity to have to look for alternate repositories
+
+1733500608
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You mean a modern stdlib
+
+1733500614
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I mean a modern language, really
+
+1733500654
+hadronized!~hadronize@2001:41d0:a:fe76::1
+there is no unicode in the std but there’s some weird std.gpu placeholders, and std.json
+
+1733500659
+hadronized!~hadronize@2001:41d0:a:fe76::1
+priorities are a bit weird, to me
+
+1733501070
+piero_libero!~piero@user/piero-libero:64896
+I think it will eventually come, when the language becomes mainstream and there is ore feedback from users
+
+1733501208
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:]
+
+1733501303
+ifreund!2940d10f8b@user/ifreund
+the std currently exists to serve the needs of the zig toolchain first and foremost
+
+1733501374
+ifreund!2940d10f8b@user/ifreund
+the focus of zig development is to bring the language and compiler near completion before the std become a priority for its own sake
+
+1733501812
+piero_libero!~piero@user/piero-libero:64896
+ok
+
+1733501910
+txdv!~txdv@78.58.158.251
+Whats currently being worked on most in zig compiler?
+
+1733502422
+ifreund!2940d10f8b@user/ifreund
+txdv: incremental compilation and linking
+
+1733503463
+aquamo4k!~mross@162.222.54.134
+agree with rockorager about separating data from language, human level abstraction support like unicode, emoji and the like seem to contradict zig's focus on computation / access to the hardware.  leave it to a library
+
+1733503493
+aquamo4k!~mross@162.222.54.134
+thanks andrew and team for all the effort and work on zig
+
+1733529190
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is incremental compilation distinct from e.g. what I get with cmake?
+
+1733529205
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+(I have a feeling yes? b/c it's built into the compiler or smthn?)
+
