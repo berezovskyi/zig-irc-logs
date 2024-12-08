@@ -266,3 +266,35 @@ yes
 ezzieyguywuf!~Unknown@user/ezzieyguywuf
 how do I read this memory leaked output? e.g. how do I use it to fix my code? https://bpa.st/Y7GQ , this is the code under test, I think the memory error may stem from these lines https://github.com/ezzieyguywuf/AdventOfCode/blob/main/2024/src/main.zig#L79-L84
 
+1733630983
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, the "This memory is owned by the invalids ArrayList" comment is incorrect, you would need to dupe prev.keys() when appending to the list for that to be accurate
+
+1733631061
+squeek502!~squeek502@user/squeek502
+the stack traces you're getting are because the allocator interface requires the free length to match the current size of that allocation, but you're storing stale slices of prev.keys() in the list, so when you go to free the slice contained in `invalids`, it's freeing with an outdated length (since the prev.keys() slice has been modified since then)
+
+1733631105
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hrm, I was worried I'd make a mistake here with copies
+
+1733631185
+squeek502!~squeek502@user/squeek502
+the leaks are because you're not calling `prev.deinit()`
+
+1733631225
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so since I _don't_ dupe prev.keys(), what gets stored in invalids then? and since prev goes out-of-scope before I access these values in invalids, if I clean up `prev` in the while-loop, does this mean that the values in `invalids` will be null?
+
+1733631339
+squeek502!~squeek502@user/squeek502
+`invalids` stores slices, which are a pointer type, so if you free what they are pointing to (the memory of `prev.entries`), then they will be dangling pointers and any usage will be use-after-free and attempting to free would be a double-free
+
+1733631360
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yup, this makes sense
+
+1733631379
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so what's a better way to do this? should `invalids` store an ArrayList instead?
+
