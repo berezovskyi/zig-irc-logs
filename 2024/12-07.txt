@@ -1,0 +1,140 @@
+1733563522
+ifreund!2940d10f8b@user/ifreund
+ezzieyguywuf: all cmake does is cache compiled objects right? Zigs been doing that for ages
+
+1733563631
+ifreund!2940d10f8b@user/ifreund
+the incremental compilation being worked on for zig is far more granular, the goal is to only recompile the modified functions after the initial full compilation of an object
+
+1733577105
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+Good morning. Is it possible to link a C++ library with a zig program with the zig build system?
+
+1733577256
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+My understanding is that it's easy to do with C programs by adding `addCSourceFiles` but I'm not sure about C++
+
+1733577962
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+I think I found a C implementation of the same thing so I'm going to start by trying to use that instead
+
+1733578123
+ifreund!2940d10f8b@user/ifreund
+Matthias1: you can pass C++ sourcee files to addCSourceFiles as well iirc
+
+1733578133
+ifreund!2940d10f8b@user/ifreund
+make sure to linkLibCpp() though
+
+1733578152
+ifreund!2940d10f8b@user/ifreund
+and note that you can't directly interface with C++ from zig, you need a C ABI wrapper
+
+1733578181
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+Ah, okay
+
+1733579748
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+if `lib = b.addStaticLibrary...`  is `b.installArtifact(sd_lib)` a .o that gets merged into the final binary?
+
+1733579821
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+And then I guess my Zig module has a dependency on that artifact from the perspective of the build system
+
+1733580757
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the artifact from addStaticLibrary is an .a, and it's only merged into your final binary if you call linkLibrary for your exe to link it in
+
+1733580800
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+see the example https://ziglang.org/learn/build-system/#static-library
+
+1733592442
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+> the goal is to only recompile the modified function < ohhh snap this would be so lit!
+
+1733592457
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I can also now better understand why this is such a large undertaking
+
+1733593553
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I want to split my source code into multiple files, then in `main.zig` import those file and access public functions from them. what is the correct way to do this with the zig build system? is it b.addLibrary, b.addModule, or smthn else?
+
+1733593655
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+from https://ziglang.org/documentation/master/#import I see that I can import a relative path or a "package", but it's unclear to me from https://ziglang.org/documentation/master/std/#std.Build how to accomplish what I'm after
+
+1733593672
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm also open to alternative approaches, it's just that my one file is getting rather large and unweildy
+
+1733593687
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ezzieyguywuf: I usually just @import("the/path.zig")
+
+1733593725
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is that the idiomatic way to do this?
+
+1733593790
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+or e.g. in golang I'm used to having multiple source files all represent a single "module", and modules are able to access each others functions and stuff - is there something similar in zig or nah?
+
+1733593847
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also, say I have 30 different files I want to import - is it possible to import the directory containing all of them and then reference them as `dir.foo`, `dir.bar` etc.?
+
+1733596640
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ezzieyguywuf: yes that’s the idiomatic way
+
+1733596655
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+no, you can’t import a directory
+
+1733596671
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+look at the stdlib for some examples (std.net is a good one)
+
+1733597053
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍 sg thank you
+
+1733599679
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+So this C library requires users to implement a .h with platform specific functions (e.g. it expects disk_initialize to exist at link time but doesn't define it so as to be disk agnostic)
+
+1733599699
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+I'm trying to write Zig bindings/wrapper for it
+
+1733599928
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+I can create `extern fn disk_initialize` as part of the bindings, but I'd love for the other Zig module to be able to provide the actual implementation at comptime
+
+1733599982
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+I can't figure that out though so I'm going to try a runtime function pointer for now
+
+1733603508
+grayhatter!~grayhatte@user/grayhatter
+Matthias1: take a look at https://github.com/GrayHatter/obZig-plugin I'm doing something similar to what you're looking for
+
+1733603619
+grayhatter!~grayhatte@user/grayhatter
+specifically https://github.com/GrayHatter/obzig-plugin/blob/main/src/obs.zig#L19 where you can reference a decl in the "root" project, which would be the zig project that's using your wrapper/shim/bindings
+
+1733603819
+grayhatter!~grayhatte@user/grayhatter
+I'm also pretty sure there's another more obvious (maybe easier) way to do this, but I'm at a total loss, so let me grab a redbull 
+
+1733604918
+Matthias1!~Matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+grayhatter: Thanks, that worked like a charm. I didn't know you could @import("root") to access it from any module
+
+1733613421
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it seems like integer division does proper rounding, e.g. 7/2 = 3 (2.5 rounded up). where is this documented?
+
