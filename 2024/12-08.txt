@@ -1,0 +1,552 @@
+1733616721
+grayhatter!~grayhatte@user/grayhatter
+is godbolt borked?
+
+1733616742
+grayhatter!~grayhatte@user/grayhatter
+I can't get it to compile a binary that I think is ReleaseFast or ReleaseSmall
+
+1733616936
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ezzieyguywuf: I don't think that is true, u32 / u32 doesn't do that, do you have example code?
+
+1733617139
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ezzieyguywuf: ah, but comptime_int / comptime_int does.. that's strange
+
+1733617357
+grayhatter!~grayhatte@user/grayhatter
+I can repro setting it to usize
+
+1733617388
+grayhatter!~grayhatte@user/grayhatter
+I can't even seem to get the compiler to emit a div op
+
+1733617404
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, that too
+
+1733617567
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it seems like only the constant folding logic uses that rounding, a / @as(usize, 2) still emits a "shr"
+
+1733617604
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+quite a footgun
+
+1733617946
+grayhatter!~grayhatte@user/grayhatter
+well... damn
+
+1733617955
+grayhatter!~grayhatte@user/grayhatter
+I'm not sure I think this is wrong anymore
+
+1733618036
+grayhatter!~grayhatte@user/grayhatter
+it's really hard for me not to say /2 != shr
+
+1733618062
+grayhatter!~grayhatte@user/grayhatter
+but on x86, I think this is a bug
+
+1733618143
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I would expect rounding towards zero, just like C
+
+1733618149
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+i.e. shr
+
+1733618215
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: what's 0b111 shr?
+
+1733618224
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+0b11?
+
+1733618235
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's shift right
+
+1733618238
+grayhatter!~grayhatte@user/grayhatter
+you just proved 7/2 = 3
+
+1733618261
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+wait lol, of course
+
+1733618276
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+7/2 is 3 in round to zero
+
+1733618298
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was just trusting ezzieyguywuf that it was "2.5 rounded up", which doesn't make sense
+
+1733618308
+grayhatter!~grayhatte@user/grayhatter
+yeap... me too
+
+1733618308
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+7/2 is 3.5 rounded down
+
+1733618326
+grayhatter!~grayhatte@user/grayhatter
+I have to go lie down and cry now
+
+1733618330
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it all checks out
+
+1733618333
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, same
+
+1733618968
+torque!~tachyon@user/torque
+lol
+
+1733622394
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hrm, I didn't think I had comptime ints
+
+1733622403
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I can try creating a minimal reproducing example
+
+1733622450
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: it's working correctly 
+
+1733622459
+grayhatter!~grayhatte@user/grayhatter
+what is 7/2 supposed to be?
+
+1733622474
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'd expect 3.5 to get chopped off to 3
+
+1733622482
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+i.e. that's what I get in C I believe
+
+1733622487
+grayhatter!~grayhatte@user/grayhatter
+that's what I get from zig
+
+1733622494
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1733622499
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I must be doing something weird then
+
+1733622528
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤦
+
+1733622545
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm dumb, I already made a minimal example, and the example showed me that it does it fact get chopped off to 3
+
+1733622587
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+:)
+
+1733622624
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+(potential advent of code spoilers beware) but I originally had this as `prev.count() / 2 + 1` since I expect the count to be odd and I want the middle index, but I didn't get the correct index until I removed +1 https://github.com/ezzieyguywuf/AdventOfCode/blob/main/2024/src/main.zig#L98
+
+1733622780
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, I guess .size() returns a u32, and I think usize is a u64 on my system, I wonder if that has something to do with it
+
+1733623005
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+omg ofc b/c 0-based indexing what a rookie mistake
+
+1733623021
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so a array of length 7, the middle is index 3 not 4
+
+1733623028
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+*slams head on table repeatedly*
+
+1733624150
+torque!~tachyon@user/torque
+i agree that basic algebra is nearly impssoible
+
+1733624158
+torque!~tachyon@user/torque
+er, arithmetic, even
+
+1733624216
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+😅
+
+1733624231
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+zig is really nice though I'm very fond of the explicit memory allocation
+
+1733624422
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I find `for (myArrayList.items) |item| {...}` a bit alarming, especially compared to `for (mySlice) |item|{...}`, though I guess it makes sense. I can't seem to find any documentation about this `.items` though, except for looking at the source
+
+1733624764
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, context for when ArrayList changed from items/len with a slice() helper to items/capacity where accessing items directly is intended: https://github.com/ziglang/zig/issues/4852
+
+1733624837
+squeek502!~squeek502@user/squeek502
+what do you find alarming?
+
+1733625857
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I found it alarming that I was accessing a "member variable" (? not too sure on the zig nomenclature) directly. it seems more natural to do something like `for myArrayList.slice()`, but I haven't read through the issue you linked yet, thanks for the context
+
+1733625985
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+and I guess I expect the other types provided by std to follow the same pattern, e.g. `for (myArrayHashMap.keys)` vs `for (myArrayHashMap.keys())`, it's just extra things I have to keep track of that I'd rather not
+
+1733626174
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, for ArrayHashMap, there's no `keys` field, the `keys` function implementation is `return self.entries.items(.key);` (`entries` is a `MultiArrayList`)
+
+1733626400
+squeek502!~squeek502@user/squeek502
+also `ArrayList.items` is documented, but autodocs currently doesn't display it: https://github.com/ziglang/zig/blob/1f95e3d9cd6bdd313536fb35beb46a09b4fd8834/lib/std/array_list.zig#L33-L40
+
+1733626416
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so is it ok to acces `myArrayHashMap.entries` directly?
+
+1733626443
+squeek502!~squeek502@user/squeek502
+yes, there's a doc comment saying that: https://github.com/ziglang/zig/blob/1f95e3d9cd6bdd313536fb35beb46a09b4fd8834/lib/std/array_hash_map.zig#L538-L540
+
+1733626447
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: yea, I was referring to the autodocs I guess, which I tend to refer to first. maybe I should prefer to refer to the src code first
+
+1733626466
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah ok, so there is consistency
+
+1733626473
+squeek502!~squeek502@user/squeek502
+can do both by clicking on the [src] link in autodocs :)
+
+1733626475
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+.keys() is just a super helper
+
+1733626486
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: yup, src link in the autodocs is hella useful
+
+1733627165
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+what is `context` here? https://ziglang.org/documentation/master/std/#std.mem.sort
+
+1733627204
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ohh wait does this let me pass some state into my comparison function?
+
+1733629075
+torque!~tachyon@user/torque
+yes
+
+1733630521
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+how do I read this memory leaked output? e.g. how do I use it to fix my code? https://bpa.st/Y7GQ , this is the code under test, I think the memory error may stem from these lines https://github.com/ezzieyguywuf/AdventOfCode/blob/main/2024/src/main.zig#L79-L84
+
+1733630983
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, the "This memory is owned by the invalids ArrayList" comment is incorrect, you would need to dupe prev.keys() when appending to the list for that to be accurate
+
+1733631061
+squeek502!~squeek502@user/squeek502
+the stack traces you're getting are because the allocator interface requires the free length to match the current size of that allocation, but you're storing stale slices of prev.keys() in the list, so when you go to free the slice contained in `invalids`, it's freeing with an outdated length (since the prev.keys() slice has been modified since then)
+
+1733631105
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hrm, I was worried I'd make a mistake here with copies
+
+1733631185
+squeek502!~squeek502@user/squeek502
+the leaks are because you're not calling `prev.deinit()`
+
+1733631225
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so since I _don't_ dupe prev.keys(), what gets stored in invalids then? and since prev goes out-of-scope before I access these values in invalids, if I clean up `prev` in the while-loop, does this mean that the values in `invalids` will be null?
+
+1733631339
+squeek502!~squeek502@user/squeek502
+`invalids` stores slices, which are a pointer type, so if you free what they are pointing to (the memory of `prev.entries`), then they will be dangling pointers and any usage will be use-after-free and attempting to free would be a double-free
+
+1733631360
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yup, this makes sense
+
+1733631379
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so what's a better way to do this? should `invalids` store an ArrayList instead?
+
+1733631452
+squeek502!~squeek502@user/squeek502
+the easiest change would just be to `allocator.dupe(u64, prev.keys())` and then append that instead
+
+1733631498
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yup, I get that. I'm wondering what a more "correct" approach would be here though. i.e. does that introduce an unecessary copy?
+
+1733631498
+squeek502!~squeek502@user/squeek502
+and then make sure to call `prev.deinit(allocator);` as well
+
+1733631658
+squeek502!~squeek502@user/squeek502
+i may not be understanding the code fully, but i'm not sure it is an unnecessary copy
+
+1733631701
+squeek502!~squeek502@user/squeek502
+the way to avoid the copy would be to have some underlying memory that has the same lifetime as the array list and then you can store slices into that underlying memory in the array list
+
+1733631868
+squeek502!~squeek502@user/squeek502
+another thing to be aware of is that after `prev` resizes, pointers to `keys` may be dangling since the memory could have been moved during the resize, so even if `prev` outlived the array list it would still be dangerous to store pointers to `prev.keys()`
+
+1733632244
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, looking at it more there are two ways i can see to avoid the copy:
+
+1733632328
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: thanks for taking a look and for your tips! i'm heading to bed but i will check your response tomorrow
+
+1733632329
+squeek502!~squeek502@user/squeek502
+1. remove `invalids` entirely and move the body of the `for (invalids.items)` loop into the `else` branch that has the `append` (`ArrayHashMap` has sort functions)
+
+1733632496
+squeek502!~squeek502@user/squeek502
+2. make `invalids` an `ArrayListUnmanaged(OrderedSet)` and then make the ArrayList 'take ownership' of `prev` after appending it, this would mean `invalid.deinit(allocator)` in the `invalids.items` loop in the defer, `errdefer prev.deinit(allocator);` after initializing `prev`, calling `prev.deinit(allocator)` in the `if (isValid)` branch, and then just appending `prev` directly in the `else` branch
+
+1733640094
+grayhatter!~grayhatte@user/grayhatter
+`error: unable to resolve comptime value inline else => |t| @tagName(t) ++ "/" `
+
+1733640138
+grayhatter!~grayhatte@user/grayhatter
+does my idiocy make sense to anyone, because the docs seem to state this should be comptime known?
+
+1733641187
+torque!~tachyon@user/torque
+yes, it should be
+
+1733641207
+grayhatter!~grayhatte@user/grayhatter
+it's the concat, if I delete it, suddently it's comptime 
+
+1733641552
+torque!~tachyon@user/torque
+a trivial version seems to work as expected so idk
+
+1733641577
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/6Wqe9P5jq
+
+1733642031
+grayhatter!~grayhatte@user/grayhatter
+torque: mine is a union
+
+1733642211
+torque!~tachyon@user/torque
+oh
+
+1733642224
+torque!~tachyon@user/torque
+your capture probably also needs the value then
+
+1733642235
+torque!~tachyon@user/torque
+`inline else => |val, tag| ...`
+
+1733642300
+torque!~tachyon@user/torque
+or `inline else => |_, tag| ...`
+
+1733642301
+grayhatter!~grayhatte@user/grayhatter
+that works?
+
+1733642378
+grayhatter!~grayhatte@user/grayhatter
+unable to resolve comptime
+
+1733642380
+grayhatter!~grayhatte@user/grayhatter
+`error: unable to resolve comptime value inline else => |t| @tagName(t) ++ "/" `
+
+1733642386
+grayhatter!~grayhatte@user/grayhatter
+ignore that
+
+1733642396
+grayhatter!~grayhatte@user/grayhatter
+this is what I meant to share `inline else => |tag, val| @tagName(tag) ++ "/" ++ @tagName(val),`
+
+1733642648
+torque!~tachyon@user/torque
+the value is the union payload which is not comptime known
+
+1733642659
+torque!~tachyon@user/torque
+well, presumably
+
+1733642668
+grayhatter!~grayhatte@user/grayhatter
+yup, I'm getting closer to what I want
+
+1733645677
+grayhatter!~grayhatte@user/grayhatter
+I wasn't able to get it working the way I wanted, but I got much closer, thanks for the help torque :)
+
+1733657088
+taylan!~taylan@user/taylan
+Is there a Unix-like OS preferred among Zig devs? Perhaps one that has particularly good support for Zig-related things in its native package manager? I know Zig is very cross-platform and stand-alone binaries are installed trivially on any GNU/Linux (just did that the other day; amazing stuff) but I thought I'd ask coz I'm looking for a new OS to use as my default and I intend to dive deeper into Zig for a while.
+
+1733657910
+phaleth!~phaleth@user/phaleth
+there are FreeBSD builds of Zig since 0.11 release, but only 'tagged' versions get those builds, not the nightly once
+
+1733657927
+phaleth!~phaleth@user/phaleth
+ones*
+
+1733657951
+phaleth!~phaleth@user/phaleth
+I'd recommend looking into FreeBSD
+
+1733658153
+phaleth!~phaleth@user/phaleth
+actually, FreeBSD builds are there since Zig 0.4
+
+1733658192
+taylan!~taylan@user/taylan
+phaleth: any opinion on GhostBSD? (it's based on FreeBSD and meant for desktop use)
+
+1733658231
+taylan!~taylan@user/taylan
+I've even used OpenBSD as a "desktop" OS before (on a laptop, actually) so I'm sure FreeBSD is just fine to use on a desktop but I wonder if GhostBSD has some goodies on top that I might enjoy
+
+1733658405
+phaleth!~phaleth@user/phaleth
+GhostBSD came from FreeBSD originally, yeah, but has already managed to diverge a lot. Since FreeBSD version 13 the desktop support is pretty solid
+
+1733658509
+phaleth!~phaleth@user/phaleth
+I'd say with FreeBSD 14 it's more straightforward to set things up than with GhostBSD and also OpenBSD which is way behind in terms of out of the box kind of usability
+
+1733658549
+taylan!~taylan@user/taylan
+guess I'll try out FreeBSD and see how I feel
+
+1733658703
+ifreund!2940d10f8b@user/ifreund
+Linux will probably be a bit more "just works" than FreeBSD but FreeBSD is probably the best option other than Linux
+
+1733658715
+phaleth!~phaleth@user/phaleth
+cool, if you can be bothered make sure to post notes of how it went
+
+1733662805
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: ahh I like your ideas! I was planning to do #2, however I hadn't considered the need for errdefer and prev.deinit in the `if (isValid)` branch. thanks again for taking a look at this!
+
+1733663594
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: if I'm not mistakin, the main downside with option #1 is that the prev `ArrayList` would get sorted multiple times, which I guess technically would be less efficient?
+
+1733663798
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, not sure what you mean; the number of sorts wouldn't change in option 1
+
+1733664054
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: hrm, maybe I misunderstood option 1 then. if I move the body of `for (invalids.items)` to the `else` branch as-is, I'm not sure it works as expected, since I need `prev` to be completely full before updating `solution.partB`
+
+1733664100
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ohhhhh I see
+
+1733664111
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, it is populated by that point
+
+1733664111
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yes actually I think option 1 is much better :)
+
+1733664117
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1733664122
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+thanks again for the help!
+
+1733664128
+squeek502!~squeek502@user/squeek502
+np
+
+1733664144
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I really appreciate you writing out the specifics of option 2, as this helped me better understand some of the nuances of memory management in zig
+
+1733664305
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is sort_ctx in https://ziglang.org/documentation/master/std/#std.array_hash_map.ArrayHashMapUnmanaged.sort the same as `cmp` in std.mem.sort? why the different naming?
+
+1733664600
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also, since `sort_ctx` seems like it supposed to be a struct with a method `lessThan`, why is a separate `sortContext` needed, couldn't any state needed simply be included in `sort_ctx`?
+
+1733669767
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh I see, I need to add it to the context that contains the eql and hash functions.
+
+1733669777
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there a way to add the lessThan to the AutoContext struct?
+
+1733679139
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it possible to load a .zig file (like main.zig) in my build.zig and get its AST to analyze it during a build phase?
+
+1733679283
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hadronized: the parser and stuff is exposed in the stdlib, but I've not tried using it https://ziglang.org/documentation/master/std/#std.zig
+
+1733679945
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’ll try then, thanks
+
+1733698169
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I wonder how hard it would be to implement a small checker function that parses zig files and check whether a return type is a given type, and if it is, does a couple things with it
+
+1733698190
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I realize that if memory safety is not embedded in the language (like unicode etc.), maybe it could be added via an ad-hoc mechanism
+
+1733698194
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and so everyone would be happy
+
