@@ -1,0 +1,268 @@
+1733888892
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it seems like if `zig build test` gets stuck in an infinite loop I don't get any stderr output, is there a way to still print the output?
+
+1733889097
+torque!~tachyon@user/torque
+are you sure you are printing to stderr and not stdout? the build runner chokes if your tests write to stdout
+
+1733889157
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+`std.debug.print` prints to stderr correct?
+
+1733889167
+torque!~tachyon@user/torque
+yeah, and it should be safe to use in tests
+
+1733889180
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea generally it works for me expect the infinite loop case
+
+1733889186
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+s/expect/except/
+
+1733889226
+torque!~tachyon@user/torque
+you can always run the test executable manually, it ends up somewhere in .zig-cache
+
+1733889270
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, I will try that next time
+
+1733889279
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is this worth reporting a bug somewhere? or nah?
+
+1733889530
+torque!~tachyon@user/torque
+I mean I am not sure what you are doing, so it is hard to say
+
+1733889737
+torque!~tachyon@user/torque
+output may be intentionally buffered by the test runner, I'm not sure
+
+1733890350
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+in this example https://bpa.st/S2CA, I'd expect that even if the default is to buffer the output, I could pass a flag to `zig build test` to see the spam for debugging purposes
+
+1733891256
+torque!~tachyon@user/torque
+I suspect that it eats output until the test is finished. most unit test build runners I have used only show test output when a test fails
+
+1733891300
+torque!~tachyon@user/torque
+you can open an issue if you want, but I'm not sure I'd consider it to be a bug
+
+1733891429
+torque!~tachyon@user/torque
+I am not a huge fan of the `zig build` test runner, since it does some odd things, like delete the output showing how many tests ran
+
+1733922369
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+Is there a way I can check if two variables are referring to the same area in memory? I want to check if two `var`s that I have are pointing to the same area in memory or different ones (for debugging reasons).
+
+1733922711
+ifreund!2940d10f8b@user/ifreund
+ksynwa: what do you mean by "area in memory"?
+
+1733922766
+ifreund!2940d10f8b@user/ifreund
+do you mean an address space? a page? just the same memory address?
+
+1733922864
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+I don't know the correct terminology sorry. I meant something like if I do `var s1 = Struct1{}; var s2 = Struct1{};` then whether `&s1` and `&s2` are the same. ifreund 
+
+1733923194
+ifreund!2940d10f8b@user/ifreund
+ksynwa: you can just do `&s1 == &s2`
+
+1733923290
+ifreund!2940d10f8b@user/ifreund
+(I would call this call this comparing the memory address of s1 and s2 fwiw)
+
+1733923349
+ksynwa!~kartik@2405:201:600a:f9b8:8067:ce61:10ce:c454
+Thanks a lot.
+
+1733924338
+fidelicura!~fidelicur@user/fidelicura
+ifreund: will Zig throw out the whole comparison if one of the pointers is already deallocated, like in C? (https://en.cppreference.com/w/c/language/lifetime)
+
+1733924369
+fidelicura!~fidelicur@user/fidelicura
+if some optimizations enabled, of course.
+
+1733924479
+ifreund!2940d10f8b@user/ifreund
+fidelicura: pointers to invalid memory are perfectly legal in zig, dereferencing them is illegal behavior and will cause llvm to do its thing though
+
+1733924596
+fidelicura!~fidelicur@user/fidelicura
+OK, thx.
+
+1733930122
+Amun-Ra!~amun-ra@retro.rocks
+there were architectures that triggered hardware fault when loading such pointer to register, even without dereferencing
+
+1733930164
+Amun-Ra!~amun-ra@retro.rocks
+that's why it's undefined in C (I've to check whether that still applies to C23)
+
+1733933118
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: I'd love to chime in on a bug similar to the one you're looking at. But I don't consider the exact case you're looking at to be a bug. zig build test is strongly optimized for expecting tests to pass, and is feature light when it comes to that. The issue/bug that I think should exist is closer to a list of improvements feature requests. I.e. it's not a bug that the test harness behaves
+
+1733933120
+grayhatter!~grayhatte@user/grayhatter
+in the way that it does, but it does make it slighly harder to just yolo code into tests to see what happens. I consider that to be a weakness of the testing system. But I also think it's lower priority, and I myself haven't given it enough thought to stand behind a cohesive and complete request
+
+1733933281
+grayhatter!~grayhatte@user/grayhatter
+that said, torque's advice is much better than it seems, I myself have been resistant to throwing the test binary into gdb, and stepping through the code... that's a personal failing, because every time I do, I'm able to id, and debug the problem near instantly. I still spend more time with printf debugging than I do with gdb, but gdb is always so much faster *shrug*
+
+1733933360
+grayhatter!~grayhatte@user/grayhatter
+it's trivial to find the binary filename that works in gdb from `zig build test` let me know if you don't spot it instantly, and I can help :)
+
+1733933638
+grayhatter!~grayhatte@user/grayhatter
+Amun-Ra: if you find out it's no longer undefined in C, let me know? I've just read something that has me convinced that C will never try to define that flavor of behavior and if that idea is wrong, I'd like to be corrected. (...also, just if you see it and happen to remember, not trying to assign anyone work :) ) 
+
+1733936810
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Hmm, I'm trying to follow Zig's naming conventions, but I have some types that are distinguished by whether they're two-dimensional or three-dimensional. Would the recommended spelling be 3D or 3d?
+
+1733936821
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+I note it mentions that abbreviations/acronyms should always be camel-case, but in the case of "3D", it's not a strictly-alphabetical name, and the 3 could be seen as its own "word".
+
+1733937042
+grayhatter!~grayhatte@user/grayhatter
+TypeThreeD : TypeThreed :: Type3d : Type3D
+
+1733937063
+grayhatter!~grayhatte@user/grayhatter
+wait, no, that's wrong... *shit*
+
+1733937090
+grayhatter!~grayhatte@user/grayhatter
+but, do you still get the point I'm trying to make Overkill?
+
+1733937201
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Ok, so (if I'm understanding the typo you made) it's like I was thinking Three and 3 are "words", so ThreeD becomes 3D. But then again, you would never write "3_d" in snake-case if this same convention applied... so I don't know.
+
+1733937202
+grayhatter!~grayhatte@user/grayhatter
+and ever more verbose example would be TypeTwoDimensional and TypeThreeDimensional, Type2Dimensional and Type3Dimensional
+
+1733937356
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+(But then, MyThing2d looks kinda ugly, so I'd PREFER to write MyThing2D but I'm more thinking what if this is not the standard/norm for most other authors of Zig code)
+
+1733937369
+grayhatter!~grayhatte@user/grayhatter
+Overkill: yeah, with a single caveat, that's where I think you get to decide which version you're using. Another example is ID which is short for identification, but like `ATM machine` ID has taken on it's own meaning. 3d is the same. 
+
+1733937452
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Yeah, it can happen there too. For ID, I use Id because Zig's manual says "Even acronyms that are only 2 letters long are subject to these conventions"
+
+1733937523
+grayhatter!~grayhatte@user/grayhatter
+that caveat being, With UpperCamle, you use uppercase letters for each word, whereas with snake_case, you don't use underscores for words, you use them closer to dots, to seperate logical identifers. e.g. something like pre_fill, post_fill, would be acceptable even though its a word, left_2d vs right_3d, because 3 has no meaning without the d, something_3d is better than something_3, or something_3_d`
+
+1733937524
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+I guess then 3D should be subject to the same rule? It just feels/looks very weird, numbers in identifiers in general always look weird I guess. But there's no other nice short way to convey what dimension a particular type is in, for stuff like "views", "scenes", etc.
+
+1733937525
+grayhatter!~grayhatte@user/grayhatter
+3d is a unit, something is a unit
+
+1733938233
+grayhatter!~grayhatte@user/grayhatter
+Overkill: all of this aside... name it what you want
+
+1733938262
+grayhatter!~grayhatte@user/grayhatter
+thankfully the compiler doesn't enforce letter casing yet, so I mostly do what I think looks better, or conveys the information I want to convey
+
+1733938330
+grayhatter!~grayhatte@user/grayhatter
+I have a struct named `zWSGI` because I think that's more descriptive and more clear about which parts are significant than `ZWSGI` even though the rule might be be `Zwsgi` or `ZWsgi`
+
+1733944464
+grayhatter!~grayhatte@user/grayhatter
+does anyone have any examples of conditional compilation build.zig? I tried creating my own build.step, but trying to duplicate the nop makefn didn't work as I expected, and a quick read of the src isn't telling me what I need
+
+1733950106
+aquamo4k!~mross@162.222.54.134
+trying to update my freebsd build of zig, getting new build / link error; did I miss a step?  https://dpaste.com/9ZCNYG655
+
+1733950143
+aquamo4k!~mross@162.222.54.134
+stage2 looked good, just couldn't link stage3 i guess?
+
+1733950351
+aquamo4k!~mross@162.222.54.134
+ahh, I might have answered my own question, latest freebsd now defaulting to llvm19 so my issue is probably due to older llvm19 in /usr/local vs. /lib etc ... trying that now
+
+1733951135
+Krajina!~Krajina@user/Krajina
+is currying a thing in zig?  can i return a function from another function?  this is not working, nor is my brain apparently: `pub fn partial_add(x: i32) fn (i32) i32 { return fn (y: i32) i32 { return x + y; }; }`
+
+1733952345
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Krajina: there are no function expressions (yet), no, and there will probably never be any closures
+
+1733952400
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(this isn't currying)
+
+1733952469
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, I misread, it is, but a function pointer could never store a function that has a closed-over variable
+
+1733955040
+Earnestly!~earnest@user/earnestly
+Krajina: No, you can only implement it like you might in C
+
+1733955952
+Krajina!~Krajina@user/Krajina
+alright i'm pleased to announce I've done it anyway despite it not being possible :) https://pastebin.com/FTyUMmHy
+
+1733956021
+ifreund!2940d10f8b@user/ifreund
+that will only work if run at comptime
+
+1733956091
+Krajina!~Krajina@user/Krajina
+aha so that's the special sauce, thank you! why would I know that, the keyword comptime does not appear, what tipped you off
+
+1733956287
+ifreund!2940d10f8b@user/ifreund
+using the private_int variable in funny_solve() like that is only valid of private_int is comptime know
+
+1733956304
+ifreund!2940d10f8b@user/ifreund
+otherwise you would get a compile error
+
+1733956375
+Krajina!~Krajina@user/Krajina
+maybe my broader problem is that I'm doing Advent of Code which is scripting, so like the distinction between compile time and runtime is irrelevant to the objective, it's just ad-hoc scripts, you compile it and run it
+
+1733956403
+Krajina!~Krajina@user/Krajina
+systems programming is for _grown-ups_
+
+1733961320
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund | that will only work if run at comptime
+
+1733961328
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you’d get a compile-error on that?
+
