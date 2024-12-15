@@ -1,0 +1,320 @@
+1734136710
+grayhatter!~grayhatte@user/grayhatter
+Gliptic you really had me in the first half there :D
+
+1734138183
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If I have a tagged union, is it just redundant to assert(value == .tag) and then directly access the tag value?
+
+1734138813
+torque!~tachyon@user/torque
+probably, since in safe modes either will panic and in fast mode the assert will get optimized out
+
+1734138863
+torque!~tachyon@user/torque
+I find assertions in code to not be very useful if they get optimized out, since they don't actually provide the safety they appear to
+
+1734139859
+grayhatter!~grayhatte@user/grayhatter
+rockorager: think of assert as  `if (false) @breakpoint()`
+
+1734139915
+grayhatter!~grayhatte@user/grayhatter
+which saying outloud; I now feel that I have to explain how in my head, debugging code isn't the same as binary code... no I can't explain more than that
+
+1734139977
+grayhatter!~grayhatte@user/grayhatter
+does `--test-filter` only work with `zig test`? The file I want to test won't compile without modules that would be very annoying to attemp to provide via cli
+
+1734140459
+torque!~tachyon@user/torque
+you can add it as an option to `zig build test` manually but it is not automatically added as far as I know
+
+1734140563
+torque!~tachyon@user/torque
+otherwise you might need to provide your own test runner? not sure
+
+1734140566
+grayhatter!~grayhatte@user/grayhatter
+torque: is the filters TestOption exactly what I think it is? or is there more voodu?
+
+1734140616
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/blob/master/build.zig#L380 is what I looked at
+
+1734140738
+grayhatter!~grayhatte@user/grayhatter
+cheers, thank you torque 
+
+1734140761
+grayhatter!~grayhatte@user/grayhatter
+I'd assumed it'd be much harder :)
+
+1734148140
+grayhatter!~grayhatte@user/grayhatter
+is it possible to get a the child of `[]const []const u8`?
+
+1734148365
+squeek502!~squeek502@user/squeek502
+grayhatter, what do you expect the 'child' to be?
+
+1734148399
+grayhatter!~grayhatte@user/grayhatter
+[]const u8
+
+1734148418
+grayhatter!~grayhatte@user/grayhatter
+e.g.
+
+1734148431
+squeek502!~squeek502@user/squeek502
+`@typeInfo([]const []const u8).pointer.child`?
+
+1734148432
+grayhatter!~grayhatte@user/grayhatter
+`[]const Struct`
+
+1734148456
+squeek502!~squeek502@user/squeek502
+there's also `std.meta.Child` which basically does the same thing
+
+1734148460
+grayhatter!~grayhatte@user/grayhatter
+Expected struct, union, error set or enum type, found '[]const u8' else => @compileError("Expected struct, union, error set or enum type, found '" ++ @typeName(T) ++ "'"),
+
+1734148537
+squeek502!~squeek502@user/squeek502
+`std.meta.Elem`, too
+
+1734148546
+grayhatter!~grayhatte@user/grayhatter
+I have to special case `[]const u8`, and it's become anoying again, I'm wondering if I'm missing something better
+
+1734148591
+squeek502!~squeek502@user/squeek502
+i'm not sure what your question is anymore
+
+1734148684
+grayhatter!~grayhatte@user/grayhatter
+I'm using @typeInfo, I don't understand why it refuses to accept []const u8
+
+1734148691
+grayhatter!~grayhatte@user/grayhatter
+I must be doing something stupid :/
+
+1734148703
+squeek502!~squeek502@user/squeek502
+could you post a reproduction? what do you mean 'refuses to accept'?
+
+1734148708
+squeek502!~squeek502@user/squeek502
+what is 'it'?
+
+1734148726
+grayhatter!~grayhatte@user/grayhatter
+squeek502: it gives me the expected struct error
+
+1734148736
+grayhatter!~grayhatte@user/grayhatter
+let me clean up some code, and I send a paste if I can't work it out
+
+1734148802
+squeek502!~squeek502@user/squeek502
+`@compileLog(@typeInfo([]const u8).pointer.child);` prints `@as(type, u8)` for me
+
+1734148828
+squeek502!~squeek502@user/squeek502
+and `@compileLog(@typeInfo([]const []const u8).pointer.child);` prints `@as(type, []const u8)`
+
+1734148948
+squeek502!~squeek502@user/squeek502
+grayhatter, that "Expected struct, union, error set or enum type, found" string is only found in `std.meta.fields` and `std.meta.fieldInfo`, so your usage of that is likely triggering the error, not `@typeInfo`
+
+1734149070
+grayhatter!~grayhatte@user/grayhatter
+squeek502: there's a few last I looked, but the reference trace doesn't give that line
+
+1734149116
+squeek502!~squeek502@user/squeek502
+reference traces are/have been rather buggy, unfortunately, can't always trust them
+
+1734149255
+squeek502!~squeek502@user/squeek502
+brb (won't see messages until i rejoin)
+
+1734149511
+squeek502!~squeek502@user/squeek502
+(i'm back)
+
+1734163645
+anjan!f328a705f9@2a03:6000:1812:100::f
+line number in that error is not correct but it's failing on the std.debug.print line
+
+1734163706
+anjan!f328a705f9@2a03:6000:1812:100::f
+I just want to get the current timestamp so I can print the iso timestamp. As such, Im using the c time.h library but it doesnt let me access that struct that does all the annoying datetime math
+
+1734178129
+hadronized!~hadronize@2001:41d0:a:fe76::1
+src/main.zig:9:29: error: root struct of file 'Constants' has no member named 'FOO_CONSTANT'
+
+1734178134
+hadronized!~hadronize@2001:41d0:a:fe76::1
+FOO_CONSTANT: usize = 123,
+
+1734178139
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m not sure to understand the error :D
+
+1734178644
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah, I needed @hasDecl
+
+1734178655
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and switch to declarations
+
+1734197043
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://zigbin.io/925217 comptime is really a charm to work with :)
+
+1734197995
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, question about system linking; is there a way to pass information about versions, and get them back on the CLI?
+
+1734198026
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like, state that we want to compile with libfoo v1.2, and be able to get that listing on the CLI with a simple zig command?
+
+1734198122
+torque!~tachyon@user/torque
+the only dependency management in zig is done through the zig package manager. for specific system library versions you need to shell out to pkgconfig or a similar tool that is intended to handle that
+
+1734198147
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so there’s no way to state what version we expect?
+
+1734198156
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm
+
+1734198169
+torque!~tachyon@user/torque
+not sure what you mean by "state what version we expect"
+
+1734198184
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, libfoo-1.2
+
+1734198203
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t want to link to “any” libfoo
+
+1734198215
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m using linkSystemLibrary() for now
+
+1734198220
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it only takes the name of the library
+
+1734198233
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I saw there’s a linkSystemLibrary2() though
+
+1734198309
+torque!~tachyon@user/torque
+you can pass the full path to the library to link, just like you would on the c compiler command line, I believe
+
+1734198328
+torque!~tachyon@user/torque
+otherwise you're limited to the way that the c compiler toolchain does link resolution, which is kind of stupid
+
+1734198368
+torque!~tachyon@user/torque
+that's why stuff like pkgconfig exists, to get the flags you need to link something. though most systems do not have many different versions of a given library
+
+1734198427
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm
+
+1734198644
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, looks like in C you’d do -l:libfoo.so.1
+
+1734198652
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m not a huge fan of that, it means it’s not cross-platform
+
+1734199663
+Amun-Ra!~amun-ra@retro.rocks
+that's usually resolved by system package manager
+
+1734199753
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, but how do you link to the library you want to if you can’t specifit it?
+
+1734199760
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(I haven’t found a way to do it in Zig for now)
+
+1734199803
+Amun-Ra!~amun-ra@retro.rocks
+require specific version for building
+
+1734199808
+hadronized!~hadronize@2001:41d0:a:fe76::1
+how?
+
+1734199818
+Amun-Ra!~amun-ra@retro.rocks
+README.md ;)
+
+1734199840
+Amun-Ra!~amun-ra@retro.rocks
+I always use libs via dlopen, but not in zig, dlopen in zig is broken
+
+1734199883
+grayhatter!~grayhatte@user/grayhatter
+Amun-Ra: broken how?
+
+1734199898
+Amun-Ra!~amun-ra@retro.rocks
+I build to .deb, there's build dependency in debian build system
+
+1734199912
+Amun-Ra!~amun-ra@retro.rocks
+grayhatter: sec, let me find the issue
+
+1734199944
+Amun-Ra!~amun-ra@retro.rocks
+grayhatter: https://github.com/ziglang/zig/issues/5360
+
+1734199956
+Amun-Ra!~amun-ra@retro.rocks
+it's only 4y old
+
+1734199963
+grayhatter!~grayhatte@user/grayhatter
+Amun-Ra: cheers Amun-Ra, thank you
+
+1734199968
+Amun-Ra!~amun-ra@retro.rocks
+no worries
+
+1734200007
+Amun-Ra!~amun-ra@retro.rocks
+I have to use C wrapper for that in zig
+
+1734211356
+ifreund!2940d10f8b@user/ifreund
+Amun-Ra: you cant really use dlopen without linking libc
+
+1734211376
+ifreund!2940d10f8b@user/ifreund
+The libs you load expect libc to be available 
+
+1734211397
+ifreund!2940d10f8b@user/ifreund
+That issue is about dlopen without linking libc, which is nonsense IMO
+
