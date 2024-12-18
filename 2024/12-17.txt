@@ -1,0 +1,376 @@
+1734397316
+torque!~tachyon@user/torque
+<rockorager> usingnamespace did that exact thing, but is now gone
+
+1734397321
+torque!~tachyon@user/torque
+it's not gone yet afaik
+
+1734397323
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/issues/20663
+
+1734397338
+torque!~tachyon@user/torque
+it seems pretty likely that this proposal will be accepted and implemented, however
+
+1734397414
+torque!~tachyon@user/torque
+I did like usingnamespace for method mixins on structs, but I have come around to the thinking that magically injecting a bunch of names into a namespace hurts readability/understandability of code
+
+1734397462
+torque!~tachyon@user/torque
+having had to write C++ recently (vom), the way #include works really, really sucks.
+
+1734397527
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/ziglang/zig/pull/19214
+
+1734397607
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Though this still compiles and runs on master...https://zigbin.io/b77e04
+
+1734397697
+torque!~tachyon@user/torque
+that's just removing usage from the stdlib
+
+1734397705
+torque!~tachyon@user/torque
+not changing any of the compiler code
+
+1734398069
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+oh
+
+1734418818
+ianhedoesit!~ian@user/ianhedoesit
+since the wasi sockets proposal is not standardized yet, there's no way to compile some C library using unix sockets to wasm, right?
+
+1734418883
+ianhedoesit!~ian@user/ianhedoesit
+I guess it's not really a zig question, but I'm using `zig cc` to attempt this
+
+1734454473
+hadronized!~hadronize@2001:41d0:a:fe76::1
+do I need libc to install signal handlers?
+
+1734454840
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess I’ll use std.c.sigaction(), should be fine
+
+1734455843
+ifreund!2940d10f8b@user/ifreund
+hadronized: no, you dont need libc
+
+1734455848
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, std.posix
+
+1734455850
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I found it
+
+1734455859
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m in the man 2 signal
+
+1734455869
+hadronized!~hadronize@2001:41d0:a:fe76::1
+damn I realize how much I didn’t know about posix signals haha
+
+1734456107
+Earnest!~earnest@user/earnestly
+I think that's essentially a truism, that people will constantly realise how little they know about posix/unix signals and the ways it can ruin your day
+
+1734456142
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, in Rust I would just use ctrl-c (the crate)
+
+1734456154
+ifreund!2940d10f8b@user/ifreund
+yeah, signals are the worst part of posix
+
+1734456157
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and assume what it does is just to take a function and install it in place of a handler
+
+1734456169
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but now I’m looking at masks, sigset, flags, zombiers, blocking signals
+
+1734456172
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and I’m like “wtf?!”
+
+1734456188
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I was able to install my signal on SIGINT, but it looks like my program still terminates
+
+1734456194
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess I’m missing a flag or something
+
+1734456468
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah, std.posix doesn’t have sigaddset
+
+1734456635
+hadronized!~hadronize@2001:41d0:a:fe76::1
+src/main.zig:21:14: error: root struct of file 'c' has no member named 'sigaddset'
+
+1734456641
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ZLS sees it 
+
+1734456644
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what 
+
+1734456713
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it a bug in the std?
+
+1734456720
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://ziglang.org/documentation/master/std/#std.c
+
+1734456729
+hadronized!~hadronize@2001:41d0:a:fe76::1
+why is it a non-extern "c" function?
+
+1734456768
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, clicking it brings me to a darwin implementation
+
+1734456770
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that’s fishy
+
+1734456906
+ifreund!2940d10f8b@user/ifreund
+probably just the docgen being buggy 
+
+1734456927
+ifreund!2940d10f8b@user/ifreund
+iirc it doesnt handle conditional compilation terribly well yet
+
+1734457088
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah, interesting thing
+
+1734457106
+hadronized!~hadronize@2001:41d0:a:fe76::1
+overriding SIGINT while executing my binary through zig build run is not the best idea :D
+
+1734457124
+hadronized!~hadronize@2001:41d0:a:fe76::1
+woah, I guess that zombifiers the binary if I don’t properly quit
+
+1734457133
+hadronized!~hadronize@2001:41d0:a:fe76::1
+because zig build run does catches it and quits
+
+1734457141
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but not my binary, which gets zombified
+
+1734457331
+hadronized!~hadronize@2001:41d0:a:fe76::1
+doesn’t Zig have atomic types?
+
+1734457348
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it std.atomic.Value(T)?
+
+1734457646
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://git.sr.ht/~hadronized/vk-zig/tree/master/item/src/main.zig#L15-46
+
+1734457648
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s not that bad 
+
+1734458174
+ifreund!2940d10f8b@user/ifreund
+hadronized: by the way, there is a project providing nice zig bindings for vulkan: https://github.com/Snektron/vulkan-zig
+
+1734458271
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, but as I said yesterday, I’m interested in making my own
+
+1734461809
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+i'm trying to get better understanding of how hashmaps work, so  i made up this this corner case with StringHashMap:  1. I use a heap-allocated key to put a value in.  2. alter the memory (ie. the key content), 3. try to access the key again
+
+1734461831
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+(i mean access the value again)
+
+1734461873
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+3a. i use different key, eg. static key but if identical value, i don't get the value back
+
+1734461894
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+3b. i use the same key slice i don't get it back either
+
+1734461962
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+so it seems that in order to get the value back, i need to have the same slice (addr.) with the same content -- is that right?
+
+1734462001
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+(i thought it's either the value, or the address which matters, but then one of my cases would work)
+
+1734462187
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+i tried to read the code; looks like it boils down to getIndex but TBH it's a bit too much for me to read through
+
+1734462250
+ifreund!2940d10f8b@user/ifreund
+netvor: yes, it's invalid to modify the content of a key
+
+1734462305
+ifreund!2940d10f8b@user/ifreund
+hash maps need to fall back to comparing the contents of keys in the case of a hash collision
+
+1734462495
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+yeah but if i specify the same key from another place in the memory -- shouldn't that work?  i mean the content is identical, right? 
+
+1734462510
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+isn't that enough?
+
+1734462569
+ifreund!2940d10f8b@user/ifreund
+netvor: your step 2 (alter the memory of a key after having added it to a hash map) breaks the hashmap's API contract
+
+1734462603
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+netvor: No, because now the hash of the key is different
+
+1734462654
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+well, hash of a key "FOO" is still hash of a key "FOO", right?  even if it's stored elsewhere, right?
+
+1734462675
+ifreund!2940d10f8b@user/ifreund
+yes
+
+1734462686
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+Step 1 is hash to find the slot, step 2 is compare to make sure the keys actually match. If you set to hk (hash key) to k1, put(hk, value), then mutate hk to k2
+
+1734462698
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+Then get(k2) will find an empty slot because it hashes differently
+
+1734462711
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+get(k1) will find the right slot but k1 is different from k2, so the slow compare will fail
+
+1734462725
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+Does that make sense?
+
+1734462832
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+The easiest way to think of a hashtable is an array of lists. You hash to find which list you want to check inside of the array, but once you find the list you need to verify which entry in that list corresponds to that exact key.
+
+1734462864
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+well i it does but i need to catch up on how hash maps work, looks like i had a naive idea :)
+
+1734462890
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+As long as you learned something c:
+
+1734463091
+ifreund!2940d10f8b@user/ifreund
+netvor: if you want more info, this wikipedia section on collison resolution seems pretty good: https://en.wikipedia.org/wiki/Hash_table#Collision_resolution
+
+1734463112
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+thanks, i do need to learn more.
+
+1734463118
+ifreund!2940d10f8b@user/ifreund
+"Separate Chaining" is the simpler approch Tekk described
+
+1734463143
+ifreund!2940d10f8b@user/ifreund
+The zig std HashMap uses "Open Addressing" with linear probing
+
+1734463284
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+^ As does basically every other modern implementation, so if your understanding conflicts assume that one
+
+1734463295
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+But I find chaining easier conceptually
+
+1734463295
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+what bugs me is that what i did in my examples is then i even created a completely new slice with the same bytes as the original key, tried to use it with get, and null.  so now it almost looks like i can't, as a server, take a request, parse out key, and locate it, but that can't be true! :D
+
+1734463344
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+That was because you modified the key. That new slice passed step 1 (hash to the right thing) but failed step 2 (byte-by-byte comparison with the stored key)
+
+1734463347
+ifreund!2940d10f8b@user/ifreund
+netvor: oh, I think you might be missing that the zig std HashMaps do not copy and take ownership of inserted keys
+
+1734463395
+ifreund!2940d10f8b@user/ifreund
+you need to manange the lifetime of inserted keys and ensure that they do not change while the item is in the HashMap
+
+1734463403
+ifreund!2940d10f8b@user/ifreund
+(and free them when the hashmap is free'd)
+
+1734463462
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+actually i knew that, but still thought i can get away with not storing the original key, as long as i know the value
+
+1734463598
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+so is it true that, once i attempt get with a broken key, then that will actually alter the state of the map (and because i broke the contract i sort of broke it all)
+
+1734463626
+ifreund!2940d10f8b@user/ifreund
+get() won't alter the state of the map
+
+1734463629
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+You altered the state of the map when you modified the key that the map was holding onto
+
+1734463638
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+and created an impossible state
+
+1734463650
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+(A key which did not hash to its hash)
+
+1734463674
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+You're actually lucky it didn't work
+
+1734463675
+ifreund!2940d10f8b@user/ifreund
+when you modify a key owne by the hashmap, you cause the internal state of the hash map to get out of sync with the key owned by the hashmap
+
+1734463687
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+If your new key happened to hash to the right value then it would've magically worked until it didn't.
+
+1734463705
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+ah, i see, i'll go do some more reading now to absorb it :)
+
+1734463707
+Tekk!~Tekk@2600:6c5e:6600:45ef::98f
+(if you did get(newkey) that is)
+
