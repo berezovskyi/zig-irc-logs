@@ -1,0 +1,188 @@
+1734569150
+torque!~tachyon@user/torque
+a slice doesn't exist in c?
+
+1734569158
+torque!~tachyon@user/torque
+perhaps you mean slice.ptr?
+
+1734569227
+torque!~tachyon@user/torque
+I think a zero length slice is not required to hold a valid pointer
+
+1734571842
+grayhatter!~grayhatte@user/grayhatter
+torque: ^ that's exactly the answer I was fishing for
+
+1734571862
+grayhatter!~grayhatte@user/grayhatter
+that decision seems like a mistake
+
+1734571878
+grayhatter!~grayhatte@user/grayhatter
+especially given the pattern used in std.ArrayList
+
+1734572140
+grayhatter!~grayhatte@user/grayhatter
+follow up question... what am I missing where I should know this is obviously undefined and/or invalid? `var valid: [5:0]const u8 = "string"; valid.len = 0; var slice = valid[0..0]; slice.len = 5;` 
+
+1734572532
+torque!~tachyon@user/torque
+I mean, why are you slicing something to 0 length and then expecting to get a valid pointer
+
+1734572775
+grayhatter!~grayhatte@user/grayhatter
+const title_body_split = indexOf(u8, message, "\n\n") orelse message.len; title = message[0..title_body_split]; body = message[title_body_split]; 
+
+1734572813
+grayhatter!~grayhatte@user/grayhatter
+err; should be: `body = message[title_body_split..];`
+
+1734572897
+torque!~tachyon@user/torque
+I assume the iovec stuff takes a length along with a pointer
+
+1734572908
+torque!~tachyon@user/torque
+why would it bother to deref the pointer if length is 0
+
+1734572919
+grayhatter!~grayhatte@user/grayhatter
+it does... yeah, that was my question too
+
+1734572996
+grayhatter!~grayhatte@user/grayhatter
+blind assumption based on pure speculation; the kernel goes `if (!address_is_valid_for_pid(calling_pid)) { return FAULT; }` 
+
+1734573039
+torque!~tachyon@user/torque
+ah
+
+1734573062
+torque!~tachyon@user/torque
+sounds like your option is to filter out 0-length slices before passing them down
+
+1734573091
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/verse/commit/4e62ca66
+
+1734573093
+grayhatter!~grayhatte@user/grayhatter
+yup
+
+1734607004
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+Overkill: re doc, i don't know but i'd prefer static one as well.  aside from the problems you mentioned, it also just does not work at all in qutebrowser
+
+1734608593
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+i'm still new to zig and it's my first attept to learn systems-level stuff, so please bear with me...  i've started to do this pattern: 1. i take a buffer from heap, 2. use it to init FixedBufferAllocator, then 3. use that to init ArenaAllocator and then 4. pass its Allocator around that within the thread/whatever.
+
+1734608638
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+thing is, now i've realized that i don't need the arena middle man, and i'm kinda baffled by this realization :D
+
+1734608710
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+i think the way i arrived to that pattern ("think" .. i't some time ago, and it's not like i knew what i was doing)  was that 1. wow, arenas are cool (and good for the use case of server)
+
+1734608749
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+2. but i want to allocate fixed memory, with size known at runtime (passed from CLI)
+
+1734608810
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+3. but arena won't let me allocate fixed size, therefore i need to house the arena within FBA.
+
+1734608939
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+so before i jump to the opposite exterme:  am i right, that all i really need is, 1. take thread buff from heap, 2. init FBA, 3. pass around FBA.allocator()
+
+1734608984
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+and eventually return the memory by just .free(thread_buff)
+
+1734609088
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+in other words, i think i was intrigued by the convenience of arena allocator (no need fo keep track of the lifetimes, et.c)  but i get the same convenience with the much simpler approach, right?
+
+1734610999
+Earnest!~earnest@user/earnestly
+I'm glad arena allocators are becoming more well known outside of high safety codebases
+
+1734613344
+ifreund!2940d10f8b@user/ifreund
+netvor: yep, FBA is basically an arena that cant grow
+
+1734615031
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+so i guess on my tiger-style-inspired side quest, i'm on panel 3 here: https://imgflip.com/i/9eaoqm
+
+1734615323
+netvor!~netvor@2a00:ca8:a1f:cd0:c172:26c3:e1f6:b6b5
+..there's a hidden panel between 2 and 3 (just for me), i think i just got out of it.  https://imgflip.com/i/9eapjq
+
+1734628733
+grayhatter!~grayhatte@user/grayhatter
+wait, is FBA really in the heap namespace?
+
+1734628743
+grayhatter!~grayhatte@user/grayhatter
+am I really the only one that doesn't see a problem with that?
+
+1734628962
+ifreund!2940d10f8b@user/ifreund
+grayhatter: one could argue that nothing should be in there but page allocator
+
+1734629027
+grayhatter!~grayhatte@user/grayhatter
+c_allocator too probably
+
+1734629061
+grayhatter!~grayhatte@user/grayhatter
+it hurts me every time I have to write std.heap.ArenaAllocator
+
+1734629148
+grayhatter!~grayhatte@user/grayhatter
+given how the allocator pattern is so central to writing good zig code, it' probably deserves it's own std namespace std.alloc.Arena, std.alloc.page, std.alloc.FixedBuffer
+
+1734629320
+ifreund!2940d10f8b@user/ifreund
+I think std.alloc.Arena would be great
+
+1734629533
+grayhatter!~grayhatte@user/grayhatter
+ifreund: if I opened a PR for it, would you comment on it? Not asking if you'd be willing to accept it, that's more of a question of, do you think the idea has enough merit to warrent any time?
+
+1734630109
+ifreund!2940d10f8b@user/ifreund
+grayhatter: andrew has been doing similar reorganizations of namespaces recently to eliminate redundancy, I think it has a good chance of getting accepted
+
+1734630122
+ifreund!2940d10f8b@user/ifreund
+see the newish section in the style guide: https://ziglang.org/documentation/master/#Avoid-Redundant-Names-in-Fully-Qualified-Namespaces
+
+1734630147
+ifreund!2940d10f8b@user/ifreund
+be prepared for some bikeshedding on the specifics though
+
+1734630196
+ifreund!2940d10f8b@user/ifreund
+also, It would probably be good to add temporary aliases for backwards compatibility to give users time to transition
+
+1734630274
+ifreund!2940d10f8b@user/ifreund
+avoiding updating the thousands of references to allocators in the zig std/compiler source code in the PR introducing the new alloc namespace would be good as otherwise it will conflict with every other open PR
+
+1734630375
+grayhatter!~grayhatte@user/grayhatter
+ifreund: yeah, I had that thought already, with how core it is, there's no chance it would be a possible to to a clean migration without backwards compat aliases (I was sure that'd be a pre-req for it even beeing accepted given how wide and intrusive a change that would be)
+
+1734637861
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/pull/22272
+
+1734638054
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: you might consider discussing that on the Zulip stdlib channel
+
