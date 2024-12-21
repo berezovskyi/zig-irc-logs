@@ -1,0 +1,160 @@
+1734701996
+Synon!~mkejji@user/Synon
+Hi there, bit of a noob question here: after I cloned a zig project that has dependencies defined in its `build.zig.zon` file, is there a command to fetch all dependencies? I tried zig fetch --help and didn't see a command for it
+
+1734702072
+Synon!~mkejji@user/Synon
+In the official docs there are too links if you search for "(see Package Management and Static Library)": "Static Library" scrolls to the relevant section but "Package Management" is missing
+
+1734702077
+Synon!~mkejji@user/Synon
+two* links
+
+1734702165
+ifreund!2940d10f8b@user/ifreund
+running zig build will fetch the dependencies first if needed
+
+1734702185
+Synon!~mkejji@user/Synon
+it didn't :/
+
+1734702194
+Synon!~mkejji@user/Synon
+do I guess they messed up their build script?
+
+1734702206
+ifreund!2940d10f8b@user/ifreund
+thats possible, yes
+
+1734702246
+Synon!~mkejji@user/Synon
+can you link me to a project with the correct build script that auto-fetches dependencies? Maybe I can contribute a PR to this one
+
+1734702265
+Synon!~mkejji@user/Synon
+or a piece of documentation that explains how
+
+1734702592
+ifreund!2940d10f8b@user/ifreund
+which project are you trying to build and what error are you getting exactly?
+
+1734713585
+sewn!~sewn@sl.projectsegfau.lt
+by any chance is there a method to set the default dynamic linker without zig automatically detecting it?
+
+1734713607
+sewn!~sewn@sl.projectsegfau.lt
+i'm on a musl system where the /usr/bin/env executable is statically linked, leading zig to link to none
+
+1734713990
+ifreund!2940d10f8b@user/ifreund
+the standard `zig build` target options include -Ddynamic-linker=<path>
+
+1734714372
+sewn!~sewn@sl.projectsegfau.lt
+i was unsure what exactly to set it to, so i set it to musl libc earlier and it had dependency resolving issues
+
+1734714682
+ifreund!2940d10f8b@user/ifreund
+sewn: it expects the path to the system dynamic linker
+
+1734714719
+ifreund!2940d10f8b@user/ifreund
+so something like /lib/ld-musl-x86_64.so.1
+
+1734714744
+sewn!~sewn@sl.projectsegfau.lt
+yes, i set it to that and had dependency resolving issues
+
+1734714748
+sewn!~sewn@sl.projectsegfau.lt
+it failed to find system libraries 
+
+1734714783
+ifreund!2940d10f8b@user/ifreund
+at runtime or compile time?
+
+1734714790
+ifreund!2940d10f8b@user/ifreund
+what error exactly are you seeing?
+
+1734714814
+sewn!~sewn@sl.projectsegfau.lt
+error: unable to find dynamic system library '<library>' using strategy 'paths_first'. searched paths: none
+
+1734714831
+ifreund!2940d10f8b@user/ifreund
+well, define some search paths then
+
+1734714838
+sewn!~sewn@sl.projectsegfau.lt
+seems to yeah, i have to --search-prefix
+
+1734715731
+sewn!~sewn@sl.projectsegfau.lt
+thanks
+
+1734715777
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1734716051
+ifreund!2940d10f8b@user/ifreund
+unfortunately there's no good way for zig to know if your system is glibc or musl based without using heuristics like reading /usr/bin/env
+
+1734716095
+ifreund!2940d10f8b@user/ifreund
+I wonder if setting -Dtarget=native-native-musl would also work
+
+1734717335
+bblack!~bblack@wikimedia/bblack-WMF
+should current zig-master support translate-c/@cImport of variadic macros?
+
+1734717358
+bblack!~bblack@wikimedia/bblack-WMF
+I see some references to the concept in the code, e.g. in Aro diagnostic lists and such
+
+1734717374
+bblack!~bblack@wikimedia/bblack-WMF
+but then in practice I get the same results as: https://github.com/ziglang/zig/issues/18986
+
+1734717505
+bblack!~bblack@wikimedia/bblack-WMF
+makes me wonder if I'm missing something fundamental, like an ability to set some Aro flag or that the Aro bits I'm seeing just aren't in use yet, or something.
+
+1734722111
+andrewrk!~andrewrk@mail.ziglang.org
+aro isn't used for translate-c currently
+
+1734728835
+Synon!~mkejji@user/Synon
+@ifreund sorry I just got back, the project I was trying to build is Tides of Revival (should be the first google search result). I ended up joining their discord and they gave me full instructions to build it
+
+1734728986
+ifreund!2940d10f8b@user/ifreund
+cool :)
+
+1734729114
+Synon!~mkejji@user/Synon
+They have a python script that just git-clones each dependency, makes me wonder why there's a build.zig.zon at all
+
+1734729234
+Synon!~mkejji@user/Synon
+I mean why they have dependencies listed there too
+
+1734729684
+ifreund!2940d10f8b@user/ifreund
+hmm, yeah that's a bit questionable
+
+1734731827
+mountaingoat!~mountaing@user/mountaingoat
+might be a silly question but ... there is no safe way to know the address of a struct being constructed/returned inside its init(), right? because it's essentially (optimization aside) copied on assignment by the caller? i wanted to create an interface (e.g. writer/reader anyopaque style) inside the init(), but realized i don't have a stable address to self yet
+
+1734732319
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: indeed, you have to take a pointer as an argument to init() if you need that for now
+
+1734737056
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: thanks
+
