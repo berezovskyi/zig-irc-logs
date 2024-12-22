@@ -1,0 +1,520 @@
+1734766684
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+are the examples on zig.guide idiomatic?
+
+1734766724
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+or just examples?
+
+1734796975
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+how to organize and run multiple tests?  my project is divided into semi-independent modules, src/foo.zig, src.bar.zig, and each has its own test declarations.  all works fine but sometimes i want to run all tests, and running it like 'zig test src/foo.zig src.bar.zig' does not work
+
+1734797000
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i get `error: found another zig file 'src/main.zig' after root source file ` (one of my files is main.zig)
+
+1734797087
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+so is there a simple way of discovering & running all tests without need to maintain extra file or scripting?
+
+1734797397
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i mean `grep -l '^[[:space:]]*test ' src/*.zig | xargs -L1 zig test` does work but it would be nicer if `zig test` could do the discovery, or at least accept multiple files (and prefix any messages)...
+
+1734797793
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+ok, so it seems like putting `test { std.testing.refAllDecls(@This()); }` into main.zig and running just zig test src/main.zig will work for me.
+
+1734799288
+grayhatter!~grayhatte@user/grayhatter
+netvor: `zig build test` will work for you now that you have that line in your main.zig
+
+1734799433
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+ah, even nicer, thanks :)
+
+1734799635
+grayhatter!~grayhatte@user/grayhatter
+netvor: depending on your project layout, you might need refalldecls in a few other files as well
+
+1734799659
+grayhatter!~grayhatte@user/grayhatter
+I've adopted the habit of adding `std.testing.expect(false);` for the first run of a new test to ensure it's actually found
+
+1734799699
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+Oh my IRC client disconnected -  are the examples on zig.guide idiomatic?
+
+1734799785
+ifreund!2940d10f8b@user/ifreund
+WilhelmVonWeiner: I'd say they are more or less as idiomatic as isolated code snippets can be
+
+1734799842
+ifreund!2940d10f8b@user/ifreund
+It's hard to say what is idiomatic or not in a vacuum, it's much easier to say "this way is more idiomatic than that way"
+
+1734800365
+grayhatter!~grayhatte@user/grayhatter
+who's ever idea is was to start placing all the @imports at the bottom of the file.... You're awesome!
+
+1734800381
+ifreund!2940d10f8b@user/ifreund
+that was andrew
+
+1734800392
+ifreund!2940d10f8b@user/ifreund
+I'm still not sure if I like it or not personall...
+
+1734800440
+ifreund!2940d10f8b@user/ifreund
+probably I'm just clinging to what I'm used to
+
+1734800441
+grayhatter!~grayhatte@user/grayhatter
+ifreund: I'm 0% suprised, it does sound like an andrew decision
+
+1734800563
+grayhatter!~grayhatte@user/grayhatter
+ifreund: I felt the exact same way, until I realized that it 1) put the most important part of the object first (the members, if it's has any) but 2) it would encourage me to deconstruct stdlib functions more. With it at the bottom, it lowers the "value" required before I add `const indexOf = std.mem.indexOf;` which makes the rest of the code **much** more readable 
+
+1734800756
+ifreund!2940d10f8b@user/ifreund
+I usually stick with mem.indexOf() and similar myself
+
+1734800767
+ifreund!2940d10f8b@user/ifreund
+the only exception being assert() rather than debug.assert()
+
+1734800805
+torque!~tachyon@user/torque
+I like fully qualified namespaces unless they're too long
+
+1734800825
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+if I use a mem function a bunch for the same type in the same file I usually make a wrapper so I can pass only two args haha
+
+1734801262
+grayhatter!~grayhatte@user/grayhatter
+torque: I wrote an ini parser that parses into a struct, droping `std.mem` drastically increased the readability. (for me)
+
+1734801329
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+grayhatter: is this open source code? that sounds like the kind of thing I'd want to read right about now 
+
+1734801352
+grayhatter!~grayhatte@user/grayhatter
+I'm assuming It's very much a thing that's situational, I also value meaningful namespaces but sometimes, it's objectively better to just flatten everything out
+
+1734801380
+grayhatter!~grayhatte@user/grayhatter
+WilhelmVonWeiner: https://srctree.gr.ht/repo/srctree/blob/src/ini.zig
+
+1734801434
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/srctree/blob/src/main.zig#L65 and https://srctree.gr.ht/repo/srctree/blob/src/main.zig#L112
+
+1734801449
+grayhatter!~grayhatte@user/grayhatter
+It's not perfect, but it's pretty good
+
+1734801450
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+tyvm
+
+1734806456
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+tbh, imports at the end, that's "a bit" too far
+
+1734806575
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+(guess i am clinging to reading top to bottom, with no unnecessary jumps)
+
+1734807062
+torque!~tachyon@user/torque
+I think the point is that imports are not that useful when reading from top to bottom
+
+1734807105
+torque!~tachyon@user/torque
+unless you're re-exporting an import, it's file-private data, and I tend to put private stuff at the bottom anyway. for reading, people normally want to see your interface first
+
+1734807155
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i got it but don't really buy the argument.  is't defining symbols, then using them.
+
+1734807220
+torque!~tachyon@user/torque
+idk, in zig, I've found I define things out of order like crazy, especially functions/methods
+
+1734807239
+torque!~tachyon@user/torque
+I think it's nice to have the flexibility to put the most interesting things first
+
+1734807334
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i mean it's nice to have flexibility, for sure, and it does boild down to preference, i just find it much less readable
+
+1734807340
+torque!~tachyon@user/torque
+from an implementation perspective, I often find I want to extract some common functionality to another function, and I tend to prefer putting that below the function that calls it
+
+1734807398
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+and when it comes to interface, i always find about them using LSP, it's only because implementation that i usually open the source code
+
+1734807420
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+(ie. when interface is not obvious, or docs incomplete, etc...)
+
+1734807427
+torque!~tachyon@user/torque
+zig is so painless to navigate compared to C/C++ that I think it allows you to be a little more carefree with layout, even aside from the functionality differences
+
+1734807434
+torque!~tachyon@user/torque
+I barely use LSP
+
+1734807514
+torque!~tachyon@user/torque
+most of the zig I've written was completely without LSP at all. the problem with modern editors is they get no word completion at all without having 100 background processes running
+
+1734807520
+ifreund!2940d10f8b@user/ifreund
+It's so easy to forget how amazing it is that zig makes it trival to find out where a type/function/whatever is defined
+
+1734807552
+ifreund!2940d10f8b@user/ifreund
+and then you open some C++ and get totally lost digging through class hierarchies
+
+1734807581
+torque!~tachyon@user/torque
+this is my life at work right now and i hate it
+
+1734807594
+ifreund!2940d10f8b@user/ifreund
+Yeah, I don't use LSP at all for zig currently either
+
+1734807607
+ifreund!2940d10f8b@user/ifreund
+I use clangd for C/C++ purely for goto definition/goto references
+
+1734807624
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+well i also always hated slow editors.  it's why i used vim for most of my coding life and only recently switched to neovim
+
+1734807626
+ifreund!2940d10f8b@user/ifreund
+I would love a reliable goto references for zig, but zls didn't seem reliable enough last time I tried it
+
+1734807638
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+and yes the initial slowness because of LSP was annoying :D
+
+1734807655
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i still fall back to pure vim all the time
+
+1734807660
+torque!~tachyon@user/torque
+clangd is basically not reliable for me, probably because I haven't fiddled with the shitty include paths enough or something
+
+1734807675
+ifreund!2940d10f8b@user/ifreund
+you need an accurate compile_commands.json
+
+1734807687
+ifreund!2940d10f8b@user/ifreund
+otherwise it won't do much
+
+1734807735
+torque!~tachyon@user/torque
+I have compile_commands.json, but like, it just won't find certain functions in the same library that it can find others
+
+1734807736
+ifreund!2940d10f8b@user/ifreund
+there is a tool called bear that will wrap the cc/c++ compiler to generate compile_commands.json, modern build systems like cmake/meson can also generate it themselves
+
+1734807764
+torque!~tachyon@user/torque
+they're all in the same include tree, it's baffling
+
+1734807770
+ifreund!2940d10f8b@user/ifreund
+It may not be 100% reliable with C++, I mostly write C outside of Zig
+
+1734807776
+torque!~tachyon@user/torque
+luck you
+
+1734807779
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+then again, i don't (and won't probably) have comparison with things like C/C++/C#... i spent most of my careerd doing high-level languages and only dared to ventured to low-level because, well, zig is so awesome
+
+1734807780
+torque!~tachyon@user/torque
+c++ is a hellscape
+
+1734807783
+ifreund!2940d10f8b@user/ifreund
+it's been pretty solid for C though
+
+1734807810
+ifreund!2940d10f8b@user/ifreund
+C++ was the first language I really learned
+
+1734807836
+torque!~tachyon@user/torque
+going from writing zig to writing c++ for work has been the the biggest work satisfaction drop I've ever had, but the actual work environment at the new job is a lot nicer than the old one so hmmmm
+
+1734807839
+ifreund!2940d10f8b@user/ifreund
+I guess I did a little bit of java before C++ but I haven't touched java in years
+
+1734807875
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+(also because with mypy i got a little taste of static typing and i just went bonkers and wanted more, moar, MOAR :D)
+
+1734807907
+ifreund!2940d10f8b@user/ifreund
+more moar MOAR static typing will lead you to haskell land if you're not careful :P
+
+1734807923
+torque!~tachyon@user/torque
+I'm actually glad that zig's type system is kind of limited in expression
+
+1734807938
+torque!~tachyon@user/torque
+fighting against linters is one of the most annoying things about modern high-level programming imo
+
+1734807985
+torque!~tachyon@user/torque
+typing in python is fine, until the type checker becomes wrong and actively hostile etc because the people who designed it did it piecemeal and sloppily
+
+1734808017
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i kind of realized that people like me should not be allowed to use dynamic typing.  i'm pretty obsessive with detail & correctness, and the problem is that with dynamic languages you just never know, which to me means that I can never NOT be anxious
+
+1734808111
+torque!~tachyon@user/torque
+I like having the compiler be able to check things, but it never bothered me that much in python
+
+1734808137
+ifreund!2940d10f8b@user/ifreund
+dynamic typing just means you need to add runtime type assertions everywhere
+
+1734808150
+torque!~tachyon@user/torque
+catching errors during compilation rather than runtime is obviously superior, though
+
+1734808152
+ifreund!2940d10f8b@user/ifreund
+or make the compiler add them for you
+
+1734808174
+torque!~tachyon@user/torque
+I mean that's why the popular modern dynamic languages have static typing
+
+1734808174
+grayhatter!~grayhatte@user/grayhatter
+netvor: I'm constantly having this similar arguement with people, there's **nothing** wrong with python duck typing, you just need to tell python the type you want it to be, and python's magic will fix it for you. That's a good thing.
+
+1734808188
+grayhatter!~grayhatte@user/grayhatter
+just like Zig's "rule" runtime crashes are better than bugs.
+
+1734808204
+grayhatter!~grayhatte@user/grayhatter
+it's the exact same idea, just with different methods of getting there
+
+1734808226
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+re linters, actually one of the most awesome things about my experience with zig is that, i started with nevim, installed zig things, and it started forcing auto-formatting immediately
+
+1734808238
+torque!~tachyon@user/torque
+bvut the static typing sucks at expressing the dynanism of the language, which can lead to really convoluted type expressions to describe something that is very natural to write otherwise
+
+1734808253
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+that was super annoying, but i soon totally flipped and realized that that's actually super good
+
+1734808264
+torque!~tachyon@user/torque
+auto formatting is nice
+
+1734808277
+torque!~tachyon@user/torque
+it helps that zig's format style is mostly sane
+
+1734808297
+torque!~tachyon@user/torque
+I have some style proposals I've been meaning to write up
+
+1734808331
+torque!~tachyon@user/torque
+that's the other problem with C++ is that the formatting styles are capital F Fucking Insane
+
+1734808341
+torque!~tachyon@user/torque
+clang-format makes code dramatically less readable
+
+1734808378
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+what i feel has been desperately missing in industry is per-language standardized formatting.   it always made coding reviews hell (especially with people who are naturally attentive to details)   it's actually why i always liked Python
+
+1734808413
+torque!~tachyon@user/torque
+python was a bit of a mishmash until black fixed it, though
+
+1734808428
+torque!~tachyon@user/torque
+I am a big fan of the black style though, it's really clean to read
+
+1734808447
+ifreund!2940d10f8b@user/ifreund
+having a cannonical format for a given ast one step closer to getting rid of the text and storing the ast directly
+
+1734808451
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i mean it was much better than much of the other languages.  at least you could nto have K&R vs.  or tabs vs.. wars
+
+1734808458
+ifreund!2940d10f8b@user/ifreund
+structural editing when? :P
+
+1734808501
+grayhatter!~grayhatte@user/grayhatter
+zig fmt is just as good as black
+
+1734808506
+torque!~tachyon@user/torque
+not quite
+
+1734808524
+torque!~tachyon@user/torque
+it doesn't balance things inside of parentheses nearly as nicely
+
+1734808533
+torque!~tachyon@user/torque
+a multi-line boolean expression is much uglier in zig currently
+
+1734808548
+grayhatter!~grayhatte@user/grayhatter
+no, it's objectively worse in black
+
+1734808548
+torque!~tachyon@user/torque
+it also puts infix operators at the end of lines rather than the beginning, which is really bad imo
+
+1734808560
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+btw in past year i was working on JS codebase.  it was a mess, so i decided to use their current "standard" linter, 'pretier'.   i ran it and it crashed, because I haven't created config yet
+
+1734808565
+torque!~tachyon@user/torque
+objectively worse, huh
+
+1734808568
+torque!~tachyon@user/torque
+let's go
+
+1734808596
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i mean how insane is that, when even the most respected linter does not have balls to have an opinion
+
+1734808606
+torque!~tachyon@user/torque
+prettier has the problem where it uh, supports like 900 languages
+
+1734808825
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+well, i thought it's JS only but maybe that's what you mean
+
+1734808912
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+900 variants of JS on the wall, take one down and pass it around...
+
+1734808914
+torque!~tachyon@user/torque
+prettier is written in js but it supports formatting a lot of different languages
+
+1734809064
+grayhatter!~grayhatte@user/grayhatter
+torque: should your formatter insert or remove anything other that whitespace? does black insert random ()?
+
+1734809083
+torque!~tachyon@user/torque
+they aren't random
+
+1734809094
+torque!~tachyon@user/torque
+they're syntactically required by the language
+
+1734809111
+torque!~tachyon@user/torque
+also, that doesn't have anything to do with the layout of the formatting, which is what I care about
+
+1734809119
+grayhatter!~grayhatte@user/grayhatter
+I'll agree if (something\nand something_else) is objectively better than if (something and\nsomething_else)
+
+1734809178
+torque!~tachyon@user/torque
+those are both bad because they don't have enough linebreaks
+
+1734809222
+torque!~tachyon@user/torque
+if you're calling or defining a function whose arguments end up on many lines, the open and closing paren are on their own lines (respective to the arguments)
+
+1734809233
+grayhatter!~grayhatte@user/grayhatter
+that was an example about how and/or should be on the newline instead of old, I didn't complete it 
+
+1734809238
+torque!~tachyon@user/torque
+why is this different for any other multi-line expression in parenthases
+
+1734809427
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i haven't used black but how can any linter/formatter inserting things (other than whitespace) not be a  problem
+
+1734809457
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+all scenarios i can think of seems like it would be just hiding bugs at best
+
+1734809516
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+it's what i even hated with prettier; it kept injecting semicolons
+
+1734809560
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+i mean, if 1. my code is ambiguous 2. a machine can disambiguate it, then 3. why not disambiguate it on runtime/compile time?
+
+1734809581
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+in other words, if (2) then not really (1)
+
+1734812680
+torque!~tachyon@user/torque
+black only inserts parentheses, and it only does it when syntactically required by python to be able to spread a statement over multiple lines
+
+1734812701
+torque!~tachyon@user/torque
+it also does a good job of removing parentheses that are not necessary for this purpose
+
+1734812719
+torque!~tachyon@user/torque
+this is required due to the syntactic whitespace of the language
+
+1734812779
+torque!~tachyon@user/torque
+if you have concatentated string literals, like "foo bar" "baz qux" that need to be split across multiple lines, they must be wrapped in parentheses
+
+1734812801
+torque!~tachyon@user/torque
+it's not even slightly a problem imo, because it's functionally whitespace and you can trust the formatter not to muck it up
+
+1734815407
+netvor!~netvor@2a00:ca8:a1f:cd0:f1f1:6377:cc76:ecc8
+oh i see; didn't realize it
+
