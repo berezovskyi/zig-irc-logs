@@ -1,0 +1,144 @@
+1734861985
+ujjawalgupta!~manu@49.43.161.7
+should i use zig for my app's backend?
+
+1734862820
+voroskoi!924a802ee9@2a03:6000:1812:100::15c
+do You have an example of libxev ThreadPool in usage? I try to add Tasks callbacks with payload, but I can not figure out how to pass them
+
+1734876141
+SWilliam!~swn@user/SWilliam
+Hi all! I am quite new to Zig, wanted to ask if you may have any suggestions to improve this FizzBuzz code sample? https://gitlab.com/-/snippets/4785972
+
+1734876289
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I wouldn’t return an allocated string when you can return a number and the caller can format it
+
+1734876321
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ha nevermind, i need more coffee
+
+1734876342
+ifreund!2940d10f8b@user/ifreund
+I would write directly to stdout
+
+1734876354
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+that^^
+
+1734876375
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+or return tagged union type so you don’t need any allocations
+
+1734876382
+SWilliam!~swn@user/SWilliam
+ifreund: I want this to be unit-testable. rockorager how could I still return 'something' and but not do additional allocations?
+
+1734876431
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+union(enum) { fizzbuzz, fizz, buzz, n: u32}
+
+1734876443
+SWilliam!~swn@user/SWilliam
+will give it a shot - thanks both!
+
+1734876450
+ifreund!2940d10f8b@user/ifreund
+you could pass a writer to your fizzbuz function and write to that
+
+1734876459
+ifreund!2940d10f8b@user/ifreund
+for real usage pass an stdout write
+
+1734876489
+ifreund!2940d10f8b@user/ifreund
+for testing, pass a writer for an in memory buffer or whatever
+
+1734876507
+ifreund!2940d10f8b@user/ifreund
+s/stdout write/stdout writer/
+
+1734877583
+SWilliam!~swn@user/SWilliam
+Updated with union - and real usage executed through a union method. https://gitlab.com/-/snippets/4785972 
+
+1734878078
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+SWilliam: one second
+
+1734878275
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+SWilliam: https://zigbin.io/5cd33c
+
+1734878277
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I would do it that way
+
+1734878350
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the format for the void tags could be collapsed into an else 
+
+1734878370
+SWilliam!~swn@user/SWilliam
+this is awesome, thank you!
+
+1734878392
+SWilliam!~swn@user/SWilliam
+trying now
+
+1734878433
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the format function like that will be used by logging and print functions
+
+1734879419
+SWilliam!~swn@user/SWilliam
+yes and enabling reuse. Iterated all the way to this -> https://gitlab.com/-/snippets/4785972
+
+1734894475
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+is there a rule of thumb for when to use differently sized and signed ints? like why use i32 instead of isize unless doing something that's supposed to fit into 32 bits?
+
+1734894632
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+is using isize for counters, indices etc. idiomatic or should i just use whatever i think will be high enough?
+
+1734894909
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+i guess it saves space on the stack if the variable isn't optimised into a register 
+
+1734895258
+hadronized!~hadronize@2001:41d0:a:fe76::1
+WilhelmVonWeiner: usize for anything that can relate to a pointer
+
+1734895263
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(a collection size, index, etc.)
+
+1734895288
+hadronized!~hadronize@2001:41d0:a:fe76::1
+isize if you need to do arithmetic, especially subtraction
+
+1734895299
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I usually just keep everything as usize and convert to isize if I need to do some subtraction
+
+1734895311
+hadronized!~hadronize@2001:41d0:a:fe76::1
+unless you want to use a saturating / modulo operator
+
+1734895322
+hadronized!~hadronize@2001:41d0:a:fe76::1
+or actually handle errors on your side
+
+1734898084
+grayhatter!~grayhatte@user/grayhatter
+WilhelmVonWeiner: the correct int to use depends on how you plan to use it. if you're storing a bool u1... if a negative value is invalid, you'd probably want something unsigned, if you only have 255 items, using a u8 might prevent some issues. If it's part of a pointer/slice (like a it's going to be used in `slice[position]` or slice[0..len]) it probably best as a usize
+
+1734898235
+grayhatter!~grayhatte@user/grayhatter
+there's the common recommendation you see, where you should use isize, or usize because that's likely the most efficent on whatever platform, but if you know you need 64 bits, not only would I never use usize for that (hell, that's true when I need 32bits too) that's also kind of the job of the compiler to optimize your code, and promote some_int in to a usize, or whatever when it's equally correct,
+
+1734898237
+grayhatter!~grayhatte@user/grayhatter
+and faster
+
