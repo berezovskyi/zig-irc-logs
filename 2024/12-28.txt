@@ -1,0 +1,456 @@
+1735344906
+grayhatter!~grayhatte@user/grayhatter
+cpradog: it depends on what your options module looks like, but yes, it should be easy to proved a default that any user could easily/transparently override with the options they wanted
+
+1735345140
+cpradog!~cpradog@user/cpradog
+grayhatter: thanks for reply, by options I mean using Build.addOptions()
+
+1735345191
+cpradog!~cpradog@user/cpradog
+now I'm thinking maybe using something similar to std_options 
+
+1735345226
+grayhatter!~grayhatte@user/grayhatter
+are you creating a library, or a program
+
+1735345234
+cpradog!~cpradog@user/cpradog
+library
+
+1735345234
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+cpradog: ziglua has something like this https://github.com/natecraddock/ziglua/blob/main/build.zig
+
+1735345275
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you can specify the lua version at build time, orelse default to 5.4
+
+1735345284
+grayhatter!~grayhatte@user/grayhatter
+it depends on the options you need to configure, but sounds sensible enough
+
+1735345342
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the limitation of the std_options approach is that a consumer of your library which is also a library can’t actually specify them
+
+1735345358
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+(I think…)
+
+1735345376
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you have to be the main executable to be able to set std_options
+
+1735345471
+cpradog!~cpradog@user/cpradog
+but I can check if it was declared in root or else initialize with default values
+
+1735345534
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yes, but root is the executable root. so a library using your library won’t have a root. that may be fine for your use case
+
+1735345537
+grayhatter!~grayhatte@user/grayhatter
+right, but what rockorager is saying is I write a program called App, and include SomeLibrary, which includes YourLibrary. In that case, App is the only one that can set std_options, and SomeLibrary wouldn't be able to add it's own defaults
+
+1735345587
+cpradog!~cpradog@user/cpradog
+I see
+
+1735345596
+grayhatter!~grayhatte@user/grayhatter
+i.e. if SomeLibrary changes an important option, then YourLibrary would never see that important option
+
+1735345748
+cpradog!~cpradog@user/cpradog
+I was planning to do something like: pub const options: MyOptions = if (@hasDecl(root, "my_lib_options")) root.my_lib_options else .{ ... };
+
+1735345769
+cpradog!~cpradog@user/cpradog
+that way I can provide a default config and the application can replace it if they want
+
+1735345847
+cpradog!~cpradog@user/cpradog
+that make sense?
+
+1735345895
+grayhatter!~grayhatte@user/grayhatter
+cpradog: there's no clear cut answer that would be correct in all cases
+
+1735345958
+cpradog!~cpradog@user/cpradog
+I see
+
+1735345982
+cpradog!~cpradog@user/cpradog
+I think that could work for me, at least for now :)
+
+1735346106
+cpradog!~cpradog@user/cpradog
+thanks everyone
+
+1735346139
+grayhatter!~grayhatte@user/grayhatter
+good luck dude :)
+
+1735372726
+andrewrk!~andrewrk@mail.ziglang.org
+I must have looked at that username 12 times before I saw it correctly as "cpradog" instead of "crapdog"
+
+1735377425
+bheesham!3aa22d8375@2a03:6000:1812:100::e40
+Hey all. While reading the docs for https://ziglang.org/documentation/master/std/#std.static_string_map I noticed something odd -- note the `foo` values. Are those expected? 
+
+1735379571
+dsp!~dsp@host86-164-43-14.range86-164.btcentralplus.com
+I am looking for a good wasm opengl or webgpu framework for zig. Any recommendations?
+
+1735386623
+barusu!~barusu@104.46.44.175
+netvor: thanks
+
+1735386676
+barusu!~barusu@104.46.44.175
+I need some help with input buffering. I want to read all input bytes until I hit a "\r\n\r\n". Is there an API in szig for this?
+
+1735386726
+barusu!~barusu@104.46.44.175
+So far, I only see reader.streamUntilDelimiter() which reads until a single character is hit.
+
+1735389008
+dsp!~dsp@host86-164-43-14.range86-164.btcentralplus.com
+Sorry, disconnected. I am looking for a good graphics library to do WebGL or WebGPU with WASM and Zig. 
+
+1735389179
+MimiValsi!~MimiValsi@user/MimiValsi
+https://github.com/raysan5/raylib maybe?
+
+1735390699
+barusu!~barusu@104.46.44.175
+What could be wrong here: src/lsp/rpc.zig:76:65: error: expected type 'io.Writer', found 'io.GenericWriter(*io.fixed_buffer_stream.FixedBufferStream([]const u8),error{NoSpaceLeft},(function 'write'))'
+
+1735390734
+barusu!~barusu@104.46.44.175
+I have a function accept std.io.AnyWriter, but passing a FixedBufferStream.writer() throws this
+
+1735393252
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+oh i've realized that i've been badmouthing prettier on this channel few days ago, but my rant should have been for ESlint (not sure if i've used prettier, really...)
+
+1735393338
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+barusu: looks like you are getting the io.Writer somewhere but that place can actually return error as well
+
+1735393379
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+the types don't seem to match, technically, but i'm not sure if that would be a problem alone (i'm pretty new to Zig)
+
+1735393490
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+wait, scratch that, i misread your second message :P
+
+1735393824
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+that said, io.zig mentions this about io.Writer:  /// Deprecated; consider switching to `AnyWriter` or use `GenericWriter` /// to use previous API.
+
+1735393900
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+so apparently FixedBufferStream should be updated but the easy fix could be to acceot std.io.GenericWriter
+
+1735394537
+defiantredpill!~greenpill@user/defiantredpill
+Hello, is there a const or something i can read I can read to tell what os I am running on so I can write a sdl/glfw like os abstraction layer being there are no preprocesser like defines
+
+1735394651
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+well, std.io seems to use builtin.os.tag but i'm not sure if there's a better one
+
+1735395060
+defiantredpill!~greenpill@user/defiantredpill
+maybe std.Target is what i was looking for
+
+1735395187
+defiantredpill!~greenpill@user/defiantredpill
+ok i see builtin.os.tag is helpful thank you
+
+1735396186
+barusu!~barusu@104.46.44.175
+netvor: GenericWriter is a comptime function
+
+1735396776
+barusu!~barusu@104.46.44.175
+Do we have any logging capabilities in Zig's stdlib? Something to log to a file?
+
+1735403767
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+i only know of std.log.  it does not log to file, although it can be extended; see std/log.zig
+
+1735403804
+ifreund!2940d10f8b@user/ifreund
+it can easily log to a file by defining your own logFn
+
+1735405348
+defiantredpill!~greenpill@user/defiantredpill
+ok lets start with the very basics, how would I print zig_version. I don't know how to access variable that I did not create. I have "std.debug.print("Zig Version = {}\n", .{});"
+
+1735405457
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+defiantredpill: i think it's builtin.zig_version, you have to import builtin 
+
+1735405610
+defiantredpill!~greenpill@user/defiantredpill
+thank you that worked, sorry for such a basic question
+
+1735406927
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+it's chill i have been writing zig for <6 hours total
+
+1735407205
+defiantredpill!~greenpill@user/defiantredpill
+going from knowing a lot about C/C++ to knowing about 0.0001% of that in zig is hard
+
+1735408114
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Hmm, is there a correct way to annotate "out parameters" for functions that are C calling convention? I am observing an issue that only appears in ReleaseSafe/ReleaseFast but not in Debug builds, and I want to rule out the possibility that it's some issue with my function bindings.
+
+1735408179
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+I am calling an OpenGL function I've loaded at runtime (via SDL_GL_GetProcAddress). and I have some code that does: var texture: u32 = undefined; glGenTextures(1, &texture); that intermittently fails at runtime if I add/remove print statements or add more GL error checks.
+
+1735408205
+ifreund!2940d10f8b@user/ifreund
+Overkill: there is nothing special about "out parameters" from a C ABI perspective
+
+1735408222
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+(Obviously I would like a better debugging strategy as well, if there's a recommendation for a good debuging method for Windows to trace this better)
+
+1735408264
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+The issue appears to be that glGenTextures will not update the texture as expected. It should be a valid non-zero texture or return GL_INVALID_VALUE but does neither.
+
+1735408292
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+And setting the line to `var texture: u32 = 0;` has the same impact
+
+1735408293
+ifreund!2940d10f8b@user/ifreund
+the behavior you are seeing could be caused by illegal behavior that's not an ABI mismatch as well
+
+1735408319
+ifreund!2940d10f8b@user/ifreund
+e.g. using a dangling reference to stack memory or similar
+
+1735408326
+ifreund!2940d10f8b@user/ifreund
+I know nothing about debugging tools for windows though
+
+1735408339
+ifreund!2940d10f8b@user/ifreund
+If I was on linux I would use valgrind
+
+1735408396
+ifreund!2940d10f8b@user/ifreund
+if you share the C and zig types of the function I can tell you if the zig definition is ABI compatible with the C one
+
+1735408786
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Ok hmm. I thought so re: out parameters, since this is passing a mutable pointer and would have to assume this value in an unknown state after the calling to unless proven otherwise by non-local analysis. One sec, I can try to post a paste here.
+
+1735408815
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+*assume that the value is in an unknown state after the call, unless proven otherwise
+
+1735408853
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+But yeah, I might have to try building this on a non-Windows environment and use Valgrind to help debug better.
+
+1735408989
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+https://pastebin.com/raw/juGpEsqm
+
+1735409071
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+^ this is the binding code, the bind function passed into this is SDL_GL_GetProcAddress. The reason for separating things like this is so that I can potentially use the same GL backend with different windowing libraries.
+
+1735410270
+ifreund!2940d10f8b@user/ifreund
+Overkill: the binding code looks fine to me, I'd guess you have UB elsewhere
+
+1735410294
+ifreund!2940d10f8b@user/ifreund
+windows surely has debuggers that would get you a stack trace right?
+
+1735412953
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+Can someone explain `gc.zig:26:41: error: unable to evaluate comptime expression` here? I can't have this argument provided at runtime? https://bpa.st/P42Q
+
+1735412991
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+`gc.zig:28:14: note: operation is runtime due to this operand\n            .value = value`
+
+1735413037
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+WilhelmVonWeiner: i think create() wants you to pass a type, but you're passing the instance
+
+1735413109
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+i would do `const foo_ptr = try allocator.create(Self);  foo_ptr.* = { .marked = ...}; return foo_ptr;`
+
+1735413173
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+IIUC (i', still new to zig), allocator.create(some_type) will just allocate enough memory for some_type, and return typed pointer to the (uninitialized!) memory
+
+1735413457
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+netvor: you appear right, thanks. i allocate the space and assign a Self instance to the region the pointer points at, i.e. `foo_ptr.* = Self{ .marked=..., .value=... };` 
+
+1735413477
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+yep
+
+1735413518
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+(it's possible there's a more elegant syntax)
+
+1735413534
+cancername!~cancernam@user/cancername
+none I'm aware of
+
+1735413755
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+i mean it's fine, it just leaves me with a sliver of anxiety if i stare too long between the create() line and the assignment :D
+
+1735413839
+cancername!~cancernam@user/cancername
+:D no RAII here
+
+1735413880
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+yeah i guess it's worth it.  i just have to practice my Zen of Zig :D
+
+1735413902
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+just accept it ^-_-^ :D
+
+1735413929
+cancername!~cancernam@user/cancername
+you might like rust if you like RAII, it makes pretty good use of ti
+
+1735414376
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+no real opinion here, zig is my first low-level language and i'm enjoying the simplicity 
+
+1735414434
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+sure one could do a dumb thing, eg. self.foo = create(Foo), while self is accessed by other threads...
+
+1735414515
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+..i think the "between the lines" anxiety is mostly caused by years of working with languages with exceptions and stuff :D
+
+1735414555
+cancername!~cancernam@user/cancername
+yeah, it's somewhat unsafe
+
+1735418072
+loureir-or-not!~loureir-o@user/loureir-or-not
+hello fellow allocators
+
+1735418085
+cancername!~cancernam@user/cancername
+o/
+
+1735418136
+loureir-or-not!~loureir-o@user/loureir-or-not
+been trying to learn zig for my rosetta codelike language benchmark
+
+1735418148
+loureir-or-not!~loureir-o@user/loureir-or-not
+looks pretty fun
+
+1735418160
+loureir-or-not!~loureir-o@user/loureir-or-not
+ziglings especially was relatively comfortable
+
+1735418177
+cancername!~cancernam@user/cancername
+that sounds good
+
+1735418210
+loureir-or-not!~loureir-o@user/loureir-or-not
+it is, i actually kind of had fun looking at what langugages were faster
+
+1735418223
+loureir-or-not!~loureir-o@user/loureir-or-not
+i didn't know python was quicker than ruby until now
+
+1735418258
+cancername!~cancernam@user/cancername
+huh!
+
+1735418286
+cancername!~cancernam@user/cancername
+I don't think these kinds of benchmarks make much sense, it really depends on what you're testing
+
+1735418315
+loureir-or-not!~loureir-o@user/loureir-or-not
+testing calculating 10,000 collatz conjecture sequences
+
+1735418387
+loureir-or-not!~loureir-o@user/loureir-or-not
+if you don't know what collatz conjecture is i can run you throught it
+
+1735418406
+cancername!~cancernam@user/cancername
+I'm vaguely aware
+
+1735418440
+loureir-or-not!~loureir-o@user/loureir-or-not
+gotcha
+
+1735421039
+reykjalin!7e28cf3a41@user/reykjalin
+defiantredpill: 
+
+1735421078
+reykjalin!7e28cf3a41@user/reykjalin
+oh oops, goguma giving me trouble, sorry for the ping!
+
+1735421111
+defiantredpill!~greenpill@user/defiantredpill
+np, did you have a question
+
+1735421324
+reykjalin!7e28cf3a41@user/reykjalin
+no I was just trying to remove the keyboard and accidentally hit send. had nothing to say or ask 
+
+1735426432
+k-man!~jason@user/k-man
+hi, how do i install zig on debian 12? 
+
+1735426861
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+k-man: I would just download it from ziglang.org/download
+
+1735426866
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/learn/getting-started/
+
+1735429809
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+barusu: did you solve the issue with GenericWriter?  i just stumbled upon the same issue with Reader :D
+
+1735430210
+cancername!~cancernam@user/cancername
+netvor: could you share your code?
+
+1735430353
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+cancername: https://bpa.st/IHQQ
+
+1735430393
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+i had the parser based on simple buffer but now i rewrote it to use reader, but i still want to init using buffer (eg. in tests)
+
