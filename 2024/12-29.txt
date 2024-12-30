@@ -1,0 +1,208 @@
+1735430829
+cancername!~cancernam@user/cancername
+netvor: two issues, for one, a reader is made of two parts, the state (for example: `std.io.FixedBufferStream`, `std.io.BufferedReader`, `std.fs.File` and the interface (`std.io.GenericReader`, `std.io.AnyReader`). the interface just references (has a pointer to) the state, it doesn't store anything. in `init_from_buff`, you are creating the state `fbs` in line 15 and returning a pointer to the state,
+
+1735430831
+cancername!~cancernam@user/cancername
+which isn't allowed because `fbs` isn't alive when `init_from_buff` returns. you can do one of two things, store the state (`std.io.FixedBufferStream`) in the `Parser`, or you can do what `init` does, ask to be passed an interface, and make the caller call `std.io.fixedBufferStream`. the error you're getting is because you're trying to pass a `std.io.GenericReader(...)` where a `std.io.AnyReader` is
+
+1735430833
+cancername!~cancernam@user/cancername
+expected, you can use `.any()` to get the `AnyReader`.
+
+1735431076
+netvor!~netvor@2a00:ca8:a1f:cd0:c3b1:dcd7:e218:2336
+awesome, thanks, cancername .  i think i'll go with having caller to keep the fbs
+
+1735442951
+loureir-or-not!~loureir-o@user/loureir-or-not
+gentoo makes it so easy to get zig from trunk :^)
+
+1735443013
+loureir-or-not!~loureir-o@user/loureir-or-not
+you go to package.accept_keywords
+
+1735443043
+loureir-or-not!~loureir-o@user/loureir-or-not
+paste in some keyword magic, then just build it
+
+1735443057
+loureir-or-not!~loureir-o@user/loureir-or-not
+wondering how many people use their package manager for zig now
+
+1735499906
+sskras!sid542048@id-542048.tinside.irccloud.com
+after reading https://lwn.net/Articles/999426/ I thought zig could be a better lang to transpile Rust code into.
+
+1735501190
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+Since I have not discovered an FAQ yet... why are there integer types like u47? ^^
+
+1735501218
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+I guess you want them if you want something to wrapp-around at a specific value implicitly?
+
+1735501341
+ifreund!2940d10f8b@user/ifreund
+jemius: I use u31 quite often for something that I want to be able to losslessly cast to i32 but that can't be negative
+
+1735501363
+ifreund!2940d10f8b@user/ifreund
+there are similar use-cases for other non-power-of-two integer types 
+
+1735501391
+ifreund!2940d10f8b@user/ifreund
+also it lets the type system enforce that the arguments to a `<<` operator are in range
+
+1735501397
+ifreund!2940d10f8b@user/ifreund
+and require an explicit @intCast() if not
+
+1735501544
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+I'm not convinced that this is worth the increased complexity, but alright. The C23 bros added that stuff, too, so…
+
+1735501635
+andrewrk!~andrewrk@mail.ziglang.org
+arbitrary bit widths are quite handy in packed structs
+
+1735501750
+ifreund!2940d10f8b@user/ifreund
+oh yeah, that's a big one too
+
+1735502134
+Earnest!~earnest@user/earnestly
+Arbitrary ranges are quite common in Ada, but that's really about jemius' second point, using types to provide intention
+
+1735502235
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+andrewrk, Will a u14 effectively occupy two bytes with 2 bits being unused, or will the next data type sit in that variable's second byte? And when accessing that second data type, the compiler will ensure access through implicit bit-shifting-magic?
+
+1735502262
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+because "packed" to me in the classical sense means: no padding
+
+1735502286
+Earnest!~earnest@user/earnestly
+(In Ada's case, it just magics it away using whatever the most efficient representation is on a given platform)
+
+1735502364
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+If you __packed__ in C, the compiler will also insert shift magic so that the CPU doesn't blow up
+
+1735502391
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/#packed-struct
+
+1735503188
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+other topic: I can violate the core principle "no hidden allocations" by writing an API function that obtains an allocator internally from the standard library, can't I?
+
+1735503207
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+It's just that Zig best practice recommends that you always give such an API function a parameter for the allocator
+
+1735503312
+andrewrk!~andrewrk@mail.ziglang.org
+it's a language principle and it's not possible to make the language violate it
+
+1735503346
+andrewrk!~andrewrk@mail.ziglang.org
+but of course you can do whatever you want in your own codebase, including forking the language
+
+1735503385
+ifreund!2940d10f8b@user/ifreund
+jemius: it means that the language runtime will not allocate behind your back
+
+1735503396
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+so the only place where you can obtain an allocator is in your main() function?
+
+1735503406
+ifreund!2940d10f8b@user/ifreund
+for example as the C++ lanugage runtime does in order to deal with exceptions
+
+1735503493
+ifreund!2940d10f8b@user/ifreund
+a function that create and uses an allocator internally is not a "hidden allocation" in the sense meant by this core principle
+
+1735503595
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+That's not how I understood this tutorial:
+
+1735503596
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+https://www.openmymind.net/learning_zig/heap_memory/#allocators
+
+1735503614
+ifreund!2940d10f8b@user/ifreund
+this tutorial is not official
+
+1735503622
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+:)
+
+1735503633
+ifreund!2940d10f8b@user/ifreund
+it may not use precise language 
+
+1735503645
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+That's why I ask
+
+1735503672
+ifreund!2940d10f8b@user/ifreund
+It is a useful property of the zig standard library that the standard library always requires the user to provide an allocator if allocation is done
+
+1735503713
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+Yes, it is a good idea. All I was asking is whether there's a magic mechanism that prevents library programmers from doing stupid things
+
+1735503719
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+or whether it's convention
+
+1735503749
+jemius!~imperator@200116b82d39f8001666b4cb868f1ca5.dip.versatel-1u1.de
+andrew's "it's not possible to make the language violate it" sounded as if it contradicts this, but I guess he was also talking about the runtime
+
+1735504942
+andrewrk!~andrewrk@mail.ziglang.org
+yes I mean that the language does not have any dependency on dynamic memory allocation
+
+1735507924
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+has anyone attempted a generational gc implementation 
+
+1735509716
+lolok!~lolok@user/lolok
+trying to get 'zig run' to read from a pipe. got "error: unrecognized file extension of parameter <file>" a few ways. tried 'zig run -x zig' got "error: language not recognized: 'zig'" idk what to try next
+
+1735513260
+andrewrk!~andrewrk@mail.ziglang.org
+lolok: you need --
+
+1735514727
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+i remember reading somewhere (i can't find it now) when a function in a struct takes the struct's type the compiler automatically transforms that self argument into a pointer, is that accurate or was this user waffling
+
+1735514813
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+like you can write `pub fn f(self: Self) void` and change some of self's values and the compiler will treat that as *Self? maybe i'm imagining things now 
+
+1735515991
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Ahh damn, my intermittent "glGenTextures call gets skipped" issue also occurs on Linux in the same way as Windows, both x64 builds but these have different ABIs/calling conventions. Only in ReleaseSafe/ReleaseFast but not in Debug builds.
+
+1735516050
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+But the intermittent behaviour is in the codegen and not the execution final binary from what I can tell. since if it fails, the binary fails 100% of the time, but if it succeeds, it succeeds 100% of the time. adding/removing print statements or error checks will occasionally cause the "correct behaviour" to come back. Some kind of UB going on.
+
+1735516158
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Is there any sort of sanitizer tools I can throw at my zig code or things that lint for undefined behaviour?
+
+1735516254
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+(I'll try valgrind before ruling out a memory error of some kind though)
+
