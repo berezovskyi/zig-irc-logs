@@ -1,0 +1,412 @@
+1735516963
+lolok!~lolok@user/lolok
+now i got "error: `zig run` expects at least one positional argument" andrewrk
+
+1735517111
+andrewrk!~andrewrk@mail.ziglang.org
+do you understand what -- does?
+
+1735517196
+lolok!~lolok@user/lolok
+perhaps i misunderstand
+
+1735517446
+andrewrk!~andrewrk@mail.ziglang.org
+Overkill: valgrind works well, the compiler has language integration
+
+1735517464
+andrewrk!~andrewrk@mail.ziglang.org
+e.g. if you assign `undefined` that will mark the region as "uninitialized" in valgrind
+
+1735517470
+cancername!~cancernam@user/cancername
+lolok: -- ends the arguments to zig run and beigns the arguments to the code you're runninig :) for example, zig run foo.zig -- -lc will pass -lc to the binary created by zig run, while zig run foo.zig -lc will link libc with the binary and run the bnary created from foo.zig with no arguments
+
+1735517490
+cancername!~cancernam@user/cancername
+s/beigns/begins/
+
+1735517516
+andrewrk!~andrewrk@mail.ziglang.org
+Overkill: if it complains about unrecognized vector instructions, you can use -mcpu=baseline to not emit them
+
+1735517537
+andrewrk!~andrewrk@mail.ziglang.org
+(but those should really be added to valgrind)
+
+1735517594
+andrewrk!~andrewrk@mail.ziglang.org
+Overkill: you can also try switching between zig's x86_64 backend  and the llvm backend and see if there is a difference in codegen
+
+1735517798
+lolok!~lolok@user/lolok
+gotta run bbl
+
+1735517883
+torque!~tachyon@user/torque
+<WilhelmVonWeiner> like you can write `pub fn f(self: Self) void` and change some of self's values and the compiler will treat that as *Self? maybe i'm imagining things now
+
+1735517889
+torque!~tachyon@user/torque
+you have this backwards
+
+1735517942
+torque!~tachyon@user/torque
+if you have `my_fun(self: *MyType)`, the compiler will automatically take the address of the self variable if you do `self.my_fun()`
+
+1735518000
+torque!~tachyon@user/torque
+of course this requires `self` to be mutable when `my_fun` is called (i.e. it has to be declared `var self = .{};` rather than `const self = .{}`
+
+1735518046
+torque!~tachyon@user/torque
+The compiler will do the same thing for `my_fun(self: *const MyType)` which obviously can take a constant instance though is mainly only useful for forcing pass by reference
+
+1735518179
+WilhelmVonWeiner!~dch@cpc115020-bour7-2-0-cust904.15-1.cable.virginm.net
+ torque: thank you for clearing that up for me
+
+1735519877
+grayhatter!~grayhatte@user/grayhatter
+can anyone tell me why this will segv only when the assert is uncommented? https://gist.github.com/GrayHatter/655542c11e087cc9cb2e35374999e6fe
+
+1735520274
+torque!~tachyon@user/torque
+is it tripping the assert on safe modes?
+
+1735520308
+grayhatter!~grayhatte@user/grayhatter
+the stdlib about it says > and in fact the optimizer is able to use the assertion in its heuristics.
+
+1735520372
+torque!~tachyon@user/torque
+you'd have to check the difference in the assembly presumably
+
+1735520595
+grayhatter!~grayhatte@user/grayhatter
+follow up question
+
+1735520616
+grayhatter!~grayhatte@user/grayhatter
+why does this code in ReleaseFast include the TLS init code?
+
+1735520622
+grayhatter!~grayhatte@user/grayhatter
+is there a bug for that?
+
+1735521770
+torque!~tachyon@user/torque
+i think the default panic handler uses TLS regardless of the build type? This sounds like something that has come up before but I don't recall the details
+
+1735521803
+cancername!~cancernam@user/cancername
+or it's the startup code
+
+1735521821
+andrewrk!~andrewrk@mail.ziglang.org
+it's not known whether TLS is needed until link time
+
+1735524576
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Does TLS stand for thread-level synxhronization?
+
+1735525349
+daurnimator!~daurnimat@vultr.daurnimator.com
+clevor: thread-local storage
+
+1735525623
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1735526515
+grayhatter!~grayhatte@user/grayhatter
+oh, my security background is showing... there was no other definition other than transport layer security
+
+1735526534
+grayhatter!~grayhatte@user/grayhatter
+thread local existing makes a lot more sense
+
+1735528762
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I thought about the transport layer security one because I am a networking student, but I believed that a panic handler shouldn't use TLS unless it were to send the panic notification to a web server.
+
+1735533936
+lolok!~lolok@user/lolok
+back; earlier i tried '--' and got only iterations of the errors mentioned then. it seems like '-x zig' just doesnt work
+
+1735534573
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I also can't get it to work, and I *do* understand what -- does
+
+1735534599
+grayhatter!~grayhatte@user/grayhatter
+lolok: ^
+
+1735534648
+grayhatter!~grayhatte@user/grayhatter
+I thought you *could* pipe into `zig run`
+
+1735534885
+lolok!~lolok@user/lolok
+thinking about it some more, i may just patch that unrecognised file extension message out of my compiler. it seems perfectly sane to me to just assume a its a zig file if it cant decide given the context that im calling the 'zig run' command
+
+1735534916
+lolok!~lolok@user/lolok
+ill know something went wrong from the errors if its a different file type anyway
+
+1735534947
+grayhatter!~grayhatte@user/grayhatter
+shouldn't `zig run -x zig [file]` work as well? 
+
+1735534975
+lolok!~lolok@user/lolok
+i cant get '-x zig' to work in any case
+
+1735534992
+grayhatter!~grayhatte@user/grayhatter
+same, that's why I'm asking as well... this doesn't make sense to me
+
+1735534995
+lolok!~lolok@user/lolok
+what i was able to find in the compiler code there is no such thing
+
+1735535023
+lolok!~lolok@user/lolok
+it recognise 'c' 'c-header' and a few others i dont remember from earlier today
+
+1735535081
+grayhatter!~grayhatte@user/grayhatter
+if nothing else, it should be willing to work with `zig run <(cat file.zig)`
+
+1735535137
+lolok!~lolok@user/lolok
+tried like that, tried with /dev/stdin, always cant determine file type
+
+1735535148
+lolok!~lolok@user/lolok
+tried '-' too
+
+1735543864
+motiejus!~motiejus@88.223.107.21
+iirc passing the file via stdin was completed in only `zig cc`
+
+1735543921
+motiejus!~motiejus@88.223.107.21
+to support autotools et al
+
+1735573060
+jbowen!sid512234@user/jbowen
+I apologize for the basic question and if this is a sore spot, but so far I haven't found answers from googling; is there a reason beyond "no one has bothered" that zig isn't packaged for Debian in its default repositories?
+
+1735573186
+ifreund!2940d10f8b@user/ifreund
+jbowen: there are a couple of reasons, the current main blocker is that the O(1) bootstrap path for zig requires a binary WASM blob
+
+1735573219
+ifreund!2940d10f8b@user/ifreund
+guix recently implemented a reasonable O(N) bootstrap from source with no wasm blobs though
+
+1735573283
+ifreund!2940d10f8b@user/ifreund
+debian packaging is also just a massive pita, someone proposed a fully functioning zig package for debian back when there was a C++ bootstrap compiler and no binary blob was needed for O(1) bootstrap
+
+1735573351
+jbowen!sid512234@user/jbowen
+Ah, ok, thank you very much for the thorough explanation
+
+1735573374
+jbowen!sid512234@user/jbowen
+Is there an issue somewhere tracking this?
+
+1735573447
+ifreund!2940d10f8b@user/ifreund
+https://bugs.debian.org/cgi-bin/bugreport.cgi?bug=995670
+
+1735573532
+ifreund!2940d10f8b@user/ifreund
+very long thread, I don't know if the news of the recent guix O(N) bootstrap has made it there yet
+
+1735573596
+jbowen!sid512234@user/jbowen
+Thank you!
+
+1735573602
+ifreund!2940d10f8b@user/ifreund
+the guix issue is https://issues.guix.gnu.org/74217
+
+1735575314
+jemius!~imperator@2001:16b8:3d0e:1700:38e1:b273:782c:3c21
+Hm. Seems you cannot just paypal the Zig foundation a few coins of silver
+
+1735575785
+motiejus!~motiejus@88.223.107.21
+ifreund: the news landed in at least some debian circles: https://reproducible-builds.org/reports/2024-11/
+
+1735576299
+ifreund!2940d10f8b@user/ifreund
+nice :)
+
+1735577138
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Can I add fields to a struct (at comptime, obviously)? Is it just @typeInfo(Foo).Struct.fields ++ Bar where bar is a StructField, then build a type with that?
+
+1735577269
+torque!~tachyon@user/torque
+that's not adding fields to a struct as much as it is creating a new type with some fields that come from an existing struct, but generally yes, that works
+
+1735577316
+torque!~tachyon@user/torque
+`bar` would need to be an array or slice of StructField rather than a single StructField however
+
+1735577320
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Yeah, sorry that's really what I meant
+
+1735577329
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+oh yeah, right, thanks :)
+
+1735577337
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Just wanted to make sure it sounded right
+
+1735577743
+Earnest!~earnest@user/earnestly
+Can zig(1) set an exit status higher than 123?
+
+1735577938
+ifreund!2940d10f8b@user/ifreund
+Earnest: depending on the command, yes
+
+1735577945
+Earnest!~earnest@user/earnestly
+That's unfortunate
+
+1735577947
+ifreund!2940d10f8b@user/ifreund
+why?
+
+1735577969
+ifreund!2940d10f8b@user/ifreund
+afaik zig itself will only exit 0 or 1
+
+1735577985
+ifreund!2940d10f8b@user/ifreund
+zig run will exit with the exit status of the run program
+
+1735577985
+Earnest!~earnest@user/earnestly
+Because anything above 126 is used by POSIX, bash uses 124
+
+1735578014
+ifreund!2940d10f8b@user/ifreund
+and when zig executes clang/lld's main() the exit code of clang/lld is used
+
+1735578029
+Earnest!~earnest@user/earnestly
+126 indicates executable found but didn't have executable bit set. 127 indicates the executable wasn't found. 128+n indicates SIG num status
+
+1735578061
+Earnest!~earnest@user/earnestly
+So, ideally, utilities shouldn't set an exit status higher than 125
+
+1735578069
+ifreund!2940d10f8b@user/ifreund
+In any case, the behavior I described seems very reasonable to me
+
+1735578126
+Earnest!~earnest@user/earnestly
+Sure, it would be up to the commands, like clang, to not use that "space". But I was asking if zig(1) specifically sets them higher as I came across exit statuses of 127 in the wild and it wasn't clear why
+
+1735578165
+Earnest!~earnest@user/earnestly
+(exit 127 is how ubuntu and other distros offer to install missing packages on command not found)
+
+1735578238
+Earnest!~earnest@user/earnestly
+ifreund: E.g. https://github.com/ziglang/zig/issues/18434 => zig" arguments: ("build" "test" "-Dskip-stage1" "-Dskip-stage2-tests" "-Dskip-non-native") exit-status: 127 term-signal: #f stop-signal: #f>
+
+1735578255
+Earnest!~earnest@user/earnestly
+Or https://github.com/ziglang/zig/issues/9609
+
+1735580486
+grayhatter!~grayhatte@user/grayhatter
+ifreund: how does debian ship c code then?
+
+1735580549
+ifreund!2940d10f8b@user/ifreund
+don't ask me
+
+1735580559
+ifreund!2940d10f8b@user/ifreund
+I know guix has some fun boostrap chains
+
+1735580564
+grayhatter!~grayhatte@user/grayhatter
+it was more of a rhetorical question
+
+1735580593
+grayhatter!~grayhatte@user/grayhatter
+because I think 
+
+1735580597
+grayhatter!~grayhatte@user/grayhatter
+> no binary blobs
+
+1735580609
+grayhatter!~grayhatte@user/grayhatter
+is a stupid rule, that makes no sense... and I'd like to understand it
+
+1735580689
+ifreund!2940d10f8b@user/ifreund
+it's about reproducible builds and trusting trust attacks
+
+1735580744
+grayhatter!~grayhatte@user/grayhatter
+yeah, I'm reading the link from motiejus, (thanks for sharing this too btw motiejus it's interesting)
+
+1735585510
+companion_cube!~simon@user/meow/companion-cube:68572
+No binary blobs from the outside world, right? Of course they ship binary packages that they build
+
+1735585637
+cancername!~cancernam@user/cancername
+companion_cube: afaict that's mostly correct
+
+1735589211
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I think this is stupid, but how do I set builtin.Type.StructField's default value to null (if type is ?Foo)?
+
+1735589255
+grayhatter!~grayhatte@user/grayhatter
+have you tried `default_value = @as(?Foo, null);`
+
+1735589332
+grayhatter!~grayhatte@user/grayhatter
+you might need it to exist somewhere else too, because now, that I'm thinking, it might need to be &@as(...)
+
+1735589363
+grayhatter!~grayhatte@user/grayhatter
+it really depends on what/where you're trying to do that
+
+1735589404
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I can put my code on Godbolt to show you if that helps
+
+1735589541
+grayhatter!~grayhatte@user/grayhatter
+bwbuhse: it would yeah
+
+1735589639
+ifreund!2940d10f8b@user/ifreund
+bwbuhse: &@as(?Foo, null)
+
+1735589698
+ifreund!2940d10f8b@user/ifreund
+e.g. https://codeberg.org/river/river/src/commit/6abcc68a198d0246077aaaed8af08db224f16775/common/flags.zig#L52
+
+1735589883
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Thanks! ifreund :) grayhatter looks like that ^ works for me
+
