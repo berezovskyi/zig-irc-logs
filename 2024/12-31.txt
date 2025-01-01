@@ -1,0 +1,364 @@
+1735603347
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+woo got my argument parser vaguely sort of in the beginning stages of working
+
+1735603499
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+in the end, I’ve borrowed a ton of  flags.zig (ifreund) but added some extra stuff that I want. I’m trying to make it so the library will do some things like parse to ints or allow marking certain args as required
+
+1735616272
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+Is there a better way to get `@TypeOf(null)`?  I'm toying with a custom language server for note-taking, and LSP sometimes defines fields as optional (emit_null_optional_fields = false behavior) but others are non-optional unions with null in the value set (emit_null_optional_fields = true behavior). To get around it, I'm not emitting null optional fields, and instead creating tagged unions with a null payload, and then wrote
+
+1735616272
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+ a simple custom jsonStringify for those that doesn't print the payload name.
+
+1735633302
+motiejus!~motiejus@88.223.107.21
+guix landed their zig 0.13.0 changes today. However, looks like only x86_64-linux and aarch64-linux work well: https://ci.guix.gnu.org/eval/1953137
+
+1735633530
+motiejus!~motiejus@88.223.107.21
+Here is a sample error from powerpc64le-linux build of zig-0.10.0-675.9d93b2c: `error: conflicting types for ‘__trunctfhf2’; have ‘zig_u16(const zig_f128)’ {aka ‘short unsigned int(const _Float128)’}` in https://ci.guix.gnu.org/build/7825163/details . This doesn't look right for any archs, but how does it work for non-powerpc then? Anyone has seen this before?
+
+1735633763
+motiejus!~motiejus@88.223.107.21
+the second part of the error message: `previous declaration of ‘__truncxfhf2’ with type ‘zig_f16(zig_f80)’ {aka ‘short int(__int128)’}`
+
+1735635100
+motiejus!~motiejus@88.223.107.21
+Looks like the guix maintainer tried to build 0.13 on powerpc64-le and it did not work with the upstream zig1.wasm. Will go look into that first, possibly worthy an upstream GH issue. :)
+
+1735649438
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+Hey folks, I am writing a little todo app and currently struggling ArrayList memory management. Lets say you have an ArrayList as a field in a struct, is it safe to pass the struct around as value?
+
+1735649445
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+Here's the repo if you want to check it out: https://github.com/cesarFuhr/polyglot-todo/tree/main/zig
+
+1735649792
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+Are there any docs you guys can point me to so I can understand better ArrayList and its memory ownership practices?
+
+1735651474
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+cesarFuhr: the arraylist has internal state, so no you can't pass around by value if you are modifying it
+
+1735651613
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+rockrager: gotcha, just to clarify, event if it is a field inside a struct?
+
+1735657262
+ifreund!2940d10f8b@user/ifreund
+motiejus: it might be easier to only to the full O(N) bootstrap once and then cross compile the other targets from x86_64
+
+1735657641
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+cesarFuhr: yes. your functions which accept an arraylist directly must use a pointer if they are modifying it
+
+1735657670
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If your function accepts a wrapper struct, the wrapper must be a pointer but the field access to the array list would be ok
+
+1735661390
+ekaitz!~Ekaitz@94.73.36.227
+andrewrk: hako managed to bootstrap zig in guix with no binary blobs: https://issues.guix.gnu.org/74217
+
+1735664352
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+rockorager: ty
+
+1735671921
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+getting "'alloc' is not marked 'pub'" when using the gpa, not sure why
+
+1735672182
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+any idea why this is a bug? fn store(o: Object) *Object { const gpa = std.heap.GeneralPurposeAllocator(.{}){}; return gpa.alloc(o); } 
+
+1735672215
+ifreund!2940d10f8b@user/ifreund
+there are a couple of problems with that code snippet
+
+1735672229
+ifreund!2940d10f8b@user/ifreund
+1. the gpa instance must outlive all allocations made with it
+
+1735672264
+ifreund!2940d10f8b@user/ifreund
+2. allocation is always done through the std.mem.Allocator interface, use gpa.allocator() to get access to that interface
+
+1735673048
+andrewrk!~andrewrk@mail.ziglang.org
+ekaitz: it's done via a couple dozen intermediate steps, right?
+
+1735673064
+andrewrk!~andrewrk@mail.ziglang.org
+or does guix settle for proving the wasm blob is innocent and signing it?
+
+1735673112
+ekaitz!~Ekaitz@23.red-88-13-105.dynamicip.rima-tde.net
+andrewrk: it's done via the couple dozen of steps, yes
+
+1735673150
+ekaitz!~Ekaitz@23.red-88-13-105.dynamicip.rima-tde.net
+Guix is a FSF style distro, they cannot say the wasm blob is innocent 
+
+1735673163
+ekaitz!~Ekaitz@23.red-88-13-105.dynamicip.rima-tde.net
+it's part of its social contract
+
+1735673213
+ekaitz!~Ekaitz@23.red-88-13-105.dynamicip.rima-tde.net
+i still have the plan to make a zig interpreter, but i'm very busy with other engineering projects as a freelance, and it's hard to continue
+
+1735673398
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+What's [*:0] versus [:0]?
+
+1735674008
+ifreund!2940d10f8b@user/ifreund
+bwbuhse: sentinel terminated pointer vs sentinel terminated slice
+
+1735674058
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: thanks, I hoisted the allocator into a higher scope. I have a tagged union I'm trying to allocate memory for and get a pointer back. 
+
+1735674547
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+ifreund: ty
+
+1735674646
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Is it possible to create slice (regular [] slice, not sentinel-terminated) from a sentinel-terminated pointer?
+
+1735675112
+ifreund!2940d10f8b@user/ifreund
+[:0]const T coerces to []const T
+
+1735675123
+ifreund!2940d10f8b@user/ifreund
+see also std.mem.sliceTo()
+
+1735676108
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Thanks for probably the millionth time ifreund 
+
+1735676139
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://codeberg.org/bwbuhse/beanflags my little thing that turned out to basically just be a fork of flags.zig is public now, I'm still gonna try add some features that I want but time for new year's eve stuff
+
+1735676141
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+:)
+
+1735678134
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: can I show you my code
+
+1735678184
+torque!~tachyon@user/torque
+don't ask to ask, etc.
+
+1735678198
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+https://gist.github.com/dmjio/71b39d3e348f9258bb83e55a9de97c7d
+
+1735678218
+grayhatter!~grayhatte@user/grayhatter
+torque: I showed you my code, please respond :P
+
+1735678245
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+I'm trying to put m5 and m6 on the heap
+
+1735678304
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+do I need @sizeOf(*Object) instead?
+
+1735678305
+torque!~tachyon@user/torque
+dmj`, you can call `a.create(Object)` rather than `std.mem.allocator.Create(...)`
+
+1735678347
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+torque: ty 
+
+1735678355
+torque!~tachyon@user/torque
+note that the allocation calls take the type of object to allocate rather than an instance as you are doing here
+
+1735678357
+grayhatter!~grayhatte@user/grayhatter
+dmj`: does this even build?
+
+1735678362
+torque!~tachyon@user/torque
+no, it doesn't
+
+1735678371
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: it does for me
+
+1735678383
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+test doesn't run though
+
+1735678420
+grayhatter!~grayhatte@user/grayhatter
+ah, because main isn't pub
+
+1735678423
+torque!~tachyon@user/torque
+it "builds" not in test because main is not referenced
+
+1735678425
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: ahh
+
+1735678434
+torque!~tachyon@user/torque
+due to not being pub, yeah
+
+1735678440
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ty
+
+1735678446
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+I get root.zig:33:25: error: expected type 'type', found 'root.Object'
+
+1735678462
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.13.0/std/#std.mem.Allocator.create
+
+1735678472
+grayhatter!~grayhatte@user/grayhatter
+dmj`: why are you trying to put m5 and m6 on the stack? just expermenting?
+
+1735678484
+grayhatter!~grayhatte@user/grayhatter
+on the heap, (instead of on the stack)
+
+1735678548
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+I'm making a heap graph
+
+1735678574
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+some of the nodes in the graph will have pointers to heap memory
+
+1735678591
+torque!~tachyon@user/torque
+basically you need `const m5 = try a.create(Object); m5.* = .{ .cint = CInt.init(3) };`
+
+1735678653
+grayhatter!~grayhatte@user/grayhatter
+dmj`: then if you put everything on the heap, all of your code becomes much simpler 
+
+1735678682
+torque!~tachyon@user/torque
+(you could also do `m5.* = m3;` if you actually want it to copy the contents of m3)
+
+1735678686
+grayhatter!~grayhatte@user/grayhatter
+const m3: *CInt = try CInt.init(allocator, 3);
+
+1735678720
+torque!~tachyon@user/torque
+note that `const m3: Object = .{...}` is more idiomatic than `const m3 = Object{...}`
+
+1735678887
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+when I do m5.* = m3, "34:7: error: cannot dereference non-pointer type 'error{OutOfMemory}!**root.Object' "
+
+1735678906
+grayhatter!~grayhatte@user/grayhatter
+you didn't handle the error
+
+1735678908
+torque!~tachyon@user/torque
+you're missing a `try` around the allocation
+
+1735678912
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+doh
+
+1735678915
+torque!~tachyon@user/torque
+(or a `catch`)
+
+1735678934
+torque!~tachyon@user/torque
+also, you have a pointer to a pointer?
+
+1735678937
+torque!~tachyon@user/torque
+that seems suspect
+
+1735678976
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+torque: should just be a pointer
+
+1735679012
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+const m5 = try a.create(Object); m5.* = m3; // expected type 'void', found 'error{OutOfMemory}'
+
+1735679045
+ifreund!2940d10f8b@user/ifreund
+your function's return type needs to be !void rather than void if you want to use try
+
+1735679073
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+torque: there will be a lot of pointer indirections 
+
+1735679085
+torque!~tachyon@user/torque
+note that `!void` means that the compiler will infer which possible errors the function can produce
+
+1735679088
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: thanks, I'll try harder
+
+1735679091
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+;) 
+
+1735679103
+ifreund!2940d10f8b@user/ifreund
+you might be interested in something like ziglings or zig.guide to learn about this things
+
+1735679106
+torque!~tachyon@user/torque
+(thus called an inferred error set)
+
+1735679111
+grayhatter!~grayhatte@user/grayhatter
+dmj`: this is how I'd write this https://gist.github.com/GrayHatter/05dd850e45e890844ecaf1b40aeae386
+
+1735679177
+grayhatter!~grayhatte@user/grayhatter
+I'm missing a dot, and probably a few other issues
+
+1735679376
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: FUpTo.init(m5, m6) returns *FupTo, so unsure how const m7 = Object{ .fupto = FUpTo.init(m5, m6) }; would be valid
+
+1735679405
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: I like how you embedded the allocator into init though
+
+1735679457
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: I'll take a look, brand new so
+
+1735679459
+grayhatter!~grayhatte@user/grayhatter
+I changed that, object is uses *CInt, and *FUpTo
+
+1735679772
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: very cool, cuts down on the size of the union too
+
