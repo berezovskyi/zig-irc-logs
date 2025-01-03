@@ -1,0 +1,308 @@
+1735785021
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+any tips on debugging "unable to resolve inferred error set "
+
+1735785738
+grayhatter!~grayhatte@user/grayhatter
+dmj`: change the return type to an explicit error set, e.g. `fn name(args: type) NamedErrorList!void {`
+
+1735785801
+grayhatter!~grayhatte@user/grayhatter
+if that doesn't work, start replacing `try` with `catch`
+
+1735786307
+torque!~tachyon@user/torque
+there are various cases where the compiler can't figure out how to infer a function's error set automatically. For example, if the function calls itself recursively, it can cause this compile error
+
+1735786369
+torque!~tachyon@user/torque
+if you make the function return error{}!Whatever, then the compiler should produce an error listing all of the actual errors that the function can return, so you can update the return type error set
+
+1735789245
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+torque: yea there's recursion here
+
+1735834519
+grayhatter!~grayhatte@user/grayhatter
+dmj`: there's also `anyerror!void` which is every error your program might be able to return from any function
+
+1735835546
+RamboRogers!~RamboRoge@user/RamboRogers
+Zig bros, I'm currently a golang sort of fella.  Can I cross compile using zig easily?
+
+1735835738
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+RamboRogers: https://dev.to/kristoff/zig-makes-go-cross-compilation-just-work-29ho
+
+1735835816
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: tried anyerror!, now getting errors in internal files (meta.zig). 
+
+1735836820
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: https://gist.github.com/dmjio/c35694c4ed1c5b23b86cb090fd335f8b
+
+1735836922
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ Expected pointer, slice, array or vector type, found '*root.Object' 
+
+1735837221
+grayhatter!~grayhatte@user/grayhatter
+alloc -> free; create -> destroy; because you're using create, you need to call destroy instead of free
+
+1735842739
+RamboRogers!~RamboRoge@user/RamboRogers
+thanks for the link!
+
+1735843493
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: thanks, got it working but it seems very unsafe, am using mutual recursion and returning pointers from functions
+
+1735843521
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+the general purpose allocator says I'm leaking memory
+
+1735843533
+grayhatter!~grayhatte@user/grayhatter
+dmj`: using pointers is not inherrently unsafe, it depends on how you're using them
+
+1735843602
+grayhatter!~grayhatte@user/grayhatter
+if your program exits directly after, and it's not a long living process... it's likely fine, and it's not really a "leak"
+
+1735843644
+grayhatter!~grayhatte@user/grayhatter
+but if you're very concerned, you could use an arena allocator which will track the memory for you 
+
+1735843646
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.heap.ArenaAllocator
+
+1735843982
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: I'd definitely be interested in using an arena allocator the arrrays
+
+1735844931
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: https://gist.github.com/dmjio/c35694c4ed1c5b23b86cb090fd335f8b, w/ arena allocator
+
+1735845833
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+trying to see if Zig makes a good compilation target (like how some people compile to C)
+
+1735848600
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+does Zig have a memory bound integer in std
+
+1735848828
+ifreund!2940d10f8b@user/ifreund
+dmj`: you're probably looking for std.math.big
+
+1735849250
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: ty, yea something to replace gmp
+
+1735849419
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: is there documentation around the zig optimizer internals, what passes occur etc.
+
+1735849516
+ifreund!2940d10f8b@user/ifreund
+dmj`: the only optimizer is the LLVM optimizer presently
+
+1735849653
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: I see, isn't comptime doing some sort of partial evaluation / constant folding though?
+
+1735849780
+ifreund!2940d10f8b@user/ifreund
+yes, this happens in the same pass that does type checking before lowering to LLVM IR
+
+1735849863
+ifreund!2940d10f8b@user/ifreund
+if you want to know more details, this might be interesting reading: https://mitchellh.com/zig/sema
+
+1735849911
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: ty
+
+1735852344
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+just thinking aloud, let's say i do `var al = ArrayList.init(Foo).init(...); defer al.deinit()`, add some items, do stuff, then what's the difference between just using `foo.items` or foo.toOwnedSlice()`?
+
+1735852408
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+one i am aware of is that after toOwnedSlice i don't need to deinit; that's fine but what confuses me that toOwnedSlice returns error while just taking .items does not...?
+
+1735852410
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+foo.items is a direct pointer to the slice, letting you just access what's in there.  toOwnedSlice gives you the pointer, and disowns it in al without freeing it.
+
+1735852450
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+If you do `var contents = al.toOwnedSlice();` the `defer al.deinit()` won't free the memory, you will need to `allocator.free(contents)` eventually
+
+1735852522
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+It looks like `toOwnedSlice` also copies the memory, which is why it can return an error - the allocation can fail
+
+1735852523
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+maybe i'm confused about what would be use cases for .toOwnedSlice .. is it about re-using the list for other things?
+
+1735852566
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yes
+
+1735852588
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+toOwnedSlice gives you ownership of the slice and you can reuse the list
+
+1735852606
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+i see
+
+1735852642
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+if you are returning the list, your defer al.deinit() will free list.items
+
+1735852653
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+but the result from .toOwnedSlice would be safe to return
+
+1735852656
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+correction: `toOwnedSlice` copies the memory if a resize of the slice fails.
+
+1735852707
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+i've just answered second part of my q by looking at code, it actually takes new memory (sometimes, as you write ts.)
+
+1735852773
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+Internally the ArrayList will over-allocate memory so it doesn't have to copy everything on every push/append.  toOwnedSlice will attempt to trim that down so that the slice you end up owning is exactly the right size.
+
+1735853436
+andrewrk!~andrewrk@mail.ziglang.org
+toOwnedSlice can fail because trying to shrink an allocation can fail
+
+1735853457
+andrewrk!~andrewrk@mail.ziglang.org
+this makes sense if you consider the fact that the zig allocator interface requires clients to track the length
+
+1735853597
+andrewrk!~andrewrk@mail.ziglang.org
+so if you try to shrink an allocation, the allocator may need to move the data to some kind of "small allocations area", avoiding the need for a table of pointers. if there are no slots available in the "small allocations area" the shrink fails, indicating that the client must track the full slice
+
+1735853626
+andrewrk!~andrewrk@mail.ziglang.org
+this works pretty well with ArrayList which tracks capacity separately, so that's why ArrayList has an infallible shrinkAndFree
+
+1735853650
+andrewrk!~andrewrk@mail.ziglang.org
+however the purpose of toOwnedSlice is so that the length of the slice equals the length of the allocation
+
+1735853666
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: trying to enforce tail calls w/ @call, "return try @call(.{ .modifier = .always_tail }, upto, .{ a, x.s, x.f });" but get "type 'builtin.CallModifier' does not support struct initialization syntax"
+
+1735853735
+andrewrk!~andrewrk@mail.ziglang.org
+in practice, toOwnedSlice is exclusively called in a scope that already includes fallible appends, so it's pretty easy to handle the error the same way
+
+1735854796
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+i can finally dogfood my zig email client
+
+1735854830
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+sending mail is pretty important for that :)
+
+1735855528
+grayhatter!~grayhatte@user/grayhatter
+rockorager: using vaxis?
+
+1735855562
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: yeah
+
+1735855563
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://0x0.st/8z3w.mp4
+
+1735855615
+grayhatter!~grayhatte@user/grayhatter
+let me know whet it supports custom keybinds, I'm looking for an upgrade
+
+1735855642
+grayhatter!~grayhatte@user/grayhatter
+damn, that looks **clean** 
+
+1735855646
+grayhatter!~grayhatte@user/grayhatter
+I'm very interested
+
+1735855690
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I ended up writing a vaxis UI for neovim to get the editor embedded
+
+1735855704
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Thanks :)
+
+1735856407
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+looks beautiful. rockorager did you completely reimplement a neovim front end?
+
+1735856440
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+coleman: yeah https://github.com/rockorager/vxfw-neovim
+
+1735856457
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+thanks, I'll take a look-see
+
+1735856470
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+i made it as a reusable widget for my tui library
+
+1735856496
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+there are a few render bugs I've found but haven't ironed out yet
+
+1735856497
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+gotcha. I am looking at vaxis now, too
+
+1735856532
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I've been dipping into Kakoune code lately and also dreaming about...an email client 
+
+1735856569
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+kak can act like a server, too. 
+
+1735856576
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Oh I didn't realize it could
+
+1735856742
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I want to try Kakoune but I think I'm too lazy to set it up
+
+1735856759
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I like that my Helix config is literally 16 lines 
+
+1735857289
+torque!~tachyon@user/torque
+I generally use kakoune when i need a terminal editor and have never bothered to set up a config file for it
+
+1735857296
+torque!~tachyon@user/torque
+the defaults are fairly sane imo
+
+1735859157
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: looks sweet!
+
