@@ -1,0 +1,320 @@
+1735863767
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+is it true zig plans on using coroutines for all function calls in the self-hosted compiler? is there a way to get access at runtime to the zig call stack
+
+1735863897
+grayhatter!~grayhatte@user/grayhatter
+dmj`: where did you hear that?
+
+1735863958
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: https://ziglang.org/download/0.3.0/release-notes.html#concurrency
+
+1735864063
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: https://ziglang.org/download/0.3.0/release-notes.html#recursion
+
+1735864139
+grayhatter!~grayhatte@user/grayhatter
+0.3.0 was a long time ago, have you read any release notes for a more recent version?
+
+1735864511
+ifreund!2940d10f8b@user/ifreund
+its not clear whether or not async will return to zig at this point in time
+
+1735864519
+ifreund!2940d10f8b@user/ifreund
+or what form it will take if it does
+
+1735865450
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: oh sorry I read 0.3 and 0.13 :P 
+
+1735865551
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: ah okay thanks. I'm wondering if Zig has better call stack introspection than C, or if I could use Zig's stack for a lightweight threads implementation
+
+1735904420
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+would using tigerbeetle as the engine for a personal ledger (alternative to hledger or gnucash etc) be absolute overkill or is that also within the general realm of intention?
+
+1735904484
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if that answer is yes I'd much rather spearhead that than use hledger because I have 0 intention on learning haskell so I wouldn't be able to contribute at all to hledger, whereas tigerbeetle being in zig is something I could for example
+
+1735920098
+grayhatter!~grayhatte@user/grayhatter
+tsujp: yes, it would be absolute overkill, but if it's worth doing, it's worth overdoing! Given it's for something personal, and you want to use it, and if it sounds like it might be fun, I'd vote again for tigerbeetle
+
+1735922738
+Earnestly!~earnest@user/earnestly
+Is tigerbeetle actually equivalent to ledger in terms of function?
+
+1735923210
+Earnestly!~earnest@user/earnestly
+(Mainly when used as a single node)
+
+1735936272
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+curious why was async removed
+
+1735936445
+grayhatter!~grayhatte@user/grayhatter
+dmj`: https://ziglang.org/download/0.12.0/release-notes.html#AsyncAwait-Feature-Status
+
+1735936517
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: ty
+
+1735936977
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: is there a way to observe the callstack in zig, at runtime
+
+1735936998
+d76d5!~d76d5@user/d76d5
+afaik u can do it in gdb/lldb
+
+1735937388
+siaal!~Siaal@user/Siaal
+dmj`, otherwise, `std.debug.writeCurrentStackTrace` might work for you?
+
+1735937582
+andrewrk!~andrewrk@mail.ziglang.org
+dmj`: check out the std.debug.Trace API: https://ziglang.org/documentation/0.13.0/std/#std.debug.Trace
+
+1735937598
+andrewrk!~andrewrk@mail.ziglang.org
+this lets you collect stack traces, store them for later, and then later dump them if something interesting happens
+
+1735937642
+andrewrk!~andrewrk@mail.ziglang.org
+kind of like how GeneralPurposeAllocator does this with allocations and then prints the trace if there is a leak
+
+1735939258
+ifreund!2940d10f8b@user/ifreund
+nice post on comptime: https://www.scottredig.com/blog/bonkers_comptime/
+
+1735941577
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+andrewrk: Thanks will check it out, and thanks for zig ! It's awesome, esp. the portability. My use case is implementing a runtime system that has green threads and a GC, so I'd need access to the Zig call stack during GC for reachability.
+
+1735941600
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+Seems like I might be better off not using Zig's callstack (since the API is a no-op at runtime in Release mode). Might need to implement some kind of VM that can eval functions in virtual registers.
+
+1735942061
+grayhatter!~grayhatte@user/grayhatter
+why does @intCast even exist?
+
+1735942341
+grayhatter!~grayhatte@user/grayhatter
+error: type 'usize' cannot represent integer value '-1': const len: usize = @as(usize, @intCast((if (maybe_str) |m| m.len else -1) + 1 + [...];
+
+1735942625
+ifreund!2940d10f8b@user/ifreund
+grayhatter: that's illegal behavior that the compiler caught for you at compile time because it is nice...
+
+1735942706
+grayhatter!~grayhatte@user/grayhatter
+but, it could never be < 0
+
+1735942731
+grayhatter!~grayhatte@user/grayhatter
+so, not technically illegal?
+
+1735942813
+grayhatter!~grayhatte@user/grayhatter
+also, *cast, generally should behave as "just trust me bro", and assume it'll work the way I want it to, no?
+
+1735942855
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+How can it not be < 0?
+
+1735942869
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+@as(usize, @intCast((if (maybe_str) |m| m.len else -1) can definitely evaluate to -1
+
+1735942908
+grayhatter!~grayhatte@user/grayhatter
+rockorager: noticed the @as( and @intCast( parens don't close on that line, they extend past the [...]
+
+1735942993
+grayhatter!~grayhatte@user/grayhatter
+the minmum value of m.len is usize, 0, the minimum value of the else is -1 so the result is >= 1, when maybe_str is non-null, and == 0 when it is null
+
+1735943013
+torque!~tachyon@user/torque
+`m.len` is usize so what does that if statement resolve its type to
+
+1735943033
+torque!~tachyon@user/torque
+I think the compiler is directly trying to convert the `-1` to usize
+
+1735943154
+grayhatter!~grayhatte@user/grayhatter
+torque: I know *why* the compiler is tripping over it, I'm annoyed that @intCast() wont corece the inferred types the way I want it to
+
+1735943163
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You probably need smoething like (if (maybe_str) |m| m.len + 1 else 0)
+
+1735943167
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Just distribute that 1 in
+
+1735943184
+grayhatter!~grayhatte@user/grayhatter
+I already have a solution, that's arguably better than what I had originally
+
+1735943192
+grayhatter!~grayhatte@user/grayhatter
+yeah, I'm using exactly what rockorager suggested
+
+1735943229
+grayhatter!~grayhatte@user/grayhatter
+which is obviously better, but I've *never* had intCast ever do what I wanted it to do
+
+1735943280
+grayhatter!~grayhatte@user/grayhatter
+contrasted with @ptrCast which works the way I expect
+
+1735943319
+ifreund!2940d10f8b@user/ifreund
+grayhatter: I think it's zig's integer arithmetic semantics that are at fault here, not intCast
+
+1735943349
+ifreund!2940d10f8b@user/ifreund
+adding a usize with a comptime_int will coerce the comptime_int to a usize
+
+1735943394
+torque!~tachyon@user/torque
+@intCast is more of a way to say "I know this value from a wider integer type is in range"
+
+1735943418
+torque!~tachyon@user/torque
+the point of the error you're getting is that the compiler was casting -1 to usize, which is explicitly out of range, and it catches that for you
+
+1735943515
+grayhatter!~grayhatte@user/grayhatter
+torque: that *also* wont work
+
+1735943569
+torque!~tachyon@user/torque
+?
+
+1735943571
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+This seems confusing, i use intCast a lot and have never been confused by what it's doing
+
+1735943691
+grayhatter!~grayhatte@user/grayhatter
+you're supposed to use @trunc to decrease the width
+
+1735943720
+grayhatter!~grayhatte@user/grayhatter
+@truncate
+
+1735943777
+torque!~tachyon@user/torque
+that's a completely different operation
+
+1735943784
+grayhatter!~grayhatte@user/grayhatter
+I know
+
+1735943787
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+truncate will let you change the value
+
+1735943803
+torque!~tachyon@user/torque
+the truncate documentation itself says "Use @intCast to convert numbers guaranteed to fit the destination type."
+
+1735943823
+torque!~tachyon@user/torque
+you have no basis for saying "you're supposed to..."
+
+1735943882
+grayhatter!~grayhatte@user/grayhatter
+oh, yeah that's fair, I've had the compiler refuse to use intCast, where it would use @truncate
+
+1735943892
+grayhatter!~grayhatte@user/grayhatter
+that's my mistake
+
+1735943899
+torque!~tachyon@user/torque
+yeah, because it just chops up your value
+
+1735944007
+torque!~tachyon@user/torque
+I assume for same-sized conversions, like isize to usize, @truncate ends up just acting like @bitcast, but the documentation isn't terribly clear on that
+
+1735944153
+grayhatter!~grayhatte@user/grayhatter
+hmmm, I can't remember the syntax that I was tripping over before
+
+1735944263
+torque!~tachyon@user/torque
+<grayhatter> torque: I know *why* the compiler is tripping over it, I'm annoyed that @intCast() wont corece the inferred types the way I want it to
+
+1735944264
+grayhatter!~grayhatte@user/grayhatter
+I know is was something like this `const int: isize = 10 + if (b) 20 else 0;` where @intCast wouldn't work, but @truncate() happily worked
+
+1735944277
+torque!~tachyon@user/torque
+not sure I made my point clear: the error is thrown long before you get to the intCast
+
+1735944286
+grayhatter!~grayhatte@user/grayhatter
+I can't repro anymore, so now I have no idea what mistake I was making
+
+1735944310
+torque!~tachyon@user/torque
+the intCast was doing nothing here, because the peer-type resolution of the output type of the if-expression is what is causing the issue
+
+1735944327
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/5qcGfbvcv
+
+1735944343
+grayhatter!~grayhatte@user/grayhatter
+torque: yes, I don't think it was perfectly clear, but when I read it the 2nd time (much earlier) I did understand the mistake I was making
+
+1735944441
+grayhatter!~grayhatte@user/grayhatter
+I disagree with zig's type resolution logic related to if/orelse 
+
+1735944498
+grayhatter!~grayhatte@user/grayhatter
+and because I disagree with it, I wasn't using the correct mental framing understanding for it, and thus the faulty assumptions you pointed out
+
+1735944556
+grayhatter!~grayhatte@user/grayhatter
+ifreund torque rockorager: thank you for helping explain it to me :)
+
+1735944573
+torque!~tachyon@user/torque
+there was some conversation recently about changing or removing peer type resolution
+
+1735944597
+torque!~tachyon@user/torque
+don't recall what the context or outcome of it was, though
+
+1735944604
+grayhatter!~grayhatte@user/grayhatter
+I've seen that issue... I don't like it, but I understand it, and I accept it
+
+1735944972
+grayhatter!~grayhatte@user/grayhatter
+actually, I take that back
+
+1735944992
+grayhatter!~grayhatte@user/grayhatter
+I have no attachment to PTR, it's inferred types that I feel are important
+
+1735945040
+grayhatter!~grayhatte@user/grayhatter
+If removing PTR forces the compiler's errors to be more specific about it's reasoning, it's probably a very good thing
+
