@@ -1,0 +1,344 @@
+1735948985
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+Does anyone have any advice for testing `@compileError`?  It easy enough to test a few passing cases, I'd like to test some of the failing cases as part of a normal test run too
+
+1735949029
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/std/#std.Build.Step.Compile.ExpectedCompileErrors should get you on track
+
+1735949842
+tsmanner!~tsmanner@syn-096-042-172-116.res.spectrum.com
+Oh awesome, thanks :)
+
+1735953771
+grayhatter!~grayhatte@user/grayhatter
+y
+
+1735953796
+grayhatter!~grayhatte@user/grayhatter
+sorry, ignore that
+
+1735990970
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+Why does `zig fmt` not allow me to insert a line break after the comma?
+
+1735990971
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+https://paste.debian.net/1342398/
+
+1735991363
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+I suspect it's trying to enforce debug prints being grep-able
+
+1735998588
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+jemius: zig fmt will break up the line if you insert comma after the last argument
+
+1735998658
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+it's actually pretty smart, IMHO...
+
+1735998687
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+Doesn't make much syntactical sense though, because print() only takes 2 parameters
+
+1735998752
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+it's universal: even in structs, function definitions... if you have any comma-separated list, whether you add comma at the end determines the formatting
+
+1735998762
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+(regardless of number of items)
+
+1735998958
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+to be more precise, it's even a bit smarter with eg. large binary blobs:  https://bpa.st/W7FQ  (it splits based on width...)
+
+1735999358
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+IMO the trailing-comma line-separated syntax is really useful for any longer lists, especially if there's a chance that elements will be added/removed later.  i've been doing this in all languages that allow it (and cursing those that don't -- looking at you, JSON!)
+
+1735999417
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+...added/removed, or even reordered .. these things are pain if the first/last item is different by minor syntax
+
+1735999436
+netvor!~netvor@2a00:ca8:a1f:cd0:d4fc:538c:1d37:a3c6
+i actually really love that `zig fmt` does this the smartest possible way
+
+1736000343
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+is anything special required to call variadic C functions in zig?
+
+1736000377
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+I've got a C library where calling some defined functions works but others fail with "undefined symbol" and I'm wondering if that's why
+
+1736000430
+ifreund!2940d10f8b@user/ifreund
+not really, you should be aware of exactly what types the C function expects for the vardaic arguments
+
+1736000482
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+yeah in my case even not passing anything for the varargs (which should work) still fails 
+
+1736000534
+ifreund!2940d10f8b@user/ifreund
+linking/symbol resolution is unrelates to varargs
+
+1736000586
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+got it.
+
+1736000616
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+in general what should I be looking for to debug why function x in a header is defined but function y isn't? Or, is this not a general problem
+
+1736000813
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+I mean specifically when built from Zig. the same library included in a C program compiled with gcc can access function y.
+
+1736000976
+ifreund!2940d10f8b@user/ifreund
+slondr: it depends entierly on the C library unfortuantely
+
+1736001007
+ifreund!2940d10f8b@user/ifreund
+perhaps the C library hides some functions behind a preprocessor #define
+
+1736001056
+ifreund!2940d10f8b@user/ifreund
+or perhaps you have missed compiling one of several .c files
+
+1736001101
+ifreund!2940d10f8b@user/ifreund
+you can also include a c library from zig without building the c library from source using zig fwiw
+
+1736001126
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+oh, I can?
+
+1736001163
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+I've got a single-header library, so I was hoping it'd be straightforward to integrate into zig 
+
+1736001242
+ifreund!2940d10f8b@user/ifreund
+ah, a single header library is a bit different, it is always distributed as source code and one is always expected to build it from source
+
+1736001288
+ifreund!2940d10f8b@user/ifreund
+normal libraries are distributed as a combination of header files and object files
+
+1736001313
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+yeah
+
+1736001347
+ifreund!2940d10f8b@user/ifreund
+I think you best bet is to read the C header and look for preprocessor magic that could prevent the function in question from getting built
+
+1736001430
+ifreund!2940d10f8b@user/ifreund
+often one has to do #define LIB_FOO_IMPLEMENTATION or similar to get a header only library to actually build the object file part
+
+1736001455
+ifreund!2940d10f8b@user/ifreund
+the whole concept is very janky because C
+
+1736001519
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+Yep that's the case here, I've got a 2-line .c file that includes the header and #define FOO, and then I cImport/cInclude that c file 
+
+1736001549
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+if I compile that .c to .o with gcc I can write main in c that calls function y, but main.zig can't
+
+1736001658
+ifreund!2940d10f8b@user/ifreund
+ah, I think you should try building the C implementation as C rather than translating the implementation as well as the header part to Zig
+
+1736001682
+ifreund!2940d10f8b@user/ifreund
+addCSourceFiles() in your build.zig
+
+1736001719
+ifreund!2940d10f8b@user/ifreund
+and dont set the implementation define for the @cInclude
+
+1736001796
+ifreund!2940d10f8b@user/ifreund
+zig to C translation is pretty good, but much better at translating interface definitions rather than entire C projects
+
+1736001917
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+is a cimport/include w addIncludePath doing C-to-Zig translation?
+
+1736001922
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+I didn't realize that!
+
+1736001991
+ifreund!2940d10f8b@user/ifreund
+yes, it generates a C file including everything you have @cIncluded and calls zig translate-c on that
+
+1736002022
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+wow
+
+1736002035
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+that's really neat! but probably not what I want here yeah
+
+1736002043
+ifreund!2940d10f8b@user/ifreund
+you can invoke zig translate-c yourself or dig around in .zig-cache if you want to see the resulting translated zig file
+
+1736003380
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+after I set up the addCSourceFile config in my build.zig how do I reference the C code included in that file?
+
+1736003533
+ifreund!2940d10f8b@user/ifreund
+slondr: @cInclude() on the header *without* the #define FOO_IMPLEMENTATION
+
+1736003559
+ifreund!2940d10f8b@user/ifreund
+or write the appropriate extern function definitions by hand
+
+1736003951
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+that worked, and now I successfully called function y from zig!
+
+1736003956
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+excellent, thank you for the help!
+
+1736005459
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1736017272
+siaal!~Siaal@user/Siaal
+why is std.os.linux.SIG.IGN an optional? it's a const value in comptime if block with no nulls that i can find
+
+1736017279
+siaal!~Siaal@user/Siaal
+am i missing something obvious here?
+
+1736017631
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+is there a way to pin a local variable to a register on a target host
+
+1736017642
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+or a global variable
+
+1736019994
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+hey folks, I am hitting some unreachable code in /std/posix.zig:1223 (zig 0.13), I am not really sure what I am doing wrong or how could I debug this. Its happening when I try to write over a file that already exists.
+
+1736020238
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+What people usually do when raech "unreachable code" (but actually cleary reachable =P)
+
+1736020246
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+?
+
+1736021533
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+You might wanna search for open issues to make sure it's not a known issue, then write a small program that reproduces the problem
+
+1736022395
+cesarFuhr!~cesar@2605:4c40:196:f62a:0:bffd:1af:1
+gotcha, ty. Its happening when I print to stdOut, this is why I think its so odd... such a simple thing I find pretty improbable to be the first one to stumble on it.
+
+1736022926
+Earnestly!~earnest@user/earnestly
+(csmith works with more than just C, it's a little magic)
+
+1736022967
+foxnaut!~aidenfoxi@user/foxnaut
+test
+
+1736022969
+foxnaut!~aidenfoxi@user/foxnaut
+oh hi!
+
+1736022985
+foxnaut!~aidenfoxi@user/foxnaut
+I have a quick question about Practical Data oriented Design
+
+1736022986
+foxnaut!~aidenfoxi@user/foxnaut
+the talk
+
+1736023048
+foxnaut!~aidenfoxi@user/foxnaut
+there's a bit where Andrew Kelley talks about not needing to store column and line numbers in a token struct
+
+1736023061
+foxnaut!~aidenfoxi@user/foxnaut
+because you can calculate it later if necessary
+
+1736023070
+foxnaut!~aidenfoxi@user/foxnaut
+but doesn't that imply rescanning the entire file to do so?
+
+1736023878
+ifreund!2940d10f8b@user/ifreund
+sure, but parsing is very fast
+
+1736024829
+foxnaut!~aidenfoxi@user/foxnaut
+ah ok
+
+1736025910
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+Is a bool always the size of a byte in Zig?
+
+1736025936
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+In the Linux kernel, there are often huge structs with large bitfields that define true-false flags; to save memory.
+
+1736025947
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+But in Zig you can't assign true / false to a u1
+
+1736026636
+ifreund!2940d10f8b@user/ifreund
+jemius: a bool is treated identically to a u1 in zig
+
+1736026649
+ifreund!2940d10f8b@user/ifreund
+a u1 also takes a whole byte if not in a packed struct
+
+1736026659
+ifreund!2940d10f8b@user/ifreund
+a bool in a packed struct will take a single bit, just like a u1
+
+1736026975
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+ifreund, it's not treated "identically to a u1", because you cannot assign 1 or 0 to a bool
+
+1736027078
+ifreund!2940d10f8b@user/ifreund
+please forgive my impercise natural language, I mean identically with respect to memory layout
+
+1736027108
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+no worries
+
+1736027152
+jemius!~imperator@2001:16b8:3db4:b00:bf4:7bd8:3ec7:898b
+So I guess if you have a struct that will be allocated thousands and thousands of times it might make sense to make it packed to save memory
+
+1736027202
+ifreund!2940d10f8b@user/ifreund
+well, only if the struct in question has a lot of wasted padding
+
+1736031769
+andrewrk!~andrewrk@mail.ziglang.org
+the bit about not storing line and column numbers means that in the "fast path" that data is not taking up CPU cache space, however it's definitely slower to reparse the whole file to get the line and column numbers. but the point is you only have to do it if an error occurs (the "slow path")
+
