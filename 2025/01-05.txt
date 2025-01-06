@@ -1,0 +1,272 @@
+1736048765
+mountaingoat!~mountaing@user/mountaingoat
+what's the recommended way to get an environment variable? std.posix.getenv, std.c.getenv, std.os.environ?
+
+1736048891
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: std.process.getEnvVarOwned is the cross platform way
+
+1736048901
+andrewrk!~andrewrk@mail.ziglang.org
+std.posix.getenv if you don't need windows support
+
+1736048984
+mountaingoat!~mountaing@user/mountaingoat
+awesome, thanks
+
+1736049411
+siaal!~Siaal@user/Siaal
+how come you can switch on `(try fnThatErrors())` but you can't just switch on the actual error union?
+
+1736049524
+andrewrk!~andrewrk@mail.ziglang.org
+it's more complicated to support that than not to
+
+1736049628
+siaal!~Siaal@user/Siaal
+fair
+
+1736050189
+grayhatter!~grayhatte@user/grayhatter
+I kinda like the existing syntax for that
+
+1736050217
+grayhatter!~grayhatte@user/grayhatter
+fnThatErrors() catch |err| switch (err) { error.Name => {}, };
+
+1736050860
+siaal!~Siaal@user/Siaal
+it's nice to be able to switch on the union if you were intending to switch on the result anyway, since you can combine the handling logic for the result
+
+1736050872
+siaal!~Siaal@user/Siaal
+my actual goal was to see if i could switch on optional enums, but this is a nice find
+
+1736058584
+archaeologist!~archaeolo@user/archaeologist
+hi andrewrk, are you open to contributions to the std.HashMap & std.ArrayHashMap documentation? specifically adding missing doc comments, and adding some notes to make it more obvious that pointers returned by getOrPut (etc) can be invalidated by growing the map. Motivated by shooting myself in the foot calling getOrPutValue twice in a row followed
+
+1736058584
+archaeologist!~archaeolo@user/archaeologist
+by initializing the value pointers, rather than initializing them after each call. (I've also been thinking about how the API could guide people toward the "pit of success", but not super satisfied with what I've come up with so far)
+
+1736098253
+sdc!sid638645@id-638645.lymington.irccloud.com
+hey  all, new to zig, was running into an issue I was hoping to get some advice on. I had this essentially:
+
+1736098253
+sdc!sid638645@id-638645.lymington.irccloud.com
+var bit_buffer: u32 = 0;
+
+1736098253
+sdc!sid638645@id-638645.lymington.irccloud.com
+bit_buffer >> (32 - num_bits);
+
+1736098253
+sdc!sid638645@id-638645.lymington.irccloud.com
+where num_bits was > 0.  Then I was receiving the compiler error  --- type 'u5' cannot represent integer value '32' --- which makes sense. I ended up switching to
+
+1736098254
+sdc!sid638645@id-638645.lymington.irccloud.com
+(bit_buffer >> 1) >> (31 - num_bits);
+
+1736098254
+sdc!sid638645@id-638645.lymington.irccloud.com
+Since this also works for num_bits = 0  but I was wondering if there were alternate solutions which would be better?
+
+1736098374
+ifreund!2940d10f8b@user/ifreund
+sdc: you can also use @intCast() to convert your u32 to a u5 if you know for a fact that the value is in range for a u5
+
+1736098500
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sdc, and num_bits is never 32?
+
+1736098519
+sdc!sid638645@id-638645.lymington.irccloud.com
+yeah never 32 
+
+1736098557
+sdc!sid638645@id-638645.lymington.irccloud.com
+ifreund: ah thanks! I'll take a look at that
+
+1736098617
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but >> (32 - num_bits) will not work if num_bits is 0 then
+
+1736098671
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you need it to work with 0, you kinda have to do what you did
+
+1736098709
+ifreund!2940d10f8b@user/ifreund
+indeed
+
+1736098716
+sdc!sid638645@id-638645.lymington.irccloud.com
+yeah I was originally checking for if(num_bits == 0), I think my current solution is ok, more just trying to learn about different things I could do in zig
+
+1736098946
+sdc!sid638645@id-638645.lymington.irccloud.com
+thank you both for the feedback!
+
+1736103180
+grayhatter!~grayhatte@user/grayhatter
+is the correct way to cast a u8 into a negative i8, to turn it into a pointer, do the ptr cast, and the *back* into an int?
+
+1736103675
+torque!~tachyon@user/torque
+bitcast
+
+1736103697
+torque!~tachyon@user/torque
+assuming you want twos compliment behavior
+
+1736103815
+grayhatter!~grayhatte@user/grayhatter
+torque: that's exactly what I wanted, thank you!
+
+1736107971
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+are labeled switches the alternative to goto
+
+1736108040
+ifreund!2940d10f8b@user/ifreund
+for some use cases, yes
+
+1736108055
+grayhatter!~grayhatte@user/grayhatter
+they are, an alternative, but there's a few ways to rewrite goto, so there are possibly other options as well
+
+1736108102
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: using defer? I'm curious to know
+
+1736108163
+grayhatter!~grayhatte@user/grayhatter
+dmj`: it depends on what you're using goto to do, you could write an if using goto, so the inverse is also true... it really depends on what your using goto to do
+
+1736108259
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: I'm trying to avoid creating stack frames in Zig, I'd like to make a state machine that does graph reduction, but I have to jump around a lot to different functions
+
+1736108311
+grayhatter!~grayhatte@user/grayhatter
+`inline` exists
+
+1736108538
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+grayhatter: sounds risky, will zig inline it everywhere
+
+1736108625
+ifreund!2940d10f8b@user/ifreund
+zig inline is not like C inline
+
+1736108630
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+binary size would probably explode
+
+1736118849
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+can translate-c work if goto was removed
+
+1736119217
+ifreund!2940d10f8b@user/ifreund
+dmj`: translate-c is very useful even without being able to translate 100% of C
+
+1736119266
+ifreund!2940d10f8b@user/ifreund
+also, break/continue are effectively forwards/backwards jumps
+
+1736119329
+ifreund!2940d10f8b@user/ifreund
+honestly, I don't think compiling do zig source code is the easiest way to implement a language backend
+
+1736119483
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+well, some models of computation (like graphs) are very different and don't map cleanly, requiring goto
+
+1736119489
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+not sure why it got removed, goto is important for finite state machines
+
+1736119525
+ifreund!2940d10f8b@user/ifreund
+switch + continue makes goto unneeded for finite state machines
+
+1736119528
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+transferring control flow w/o allocation of stack frames is a use case
+
+1736119542
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+can continue jump to top level functions
+
+1736119563
+ifreund!2940d10f8b@user/ifreund
+it really seems like you want zig to be something that it isnt tbh
+
+1736119610
+ifreund!2940d10f8b@user/ifreund
+goto cant jump across function boundries either
+
+1736119636
+ifreund!2940d10f8b@user/ifreund
+that's longjmp and is not at all supported by zig
+
+1736119910
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+well, maybe switch labels are good enough. I get it, there's a massive stigma against goto. Can't please everybody
+
+1736119932
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: well Zig is advertised as a better C right
+
+1736120123
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+I could just do a bytecode interpreter I guess, then I'd have more control
+
+1736120133
+ifreund!2940d10f8b@user/ifreund
+not having goto but being able to get the same good code generation is part of what makes zig a better C
+
+1736120275
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+right, but C is ancient and a ton of projects use goto
+
+1736120277
+grayhatter!~grayhatte@user/grayhatter
+dmj`: what finite state machine can you only construct using goto
+
+1736120348
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't need goto, see e.g. relooper
+
+1736120375
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+Gliptic: link?
+
+1736120425
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not sure what to link, it's part of LLVM
+
+1736120461
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or wait, binaryen https://github.com/WebAssembly/binaryen/blob/main/src/cfg/Relooper.h
+
+1736120498
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+LLVM must be doing something
+
+1736120502
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+similar
+
+1736120536
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Emscripten was the first that used relooper
+
+1736121421
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+I'll try labeled switch
+
