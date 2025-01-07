@@ -1,0 +1,600 @@
+1736124288
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+can zig do inline-llvm
+
+1736124295
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+similar to inline-asm
+
+1736124761
+andrewrk!~andrewrk@mail.ziglang.org
+no
+
+1736124796
+andrewrk!~andrewrk@mail.ziglang.org
+what's your use case?
+
+1736125403
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+andrewrk: was just seeing if I could inspect that stack, or ensure labeled switch doesn't allocate anything on the stack, or jump to basic blocks manually, or do primops in llvm. I'll just try the labeled switch approach first. It's an experiment
+
+1736125451
+andrewrk!~andrewrk@mail.ziglang.org
+oh you're using zig as a codegen target. if you feel the temptation to use llvm ir then why not target LLVM IR directly? that's the most straightforward thing to do IMO
+
+1736125529
+andrewrk!~andrewrk@mail.ziglang.org
+otherwise, even if zig did support that, you'd be adding an unnecessary dependency on LLVM, which defeats the point of not targeting LLVM IR
+
+1736125844
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+andrewrk: the language I'm implementing does use C as a target for a few of its compilers (per the papers), but they're old. The runtime and the stack need close coordination, so doing it all in a higher level language would be convenient. I do have a LLVM AST and pretty printer, so I could, but LLVM is kind of pain to acquire and work with, and Zig has done a lot of amazing work there it seems, along with a test framework. 
+
+1736125915
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+andrewrk: plus if I target Zig and it moves away from LLVM yet keeps its portability, I think it would be even more attractive as a compilation target, due to the reduced ops burden for users
+
+1736126104
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+the stack technically lives on the heap in this implementation, one stack for each green thread. In other implementations of this lang they kind of just act like the C stack doesn't exist and use this shadow stack approach
+
+1736126635
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+as much as I'd love to fidget with getelementptr 
+
+1736126745
+torque!~tachyon@user/torque
+<dmj`> well, maybe switch labels are good enough. I get it, there's a massive stigma against goto. Can't please everybody
+
+1736126767
+torque!~tachyon@user/torque
+while there is stigma against goto, it does have the potential to make flow control very hard to follow
+
+1736126792
+andrewrk!~andrewrk@mail.ziglang.org
+I wouldn't say "stigma" is the reason zig doesn't have goto. in fact zig used to have goto and I removed it because it became a redundant feature
+
+1736126811
+torque!~tachyon@user/torque
+zig's labeled control flow is much superior to unconstrained goto for all the good use cases of goto, and your use case of generated code seems like a really niche use case
+
+1736126991
+torque!~tachyon@user/torque
+I was not trying to imply that "goto stigma" is why zig doesn't have goto, but it's something that has to be acknowledged: goto can make code very hard to read, which is a solvable problem by not just copying the semantics wholesale
+
+1736127040
+torque!~tachyon@user/torque
+proper use of goto in C and C++ can also make code much easier to read (for example as a poor-man's defer, setting up a clean up stack for a function)
+
+1736127725
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+yea it is a niche use case. No sense in optimizing for the 1%. The labelled switch with branch prediction performance sounds promising. I need tagged unions and zig has those done very nicely too, unlike llvm.
+
+1736127787
+andrewrk!~andrewrk@mail.ziglang.org
+idk if you considered wasm yet but it's a fairly nice compilation target
+
+1736127818
+andrewrk!~andrewrk@mail.ziglang.org
+depending on what you're trying to accomplish
+
+1736128087
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+Wasm seems cool but I think I’d need those wasmtime runtimes, I’d like to target iOS or watchOS too and zig targets looks great for that 
+
+1736128100
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+but yea ideally support every platform 
+
+1736128639
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+wasm for browser I need yes, and ability to call into the DOM from the wasm, seems promising https://github.com/shritesh/zig-wasm-dom
+
+1736129772
+andrewrk!~andrewrk@mail.ziglang.org
+ everyone makes that mistake when they first learn about wasm
+
+1736129793
+andrewrk!~andrewrk@mail.ziglang.org
+trying to do dom manipulation from within wasm
+
+1736129896
+torque!~tachyon@user/torque
+the reason is that nobody on the planet actually wants to write javascript, and wasm seems to be the closest thing to an escape hatch that browser vendors will give anyone
+
+1736131423
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+Yea if there’s an easier way I’m all ears. Personally I’m not against writing or generating vanilla js, as long as the js is amenable to closure compilation. Wasm seems good for games but not a replacement for js, maybe I’m wrong 
+
+1736151232
+mountaingoat!~mountaing@user/mountaingoat
+is there a more idiomatic way to check if a comptime Context: type has a function hook other than something like if (@hasDecl(Context, "initialize")) { try Context.initialize(); }
+
+1736151296
+mountaingoat!~mountaing@user/mountaingoat
+i see something like that that in hash_map.zig
+
+1736151322
+mountaingoat!~mountaing@user/mountaingoat
+but looking up strings feels dirty
+
+1736175380
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+(ok i've found a better solution; i'll just store null and add the literal later, on printing)
+
+1736175669
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+mountaingoat: that's basically the only way I have seen that done. Not sure what feels dirty about it
+
+1736183159
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: can I force [8]u8 to have an alignment of 8? or is that a stupid question?
+
+1736183213
+grayhatter!~grayhatte@user/grayhatter
+shit; I had a different question in mind for that nick prefix... *that* was a general I didn't mean to tag you directly... I'm sorry :/
+
+1736183335
+mountaingoat!~mountaing@user/mountaingoat
+rockorager: if you ever changed the name of the hook, would you remember to update all those strings?
+
+1736183391
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: IMO it's idiomatic to not do any manual checking and just let the compile error when the type is missing a function that gets called tell the story
+
+1736183491
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: is there a way to do that with an optional function?
+
+1736183590
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: @hasDecl() is the way to do that if I understand what you're asking
+
+1736183608
+ifreund!2940d10f8b@user/ifreund
+grayhatter: alignment is a property of the storage location not the type
+
+1736183619
+ifreund!2940d10f8b@user/ifreund
+where do you want to store your [8]u8?
+
+1736183639
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: that's what i'm doing, but that's manual checking
+
+1736183657
+mountaingoat!~mountaing@user/mountaingoat
+(with a string for a function)
+
+1736183721
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: either you do that or pass an optional function as a second arg to whatever function accepts your Context type
+
+1736183746
+ifreund!2940d10f8b@user/ifreund
+I was talking more about what std.HashMap does than your specific case I guess
+
+1736183754
+mountaingoat!~mountaing@user/mountaingoat
+this is basically ad-hoc compile-time traits implemented by checking string names of declarations ... that has got to make someone scratch their head
+
+1736183815
+ifreund!2940d10f8b@user/ifreund
+comptime is ducktyped
+
+1736183817
+grayhatter!~grayhatte@user/grayhatter
+ifreund: struct { version: i8, time: [8]u8, three_other: []const u8, ... };
+
+1736183836
+ifreund!2940d10f8b@user/ifreund
+grayhatter: `time: [8]u8 align(8),`
+
+1736183917
+grayhatter!~grayhatte@user/grayhatter
+thank you ifreund, I think I tried every other example I found in the alignment docs 😅
+
+1736183970
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1736185425
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I suspect a function on a generic type is returning an error from a known error set
+
+1736185429
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I want to cast it to that
+
+1736185435
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+But @errorCast gives me this:
+
+1736185446
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+expected error union type, found '@typeInfo(@typeInfo(@TypeOf(sqlite.Db.one__anon_27641)).@"fn".return_type.?).error_union.error_set'
+
+1736185514
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Oh I think I see my issue
+
+1736185527
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+errorCast casts sets of error. I can't coerce a single error into a set?
+
+1736185593
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+What I want to do is : foo() catch |err| return @errorCast(err);
+
+1736185987
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+No, I'm clueless on how errorCast should be used
+
+1736185993
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Or if this is possible
+
+1736186765
+grayhatter!~grayhatte@user/grayhatter
+rockorager: IIRC errors are secretly enums, so an int basically
+
+1736186813
+grayhatter!~grayhatte@user/grayhatter
+I *really* don't think you want to errorCast; what do you want more generally?
+
+1736187514
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I want to know what errors that function can return
+
+1736187548
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm im trying to build zls for 0.13.0 as part of a Containerfile and it's failing with `install transitive failure`
+
+1736187569
+ifreund!2940d10f8b@user/ifreund
+rockorager: are you looking for @typeInfo() on the return type?
+
+1736187586
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ifreund: what do you mean?
+
+1736187603
+grayhatter!~grayhatte@user/grayhatter
+@typeInfo(functioncall())
+
+1736187614
+ifreund!2940d10f8b@user/ifreund
+the errors that can be returned by a function are defined by the error set in the function's return type
+
+1736187617
+grayhatter!~grayhatte@user/grayhatter
+@typeInfo(functioncall) is also valid
+
+1736187632
+ifreund!2940d10f8b@user/ifreund
+you can inspect the errors in this error set type with @typeInfo()
+
+1736187660
+grayhatter!~grayhatte@user/grayhatter
+but then you'd need to look at return_type https://ziglang.org/documentation/0.13.0/std/#std.builtin.Type.Fn
+
+1736187738
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Can I cast that error into an existing set?
+
+1736187794
+grayhatter!~grayhatte@user/grayhatter
+rockorager: if you have access to the error itself, why would you need to cast it into a different set?
+
+1736187847
+grayhatter!~grayhatte@user/grayhatter
+Error1 = error{ Name }; Error2 = error { Name }; error.Name == Error1.Name == Error2.Name
+
+1736187920
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I don't know what errors it could be
+
+1736187928
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I suspect I know them all from two different unions
+
+1736187962
+grayhatter!~grayhatte@user/grayhatter
+if you don't know what errors it could be, how can you know it is *an* error at all?
+
+1736187979
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://github.com/vrischmann/zig-sqlite/blob/d95d0730e21147591317974a4c577b68d75bd2d5/sqlite.zig#L493-L498
+
+1736187985
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+This function returns an inferred error set
+
+1736188017
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+But it is almost certainly an error from sqlite. And the library does a good job of defining possible errors in different error unions
+
+1736188025
+grayhatter!~grayhatte@user/grayhatter
+and the compiler can't tell which errors are possible? i.e. you can't switch on it?
+
+1736188033
+ifreund!2940d10f8b@user/ifreund
+are you asking how to get the compiler to check that all error in the inferred error set are present in your explicit error set?
+
+1736188046
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ifreund: yes
+
+1736188049
+ifreund!2940d10f8b@user/ifreund
+the answer to that question is to coerce the inferred error set to the explict one
+
+1736188055
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+How do I do that?
+
+1736188106
+grayhatter!~grayhatte@user/grayhatter
+return it directly from your function with your defined set, the complier will complain if it contains more errors than your explicit set
+
+1736188108
+ifreund!2940d10f8b@user/ifreund
+put an explicit error set on the function where you call the one with an inferred error set and use try for example
+
+1736188124
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Ah yeah
+
+1736188126
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I am doing that
+
+1736188127
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+there's zero logs that I can see for this.. what the..
+
+1736188143
+ifreund!2940d10f8b@user/ifreund
+rockorager: then the compiler has already checked this for you
+
+1736188150
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+error: expected type <long list of errors>,  found '@typeInfo(@typeInfo(@TypeOf(sqlite.DynamicStatement.one__anon_27645)).@"fn".return_type.?).error_union.error_set'
+
+1736188170
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+So this generic has it's own particular error union set unique to it?
+
+1736188171
+grayhatter!~grayhatte@user/grayhatter
+rockorager: can you gist your actual output?
+
+1736188178
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yes one moment
+
+1736188193
+ifreund!2940d10f8b@user/ifreund
+rockorager: probably you are missing an error in your explicit error set
+
+1736188245
+grayhatter!~grayhatte@user/grayhatter
+if you need to trick the compiler into giving you a full list maybe `catch |error| switch (error) { inline else => |e| @compileLog(e); }`
+
+1736188246
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Oh jeez
+
+1736188334
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I was missing an anonymous error
+
+1736188335
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Thanks
+
+1736188567
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is there a preferred stable host for zig currently? im trying to build zls using zig 0.13.0 as installed from dnf on fedora coreos 40 and it fails with a transitive install error, if I re-run the exact same command again after failure it works
+
+1736188584
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+trying again with --summary all to see if there is any useful output but
+
+1736188627
+grayhatter!~grayhatte@user/grayhatter
+tsujp: are you trying to build the correct version of zls? 
+
+1736188640
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter: ive checked out their tag 0.13.0 so I assume so
+
+1736188641
+grayhatter!~grayhatte@user/grayhatter
+IIRC zls master tracks zig master
+
+1736188671
+grayhatter!~grayhatte@user/grayhatter
+that's what I was asking... I'd also ask on their discord server, they've been very responsive, and they'd probably have a better answer than #zig would
+
+1736188671
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+this the the build log: https://bpa.st/XMQA
+
+1736188678
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+roger
+
+1736188986
+motiejus!~motiejus@88.223.107.21
+anyone using zig with nix? If I set up the zig repo with https://github.com/ziglang/zig/wiki/Development-with-nix or https://github.com/mitchellh/zig-overlay/?tab=readme-ov-file#compiler-development , my stage3 cannot find `libstdc++.so.6` after building (stage2 links fine of course).
+
+1736188994
+motiejus!~motiejus@88.223.107.21
+s/using/developing/
+
+1736189204
+motiejus!~motiejus@88.223.107.21
+I can surely do `export LD_LIBRARY_PATH=$(ldd build/zig2 | awk '/libstdc++/{print $3}' | sed 's|/libstdc++.so.6||')` before doing my work, but that's annoying (why would it not find libstdc++?)
+
+1736190277
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I did ask in the zls discord, awaiting a reply -- i think this _might_ be a problem with fedora packaging a slightly different version of zig. I downloaded pre-compiled 0.13.0 zig and it works just fine
+
+1736190309
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+fedora's is marked 0.13.0-1, so that might be it idk
+
+1736190325
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+both binaries report 0.13.0 as their version however
+
+1736190576
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+zig prebuilt is statically linked, fedora's packaged is dynamically linked and I was doing hectic compilation _stuff_ before... might blow away the VM and try this again with a freshly installed `dnf zig` as if that happens it's definitely either a fedora package problem (idk if this on-topic here) or a zls problem (will continue in their discord)
+
+1736191037
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+tsujp: i happen to have a wget'd official prebuilt zig, packaged in my copr, you can test your hypothesis with it: https://copr.fedorainfracloud.org/coprs/netvor/zig/
+
+1736191067
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+(or you could just wget it and unzip it, probably simpler :D)
+
+1736191141
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+the rpm is `zigdev` and puts zig to /opt/zigdev and linkss it as /usr/bin/zig so probably conflicts with fedora's zig
+
+1736191486
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it might have been something to do with me updating the kernel (or not, this is an rpm-ostree version of fedora i.e. fedora coreos) as a clean VM (also fedora coreos) with `dnf install zig-0.13.0` which installs `0.13.0-1` works perfectly fine with zls now
+
+1736192791
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+actually that was on centos lol not fedora, yeah fedoras packaging is messed up. I'm just gonna use pre-built zig since that actually works.
+
+1736193829
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+or it might actually be an SELinux issue..? turning of SELinux and it works.. my god
+
+1736193870
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm just gonna blame SELinux and move on with my life. Working on fedora coreos 40 using zig-0.13.0-1 rpm (the default package) with SELinux completely disabled, because this involves containers there's probably some disgusting permissions error somewhere
+
+1736194870
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+it may be worth reporting to bugzilla, common SELinux issues are pretty easy to fix (it's basically question of allowing rules as they are discovered, which packager either forgot or they did not trigger the same use case)
+
+1736194894
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+if you want help with reporting feel free to ping me at #fedora-devel :)
+
+1736194987
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+(i might even report it for you if you just help me reproduce it)
+
+1736199222
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+This isn't zig specific but does anyone know of a good resource for learning about IPC (with sockets, probably, but *shrug*)
+
+1736199525
+ifreund!2940d10f8b@user/ifreund
+bwbuhse: reading the man pages for the syscalls used is always a good idea
+
+1736199556
+ifreund!2940d10f8b@user/ifreund
+I don't know any higher level resources off the top of my head that are targeted at IPC
+
+1736199600
+ifreund!2940d10f8b@user/ifreund
+strace is also a nice tool for exploring the syscalls made by a program
+
+1736199676
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Thanks! 
+
+1736200348
+Krajina!~Krajina@user/Krajina
+if i want to multiply an integer by 0.9 and round the result down, is that a reasonable ask? this does not work: `const new_size = @floor(size * 0.9);` (size is a u32) usually in this situation i sprinkle in `@as(T ,@intCast(x))` until it works but it doesn't like me today
+
+1736200416
+Krajina!~Krajina@user/Krajina
+chatgpt fails harder than i do with `const new_size = @intCast(u32, @floor(f64(size) * 0.9));`
+
+1736201172
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Krajina: @as(f64, @floatFromInt(size)) * 0.9
+
+1736201220
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@intCast is for casting from one int type to another int type
+
+1736201968
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you could avoid floats by multiplying by 9 then dividing by 10
+
+1736201992
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/0c4a8a
+
+1736202121
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+better cast to u64 to avoid overflow then (unless your integers are < 2**32 / 10)
+
+1736202200
+Krajina!~Krajina@user/Krajina
+thanks Gliptic I just realised @intCast isn't the play, I tried @bitCast next and this unexpectedly gave me 705 * 0.9 = 0 `const new_size: u32 = @bitCast(@floor(@as(f32, @bitCast(size)) * @as(f32, 0.9)));` I will try @floatFromInt next.  And thanks rockorager I actually like the creativity, avoid floats :^)
+
+1736202240
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@bitCast is rarely what you want
+
+1736205414
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I'm trying to parse some input then return a struct, but some fields in the struct don't have default values (they're required, so it's an error if they're missing from the input, so I don't have a default or want them to be optionals). Is there a smart way to store the values as I'm parsing and then create the struct at the end?
+
+1736205417
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+If that makes sense
+
+1736205481
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+My plan was to put them into a StringHashMap(anyopaque) since I know the types to cast them to, but that seems dumb
+
+1736205813
+andrewrk!~andrewrk@mail.ziglang.org
+bwbuhse: how about simply as local variables?
+
+1736206011
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+netvor: you're welcome too, just spent 5 hours debugging a nasty podman issue that boiled down "use overlayfs" (podman docs says it does by default but it actually doesn't).. now containers take 0.005 seconds to spawn for the first time instead of literally 3 minutes
+
+1736206037
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+that and 3 hours for zig builds and (maybe/probably SELinux borking them) has chewed up an entire day (the usual...)
+
+1736206078
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+to not too* -- anyway, I can perhaps help you with a reproduction tomorrow but honestly im kinda burnt out and just want things to work so.. idk.. probably a good idea to make a bug report just in-case
+
+1736206079
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+andrewrk: I forgot to mention, the struct I'm trying to return is generated at comptime 😅 otherwise yeah, I'd just do that
+
+1736206151
+andrewrk!~andrewrk@mail.ziglang.org
+well then you should be able to set the struct fields using `@typeInfo`
+
+1736206247
+ifreund!2940d10f8b@user/ifreund
+perhaps the missing leap in understanding is that you likely have to do `var foo: Foo = undefined;` and then set the fields one-by-one in an inline loop rather than using foo = .{ ... } syntax
+
+1736206274
+ifreund!2940d10f8b@user/ifreund
+(inline loop over @typeInfo().Struct.fields or similar)
+
+1736206282
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+ifreund: ah, yeah thanks
+
