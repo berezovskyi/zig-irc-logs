@@ -1,0 +1,424 @@
+1736296525
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+wonder if comptime could be used to implement the first futamura projection
+
+1736297256
+torque!~tachyon@user/torque
+<quinq> But it's dinamically linked
+
+1736297269
+torque!~tachyon@user/torque
+you may need to make nontrivial changes to the build system to get it to statically link, not sure
+
+1736297296
+torque!~tachyon@user/torque
+the ncdu executable I have links to ncurses and libtinfo 
+
+1736297350
+torque!~tachyon@user/torque
+at the very least you would need static versions of those libraries, which you may not have, since e.g. most linux distributions don't package static libraries
+
+1736312797
+cancername!~cancernam@user/cancername
+sup everyone, is @hasField supposed to work on error sets?
+
+1736315513
+grayhatter!~grayhatte@user/grayhatter
+cancername: are you suprised that it does, or suprised that it doesn't? 
+
+1736315533
+grayhatter!~grayhatte@user/grayhatter
+I would assume that it either doesn't work, or always returns false
+
+1736317711
+torque!~tachyon@user/torque
+you could pretty simply emulate it by using typeInfo: https://zig.godbolt.org/z/6ePjc3P4e
+
+1736317812
+squeek502!~squeek502@user/squeek502
+`ErrorSet || error{YourErrorName} == ErrorSet` also works
+
+1736317856
+squeek502!~squeek502@user/squeek502
+(see https://github.com/ziglang/zig/pull/19092 for some relevant helper function implementations)
+
+1736321975
+quinq!~user@user/quinq
+torque, obviously I need the dependencies objects, and I have :)
+
+1736321994
+quinq!~user@user/quinq
+But thanks for confirming that the build system doesn't support it natively and I would have to change it
+
+1736322041
+quinq!~user@user/quinq
+I managed to get a static elf using zig build-exe directly, but couldn't via the build system indeed
+
+1736322102
+quinq!~user@user/quinq
+Sounds a bit like an oversight, though that might just be that Zig is in early stages in that regard
+
+1736343660
+motiejus!~motiejus@88.223.107.21
+quinq: zig defaults to host os/arch, you can make a static version with `-Dtarget` (or similar, I don't recall the exact flag). e.g. -Dtarget=x86_64-linux-musl will build+link statically
+
+1736343779
+motiejus!~motiejus@88.223.107.21
+musl implies libc, which you shouldn't even need with ncdu, which afaik is full zig. should be even easier than that (reauires finding the right flag for `zig build`)
+
+1736343825
+motiejus!~motiejus@88.223.107.21
+zig build wraps zig build-exe, so you can also work from there.
+
+1736351456
+ifreund!2940d10f8b@user/ifreund
+quinq: ncdu has a Makefile that provides targets for static builds
+
+1736351547
+ifreund!2940d10f8b@user/ifreund
+it's 100% possible to build a static executable using the zig build system/build.zig
+
+1736351581
+ifreund!2940d10f8b@user/ifreund
+it does require the author of the build.zig to expose an option for it though
+
+1736358198
+quinq!~user@user/quinq
+motiejus, nice, thanks
+
+1736358301
+quinq!~user@user/quinq
+Humm, doesn't seem to work
+
+1736358309
+quinq!~user@user/quinq
+At least not ootb
+
+1736358309
+quinq!~user@user/quinq
+zig build --release=fast -Dstrip -Dtarget=x86_64-linux-musl
+
+1736358313
+quinq!~user@user/quinq
+error: error: unable to find dynamic system library 'ncursesw' using strategy 'paths_first'. searched paths: none
+
+1736358328
+quinq!~user@user/quinq
+I suppose that it doesn't use system paths by default (nor pkg-config)
+
+1736358337
+quinq!~user@user/quinq
+But anyway, it's looking for *dynamic system library*
+
+1736358359
+quinq!~user@user/quinq
+Maybe that's just the wrong target though and there's something like a x86_64-linux-musl-static
+
+1736358407
+ifreund!2940d10f8b@user/ifreund
+target is not related to static/dynamic linking
+
+1736358421
+quinq!~user@user/quinq
+ah, got wrong info then
+
+1736358426
+ifreund!2940d10f8b@user/ifreund
+like I said, there is no standard build option for setting the linking strategy
+
+1736358459
+ifreund!2940d10f8b@user/ifreund
+it is pretty trivial for the author of the build.zig file to add one though
+
+1736358489
+quinq!~user@user/quinq
+And is that by choice?
+
+1736358499
+quinq!~user@user/quinq
+(that there's no standard build option)
+
+1736358561
+ifreund!2940d10f8b@user/ifreund
+well, there are many projects that cannot be statically linked
+
+1736358584
+quinq!~user@user/quinq
+Yeah, that's a sad limitation
+
+1736358586
+ifreund!2940d10f8b@user/ifreund
+for example, anything linking mesa on linux
+
+1736358587
+Earnestly!~earnest@user/earnestly
+(How does static pie fit into this?)
+
+1736358595
+ifreund!2940d10f8b@user/ifreund
+or anything targeting anything that's not linux
+
+1736358676
+quinq!~user@user/quinq
+Anyway, any hints about how to add such special target for building statically?
+
+1736358702
+quinq!~user@user/quinq
+As I said I found out there's actually a .link_libc option for addExecutable, but that's not enough
+
+1736358703
+ifreund!2940d10f8b@user/ifreund
+quinq: for ncdu specifically, you could just use their Makefile like I said
+
+1736358733
+quinq!~user@user/quinq
+There's also a .preferred_link_mode for linkSystemLibrary but that doesn't seem to work either
+
+1736358770
+quinq!~user@user/quinq
+(but maybe that's just because I'm missing further knowledge about the internals)
+
+1736358809
+quinq!~user@user/quinq
+Well, I did build it “manually” as I said, with build-exe, but that's not really part of the build system
+
+1736358813
+quinq!~user@user/quinq
+Would be cleaner that way
+
+1736358821
+ifreund!2940d10f8b@user/ifreund
+quinq: you can set `.linkage = .static,` in the addExecutable() call
+
+1736358844
+quinq!~user@user/quinq
+I don't think so no, that goes through .link_libc
+
+1736358869
+ifreund!2940d10f8b@user/ifreund
+?
+
+1736358879
+quinq!~user@user/quinq
+ups, sorry, I was misreading my changes
+
+1736358883
+quinq!~user@user/quinq
+18:51:42  quinq$ As I said I found out there's actually a .link_libc option for addExecutable, but that's not enough
+
+1736358891
+quinq!~user@user/quinq
+^-- I meant .linkage indeed
+
+1736358946
+ifreund!2940d10f8b@user/ifreund
+what error does it give you?
+
+1736358985
+quinq!~user@user/quinq
+00:32:59  quinq$ I could find this .linkage member in the addExecutable structure, and could set it to ".static"
+
+1736358988
+quinq!~user@user/quinq
+00:33:23  quinq$ Still not entirely there though, now it complains that “using shared libraries requires dynamic linking” (obviously)
+
+1736359187
+ifreund!2940d10f8b@user/ifreund
+so I think you have 2 options, either get the compiler to choose the static versions of the system libraries with .preferred_link_mode = .static
+
+1736359218
+ifreund!2940d10f8b@user/ifreund
+or alternatively use addObjectFile() and pass the path to the libfoo.a file directly
+
+1736359361
+ifreund!2940d10f8b@user/ifreund
+in either case, `.linkage = .static` for the addExecutable call is the first step
+
+1736359395
+quinq!~user@user/quinq
+ok, found something
+
+1736359403
+quinq!~user@user/quinq
+Apparently (have to really verify)
+
+1736359419
+quinq!~user@user/quinq
+.linkage = .static isn't compatible (directly at least) with .preferred_link_mode = .static
+
+1736359447
+quinq!~user@user/quinq
+In /usr/lib/zig/std/Build/Step/Compile.zig:1109
+
+1736359472
+quinq!~user@user/quinq
+If I just pass the former, it's failing to find shared libs
+
+1736359486
+quinq!~user@user/quinq
+If I just pass the latter, it links statically against the libraries, but not the C library
+
+1736359575
+quinq!~user@user/quinq
+So I guess I'd have to play on several alternative solutions
+
+1736359590
+ifreund!2940d10f8b@user/ifreund
+I don't think that `compile.linkage != .static` check should be there
+
+1736359591
+quinq!~user@user/quinq
+Either go with static libs, and “manually” link with libc
+
+1736359594
+ifreund!2940d10f8b@user/ifreund
+it doesn't make sense
+
+1736359620
+quinq!~user@user/quinq
+Or play (maybe) with the search_strategy, or maybe with the system_lib.preferred_link_mode
+
+1736359643
+quinq!~user@user/quinq
+ifreund, that might be a linking strategy tailored for the glibc special case
+
+1736359669
+quinq!~user@user/quinq
+That it's kind of “hard” to statically link against glibc (you know, you can but then you lose their mandatory dynamic modules like nss etc.)
+
+1736359875
+ifreund!2940d10f8b@user/ifreund
+quinq: zig very much supports linking musl statically, and this would not be the right place to do the check in any case
+
+1736359886
+ifreund!2940d10f8b@user/ifreund
+I bet deteleting that check will make your use-case work
+
+1736359902
+quinq!~user@user/quinq
+true
+
+1736359940
+quinq!~user@user/quinq
+In any case, let-me verify that idea
+
+1736360125
+quinq!~user@user/quinq
+$ file zig-out/bin/ncdu
+
+1736360125
+quinq!~user@user/quinq
+zig-out/bin/ncdu: ELF 64-bit LSB executable, x86-64, version 1 (SYSV), statically linked, stripped
+
+1736360128
+quinq!~user@user/quinq
+yop
+
+1736360284
+quinq!~user@user/quinq
+Though that breaks the use-case (if that's one) of building the exec without -static, and the libraries statically (as in only depending dynamically on libc)
+
+1736360324
+quinq!~user@user/quinq
+Well, thank you very much for the help, ifreund :)
+
+1736360352
+quinq!~user@user/quinq
+Got a local solution, and a tiny tiny bit more knowledge about zig build system
+
+1736360373
+ifreund!2940d10f8b@user/ifreund
+no problem
+
+1736360422
+ifreund!2940d10f8b@user/ifreund
+I don't think it breaks that use-case actually, setting `.linkage = .dynamic` on the addExecutable() should cause libc to be linked dynamically even if the static versions of system libaries are preferred
+
+1736360579
+quinq!~user@user/quinq
+Well, what happens is that now it missed symbols from the libs, maybe something wrong in the search path for some weird reason
+
+1736360598
+quinq!~user@user/quinq
+Ah, it tries to link with only the first lib oO
+
+1736360630
+quinq!~user@user/quinq
+Ahhh, nevermind, I'm stupid and commented out the wrong things in the build.zig.
+
+1736360729
+quinq!~user@user/quinq
+Yes, it works as expected
+
+1736360743
+quinq!~user@user/quinq
+$ ldd zig-out/bin/ncdu /lib/ld-musl-x86_64.so.1 (0x7fca98aed000) libc.musl-x86_64.so.1 => /lib/ld-musl-x86_64.so.1 (0x7fca98aed000)
+
+1736360766
+quinq!~user@user/quinq
+Allright, have to go cooking before starving to death
+
+1736360768
+quinq!~user@user/quinq
+Later :)
+
+1736360805
+ifreund!2940d10f8b@user/ifreund
+cheers
+
+1736374606
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+so i have a struct init function like, `Foo = struct { ... fn init() !Foo {...} }`.  is there a difference whether inside the init() I just `return Foo{}` or do `var foo = Foo{}; return foo` ? 
+
+1736374650
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i mean, isn't the compiler just going to figure out that `foo` will be returned, therefore making the memory identical to the caller's memory (as `return Foo{}` would. IIUC)
+
+1736374731
+ifreund!2940d10f8b@user/ifreund
+netvor: hopefully yes, but that isn't a hard guarantee made by the language
+
+1736374755
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+I'm re-reading "Result Location Semantics" now, but last time i could not fully wrap my head around it...
+
+1736374766
+ifreund!2940d10f8b@user/ifreund
+related: https://github.com/ziglang/zig/issues/2765
+
+1736374831
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+well my motivation is that i want to spawn a bunch of threads which will hold pointer to the Foo, so the question is whether i can sanely do it within the `init()`
+
+1736374890
+ifreund!2940d10f8b@user/ifreund
+netvor: in that case you need to do `var foo: Foo = undefined; foo.init();` and pass the pointer to the foo instance into init();
+
+1736374929
+ifreund!2940d10f8b@user/ifreund
+until/unless that issue I linked gets implemented
+
+1736374931
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i see, so that's what std.Thread.Pool does
+
+1736374985
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i thought that the std.Thread.Pool api is just weird, good to know there's the reason
+
+1736375064
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+btw what i ended up doing is actually uswe `const foo = try Foo.create(allocator..);` ... and do allocator.create(Foo) within, but that just felt like a lot of memory chores
+
+1736375086
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+so i was wondering how to simplify it
+
+1736375107
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+thanks for clarifying
+
+1736375307
+ifreund!2940d10f8b@user/ifreund
+netvor: no problem, allocating on the heap like that is also a perfectly normal way to do this
+
