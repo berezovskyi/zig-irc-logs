@@ -1,0 +1,284 @@
+1736390382
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+halfway through the zigcersises 
+
+1736390389
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ACTION pants
+
+1736391134
+sdc!sid638645@id-638645.lymington.irccloud.com
+heya question, someone mentioned that `std.debug.print()` doesn't work on a freestanding target (and wrapped it in a if(FLAG) )
+
+1736391156
+sdc!sid638645@id-638645.lymington.irccloud.com
+I'm guessing that freestanding means something like no sys calls allowed?
+
+1736391193
+sdc!sid638645@id-638645.lymington.irccloud.com
+is there somewhere I can read more about what this is and means?
+
+1736391295
+andrewrk!~andrewrk@mail.ziglang.org
+sdc: std.debug.print is defined to print to stderr which does not mean anything in a freestanding environment. I recommend instead to use std.log and then you can override the log function in your root source file
+
+1736391532
+sdc!sid638645@id-638645.lymington.irccloud.com
+gotcha thank I'll do some reading and try that
+
+1736394019
+siaal!~Siaal@user/Siaal
+hey, just as a sanity check, there's no way to take a `[]const u8` returned by a zig api, and pass it directly into a c api expecting a `[*c]u8`, right?
+
+1736394023
+siaal!~Siaal@user/Siaal
+you have to just make a copy?
+
+1736394166
+andrewrk!~andrewrk@mail.ziglang.org
+assuming the `[*c]u8` is supposed to be null-terminated, the zig api could be modified to provide `[:0]const u8` instead, in which case it would both have a null terminator, and track the length. in this case the `.ptr` could be passed directly to the C API
+
+1736394188
+andrewrk!~andrewrk@mail.ziglang.org
+alternately the C API could be modified to accept a length, in which case the slice.ptr and slice.len could be passed to the C API
+
+1736394580
+siaal!~Siaal@user/Siaal
+it uhhh
+
+1736394596
+siaal!~Siaal@user/Siaal
+it finally dawns on me that this is why the stdlib has a whole lot of Z varients
+
+1736394610
+siaal!~Siaal@user/Siaal
+that makes sense, thanks!
+
+1736394712
+andrewrk!~andrewrk@mail.ziglang.org
+happy hacking!
+
+1736395385
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+maybe a stupid question, but why a ‘Z’?
+
+1736395466
+siaal!~Siaal@user/Siaal
+'Zero'-terminated strings
+
+1736395655
+andrewrk!~andrewrk@mail.ziglang.org
+oh I thought it stood for Ziggyfuntime :P
+
+1736395968
+siaal!~Siaal@user/Siaal
+i appear to stand corrected
+
+1736395995
+siaal!~Siaal@user/Siaal
+after all,what screams 'funtime' more than... c-style string padding
+
+1736412109
+mountaingoat!~mountaing@user/mountaingoat
+ error: expected type '[*c]f32', found '[]f32' <-- am i missing a conversion operation on a slice to many-item ?
+
+1736412707
+yataro!~yataro@user/yataro
+mountaingoat: [*c]f32 is a C-pointer, []f32 is a slice. you probably want to use slice.ptr to pass buffer to C function
+
+1736413238
+mountaingoat!~mountaing@user/mountaingoat
+yataro: thanks, that's better than @ptrCast
+
+1736431594
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+How would I best go about embedding compressed text data into a zig application?
+
+1736431618
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I have 235 txt files, each ~5.85 kb and I don't want to @embedFile all of that raw data - it's highly compressible
+
+1736431663
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+A build step to read the files, compress using std.compress.flate is I think cleanest - but what is the best way to then get that into my exe?
+
+1736431697
+ifreund!2940d10f8b@user/ifreund
+rockorager: why not @embedFile() the compressed version?
+
+1736431734
+ifreund!2940d10f8b@user/ifreund
+the build step is definitely the way to go for the compression
+
+1736431734
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I'd prefer to not have compressed files in the repo
+
+1736431748
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Oh but I can output those into the directory instead of zig-out?
+
+1736431751
+ifreund!2940d10f8b@user/ifreund
+you dont have to check them in
+
+1736431775
+ifreund!2940d10f8b@user/ifreund
+you can output them into zig-cache and embed them from there
+
+1736431812
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+So in src/foo.zig I would have `const file = @embedFile("../.zig-cache/??")
+
+1736431820
+ifreund!2940d10f8b@user/ifreund
+check out zig-wayland's Scanner in its build.zig for an example of using Build.Step.Run to generate files
+
+1736431824
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ack, thanks
+
+1736431871
+ifreund!2940d10f8b@user/ifreund
+you get a Build.LazyPath to the file, which you can pass to your main zig module with the build options mechanism or similar
+
+1736431974
+ifreund!2940d10f8b@user/ifreund
+it might be easyist to generate a simple zig source file along with the compressed data files that @embedFile()s all the data files
+
+1736431987
+ifreund!2940d10f8b@user/ifreund
+and then import that single zig file as a module 
+
+1736432014
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+That makes sense
+
+1736441760
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+ifreund: do you have any clue about this https://codeberg.org/bwbuhse/beanbag/issues/7
+
+1736441776
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+(asking since it's related to zig-wayland)
+
+1736442105
+ifreund!2940d10f8b@user/ifreund
+bwbuhse: tell them to use .{ cwd_relative = "/abs/path" }
+
+1736442124
+ifreund!2940d10f8b@user/ifreund
+instead of b.path("/abs/path")
+
+1736442161
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Thanks :) 
+
+1736442164
+ifreund!2940d10f8b@user/ifreund
+missed a dot, .cwd_relative
+
+1736442193
+ifreund!2940d10f8b@user/ifreund
+and yes its OK to pass an absolute path even though it says relative
+
+1736442243
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+yeah, I did see .cwd_relative mentioned in that error for using absolute paths, just didn't really know how it was meant to be used. 
+
+1736451879
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+straight outta comptime
+
+1736457205
+siaal!~Siaal@user/Siaal
+how come std.mem.zeroInit complains if you have a non-default-non-initialised pointer, but it's ok with slices?
+
+1736457213
+siaal!~Siaal@user/Siaal
+isn't a slice just a struct with a now-null pointer?
+
+1736457535
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it sets a slice to &.{} basically
+
+1736457572
+siaal!~Siaal@user/Siaal
+ooooh
+
+1736457574
+siaal!~Siaal@user/Siaal
+that does makes sense
+
+1736457590
+siaal!~Siaal@user/Siaal
+ty
+
+1736457859
+ifreund!2940d10f8b@user/ifreund
+using nem.zeroInit is generally an antipattern though...
+
+1736458050
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+also a good point, I’ve never used it and am not sure in which cases you would need / want to :/
+
+1736458120
+ifreund!2940d10f8b@user/ifreund
+it only exists to interface with C apis in theory
+
+1736458151
+ifreund!2940d10f8b@user/ifreund
+I peronally would probably just use memset for that purpose though
+
+1736458173
+siaal!~Siaal@user/Siaal
+well that's it, i was originally using it to create xevents
+
+1736458205
+siaal!~Siaal@user/Siaal
+which i thought was a neat application, so i started playing around with it to see if i could use it to create some default-zero structs
+
+1736459148
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+is @"struct" not available in 0.13.0 ?
+
+1736459201
+ifreund!2940d10f8b@user/ifreund
+dmj`: its just named differently, Struct
+
+1736459285
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+ifreund: thank you
+
+1736460458
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+is omitting `try` from `fn foo() !void { return try bar();}` on the last line of the fn evil?  ... compiler does not seem to want to stop me, but it just does feel like i want to apologize to everyone in advance for doing it...
+
+1736460494
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the compiler doesn't stop you because it's fine
+
+1736460517
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+..ok, then.. :)
+
+1736460538
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+is there a way to view the zig code generated at comptime from an inline for or inline while, via a debugging flag, or inlining into the editor itself
+
+1736460810
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Is there even any difference between `fn foo() !void { return try bar();}` and `fn foo() !void { return bar();}`?
+
+1736460879
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i don't think there is, since in both cases you are returning error set union, something like anyerror!void
+
+1736460938
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i do feel that the latter is more prone to bugs introduced later, because the `bar()` call whispers to my ear that this is a non-error function
+
+1736460951
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+just a matter of preference, I try to only ‘return foo()’ when the signatures match
+
