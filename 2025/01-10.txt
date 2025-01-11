@@ -1,0 +1,288 @@
+1736472267
+raceready!~raceready@user/raceready
+good evening all
+
+1736472714
+andrewrk!~andrewrk@mail.ziglang.org
+good evening, raceready
+
+1736478380
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+good evening (it's 4am here, though :D)
+
+1736478710
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+any ideas why embedding an 84kb file results in a 900kb binary size increase? https://github.com/ghostty-org/ghostty/pull/4876
+
+1736480644
+andrewrk!~andrewrk@mail.ziglang.org
+should be fairly obvious if you find the embedded thing in the output
+
+1736480763
+andrewrk!~andrewrk@mail.ziglang.org
+are those frame_xxx.txt really the source? those look generated
+
+1736480997
+andrewrk!~andrewrk@mail.ziglang.org
+binary bloat tooling usually supports doing diff comparisons
+
+1736481008
+andrewrk!~andrewrk@mail.ziglang.org
+i.e. you can find out what's different between your before/after
+
+1736481466
+andrewrk!~andrewrk@mail.ziglang.org
+I don't have any hunches though. good luck troubleshooting it, I'll be interested to see what it was
+
+1736490521
+motiejus!~motiejus@88.223.107.21
+rockorager: try looking at both binaries with bloaty, it will at least give exact sections that don't match.
+
+1736490565
+motiejus!~motiejus@88.223.107.21
+and then you can dump the sections and see if you can recognize something there
+
+1736490573
+motiejus!~motiejus@88.223.107.21
+with objdump et al
+
+1736495556
+mountaingoat!~mountaing@user/mountaingoat
+how the heck do you include a module with `zig run`? i swear this command has changed like four times
+
+1736496083
+mountaingoat!~mountaing@user/mountaingoat
+ok, i just imported the file together. the module flags are inscrutable
+
+1736497232
+andrewrk!~andrewrk@mail.ziglang.org
+it's the same args as zig build-exe
+
+1736497305
+andrewrk!~andrewrk@mail.ziglang.org
+--dep [[import=]name] followed by -M[name][=src]
+
+1736497319
+andrewrk!~andrewrk@mail.ziglang.org
+if you need help building it you could create a build.zig script and run it with --verbose to show the CLI
+
+1736497349
+andrewrk!~andrewrk@mail.ziglang.org
+CLI changed 'cause modules got more powerful
+
+1736497374
+andrewrk!~andrewrk@mail.ziglang.org
+for example now they can have independent optimization settings 
+
+1736498013
+mountaingoat!~mountaing@user/mountaingoat
+i kept getting an error like: error: main module provided both by '--mod foo src/foo.zig' and by positional argument 'bench.zig', when doing -Mfoo=src/foo.zig. maybe i was missing the dep part too, but i just changed my import to src/foo.zig and moved on
+
+1736499767
+andrewrk!~andrewrk@mail.ziglang.org
+you have to stop providing a positional argument when you switch to using -M syntax
+
+1736499784
+andrewrk!~andrewrk@mail.ziglang.org
+the first -M is the root one
+
+1736513045
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+ok i'm getting lost in posix.zig ... is there are an easy way to see if a path points to an executable file?   i tried looking at Dir.statFile or File.metadata but they all seem to require extra non-trivial steps
+
+1736513088
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+eg. if .kind is a symlink i still don't know whether it's pointing to a file
+
+1736513127
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+and with .mode i guess i still need to compare all classes (global, group, user) separately
+
+1736514097
+yataro!~yataro@user/yataro
+netvor: use fd = posix.open and posix.fstat(fd). link will be resolved but you still need test .mode yourself 
+
+1736514366
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+isn't that equivalent to Dir.openFile.  (i don't need it to be posix specific)
+
+1736515274
+yataro!~yataro@user/yataro
+netvor: but you asked for posix.zig? should be equivalent to doing Dir.openFile and File.stat
+
+1736515358
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+fs.Permissions sound promising: `const fd = dir_fd.openFile(...)` (assuming that resolves symlinks, so i can ignore the possibility of .kind being a symlink) and then File.metadata().permissions().inner.unixHas(.user, .execute)
+
+1736515449
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+sorry for confusion about posix.zig,  that was kindof like a joke ...  (i was reading posix.zig to see if i find out how std api does that)
+
+1736515500
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+unixHas seems like a way to go, although i guess i'll still have to do that up to 3 times, including checking (group) ownershio, etc.
+
+1736515541
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+*ownership
+
+1736516107
+yataro!~yataro@user/yataro
+netvor: normally you only need to check if current user can execute the file, so if we talk posix just access(..., X_OK) is enough. symlink will be dereferenced 
+
+1736516392
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+ah, i see, i did not realize how to pass the mode argument...  that turns out easy enouh, thanks!
+
+1736527932
+grayhatter!~grayhatte@user/grayhatter
+does anyone know if @TypeOf be switched to @typeOf in 0.14?
+
+1736528078
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+hasn’t yet https://ziglang.org/documentation/master/#TypeOf
+
+1736528126
+grayhatter!~grayhatte@user/grayhatter
+I mistakenly dropped the word "will" 
+
+1736528168
+grayhatter!~grayhatte@user/grayhatter
+I think I remember someone mentioning they keep tripping over that idiosyncrasy, and I'm doing it a lot today as well :D
+
+1736528234
+yataro!~yataro@user/yataro
+grayhatter: why? it was renamed from @typeOf to @TypeOf initially 
+
+1736528617
+grayhatter!~grayhatte@user/grayhatter
+I keep tripping over it when trying to swap between @TypeOf, @typeName, and @typeInfo; I get that it's cute, that @TypeOf is T instead of t because it returns a type, but no other functions get that treatment, and if types are supposed to be a first class citizen in Zig there shouldn't be any magic about using them...
+
+1736528656
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no other function, except all generic functions returning a type
+
+1736528661
+grayhatter!~grayhatte@user/grayhatter
+"oh, you want a type? well then your function needs to start with an uppercase letter" is such a weird unnecessary rule to have
+
+1736528693
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ArrayList etc. etc. etc.
+
+1736528808
+grayhatter!~grayhatte@user/grayhatter
+ArrayList() makes much more sense to me because it's a type constructor, it'll make a type to be used. @TypeOf() doesn't make a type, it's just referencing an existing one
+
+1736528843
+yataro!~yataro@user/yataro
+i think this uncecessary rule helps reading code a lot 
+
+1736528860
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no difference between those cases, they are both returning a type and that's why they are uppercase
+
+1736528866
+grayhatter!~grayhatte@user/grayhatter
+I'd argue, that in real code, `print(@TypeOf(thing));` is a lot more common than `print(ArrayList(u8));` or 
+
+1736528906
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+existing types also have uppercase (except the built-in types)
+
+1736528926
+grayhatter!~grayhatte@user/grayhatter
+where print here is just a "generic" alias for something like @compileLog()
+
+1736528934
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it would be inconsistent if @TypeOf was the one exception
+
+1736528950
+grayhatter!~grayhatte@user/grayhatter
+yataro: that's interesting, I think the opisite, can you explain why? I legit don't understand how it helps
+
+1736528977
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it helps because you can more easily spot what are types and what are not
+
+1736528998
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: I think it's fine for compiler builtins, and stdlib to have different semantics, but perhaps I'm wrong about that
+
+1736528998
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+otherwise you might as well go the C++ route and make everything lowercase
+
+1736529013
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: well, I don't see any reason for it
+
+1736529044
+yataro!~yataro@user/yataro
+grayhatter: i believe it helps to extract information from symbol name not from its usage or full declaration 
+
+1736529083
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and of course @TypeOf is _not_ the only one
+
+1736529093
+yataro!~yataro@user/yataro
+makes it easy for brain i think 
+
+1736529105
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you also have @This() and @Type()
+
+1736529115
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh, and @Vector
+
+1736529125
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and @FieldType
+
+1736529183
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+arguably u8, i8 etc. should also be uppercase, but I guess they're not to ease typing and familiarity
+
+1736533256
+renlo!~Renlo_Ren@pool-96-246-225-210.nycmny.fios.verizon.net
+Am a complete noob with zig, but is there a good zig ide to use? I'm using vscode atm (cursor) with one of the vscode zig extensions. I am importing a third party C library, which is loaded and builds correctly, but the ide doesn't know what the library code exposes. Anyone know if there's an ide that has that / how to have that work?
+
+1736533518
+sskras!sid542048@id-542048.tinside.irccloud.com
+ACTION being a fully vim guy knows no recent graphical IDEs
+
+1736536976
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+renlo: the one and only neovim :P
+
+1736537102
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+renlo: hm, do you get a red squiggly line on the @cInclude line? I had that problem with zls for 0.13 at least that it doesn't understand relative paths to C headers, but works if you put in an absolute path
+
+1736537119
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*zls with vscode anyway
+
+1736537609
+motiejus!~motiejus@88.223.107.21
+Gliptic: i played ponylang for a while which has all types strictly uppercase, like U8 and I64 and such, never got used to it. It is "purer", but was a bit too much for my liking :)
+
+1736537659
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, I used pony a while back, although I can get used to anything. Kinda neat but too many reference types :P
+
+1736537759
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+many functional languages have strictly uppercase types, like Haskell
+
+1736547969
+ublx!~ublx@user/ublx
+0
+
+1736547997
+ublx!~ublx@user/ublx
+windows how do they work
+
