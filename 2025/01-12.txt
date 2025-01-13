@@ -1,0 +1,624 @@
+1736640109
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+how much does zig stdlib, (or even other stdlibs in general) actually follow POSIX to the word?   i'm asking because, just for fun (or self hatred) i'm trying to do that with just `pwd` and it's already kinda insane
+
+1736640144
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+the specs give strong legalese vibes
+
+1736640172
+andrewrk!~andrewrk@mail.ziglang.org
+if you want to be pedantic about it, POSIX specifies a C API, so exactly 0%
+
+1736640279
+andrewrk!~andrewrk@mail.ziglang.org
+to me "posix" means basically "the set of semi-portable common system APIs of unix-likes"
+
+1736640280
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i mean i thought, i'll just get one of my toes wet, how bad can it be... of all things, `pwd` can't be hard..
+
+1736640367
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+but now it feels like i might need a function to resolve symlinks (but not ..'s) in path..? (-P)
+
+1736640440
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+oh i meant posix shell.. (wait, then my question does not make sense i guess...)
+
+1736644979
+torque!~tachyon@user/torque
+<grayhatter> the cannon location for any version number is a git tag
+
+1736644981
+torque!~tachyon@user/torque
+disagree
+
+1736644991
+torque!~tachyon@user/torque
+the version should probably be specified in the source code
+
+1736645054
+torque!~tachyon@user/torque
+being able to build properly without vcs is a good thing, generally
+
+1736645872
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i think you can have best of both worlds:  1. make it hard to build with a wrong version number (relying on vcs first), 2. allow passing any string on buildtime
+
+1736645950
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+but yeah, eg. in places like rpmbuild or debuild the implication is that there is no vcs, ideall just the tarball and nothing but tarball
+
+1736646049
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+for that reason i've made build pipelines such that the version is taken from git  and baked to the tarball as a tiny text file
+
+1736646139
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+it's also why i would not expect the platform to provide explicit "correct way", it boils down to CI to be authority on that anyway
+
+1736646203
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+(but i'll shut up now, this is my pet peeve i could go on rambling for hours :D)
+
+1736647175
+grayhatter!~grayhatte@user/grayhatter
+torque: strong disagree
+
+1736647209
+grayhatter!~grayhatte@user/grayhatter
+yes, you *can* write and build without vcs, just like you can also write and build code without a code editor
+
+1736647236
+grayhatter!~grayhatte@user/grayhatter
+https://xkcd.com/378/
+
+1736647363
+grayhatter!~grayhatte@user/grayhatter
+being able to know, and record the *exact* version of a file is a feature, I could implement a whole sha1 tree/blob hash just like git does... or I could use git
+
+1736647639
+grayhatter!~grayhatte@user/grayhatter
+if rpmbuild and debuild wanna pretend like tarballs are perfect, and vcs isn't better, they're welcome to their delusions but to netvor's point it requires a whole extra build feature to bake in extra data into a tarball, such that it diverges from the upstream source repo
+
+1736647712
+grayhatter!~grayhatte@user/grayhatter
+there is a chance I'm wrong and maybe custom tarballs are much safer, and not a good place to hide malicous code
+
+1736647721
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+it's not that they are perfect, it's that these things are built to be universal enough to work with any project, regardless of if they have (a sane) VCS at all
+
+1736647729
+grayhatter!~grayhatte@user/grayhatter
+( netvor didn't wanna rant so I'm gonna do it for him :P )
+
+1736647768
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i bet there are still packages in fedora/debian that use ancient "VCS"'s like CVS
+
+1736647808
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+rpmbuild and the likes don't want to care, just gimme a tarball and i'll unpack it (and tell me what to call to "install" it)
+
+1736647822
+grayhatter!~grayhatte@user/grayhatter
+I do think tarballs are stupid, but there's nothing objectively wrong with them
+
+1736647871
+grayhatter!~grayhatte@user/grayhatter
+but they're objectively less useful than git... so if I'm going to use git why would I add the additional complexity of a tarball?
+
+1736647918
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+well it's like saying that a slab of stone is less useful than a statue.  imo it depends on your definition of "useful" :)
+
+1736647962
+grayhatter!~grayhatte@user/grayhatter
+no, it's like saying a bandsaw is less useful than a water jet
+
+1736647963
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i mean it depends, of course :)
+
+1736648018
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+yeah and a bandsaw is more useful when you are in the forest :D
+
+1736648022
+grayhatter!~grayhatte@user/grayhatter
+which is true, everything tar can do, git can do, but the inverse doesn't hold, tar can't do everything git can
+
+1736648086
+grayhatter!~grayhatte@user/grayhatter
+netvor: you're right obviously... but also, you need an internet connection to get the newest version of my code, tarball, or git repo, so you're already in a fully prepared workshop that could run both
+
+1736648117
+grayhatter!~grayhatte@user/grayhatter
+you *could* handcap yourself, or, you could *not*
+
+1736648180
+grayhatter!~grayhatte@user/grayhatter
+and I say that having written a completely custom github alt, including a partial git implementation in zig, because I think github has become too complex and painful to use... so the whole idea of needless complexity is bad isn't lost on me
+
+1736648206
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+the point is that for things like rpmbuild that does not matter, the question is can you get the source code on your build server.  and there are other constraints, eg. security or performance (you will be rebuilding thousands of packages on many different archs, for which you might or might not have a HW that costs tons of money...) 
+
+1736648219
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+so less is better
+
+1736648272
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+yeah, code forge is just a really different kind of beast
+
+1736648275
+grayhatter!~grayhatte@user/grayhatter
+netvor: downloading a new tarball for every release can not possibly be better than `git pull`
+
+1736648375
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+(i say that having maintained/reviewed rpm tests, building CI pipelines for rpm packages, developing test framework for full-distro inplace upgrades, tons of rpm-related fun like that)
+
+1736648382
+grayhatter!~grayhatte@user/grayhatter
+ehhh, maybe that's not true, if you're gonna purge the system/state for every package, and every invocation, it might come out to a rounding error at that point
+
+1736648434
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+rounding error might be your weekend if you're running upgrade tests on s390x :D
+
+1736648436
+grayhatter!~grayhatte@user/grayhatter
+I've maintained debian package repos for an IPS in the long, long ago
+
+1736648542
+grayhatter!~grayhatte@user/grayhatter
+I mean... if I'm debugging build tests on something esoteric, I'd **much** rather have a git repo where I can cycle between working, and non-working versions
+
+1736648562
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+idk, to me tarballs seem fine.  for example fedora's build system uses side cache: you dl a new tarball, upload it, and then refer the sha sum.  sure you could do that with git but not everyone uses git! :)  so it would all be much more complex
+
+1736648563
+grayhatter!~grayhatte@user/grayhatter
+but I've not spent a lot of time on the packaging side...
+
+1736648595
+grayhatter!~grayhatte@user/grayhatter
+I can't name a single project I'd want to use, that's not available via git
+
+1736648692
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i really think it's best to have something of both worlds.  for my toy projects i have build frontend which allows me to do just what i need (i can install from repo or produce a tarball to be sent to COPR)
+
+1736648702
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+(and similarly for deb)
+
+1736648830
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+even if the project does use git, it still makes sense to distribute tarball.  (that's why basically all forges automatically tarball things for every tag)
+
+1736648898
+grayhatter!~grayhatte@user/grayhatter
+"everyone does it" isn't very convincing
+
+1736648915
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+not meant to be
+
+1736649073
+grayhatter!~grayhatte@user/grayhatter
+this has been quite an interesting discussion... I didn't really give enough wait to how much inertia there actually is behind tar
+
+1736649095
+grayhatter!~grayhatte@user/grayhatter
+but it's diverged quite far from the original question I don't have a good answer for
+
+1736649130
+grayhatter!~grayhatte@user/grayhatter
+how do I get a version out of VCS for a zig library if I don't wanna bake it into the source repo?
+
+1736649261
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+the way i would do it (and i hope i will get ther at some point) is that in the repo i provide script which will extract the version (with required format) and write it to a file, and then have the library @embed the file
+
+1736649332
+grayhatter!~grayhatte@user/grayhatter
+which I'd have to commit to the repo?
+
+1736649351
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+the script could of course just take a string from argv/env and write that (or from an existing file), which would solve situations of build outside VCS
+
+1736649379
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+not necessarily, the scripting could exist outside (i do it with some of my projects)
+
+1736649385
+grayhatter!~grayhatte@user/grayhatter
+ideally, I wouldn't have to write docs for whatever solution I find
+
+1736649415
+grayhatter!~grayhatte@user/grayhatter
+I like to pretend I'm a better engineer than to build something that includes the words "don't forget to run this script"
+
+1736649443
+grayhatter!~grayhatte@user/grayhatter
+I admit I often have to pretend.... but I like pretending 
+
+1736649525
+torque!~tachyon@user/torque
+I said nothing about writing code. building is a separate process from writing
+
+1736649551
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i don't know any alternative though.. source code is just text.  sure you can have a platform tooling offer a "default" solution for you, but then that solution is probably going to be pretty complex
+
+1736649617
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+i mean if it's supposed to lift the "don't forget" off someone's shoulders
+
+1736649677
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+honestly in my experience everything in this space ends up being shell scripts anyway;  even if there are "standard ways", those change over time so it can become a huge mess anyway
+
+1736649698
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+with many more footguns than just "don't forget to run this script"
+
+1736649990
+grayhatter!~grayhatte@user/grayhatter
+heres' a question
+
+1736650000
+grayhatter!~grayhatte@user/grayhatter
+what would cause `zig build --help` to do nothing?
+
+1736650062
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+rings a bell faintly, i had that problem but forgot why was it :D
+
+1736650094
+netvor!~netvor@2a00:ca8:a1f:cd0:e2a3:2886:3821:1fc2
+maybe `--help` is being interpreted as a target which does not exist..
+
+1736650112
+grayhatter!~grayhatte@user/grayhatter
+it's my own user error, one of my build functions is misbehaving 
+
+1736650153
+grayhatter!~grayhatte@user/grayhatter
+the answer is `git -C b.build_root.path or "."`
+
+1736650302
+grayhatter!~grayhatte@user/grayhatter
+^ that's the answer to getting the information from git, not why build was "crashing" (well... maybe it was the answer for both :D)
+
+1736652052
+raceready!uid684861@user/raceready
+is it a feature or a bug that `zig build-exe main.zig` will create an empty `main` file if `main.zig` doesn't exist?
+
+1736652321
+andrewrk!~andrewrk@mail.ziglang.org
+feature. the compiler starts working on the output file before it finds out if the compilation succeeds
+
+1736654188
+raceready!uid684861@user/raceready
+would there be anything of value in the file if compilation fails part way through?
+
+1736654970
+andrewrk!~andrewrk@mail.ziglang.org
+yes it might have finished lowering some functions successfully, avoiding repeating that work next time
+
+1736657160
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+grayhatter: in comlink I have a compiler error if my hardcoded version string doesn’t match the vcs tag
+
+1736657167
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+in build.zig
+
+1736657192
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+that way I can’t compile unless I update the hardcoded tag after I make a tag 
+
+1736664689
+mountaingoat!~mountaing@user/mountaingoat
+is @as(f32, @floatFromInt(x)) the quickest way to convert a usize to f32? seems verbose
+
+1736668768
+Affliction!affliction@idlerpg/player/affliction
+If the type is known to be f32, you won't need @as
+
+1736669882
+mountaingoat!~mountaing@user/mountaingoat
+i get error: @floatFromInt must have a known result type / note: use @as to provide explicit result type
+
+1736670023
+mountaingoat!~mountaing@user/mountaingoat
+how come zig test / (or build test) loves to suppress everything and pretend like nothing happened? silence is cool, but i mean, it'd be nice to have SOME feedback, especially when testing
+
+1736686225
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+mountaingoat: —summary all
+
+1736690517
+reykjalin!7e28cf3a41@user/reykjalin
+mountaingoat: const converted_to_float: f32 = @floatFromInt(x);
+
+1736690540
+reykjalin!7e28cf3a41@user/reykjalin
+the type must be known at compile time so you need the type annotation :)
+
+1736690571
+reykjalin!7e28cf3a41@user/reykjalin
+the alternative is to use @as() like you did earlier, but I personally like this ^^ better
+
+1736703546
+norineko!~norineko@user/norineko
+I want to `defer file.seekTo(0)` - how is this possible?
+
+1736703584
+norineko!~norineko@user/norineko
+I get an ignored union if I just write that, but I can't write `defer try file.seekTo(0)`
+
+1736703777
+torque!~tachyon@user/torque
+`defer file.seekTo(0) catch unreachable;` for example
+
+1736703823
+torque!~tachyon@user/torque
+this is you telling the compiler that actually `seekTo(0)` cannot fail
+
+1736703866
+torque!~tachyon@user/torque
+it may be more robust to actually handle the error, though what you can actually do in a defer statement is very limited
+
+1736722671
+andrewrk!~andrewrk@mail.ziglang.org
+since seekTo can fail it's not appropriate to put into a defer
+
+1736722700
+andrewrk!~andrewrk@mail.ziglang.org
+maybe you can use pwrite or pread instead and then reset an integer rather than calling seek
+
+1736724335
+raceready!uid684861@user/raceready
+good evening all
+
+1736724344
+raceready!uid684861@user/raceready
+I've got what y'all are probably going to think is a dumb question
+
+1736724441
+raceready!uid684861@user/raceready
+The TigerBeetle style guide says that when constructing large struts you should do so in place and give the following example:
+
+1736724460
+raceready!uid684861@user/raceready
+https://www.irccloud.com/pastebin/SHqlWOpf/
+
+1736724467
+grayhatter!~grayhatte@user/grayhatter
+I really hope this large struct is a link, and not a huge ... thank god
+
+1736724475
+raceready!uid684861@user/raceready
+And says to prefer that over:
+
+1736724487
+raceready!uid684861@user/raceready
+https://www.irccloud.com/pastebin/yTIsZQjN/
+
+1736724540
+raceready!uid684861@user/raceready
+I've been programming in Rust professionally for the last 4 or so years, with most of my prior experience being in C# and Java
+
+1736724572
+raceready!uid684861@user/raceready
+so we can't really pass a pointer to a memory that hasn't been initialized yet
+
+1736724585
+raceready!uid684861@user/raceready
+so I'm wondering what the benefit of of the first example is over the second.
+
+1736724604
+grayhatter!~grayhatte@user/grayhatter
+I assume with any level of optimization, they'll result in equivilant code... Which I think answers your question because I assume TigerBeetle is trying to account for the mistaken assumption the recommended way, prevents a needless copy
+
+1736724606
+andrewrk!~andrewrk@mail.ziglang.org
+personally, I disagree and I suggest exactly the opposite
+
+1736724620
+andrewrk!~andrewrk@mail.ziglang.org
+because it results in the least amount of "undefined" state
+
+1736724665
+grayhatter!~grayhatte@user/grayhatter
+really glad andrewrk is also reading, and can correct me if I'm wrong that zig will prevent the needless copy
+
+1736724697
+raceready!uid684861@user/raceready
+I think that's where I'm lost.  What copy is happening here?
+
+1736724733
+raceready!uid684861@user/raceready
+I'm assuming the LargeStruct is being allocated on the heap, right?
+
+1736724738
+andrewrk!~andrewrk@mail.ziglang.org
+people are irrationally concerned about the memory copy that happens at the `return` statement in the second example
+
+1736724749
+raceready!uid684861@user/raceready
+I think Rust has ruined me as far as learning how memory allocation actually works.
+
+1736724759
+grayhatter!~grayhatte@user/grayhatter
+raceready: so for any function that has a return value, that value has to live somewhere to be returned. normally, if you're just returning an int, like usize, the return value lives in a CPU register. when you return structs, instead of primitives like ints, they have to live in memory
+
+1736724809
+andrewrk!~andrewrk@mail.ziglang.org
+the key thing to understand about zig is that heap allocation won't happen unless you explicitly ask for it, i.e. with an allocator
+
+1736724810
+grayhatter!~grayhatte@user/grayhatter
+so, when you `return HugeStruct{...};` from a function, there might also be a huge memcpy
+
+1736724830
+andrewrk!~andrewrk@mail.ziglang.org
+so, neither of these examples have heap allocation
+
+1736724896
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: to answer your question, it's an optimization that llvm easily finds every time, however it's not guaranteed by zig. there is however an accepted proposal to make it guaranteed in some patterns, for example if you have `return` and then a struct literal
+
+1736724931
+andrewrk!~andrewrk@mail.ziglang.org
+however I will probably make it impossible for that result pointer to escape that expression to prevent the possibility of aliasing
+
+1736724952
+raceready!uid684861@user/raceready
+okay so I'm willing to let myself sound even more ignorant.  when you say there will be a huge memcpy is that because the struct has to be copied from one functions stack to the calling functions stack?
+
+1736724964
+grayhatter!~grayhatte@user/grayhatter
+I would like it if it was guarenteed by zig, but only because IMO it's a required, and I'm looking forward to the day where zig's optimazitons beat LLVMs
+
+1736725023
+andrewrk!~andrewrk@mail.ziglang.org
+raceready: the exact mechanism for that is governed by the *function calling convention*. typically a large struct is returned by having the caller stack-allocate and then pass a pointer, and then the callee populates it
+
+1736725024
+grayhatter!~grayhatte@user/grayhatter
+raceready: yes, exactly, that in theory *could* happen, but as andrewrk mentioned, it reality, it almost never happens, and that potenential copy will be skipped
+
+1736725067
+andrewrk!~andrewrk@mail.ziglang.org
+a naive compiler however would also stack allocate the result, and then memcpy it into the result pointer at the end
+
+1736725072
+grayhatter!~grayhatte@user/grayhatter
+but errors with undefined data happen often, so I'd second andrewrk's recommendation to do the opposite
+
+1736725170
+grayhatter!~grayhatte@user/grayhatter
+the tigerbeetle suggestion also makes me nervous because of C's or LLVMs habit of abusing the user using undefined behavior... because LargeStruct is undefined, one day the compiler might decide the whole operation is undefinded, and do something hostile
+
+1736725179
+andrewrk!~andrewrk@mail.ziglang.org
+raceready: you might have fun playing with godbolt and looking at some simple machine code for these examples
+
+1736725202
+raceready!uid684861@user/raceready
+rgr, going to look at that now
+
+1736725206
+grayhatter!~grayhatte@user/grayhatter
+no doubt, someone will correct me again with why that can't actually happen, because of some rule... but I've learned never to trust the gcc, or LLVM optimizers
+
+1736725392
+andrewrk!~andrewrk@mail.ziglang.org
+raceready: here's a link to get you started: https://zig.godbolt.org/z/GqhzY9cdd
+
+1736725437
+andrewrk!~andrewrk@mail.ziglang.org
+small edit: https://zig.godbolt.org/z/EPbaKbs3b
+
+1736725489
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I think your idea of undefined behavior needs some more development. you seem to believe things are legal that are certainly not legal for the compiler to do
+
+1736725550
+andrewrk!~andrewrk@mail.ziglang.org
+in zig, it is legal to operate on undefined values. generally when you operate on an undefined value, an undefined value pops out. however, any *branch* on undefined value is illegal, and any operation which has an illegal set of operands, is illegal to pass undefined for those operands
+
+1736725588
+andrewrk!~andrewrk@mail.ziglang.org
+so you can't cause any problems by assigning undefined. but you cause illegal behavior by doing e.g. `if (undefined)` or `x + undefined` (since it is illegal to overflow with `+`)
+
+1736725629
+andrewrk!~andrewrk@mail.ziglang.org
+this is why I suggest to minimize the amount of points in code in which undefined state exists
+
+1736725636
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: that's probably true I live mostly on baseless assumptions... In this case, I *do* know that my example can't happen, because the address for the ptr, is valid, and only the memory is undefined. Which has defined behavior, and isn't likely to be broken by the compiler... but also including `assert()` in zig causes a crash that doesn't happen when the assert is missing, which left me dumb
+
+1736725638
+grayhatter!~grayhatte@user/grayhatter
+founded for quite a while, so clearly I am missing some things
+
+1736725712
+andrewrk!~andrewrk@mail.ziglang.org
+yeah you can cause a crash by asserting something false
+
+1736725798
+raceready!uid684861@user/raceready
+don't you want to crash when asserting something false?
+
+1736725813
+raceready!uid684861@user/raceready
+also, this example doesn't create any assembly, https://godbolt.org/z/dre45orrz
+
+1736725814
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: the thing that suprised me, in releasefast, with no assert, it wouldn't crash, but in releasefast with an assert it would crash, the code was otherwise the same. I would never have guessed that adding an assert in optimized code, would change how the code behaves 
+
+1736725885
+grayhatter!~grayhatte@user/grayhatter
+raceready: I wouldn't expect adding or removing an assert to change the behavior of the code, no
+
+1736725930
+grayhatter!~grayhatte@user/grayhatter
+not when I was assuming the assert otherwise should be a no op
+
+1736726007
+andrewrk!~andrewrk@mail.ziglang.org
+raceready: with optimizations enabled, it will delete code that doesn't actually do anything :)
+
+1736726032
+grayhatter!~grayhatte@user/grayhatter
+raceready: there's no asm because the compiler noticed that... yeah what andrewrk 
+
+1736726050
+andrewrk!~andrewrk@mail.ziglang.org
+think you need `pub` on main
+
+1736726083
+andrewrk!~andrewrk@mail.ziglang.org
+it's going to be distracting looking at all that start code which is why I set you up with an exported function instead
+
+1736726143
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: assert in unsafe mode is not a no-op - it's an additional promise to the optimizer that a certain code path is unreachable
+
+1736726155
+andrewrk!~andrewrk@mail.ziglang.org
+it's literally `if (!condition) unreachable;`
+
+1736726186
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/blob/0.13.0/lib/std/debug.zig#L412
+
+1736726199
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: right, I know that *now*. Previously I was reusing my understand of an assert in C
+
+1736726272
+raceready!uid684861@user/raceready
+andrewrk: ah, I see what  you mean, that produced a lot of assembly
+
+1736726305
+andrewrk!~andrewrk@mail.ziglang.org
+yeah that's the code to handle the OS _start function and then call main
+
+1736726315
+andrewrk!~andrewrk@mail.ziglang.org
+if you just export a function instead of using main it'll be simpler
+
