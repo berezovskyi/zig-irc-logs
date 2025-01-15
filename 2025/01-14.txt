@@ -1,0 +1,280 @@
+1736813316
+qbit!~qbit@user/qbit
+hi!
+
+1736813777
+andrewrk!~andrewrk@mail.ziglang.org
+hello qbit
+
+1736814158
+Celeo!~Celeo@user/celeo
+hi hi
+
+1736818738
+raceready!uid684861@user/raceready
+good evening all
+
+1736819026
+raceready!uid684861@user/raceready
+does zig have an official package registry similar to `crates.io`?
+
+1736819061
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+no
+
+1736820740
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+are there plans for a zig assembly language
+
+1736820907
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+like a C--
+
+1736820980
+andrewrk!~andrewrk@mail.ziglang.org
+no
+
+1736821790
+dmj`!sid72307@id-72307.hampstead.irccloud.com
+andrewrk: ty
+
+1736830231
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Hmm, if I want to turn some bytes from @embedFile into a []u32 (raw RGBA pixel data) at compile-time, is there a recommended way to do this? I can loop over all the bytes and manually pack them but that requires setting a fairly high eval branch quota and seems to slow build times. Can I memcpy or cast this somehow at comptime?
+
+1736831006
+norineko!~norineko@user/norineko
+Trying to wrap my head around enums,unions, and packing. I have a "block" data type that consists of a magic (4 chars), and then 0x24 bytes of data. I've made a Magic enum that uses the correct representation, and I have a packed struct. I can't seem to use a packed union with a tag though. Is what I want possible?
+
+1736831276
+norineko!~norineko@user/norineko
+Effectively I want the tag to be packed at the head of the union, with no padding. https://bin.bloerg.net/hLh+Fc.zig is my minimal example.
+
+1736831417
+andrewrk!~andrewrk@mail.ziglang.org
+Overkill: if it's too slow for comptime then my suggestion is a CLI tool that reformats the data and then you can `@embedFile` the output of that. build system can manage all this
+
+1736831476
+andrewrk!~andrewrk@mail.ziglang.org
+in the future I hope to bring this use case within range of the language by making comptime logic roughly as fast as CPython, and caching the result of comptime executions so you don't have to repeat it if it's already done
+
+1736831485
+andrewrk!~andrewrk@mail.ziglang.org
+for now the build system is the best strategy for this
+
+1736831556
+grayhatter!~grayhatte@user/grayhatter
+Overkill: I was able to get better comptime results by writing code that "can't" backtrack
+
+1736831612
+grayhatter!~grayhatte@user/grayhatter
+the more I use comptime, the more I don't want to use it to generate anything other than code
+
+1736832188
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+andrewrk: Ahhh okay, that makes sense! hmm I guess i should clarify, the file contents are already uncompressed little-endian 32-bit RGBA data. `@embedFile` returns a `*[_:0]const u8`, but I want that into a `[]const u32` at comptime, ideally so that the alignment and size are guaranteed to be multiples of 4.
+
+1736832260
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+The build system advice sounds useful overall for doing any format conversion though! I'm also unsure for certain how much of this is directly caused by converting the data, it might also just be caused by having to do a larger recompile when changing constant data/changing the comptime function it relies on (recompiling changes to functions is still relatively fast).
+
+1736832348
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+ahh, I guess one thing I could do is just force alignment to 4-byte on the const that holds the @embedFile result, and statically assert sizeof, then @ptrCast+@alignCast at runtime
+
+1736832363
+andrewrk!~andrewrk@mail.ziglang.org
+mm I see
+
+1736832441
+andrewrk!~andrewrk@mail.ziglang.org
+suggest pointer casting the embed file to the (underaligned) different elem type, then dereferencing it, and then storing that in a global const
+
+1736832451
+andrewrk!~andrewrk@mail.ziglang.org
+should require no branch quota or comptime logic
+
+1736832479
+andrewrk!~andrewrk@mail.ziglang.org
+ah yeah that's pretty much what you suggested
+
+1736832538
+andrewrk!~andrewrk@mail.ziglang.org
+const x align(4) = @embedFile("...").*;
+
+1736832818
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Oooh nice, that's actually much simpler that way. So if I understand correctly, by dereferencing it can overcome the alignment difference between the LHS and @embedFile term? So does that mean arrays of same size but different alignment can be assigned to one another?
+
+1736832944
+Overkill!~overkill9@198-48-201-195.cpe.pppoe.ca
+Oh right, of course, alignment just affects the start address of a declaration, they're still compatible types.
+
+1736867579
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+norineko: i'm the n00b here (still learning) but afaik tags are not stored in the memory.  ie. if i have a tagged union `union (enum) { foo: u16, bar: u8, }` the union should take 2 bytes (either 1 or 2 of them will be legal to read)
+
+1736867617
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i don't have experience with "packed" and alignment, but i guess that should not change much
+
+1736867670
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+netvor: tags _are_ stored in memory, or you wouldn't be able to switch on a tagged union
+
+1736867728
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+ah, thanks for correction Gliptic
+
+1736867776
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i was under the assumption that they would get optimized away
+
+1736868173
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that would be very impressive
+
+1736869842
+ifreund!2940d10f8b@user/ifreund
+is LLVM ever able to optimize away struct fields?
+
+1736869848
+ifreund!2940d10f8b@user/ifreund
+I kindof doubt it
+
+1736870225
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+si is this just alignment: an union(enum) with a u16 and u64 members, the u14 appears to be stored like `fe ff 00 00 00 00 00 00  02 00 00 00 00 00 00 00`  (ie. the tag "takes" whole second 8 bytes)
+
+1736870231
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+s/si/so/
+
+1736870266
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+s/u14/u6/ :)
+
+1736870292
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+darn, you know what i mean :D (this is my post-nap brain)
+
+1736870407
+clevor!sid649024@id-649024.hampstead.irccloud.com
+ifreund: I had a case last night (with Rust) where a struct with a number and a range didn't optimize away the range, despite proving the assert statement in the routine to never panic.
+
+1736870510
+ifreund!2940d10f8b@user/ifreund
+netvor: yes, that's how alignment and padding works
+
+1736870569
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+nice, i was kind of surprised that it gets filled with 00's even in ReleaseFast/Small, i suppose it's not costing anything
+
+1736870981
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+this one is a bit more surprising: it looks like the tag gets 128 bits:  https://bin.bloerg.net/YQznad.zig (given i'm on 64but arch, i would expect 64 is the max)
+
+1736871050
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I assume it is a u4 with a bunch of padding for the u128.
+
+1736871387
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+yeah but why would the tag need padding to u128?  it's clear why the data needs it but shouldn't the tag take at most the "natural" for the arch
+
+1736871437
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+(except when there's 2^64 + 1 tags :D)
+
+1736872496
+ifreund!2940d10f8b@user/ifreund
+netvor: what does @alignOf(u128) print for you?
+
+1736872532
+ifreund!2940d10f8b@user/ifreund
+iirc the alignment changed from 16 to 8 or vice versa at some point to match what LLVM uses
+
+1736872600
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+ .. @alignOf(u128)=16
+
+1736873200
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+and @alignOF(std.meta.Tag(Thing)) is 1
+
+1736873331
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+but in the memory it blows up to 16: https://bpa.st/V7DA
+
+1736885815
+clevor!sid649024@id-649024.hampstead.irccloud.com
+netvor: That's because the 15 extra bytes are padding for that u128.
+
+1736885838
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Although your Zig compiler may be outdated.
+
+1736886193
+norineko!~norineko@user/norineko
+thanks for the insight, I understand things a bit more. I could still technically do this by putting both an untagged (packed) union and an enum in a packed struct, but that feels wrong since I would lose discriminated union features.
+
+1736886566
+norineko!~norineko@user/norineko
+instead of packed union I now am trying an auto-tagged union union(enum) with my data types. The name of the union field is the "magic" that I want to find. Then I'm trying to write a function that reads []u8 and returns this new union using comptime to read the field names. I'm struggling to grasp some of the memory alignment.
+
+1736886651
+norineko!~norineko@user/norineko
+but I could be way off in my approach. I am going to look around for examples of this kind of task first
+
+1736886939
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Would a compiler upgrade be possible?
+
+1736887210
+norineko!~norineko@user/norineko
+I'm running off the master branch now, is there something that isn't in stable yet that could help with this?
+
+1736889019
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+clevor: i don't get it.  why would i need to pad for u128?  i understand why every instance of `Thing{}` in the slice must have the same size
+
+1736889065
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+why not just 16 for the payload + 1 for the tag  (or more than 1, because of the need for alignment)
+
+1736889216
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+my (very incomplete) understanding of alignment tells me that it does not make sense to have a 1-byte item if all the CPU can load are chunks of consecutive 8 bytes.  that would explain why a 1-byte tag would get padded to 8 bytes -- since there's no use for those 7 bytes anyway
+
+1736889272
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+for that reason i woulde expect tag to go to 8 bytes, but why 16
+
+1736889642
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+(btw i am using 0.13.0 - code and output here https://bpa.st/RGEA )
+
+1736889675
+clevor!sid649024@id-649024.hampstead.irccloud.com
+@alignOf(u128)=16 on your Zig compiler version.
+
+1736889753
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i'm talking about the tag which is u8
+
+1736889865
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1736889978
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+ eg. here's ts[5] - payload: 000000a0  fe ff ff ff ff ff ff ff  ff ff ff ff ff ff ff ff
+
+1736889984
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+tag: 000000b0  03 00 00 00 00 00 00 00  00 00 00 00 00 00 00 00  |................|
+
+1736890078
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+(i've actually set it to u4 even but that does not matter, it's as good as u8 IIUC)
+
