@@ -1,0 +1,292 @@
+1737245814
+squeek502!~squeek502@user/squeek502
+grayhatter, it allows you to read an integer from a variable length slice as long as you know the length of the slice is <= @sizeOf(T), for example if you have a slice that you know is <= 8 bytes long, then you can use `readVarInt(u64, slice, .little)` and it'll work
+
+1737245839
+squeek502!~squeek502@user/squeek502
+here's an example of it being used: https://github.com/squeek502/audiometa/blob/724ce777442a9d6553fb4a2797a1f4f9600a38b7/src/mp4.zig#L331-L335
+
+1737247863
+grayhatter!~grayhatte@user/grayhatter
+squeek502: an example is exactly in the wild what I was hoping for, thanks dude!
+
+1737255543
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+can i open child process with stdout redirecrted to a file?  i tried to open the file for writing, then `var p = std.process.Child.init(argv, self.allocator);` .. `p.stdout_behavior = .Pipe; p.stdin = fh;`  but the output does not get there
+
+1737255562
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+(i'm not sure if that's the right approach)
+
+1737255623
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i mean `p.stdout = fh` (i just mistyped it here)
+
+1737255990
+grayhatter!~grayhatte@user/grayhatter
+netvor: IIRC std.process.Child.stdin/out is from the context of the child
+
+1737256020
+grayhatter!~grayhatte@user/grayhatter
+so your stdout/stdin behavior seems reversed from sending child output to a file
+
+1737256025
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+ah
+
+1737256094
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+this might have the answer https://ziggit.dev/t/how-to-redirect-stderr-to-stdout/3529
+
+1737256157
+grayhatter!~grayhatte@user/grayhatter
+> On Windows, you can always hack the import address table and provide your own version of WriteFile.
+
+1737256166
+grayhatter!~grayhatte@user/grayhatter
+lmao, what could possibly go wrong?
+
+1737256325
+In3f4bl3!~dv0@user/In3f4bl3
+Programming on Windows....... 
+
+1737256332
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i can cheat with .run, keep it and then dump it to the file..
+
+1737256371
+grayhatter!~grayhatte@user/grayhatter
+netvor: are you trying to run this on windows?
+
+1737256372
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+or worse, construct a sh -c 'my_program >file' and run that instead (evil laugh)
+
+1737256378
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+no, linux
+
+1737256408
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i'm doing codecrafters challenge, implementing posix sh
+
+1737256427
+grayhatter!~grayhatte@user/grayhatter
+oh
+
+1737256442
+grayhatter!~grayhatte@user/grayhatter
+if you're implementing sh, you shouldn't be using process.Child
+
+1737256462
+grayhatter!~grayhatte@user/grayhatter
+you're going to **need** to implement your own fork/exec
+
+1737256532
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+why, how is that different?  (btw it does not need to be really compliant, so far i did get away with Child)
+
+1737256571
+grayhatter!~grayhatte@user/grayhatter
+well... first, because the point of the codecrafters challenge (I'm assuming) is to learn *how* a posix compliant shell actually works
+
+1737256598
+grayhatter!~grayhatte@user/grayhatter
+2 because if you're buffering the output into memory, and then writing it to the file... that's not how you're *supposed* to do that
+
+1737256619
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+i don't think so, at least not how i'm doing it (not that i don't *want* to learn )
+
+1737256643
+grayhatter!~grayhatte@user/grayhatter
+and 3) because learning how linux file descriptors work, eg dup() and dup2(), and how unix pipes work is an important skill for hackers
+
+1737256674
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+2) so child already does buffering? i was missing that 
+
+1737256704
+grayhatter!~grayhatte@user/grayhatter
+that's correct, process.Child uses an arraylist as a stdout stderr buffer
+
+1737256709
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+3) eventually i'd like to learn that but baby steps :)  redirects are final boss of the challenge
+
+1737256745
+grayhatter!~grayhatte@user/grayhatter
+which is how you would want to do that, if you were trying to get information from a binary on the system... but now how you'd want to do that if you were writing a shell
+
+1737256852
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+yeah i totally missed that.
+
+1737256924
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+ok i'll try tomorrow w/ fork & exec (it's 4am here already, i wanted to finish off the boss but it might finish off me :D)
+
+1737256928
+netvor!~netvor@2a00:ca8:a1f:cd0:dce7:80e6:98e5:873f
+thanks
+
+1737256965
+grayhatter!~grayhatte@user/grayhatter
+good luck netvor, and enjoy your night
+
+1737256992
+grayhatter!~grayhatte@user/grayhatter
+hit me up if you need more help, I enjoyed writing my shell in zig
+
+1737259081
+grayhatter!~grayhatte@user/grayhatter
+I take it back... someone should make a zig package social media site... I'd like to browse through various packages
+
+1737268336
+mountaingoat!~mountaing@user/mountaingoat
+is there some analogous way of checking if a type is a POD (plain old data) in zig?
+
+1737269575
+glguy!glguy@libera/staff/glguy
+What would the distinction be in zig? I'm new to zig so this isn't a leading question. I don't see the kinds of user defined constructors and destructors as would be related to that in an old C++ context that would make that distinction obviously meaningful. Zig appears to have regular, C ABI, and packed struts, at least
+
+1737269619
+glguy!glguy@libera/staff/glguy
+Perhaps it's about having default values assigned?
+
+1737269786
+andrewrk!~andrewrk@mail.ziglang.org
+in object-oriented programming, "POD" generally means the type's resources, if any, are managed externally. whether that is the case with any given type in Zig is not part of the language
+
+1737270244
+mountaingoat!~mountaing@user/mountaingoat
+for me the distinction is whether or not you can serialize (cast) the type directly to/from memory
+
+1737270500
+yataro!~yataro@user/yataro
+mountaingoat: can't see if anyone replied but there's no such concept in zig, that's c++ thing
+
+1737270894
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: that's a different concept in zig which we call "well-defined memory layout"
+
+1737271552
+mountaingoat!~mountaing@user/mountaingoat
+andrewrk: is there a way to check a type for that? if not, no big deal
+
+1737273594
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: the standard library hashing code uses std.meta.hasUniqueRepresentation to check this
+
+1737275902
+mountaingoat!~mountaing@user/mountaingoat
+andrewrk: thx, i think this is pretty much what i was looking for
+
+1737309747
+dsal!sid13060@id-13060.lymington.irccloud.com
+I noticed the documentation page, when looking at 0.13.0, points to master for stdlib.  When I change the URL to point to 0.13.0, the stdlib appears larger.  Are some of these things going away?
+
+1737309793
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+likely some deprecations going into hard mode
+
+1737310517
+torque!~tachyon@user/torque
+you referring to this? https://github.com/ziglang/zig/issues/22389
+
+1737310578
+torque!~tachyon@user/torque
+oh, you're not complaining about the wrong link
+
+1737310607
+torque!~tachyon@user/torque
+the standard library is pretty unstable, it tends to see a variety of breaking changes in between releases
+
+1737310695
+torque!~tachyon@user/torque
+e.g. https://github.com/ziglang/zig/pull/19847
+
+1737311493
+dsal!sid13060@id-13060.lymington.irccloud.com
+Well, both.  It links to master, but also master has many fewer things.
+
+1737311684
+torque!~tachyon@user/torque
+deprecated things get deleted, stuff gets renamed or moved around
+
+1737311711
+torque!~tachyon@user/torque
+it doesn't look to me like master has many fewer things but it I would agree there are a few less names in the top-level namespace at least
+
+1737311727
+torque!~tachyon@user/torque
+some of those being aliases that got removed, etc
+
+1737311793
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, now I'm seeing more things than I was seeing earlier.  No idea what I was looking at, but it seems to have the things that I "discovered' when I changed the URL.
+
+1737311931
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+dsal: you can also generate and view local docs for your installed version with ‘zig std’
+
+1737313256
+dsal!sid13060@id-13060.lymington.irccloud.com
+I don't fully understand what root.zig is.  It looks like it's just another source file, but it also seems to matter.  The documentation looks like it's not been written yet.
+
+1737313294
+torque!~tachyon@user/torque
+are you talking about when you run `zig init`?
+
+1737313446
+torque!~tachyon@user/torque
+if so, `root.zig` is not special there. If you look at the `build.zig`, it's just an example of how to create/build a zig library instead of a zig executable. it could be named anything, as long as build.zig points to the correct file name
+
+1737313544
+torque!~tachyon@user/torque
+if you're talking about `@import("root")`, that's a magic import that points to the zig file that was provided to the compiler. since the compiler only accepts a single zig file and then determines all other files to compile based on analyzing imports, this will always unambiguously import a specific file
+
+1737313582
+torque!~tachyon@user/torque
+honestly, I could see these separate concepts being kind of confusing and it might be better for `zig init` to generate a file called `lib.zig` or something instead of `root.zig`
+
+1737313956
+dsal!sid13060@id-13060.lymington.irccloud.com
+Ah yeah.  I think it was a bit of both.
+
+1737314016
+dsal!sid13060@id-13060.lymington.irccloud.com
+Related:  Is there a way to have unqualified imports?  I tried just moving some code into root.zig and didn't want to have to change my references.
+
+1737315341
+torque!~tachyon@user/torque
+the future-looking answer is "no", but `usingnamespace` does exist (however, it is likely to be removed in the future)
+
+1737315383
+torque!~tachyon@user/torque
+for refactoring, removing or changing a namespace is a very easy thing to do though
+
+1737316560
+dsal!sid13060@id-13060.lymington.irccloud.com
+I don't quite get the ?x thing in functions.  I'm trying to use `StaticStringMap` which has `pub fn get(self: Self, str: []const u8) ?V` and want to write a test, but it's telling me the error union is being ignored.
+
+1737316570
+dsal!sid13060@id-13060.lymington.irccloud.com
+Sorry for dumb questions.  I'm still trying to figure out how to navigate the docs.
+
+1737316614
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+get doesn’t have an error, maybe it’s your testing.equal function?
+
+1737316641
+dsal!sid13060@id-13060.lymington.irccloud.com
+src/root.zig:19:24: error: error union is ignored
+
+1737316641
+dsal!sid13060@id-13060.lymington.irccloud.com
+    testing.expectEqual(null, monthMap.get("Invalid"));
+
+1737316983
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+dsal: you're missing `try` for the expectEqual
+
