@@ -1,0 +1,936 @@
+1737424129
+norineko!~norineko@user/norineko
+I'm using zls with neovim, and when I fix an error, it doesn't go away. I'm using the latest nightly for both zig and zls, and using the lspconfig default configuration
+
+1737424151
+norineko!~norineko@user/norineko
+i.e if I add a missing semicolon and save the file, the error about a missing semicolon remains.
+
+1737424498
+andrewrk!~andrewrk@mail.ziglang.org
+norineko: do you know if that's taking advantage of incremental compilation under the hood?
+
+1737424507
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not sure what the defaults are
+
+1737424768
+norineko!~norineko@user/norineko
+I'll look into that, but I also found this error in the LSP log: https://bpa.st/3AAQ
+
+1737425012
+andrewrk!~andrewrk@mail.ziglang.org
+norineko: looks to me like zls needs an update since some recent breaking changes to the language in recent compiler versions
+
+1737425097
+andrewrk!~andrewrk@mail.ziglang.org
+maybe try using a slightly older zig?
+
+1737425630
+norineko!~norineko@user/norineko
+yup, rolling back to 0.13 worked
+
+1737426560
+norineko!~norineko@user/norineko
+never mind actually - it seems to only happen when the *last* issue with a file is fixed. Rolling back meant that the build.zig file I was testing with had other issues.
+
+1737426700
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/zigtools/zls/blob/master/build.zig.zon#L7
+
+1737426757
+andrewrk!~andrewrk@mail.ziglang.org
+recommend to use this version (whatever matches the corresponding line from the zls version you are using)
+
+1737426803
+squeek502!~squeek502@user/squeek502
+tranzystorekk, submitted a PR to fix that ghostty unigen problem: https://github.com/ghostty-org/ghostty/pull/5268
+
+1737427532
+glguy!glguy@libera/staff/glguy
+Zig doesn't have a notion of a compiled zig library, does it? Suppose I have multiple executables that want to share code (in my case just a few different advent of code solutions as I learn) am I supposed to just @import() by filename to get the common code?
+
+1737427988
+andrewrk!~andrewrk@mail.ziglang.org
+glguy: you can produce shared libraries that use the same mechanism as C
+
+1737427996
+grayhatter!~grayhatte@user/grayhatter
+glguy: I think what you're saying is correct
+
+1737428014
+glguy!glguy@libera/staff/glguy
+the shared libraries would need to export a C interface thought?
+
+1737428016
+andrewrk!~andrewrk@mail.ziglang.org
+but yeah for the most part the zig way is to embrace static linking and share code via @import
+
+1737428019
+andrewrk!~andrewrk@mail.ziglang.org
+that's right
+
+1737428025
+grayhatter!~grayhatte@user/grayhatter
+you can compile shared objects, or you can build a module, and let zig decide how to link it
+
+1737428041
+glguy!glguy@libera/staff/glguy
+If I want to Zig  calling convention definitions, parameterized by comptime types, for example, I wouldn't use that, though?
+
+1737428045
+grayhatter!~grayhatte@user/grayhatter
+but @import("filename.zig"); is the fastest if that makes sense for your project
+
+1737428067
+andrewrk!~andrewrk@mail.ziglang.org
+right, if you use shared objects, you're limited to the C ABI
+
+1737428081
+glguy!glguy@libera/staff/glguy
+OK, and so would you describe zig as a "whole program compiler"?
+
+1737428086
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1737428089
+glguy!glguy@libera/staff/glguy
+ok, thanks
+
+1737428098
+grayhatter!~grayhatte@user/grayhatter
+glguy: if you build a lib that exposes a module, you can use @import("modulename"); just like you would for @import("std"); and use it all as if it was a "local file"
+
+1737428326
+glguy!glguy@libera/staff/glguy
+I'm OK with a little overengineering because I'm using aoc as a proxy target for learning how a few things work before moving on to on to some irc automation :)
+
+1737429480
+mountaingoat!~mountaing@user/mountaingoat
+if i could wish for one thing in zig, it would be to have support for native sum types, e.g. A | B, instead of using anytype and manually checking everywhere
+
+1737429507
+grayhatter!~grayhatte@user/grayhatter
+mountaingoat: you don't like using a tagged union?
+
+1737429586
+grayhatter!~grayhatte@user/grayhatter
+or you also don't like, switch(@TypeOf(var)) { A => {}, B => {}, else => comptime unreachable };
+
+1737429590
+mountaingoat!~mountaing@user/mountaingoat
+grayhatter: i use a lot of those in runtime, but i don't know how to use them as a comptime type
+
+1737429618
+mountaingoat!~mountaing@user/mountaingoat
+grayhatter: the problem is the API still says "anytype", which conveys nothing to a user
+
+1737429684
+grayhatter!~grayhatte@user/grayhatter
+mountaingoat: what user do you suspect will have access to the function decleration, but not the source, nor the docstring?
+
+1737429801
+mountaingoat!~mountaing@user/mountaingoat
+a user shouldn't have to read the source to figure out the restrictions of a type in an API. and putting that kind of info in a docstring is punting the root problem
+
+1737429872
+mountaingoat!~mountaing@user/mountaingoat
+not to mention, imagine how much richer and foolproof documentation generation would be if it were native to the language
+
+1737430077
+grayhatter!~grayhatte@user/grayhatter
+I'm not sure I agree that a user shouldn't have to read the docs to understand how to use some API correctly
+
+1737430166
+grayhatter!~grayhatte@user/grayhatter
+for the record though, I don't disagree, I've wanted to reach for `var: A | B` a few times myself
+
+1737430182
+mountaingoat!~mountaing@user/mountaingoat
+there's two worlds, one where it says foo(x: anytype) and you tell the user to go read docstrings, and one where it says foo(x: A | B). imo, the latter world is preferable
+
+1737430191
+grayhatter!~grayhatte@user/grayhatter
+I kind like that zig doesn't have it, almost every time it's forced me to think harder about a better soultion
+
+1737430266
+grayhatter!~grayhatte@user/grayhatter
+I'll give you more expedient, not sure I think it's preferable 
+
+1737430328
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+This has been talked about loads but I forget the answer. Is there a way to handle testing an error when the function with the error has a std.log.err() call? 
+
+1737430373
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://paste.gentoo.zip/ThrqWJlk I guess it passes, but it's got these messages about the log
+
+1737430540
+grayhatter!~grayhatte@user/grayhatter
+bwbuhse: a standalone test that defines a custome log function?
+
+1737430649
+torque!~tachyon@user/torque
+<mountaingoat> if i could wish for one thing in zig, it would be to have support for native sum types, e.g. A | B, instead of using anytype and manually checking everywhere
+
+1737430657
+grayhatter!~grayhatte@user/grayhatter
+making a test fail because of a missing call to std.log feels like a very specific, thing. Ideally something that would be fine as a throwaway. Thus, IMO if it's important enough to write and fail a test on, it's probably worth writing a stand alone test for it, just to be sure
+
+1737430661
+torque!~tachyon@user/torque
+kind of curious how often you find yourself running into the restriction of "some" but not "many"
+
+1737430702
+torque!~tachyon@user/torque
+i.e. most functions that actually benefit from using `anytype` should be able to accept almost any type (or at least any type following a fairly broad pattern)
+
+1737430740
+torque!~tachyon@user/torque
+having a function that can take different types, but a very limited subset, that you know while writing the code, seems less common to me
+
+1737430787
+torque!~tachyon@user/torque
+I'm not trying to disagree with you, I'm mostly curious what your use case is
+
+1737430881
+torque!~tachyon@user/torque
+there are various times when I've thought it would be nice for zig's type system to be able to express more complex type relations than it currently does, but ultimately I think those would make the language a lot more complex, which would probably end up making things harder to understand
+
+1737430944
+torque!~tachyon@user/torque
+fwiw I am 100% in the "just read the code" camp, though, so I may be biased. I like reading code because I learn from it, and understanding what a function does or how it works is useful. I learned zig basically by reading the langref and chunks of the stdlib
+
+1737430957
+torque!~tachyon@user/torque
+and hanging out in here and seeing people talk about the language
+
+1737430978
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+There is one time I really don't like anytype and it's in the std.log function
+
+1737431106
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Sorry, std.fmt.format
+
+1737431136
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If I am implementing format on my type, I take a write: anytype and I have no idea what functions are available on that writer
+
+1737431143
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I assume it's an AnyWriter but I have no idea
+
+1737431200
+torque!~tachyon@user/torque
+that's probably a holdover from before AnyWriter was added
+
+1737431398
+torque!~tachyon@user/torque
+but yeah to be fair taking anytype in a callback function that the user is supposed to implement is more awkward than an API the user calls I think
+
+1737431547
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah I agree
+
+1737432086
+torque!~tachyon@user/torque
+anyway this is an interesting issue that has a lot of discussion on the topic https://github.com/ziglang/zig/issues/17198 
+
+1737432107
+torque!~tachyon@user/torque
+it also references older issues that have more discussion along the same lines
+
+1737432201
+torque!~tachyon@user/torque
+I personally think that allowing type annotations to be functions would add a ton of expressiveness but I think it would probably need some distinguishing syntax and that concept has already been rejected
+
+1737432274
+grayhatter!~grayhatte@user/grayhatter
+the format api needs some love, for. sure.
+
+1737432310
+grayhatter!~grayhatte@user/grayhatter
+if you make a mistake using any print, anywhere, and then switch to a different file... good luck trying to figure out where the bug is
+
+1737432377
+grayhatter!~grayhatte@user/grayhatter
+I've had zig try to tell me the bug was in main.zig before, thankfully I knew zig well enough to understand the type of bug, and how to dx and find it... it was at least 10 layers away from main.zig
+
+1737432675
+torque!~tachyon@user/torque
+I think from 0.11 to 0.13 the compiler would not give the correct source location for std.fmt errors, which really sucked. 
+
+1737432692
+torque!~tachyon@user/torque
+due to some mishandling of source locations for generic code I think
+
+1737432750
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah that has burned me
+
+1737432774
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+In one swoop add a ton of print or log lines all around and then one of them is messed up somewhere
+
+1737432788
+grayhatter!~grayhatte@user/grayhatter
+rockorager: I never do that
+
+1737432791
+grayhatter!~grayhatte@user/grayhatter
+.... anymore :D
+
+1737432830
+grayhatter!~grayhatte@user/grayhatter
+we might need to start a `std.fmt.print()` support group :P
+
+1737432923
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+torque: are you telling me that is fixed in 0.14?
+
+1737432948
+torque!~tachyon@user/torque
+I believe it has been, unless it has recently regressed
+
+1737432953
+grayhatter!~grayhatte@user/grayhatter
+:O
+
+1737432960
+grayhatter!~grayhatte@user/grayhatter
+might be time to upgrade
+
+1737434529
+mountaingoat!~mountaing@user/mountaingoat
+torque: i can't say for sure, but i would think truly generic anytypes are the exception rather than the rule and most uses of anytype in the std lib are either a stand-in for some interface or are a makeshift comptime sum type, e.g. https://github.com/ziglang/zig/blob/master/lib/std/math.zig#L263-L271
+
+1737434636
+torque!~tachyon@user/torque
+that particular example would suck ass to try to express as a sum type though
+
+1737434755
+mountaingoat!~mountaing@user/mountaingoat
+there's no shortage of examples in math.zig, they're all switching on various integral types. obviously it's not an anytype
+
+1737435380
+mountaingoat!~mountaing@user/mountaingoat
+https://imgur.com/a/ZELBEp6 ;)
+
+1737455749
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: you're not asking for sum types, those are tagged unions, you are asking for typeclasses
+
+1737455776
+ifreund!2940d10f8b@user/ifreund
+and typeclasses have been considered and rejected many times in various forms
+
+1737461386
+MimiValsi!~MimiValsi@user/MimiValsi
+hey, little question. The equivalent of [*]u8 "many item pointers" in C would be uint_8 ** ? Pointer of pointers?
+
+1737461531
+yataro!~yataro@user/yataro
+MimiValsi: [*]u8 is uint8_t * in C, it is pointer to many, not "many pointers"
+
+1737461855
+MimiValsi!~MimiValsi@user/MimiValsi
+yataro: thx for the insight. Then I need to rly understand better the difference between []u8 and [*]u8.
+
+1737461863
+yataro!~yataro@user/yataro
+Zig handles pointers quite differently from C. There's a clear distinction between single and many item pointers. In C, they are just pointers. Zig also has C-pointers they can be both single or many item (hence its name), but they are not for use in user code, but for C interop
+
+1737461926
+yataro!~yataro@user/yataro
+If you "translate" []u8 to C it would be `struct { size_t len; uint8_t *items; }`, just a pointer with length
+
+1737462073
+MimiValsi!~MimiValsi@user/MimiValsi
+oh ok, I see. thx you
+
+1737462259
+yataro!~yataro@user/yataro
+MimiValsi: there's old but valid article on this topic: https://zig.news/david_vanderson/beginner-s-notes-on-slices-arrays-strings-5b67 
+
+1737462517
+MimiValsi!~MimiValsi@user/MimiValsi
+knvim -- "https://zig.news/david_vanderson/beginner-s-notes-on-slices-arrays-strings-5b67"
+
+1737462697
+MimiValsi!~MimiValsi@user/MimiValsi
+cool thx
+
+1737475020
+Zorgatone!~Zorgatone@user/Zorgatone
+o/
+
+1737476274
+o0x1eef!~user@user/o0x1eef
+TIL bun is written in Zig ?
+
+1737476521
+Zorgatone!~Zorgatone@user/Zorgatone
+yes Bun uses Zig
+
+1737476536
+o0x1eef!~user@user/o0x1eef
+Too cool
+
+1737476549
+Zorgatone!~Zorgatone@user/Zorgatone
+that's when I first heard about Zig
+
+1737476594
+Zorgatone!~Zorgatone@user/Zorgatone
+also, check out the Ghostty terminal, that's written in Zig too
+
+1737476755
+o0x1eef!~user@user/o0x1eef
+Nice. I had no clue Zig was that widespread
+
+1737476791
+Zorgatone!~Zorgatone@user/Zorgatone
+I can't imagine the what the spread will be like when we'll have 1.0 sometime in the future
+
+1737476937
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I need to give ghostty a try
+
+1737476943
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’ve been thinking about it for a long time now
+
+1737477820
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+mmm im using a comptime generated enum and my program takes input and switches over that input, said input being the enum values
+
+1737477832
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so ive got to use @intFromEnum to bridge that gap right?
+
+1737478130
+Zorgatone!~Zorgatone@user/Zorgatone
+I switched from Alacritty to Ghostty recently
+
+1737478195
+ifreund!2940d10f8b@user/ifreund
+I haven't been tempted to leave foot behind yet
+
+1737478200
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm ranges not allowed when switching a @Type im returning at comptime
+
+1737478222
+ifreund!2940d10f8b@user/ifreund
+tsujp: you might be looking for inline else
+
+1737478235
+ifreund!2940d10f8b@user/ifreund
+(in a switch statement)
+
+1737478277
+ifreund!2940d10f8b@user/ifreund
+it kinda sounds like you've stayed into the land of accidental metaprogramming complexity though
+
+1737478296
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I've been using Ghostty on my work Mac and it's nice, but also I love foot's simplicity on Linux
+
+1737478348
+ifreund!2940d10f8b@user/ifreund
+I think convincing input latency measurements are the one thing that would make me consider leaving foot behind
+
+1737478351
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: ive purposefully entered said land; im writing a VM and had the idea to have the opcode names (for programmers) and their literal codes (0x01, 0x02 etc) as an enum and then switch over that
+
+1737478385
+ifreund!2940d10f8b@user/ifreund
+I don't see why thT would require constructing the enum at compile time
+
+1737478396
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: some things i want to handle in a range so in my switch statement ive got .Foo1...(.Foo2) => {} which it doesnt like
+
+1737478423
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I don't know if you could ever beat foot on linux on pure performance
+
+1737478430
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: im probably just overengineering it hey.. comptime would complain if all opcodes aren't handled
+
+1737478462
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Offtopic though, happy to continue terminal talk in #ghostty
+
+1737478475
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: this is the file (short) if you care to look: https://github.com/tsujp/zevem/blob/master/src/main.zig
+
+1737478914
+o0x1eef!~user@user/o0x1eef
+I plan to give ghostty a try. Looks like I'll have to build from source on BSD. Maybe it won't work
+
+1737478991
+o0x1eef!~user@user/o0x1eef
+Looks cool though
+
+1737478994
+glguy!glguy@libera/staff/glguy
+I launched it a few minutes ago after seeing it mentioned above and I'm chatting here from it now; it seems to run my irc client the same as iTerm2
+
+1737478999
+o0x1eef!~user@user/o0x1eef
+Big upgrade from urxvt
+
+1737479081
+Zorgatone!~Zorgatone@user/Zorgatone
+I'm chatting from Ghostty too
+
+1737479093
+Zorgatone!~Zorgatone@user/Zorgatone
+glguy: which irc client are you using?
+
+1737479097
+glguy!glguy@libera/staff/glguy
+glirc
+
+1737479120
+Zorgatone!~Zorgatone@user/Zorgatone
+Ah, I didn't know which to pick and so I tried senpai
+
+1737479124
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+senpai is great
+
+1737479151
+o0x1eef!~user@user/o0x1eef
+Anything terminal-based works. I keep IRC in a VM and connect over SSH
+
+1737479155
+ThinkT510!~auronanda@sortix/contributor/ThinkT510
+I just today learned of a zig irc client: https://github.com/rockorager/comlink
+
+1737479177
+Zorgatone!~Zorgatone@user/Zorgatone
+oh, cool!
+
+1737479198
+o0x1eef!~user@user/o0x1eef
+Rad
+
+1737479199
+Zorgatone!~Zorgatone@user/Zorgatone
+so we can chat about zig, from a zig terminal using a zig irc client
+
+1737479204
+o0x1eef!~user@user/o0x1eef
+:D
+
+1737479211
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+That is what I'm doing right now :)
+
+1737479212
+o0x1eef!~user@user/o0x1eef
+That's what success looks like
+
+1737479245
+Zorgatone!~Zorgatone@user/Zorgatone
+The interface really looks like senpai
+
+1737479260
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I was a senpai user before making it
+
+1737479279
+Zorgatone!~Zorgatone@user/Zorgatone
+ah it's your project
+
+1737479292
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+I'm a go programmer and it doesn't have unions... now I'm trying to become more ziggy in my life... is there a good resource to understand what was the deal there?   What do tagged unions provide,  how did go get around it,  and when should I reach for them ?
+
+1737479335
+Zorgatone!~Zorgatone@user/Zorgatone
+Which terminal text editor are you guys using? I recently learned of Helix and I started using it instead of Spacemacs
+
+1737479362
+Zorgatone!~Zorgatone@user/Zorgatone
+Smithx10: you can check on zig guide or ziglings
+
+1737479371
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Zorgatone: I use helix because my neovim config became the size of an OS 
+
+1737479385
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Smithx10: I don't have a resource, but you should reach for them when you want interfaces but you know all of the possible interfaces at compile time (and in your codebase)
+
+1737479398
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Zorgatone: if you want to stay fully zig, check out https://github.com/neurocyte/flow
+
+1737479414
+Passerby!~Passerby@user/Passerby
+they are also great for cases where something could return 1 or a other thing
+
+1737479441
+Zorgatone!~Zorgatone@user/Zorgatone
+cool, and it has 666 stars
+
+1737479455
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+@Zorgatone  there is still a decent amount of config,  but its config and not a billion plugins.... one of the nicest parts about helix that i dont think folks talk about is the ":pipe "
+
+1737479494
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+When I needed a "plugin"  I just maintained my own bins that mutated the incoming from helix over stdin 
+
+1737479508
+o0x1eef!~user@user/o0x1eef
+When can we expect a book about zig?
+
+1737479518
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+@o0x1eef  after 1.0 :P 
+
+1737479524
+o0x1eef!~user@user/o0x1eef
+:(
+
+1737479527
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+So.... 40 years
+
+1737479531
+o0x1eef!~user@user/o0x1eef
+Lol
+
+1737479531
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+:P 
+
+1737479574
+Zorgatone!~Zorgatone@user/Zorgatone
+I liked that Helix shows a tooltip with the function doc comment and interface while I type
+
+1737479577
+o0x1eef!~user@user/o0x1eef
+Sadly ghostty does not build on OpenBSD
+
+1737479585
+Zorgatone!~Zorgatone@user/Zorgatone
+o0x1eef: :(
+
+1737479609
+Zorgatone!~Zorgatone@user/Zorgatone
+o0x1eef: there is a zig book already
+
+1737479616
+Zorgatone!~Zorgatone@user/Zorgatone
+not official though
+
+1737479630
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+@Zorgatone  yea,  I made the switch a little while ago.... some things took some getting used to... but I do prefer that most of the core functionality is put into the project... so it does perform quite well..... but the downside is sometimes you gotta wait 
+
+1737479654
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+for example..... It is super annoying that if Helix closes.... all of your undo and location history is "poof"
+
+1737479654
+o0x1eef!~user@user/o0x1eef
+Like this ? https://www.openmymind.net/learning_zig/
+
+1737479669
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+but there is a PR open and folks working on those kind of things
+
+1737479677
+o0x1eef!~user@user/o0x1eef
+It seems I have bookmarked three zig "books"
+
+1737479712
+Zorgatone!~Zorgatone@user/Zorgatone
+o0x1eef: https://pedropark99.github.io/zig-book/
+
+1737479717
+o0x1eef!~user@user/o0x1eef
+Ty
+
+1737479732
+o0x1eef!~user@user/o0x1eef
+Ah nice..
+
+1737484300
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+rockorager: seems nice
+
+1737485919
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+oops I meant to say comlink seems nice, I guess I didn’t write that bit lol
+
+1737488407
+mountaingoat!~mountaing@user/mountaingoat
+is there an idiom in stdlib for arranging generic types or some metadata such that you can check that a type belongs to it? e.g. if some type X = Serializable(T) is Serializable?
+
+1737488874
+hadronized!~hadronize@2001:41d0:a:fe76::1
+does Zig have generators / coroutines?
+
+1737488884
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess they could be made with comptime + @frame()?
+
+1737488890
+hadronized!~hadronize@2001:41d0:a:fe76::1
+or something similar 
+
+1737488919
+hadronized!~hadronize@2001:41d0:a:fe76::1
+mountaingoat: you mean a typeclass / trait as in Haskell / Rust? I don’t think I have seen that
+
+1737488951
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it’s fairly simple to write with comptime, but you won’t have reverse listings (i.e. lists of everything that is Serializable)
+
+1737489500
+grayhatter!~grayhatte@user/grayhatter
+mountaingoat: do you mean other than Allocator (vtable), or Any{Writer,Reader}?
+
+1737489514
+mountaingoat!~mountaing@user/mountaingoat
+hadronized: more or less, but it doesn't have to be rigorous. just looking for an idiomatic comptime pattern for it
+
+1737489642
+mountaingoat!~mountaing@user/mountaingoat
+grayhatter: perhaps something lighter, i don't actually need an interface, just a tag to treat the type differently. but it's open membership so i can't enumerate the instances of them
+
+1737489688
+hadronized!~hadronize@2001:41d0:a:fe76::1
+mountaingoat: maybe you can simply add a decl in the type?
+
+1737489711
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and you can write a comptime fn that just checks the presence of the decl with @hasDecl
+
+1737489731
+mountaingoat!~mountaing@user/mountaingoat
+yeah, that's pretty much all i could come up with. i'm doing it somewhere else already too
+
+1737489732
+grayhatter!~grayhatte@user/grayhatter
+mountaingoat: I've been using fn any(thing: anytype) { if (!@hasDecl(@TypeOf(thing), "SUPPORTS_SOMETHING")) @compileError() }
+
+1737489747
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I use that for some deinit wrapper types to call deinit if present when deinit-ing the wrapper
+
+1737489750
+mountaingoat!~mountaing@user/mountaingoat
+grayhatter: oh anytype, my favorite
+
+1737489773
+mountaingoat!~mountaing@user/mountaingoat
+hadronized: yeah this is for a reference counting wrapper basically
+
+1737489774
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I don’t recall the rationale, but why don’t we have not again?
+
+1737489785
+grayhatter!~grayhatte@user/grayhatter
+yeah, I knew you'd hate that, but it's the only way checking if something has a decl makes sense
+
+1737489788
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I meant, 4not
+
+1737489846
+grayhatter!~grayhatte@user/grayhatter
+hadronized: is in `if (not bool)` instead of `if (!bool)`?
+
+1737489851
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah
+
+1737489854
+mountaingoat!~mountaing@user/mountaingoat
+grayhatter: well, i guess it's unavoidable
+
+1737489859
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if (not a and b)
+
+1737489869
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I remember reading something about that a while ago
+
+1737489889
+grayhatter!~grayhatte@user/grayhatter
+hadronized: no idea, but I assume because (!bool) is objectively better than (not bool)
+
+1737489903
+hadronized!~hadronize@2001:41d0:a:fe76::1
+better?
+
+1737489942
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t really agree with that, I often find it easier to read if (not mem.startsWith(…)) than if (!mem.startsWith(…))
+
+1737490489
+glguy!glguy@libera/staff/glguy
+I don't have much of an opinion of what zig should do there, but I prefer not to ! in my C++
+
+1737490708
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh my glguy! long time no see (phaazon)
+
+1737490717
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I didn’t expect you in here haha
+
+1737490725
+glguy!glguy@libera/staff/glguy
+Hello :)
+
+1737490751
+glguy!glguy@libera/staff/glguy
+I'm a sucker for programming languages
+
+1737490763
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:)
+
+1737490799
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Zig is probably the exact opposite to Haskell, so yeah :)
+
+1737491372
+Earnestly!~earnest@user/earnestly
+hadronized: (cf. not a and b; de morgan?)
+
+1737491414
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Earnestly: no, (not a) and b
+
+1737491453
+grayhatter!~grayhatte@user/grayhatter
+I remember seeing a 4chan meme, (that I wish I could find again, but it's lost to history) that goes something like 
+
+1737491474
+grayhatter!~grayhatte@user/grayhatter
+> if you become smarter, it would be easier to read
+
+1737491539
+grayhatter!~grayhatte@user/grayhatter
+I really like that meme, because it framed my issues with languages as a skill issue that I could get better at, and that's when I really started studying parts of languages that I didn't understand, or that were hard to understand
+
+1737491611
+grayhatter!~grayhatte@user/grayhatter
+yes, better, because for `!bool` the only thing it could be is inverting the bool, where as Earnestly already gave the counter example that I would use, what's the precedence of `not first and second`?
+
+1737491660
+grayhatter!~grayhatte@user/grayhatter
+you can't attach not, because `notfirst` is abmigious, but you can attach `!first`
+
+1737491880
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: exactly the same answer as « what is the precedence of and/not »
+
+1737491883
+hadronized!~hadronize@2001:41d0:a:fe76::1
+a and b or c
+
+1737491885
+hadronized!~hadronize@2001:41d0:a:fe76::1
+same thing
+
+1737491898
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the precedence is well defined, so not a and c is (not a) and c
+
+1737491908
+grayhatter!~grayhatte@user/grayhatter
+I have to look up the precedence of and/or every time I want to use them
+
+1737491927
+grayhatter!~grayhatte@user/grayhatter
+well, every time I have to intermix them
+
+1737492152
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter | > if you become smarter, it would be easier to read
+
+1737492154
+hadronized!~hadronize@2001:41d0:a:fe76::1
+;)
+
+1737492286
+grayhatter!~grayhatte@user/grayhatter
+hadronized: smarter for me, is understanding that for whatever reason, refuses to store that information, so I know to look it up
+
+1737492302
+grayhatter!~grayhatte@user/grayhatter
+what's `not this == that`
+
+1737492328
+grayhatter!~grayhatte@user/grayhatter
+if you say it's the same as and, that changes from the current behavior
+
+1737492593
+grayhatter!~grayhatte@user/grayhatter
+I don't actually care that much; I prefer a more terse syntax, with the extra bonus that here, !thing is acting as if bool is a bit, using what's effectively bitwise operator, which it is.
+
+1737492728
+grayhatter!~grayhatte@user/grayhatter
+a bool is still just math to me. I'd love to be able to write `if (1)`, but think the language is better because of it
+
+1737492910
+grayhatter!~grayhatte@user/grayhatter
+what about `not thing != thing`?
+
+1737495829
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:)
+
+1737502814
+NickH!~NickH@2405:6581:d4e0:1600:2b46:79a:7e70:a4bc
+https://ftp-master.debian.org/new/zig-default_1.html
+
+1737503344
+andrewrk!~andrewrk@mail.ziglang.org
+eyy you got it in
+
+1737503358
+andrewrk!~andrewrk@mail.ziglang.org
+waiting for ftp master approval now right?
+
+1737503427
+andrewrk!~andrewrk@mail.ziglang.org
+the lib files seem to be missing?
+
+1737503482
+NickH!~NickH@2405:6581:d4e0:1600:2b46:79a:7e70:a4bc
+Yeah, a very pragmatic Debian Dev is interested in ghostty.
+
+1737503520
+NickH!~NickH@2405:6581:d4e0:1600:2b46:79a:7e70:a4bc
+Over a couple of days (while I was on vacation and AFK) he jumped in and ran with it.
+
+1737503622
+NickH!~NickH@2405:6581:d4e0:1600:2b46:79a:7e70:a4bc
+There is a separate zig0.13-data package
+
+1737503704
+andrewrk!~andrewrk@mail.ziglang.org
+gotcha, why the separate package?
+
+1737503768
+NickH!~NickH@2405:6581:d4e0:1600:2b46:79a:7e70:a4bc
+I'm yet to fully dig into the details. Been slammed with work since getting back from vacation.
+
