@@ -1,0 +1,276 @@
+1737677078
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps a function with a switch statement
+
+1737677106
+andrewrk!~andrewrk@mail.ziglang.org
+compiler has everything it needs to lower that to something efficient
+
+1737677246
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, that might be better anyway.
+
+1737677581
+dsal!sid13060@id-13060.lymington.irccloud.com
+This ended up letting me get rid of all of those lambda functions I had to name which is nice.
+
+1737678021
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm trying to use ArrayList.  If my caller passes in an allocator (arena in this case) and I create an arraylist and append a bunch of stuff then return .items, is that a sensible usage, or should I do something else?
+
+1737678086
+dsal!sid13060@id-13060.lymington.irccloud.com
+Or perhaps toOwnedSlice – I don't have a good mental model for this.
+
+1737678869
+andrewrk!~andrewrk@mail.ziglang.org
+an allocator that supports resizing allocations is generally a better fit for ArrayList, that said arena will work just fine
+
+1737678931
+dsal!sid13060@id-13060.lymington.irccloud.com
+Is `toOwnedSlice` the right way to discard the `ArrayList` and just have a slice?
+
+1737679023
+andrewrk!~andrewrk@mail.ziglang.org
+yes if you need to free that slice. if you don't, for example, because you're using arena, then you can just refer to .items which will live until the arena is freed
+
+1737679068
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, cool.  That's approximately my intuition and what made sense after reading the source.
+
+1737686804
+dsal!sid13060@id-13060.lymington.irccloud.com
+This also feels kind of obvious, but how do I make a library with more than one file in it?  All the examples and docs I've found so far just mention one `root_source_file`, but I suddenly wish to have two of these.
+
+1737687872
+torque!~tachyon@user/torque
+two root source files does not make sense
+
+1737687891
+torque!~tachyon@user/torque
+the compiler will automatically compile any imported zig files
+
+1737687990
+torque!~tachyon@user/torque
+so e.g. if you have `src/main.zig` and `src/foo.zig`, if you have `const foo = @import("./foo.zig")` in `main.zig`, then the compiler will automatically pick up `foo.zig`
+
+1737694821
+dsal!sid13060@id-13060.lymington.irccloud.com
+What is a root file, then?  Like, I have two files in here that both make sense to be separate, though one logically can import the other.
+
+1737695489
+torque!~tachyon@user/torque
+well, for an executable, the root file is the file that gets passed to the compiler. it has main and potentially a few other things in it (panic handler, logging config)
+
+1737695561
+torque!~tachyon@user/torque
+a zig module is distributed by source, so the root file there is the file that the user gets when they `@import("some_module")`. In this case it's typically responsible for importing and making public any useful declarations from other files within the module
+
+1737695588
+torque!~tachyon@user/torque
+like https://github.com/ziglang/zig/blob/master/lib/std/std.zig
+
+1737695697
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh interesting.  I guess I have to think a bit more when making this a useful library.
+
+1737695704
+dsal!sid13060@id-13060.lymington.irccloud.com
+Good thing nobody will use it anyway.
+
+1737695863
+dsal!sid13060@id-13060.lymington.irccloud.com
+Can I comptime up some variables?  e.g., I've got a list of strings that represent some of the types here, but they're their own types.  Can I make a compile-time loop that declares an exported symbol with each string in a loop?
+
+1737695921
+dsal!sid13060@id-13060.lymington.irccloud.com
+e.g., something like `pub XXX : myType = myTypeFromString("XXX");` for a bunch of strings.
+
+1737698248
+torque!~tachyon@user/torque
+uh, you can't really do that in a loop, no
+
+1737725746
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+hello!
+
+1737725762
+meidam!~meidam@user/meidam
+hey there
+
+1737725872
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+I'm interested in using zig cc feature to cross compile existing C code (no zig language involved). I've unpacked the tarball and added zig to PATH. If I compile without -target option it works (x86_64-linux), if I try to cross compile like "-target x86_64-macos-musl" I get path errors like "fatal error: 'string.h' file not found"
+
+1737725939
+avallee_!uid686632@user/avallee
+is someone familiar with how errors are reported to the console from `zig build`? My understanding is that the main entry point (`main.zig`) will jit compile my build.zig + build_runner.zig and execute that. It will build a graph of build steps (just a single executable in my case), and put that in a thread pool. The Compile step will run, execute a `zig build-exe` with the proper parameters in a subprocess, but from there the reporting is fuzzy. I 
+
+1737725939
+avallee_!uid686632@user/avallee
+have the impression that the `build-exe` is run with a special `--listen=-` flag that will make it wait for instructions on stdin, and the output is switched to a serialized binary format that is used to reconstruct an error bundle in the main build executable to be displayed, am I correct ?
+
+1737725963
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+if I search for string.h in zig install directory I find many https://termbin.com/gr3u . I've read how complex work exist behind zig cc cross compilation, but I wonder what I am missing something here
+
+1737726006
+ifreund!2940d10f8b@user/ifreund
+arkanoid: x86_64-macos-musl is a nonsense target, musl libc only supports linux
+
+1737726014
+ifreund!2940d10f8b@user/ifreund
+try just x86_64-macos
+
+1737726044
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+ifreund: you are right
+
+1737726048
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+it works
+
+1737726069
+ifreund!2940d10f8b@user/ifreund
+It would be good if the error message were better for this
+
+1737726145
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+mh, it says the generated binary is not dynamic. How is that possible?
+
+1737726174
+ifreund!2940d10f8b@user/ifreund
+the generated binary from what command?
+
+1737726198
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+zig cc -target x86_64-macos ...
+
+1737726291
+ifreund!2940d10f8b@user/ifreund
+arkanoid: are you sure that its not dynamically linked? how are you checking?
+
+1737726305
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+ldd
+
+1737726323
+ifreund!2940d10f8b@user/ifreund
+I doubt linux ldd knows what to do with a macho binary
+
+1737726328
+ifreund!2940d10f8b@user/ifreund
+it's completely different from elf
+
+1737726329
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+"not a dynamic executable"
+
+1737726352
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+ok, so I'm reading something completely not related to linking
+
+1737726427
+ifreund!2940d10f8b@user/ifreund
+file(1) might be more useful than lld for looking at a macho binary
+
+1737726437
+ifreund!2940d10f8b@user/ifreund
+at least my file(1) is
+
+1737726453
+ifreund!2940d10f8b@user/ifreund
+better still would be to use the actualy macho tooling on macos
+
+1737726495
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+"Mach-O 64-bit x86_64 executable, flags:<NOUNDEFS|DYLDLINK|TWOLEVEL|NO_REEXPORTED_DYLIBS|PIE|HAS_TLV_DESCRIPTORS>"
+
+1737726527
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+flags indicate DYLDLINK that I'd guess mean dynamic linking. Make sense, the bin size is really small
+
+1737726533
+ifreund!2940d10f8b@user/ifreund
+there you go :)
+
+1737726564
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+good! what about windows then? if I try "-target x86_64-windows" I get again "fatal error: 'sys/mman.h' file not foun"
+
+1737726630
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+this is the list of mman.h files in zig install directory https://termbin.com/hl49
+
+1737726716
+Zorgatone!~Zorgatone@user/Zorgatone
+sys/mman.h is a windows header? seems posix to me?
+
+1737726739
+ifreund!2940d10f8b@user/ifreund
+arkanoid: I don't know much about windows, x86_64-window-gnu should give you zig's copy of mingw though
+
+1737726745
+ifreund!2940d10f8b@user/ifreund
+which is probably what you want
+
+1737726777
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+same error with "-target x86_64-windows-gnu"
+
+1737726824
+ifreund!2940d10f8b@user/ifreund
+well, then sys/mman.h is not supported by mingw at a guess
+
+1737726855
+ifreund!2940d10f8b@user/ifreund
+zig isn't magic, your code still has to be possible to run on windows :D
+
+1737727021
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+cool, thanks. I am aware that I am just doing pointless tests, but the cross compilation that zig provides is black magic and I wanted to try it out
+
+1737727048
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1737729995
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+mh, I went somewhat further than trivial helloword, still with cross-compilation linux to macos, I get "error: unable to find dynamic system library 'rt' using strategy 'paths_first'. searched paths: none"
+
+1737747861
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+BratishkaErik: is there a way to do live ebuilds with your zig eclasses? 
+
+1737747940
+BratishkaErik!fd46852e72@user/BratishkaErik
+Yes, see in GURU app-benchmarks/poop for simple example and dev-zig/zls for more complex
+
+1737748398
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Cool, thanks
+
+1737749251
+andrewrk!~andrewrk@mail.ziglang.org
+arkanoid: umm I don't think you need -lrt on macos
+
+1737749314
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+I've solved. The issue was the linked adding unwanted flags. It works, but I can't use random functions
+
+1737761223
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+anyone have a windows machine handy and want to test something out for me?
+
+1737762420
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I don't have zig on it; it's Win 10, btw
+
+1737762440
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+but I'm down
+
+1737762446
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ah, need zig for this
+
