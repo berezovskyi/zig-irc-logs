@@ -1,0 +1,372 @@
+1738023040
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+For the next-zig branch of zig-wayland, how do I get a /build.zig:29:36: error: expected type *Build.Dependency to give to Scanner.create()?
+
+1738023399
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Oh, I think just b.dependency("zig-wayland", .{}) works
+
+1738028561
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+where is callconv documented? I see in https://ziglang.org/documentation/master/#Functions that it can be called with .C or WINAPI but I'm curious about what other values are valid. I also find it odd that one is .C and the other isn't .WINAPI (or vice versa)
+
+1738028778
+torque!~tachyon@user/torque
+WINAPI is an alias for the enumeration value, not an enum member
+
+1738028797
+torque!~tachyon@user/torque
+`const WINAPI: std.builtin.CallingConvention = if (native_arch == .x86) .Stdcall else .C;`
+
+1738028806
+torque!~tachyon@user/torque
+it's right there in the example
+
+1738028843
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/std/#std.builtin.CallingConvention
+
+1738029102
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, I didn't realize that std.builtin.CallingConvention would contain the documentation for the callconv keyword
+
+1738029322
+torque!~tachyon@user/torque
+std.builtin are datastructures used by the compiler
+
+1738029399
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: good to know thank you
+
+1738029520
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is https://ziglang.org/learn/build-system/ this page hosted on github somewhere where I can submit a PR? I see a typo in the first shell example "zig build--summary all"
+
+1738029627
+torque!~tachyon@user/torque
+https://github.com/ziglang/www.ziglang.org/blob/main/old-content/learn/build-system.en.md
+
+1738029632
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ty
+
+1738029644
+torque!~tachyon@user/torque
+not sure if this is the canonical source but this repo should be it
+
+1738029663
+torque!~tachyon@user/torque
+*canonical source file, since it's in the old content folder
+
+1738029808
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1738029825
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+looks like it's generated anyway by this `zigdoctest` thingy, so I'm going to track that down
+
+1738029855
+torque!~tachyon@user/torque
+ah yeah I don't have much knowledge of how the site gets built
+
+1738032018
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🎉 as a maintainer of a few gentoo packages I can say that I find https://github.com/ziglang/zig/pull/18778 very awesome!
+
+1738044777
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is https://ziglang.org/documentation/master/#Choosing-an-Allocator up-to-date? it mentions the general purpose allocator is still in active development, yet I see it documented here https://ziglang.org/documentation/master/std/#std.heap.general_purpose_allocator.GeneralPurposeAllocator
+
+1738045311
+dsal!sid13060@id-13060.lymington.irccloud.com
+I don't know how to do an array list:  expected error union type, found 'array_list.ArrayListAligned(devc.Telemetry,null)'     const telems = try std.ArrayList(Telemetry).init(alloc);
+
+1738045323
+dsal!sid13060@id-13060.lymington.irccloud.com
+How do I make an array list of my struct?
+
+1738045354
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh.  It doesn't return an error.
+
+1738045423
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, could you be more specific? i'm missing where it says the GPA is under active development
+
+1738045509
+squeek502!~squeek502@user/squeek502
+regardless, reasonable release mode performance of GeneralPurposeAllocator is still a TODO: https://github.com/ziglang/zig/issues/12484
+
+1738047062
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+andrewrk: ill give that a shot, interesting though. Would a range prong to another switch be viable too (yet to try)?
+
+1738047107
+dsal!sid13060@id-13060.lymington.irccloud.com
+Do I need a switch to safely extract a value from a tagged union?
+
+1738047379
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+andrewrk: i dont understand how fieldParentPtr would work here given its an enum, im not after an offset against a containing parent struct
+
+1738047381
+torque!~tachyon@user/torque
+not necessarily
+
+1738047408
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so I suppose inline switch prong is the only remaining solution
+
+1738047409
+torque!~tachyon@user/torque
+if you know the tagged union will always have a specific field active, you can directly access that
+
+1738047438
+torque!~tachyon@user/torque
+(e.g. right after assignment)
+
+1738047497
+torque!~tachyon@user/torque
+you can also do boolean comparison for a specific tag, like `if (my_union == .tagname) { // do something }`
+
+1738047557
+dsal!sid13060@id-13060.lymington.irccloud.com
+I was wondering if there were something like `orelse` or similar that could deal with being wrong.  Because I thought it was a thing, but it wasn't.
+
+1738047616
+dsal!sid13060@id-13060.lymington.irccloud.com
+That if thing looks good, but the syntax isn't something I would've guessed.  I should stop trying to guess the syntax at some point.
+
+1738047767
+dsal!sid13060@id-13060.lymington.irccloud.com
+I think I really just need an extractValue function for my type.  It's got a bunch of different numeric types and some code just wants whatever the value is as a u32 or something.
+
+1738047847
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+expected type '*const [32]u8', found '*const [1]u8', pointer type child '[1]u8' cannot cast into pointer type child '[32]u8'   nice the inline prong at least shows the correct length (1) here for the code I am trying to run
+
+1738047872
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+makes me wonder if a build cache might've been the issue with the non-inline, but now frustrating its the wrong size
+
+1738047902
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+making a u256 integer from a slice to push onto a BoundedArray is where this new error occurs
+
+1738048286
+torque!~tachyon@user/torque
+it's not really possible to say what you're doing wrong without the code
+
+1738048561
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah I figure, lemme push
+
+1738048796
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: https://github.com/tsujp/zevem/blob/master/src/evm.zig#L95-L152
+
+1738048849
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: im writing a vm, the PUSH1 to PUSH32 instructions are contiguous bytecodes from 0x60 to 0x7F inclusive
+
+1738048899
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: the operation to perform for PUSH1 is to read 1 byte forward from where PUSH1 is and push it onto the stack, for PUSH2 to read 2 bytes forward etc. So a typical pattern of getting the offset versus some base (in this case PUSH0 which is 0x5F) means all of PUSH1 to PUSH32 can use the same logic
+
+1738048931
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+torque: these bytecodes are also comptime defined and im using the new labelled switch syntax because I want this to be maximally performant regarding dispatch
+
+1738048973
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+idk why im tagging over and over we're the only ones talking rn hehe, anyway both the inline and non-inline fail
+
+1738049131
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+std.mem.readInt really wants a 32-byte slice which won't always be the case, so given my general approach here is correct it seems like the solution is constructing a u256 from less than a [32]u8
+
+1738049155
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+surely this is comptime possible since you can literally do this `const foo: u256 = 69;` and 69 is definitely not literally [32]u8
+
+1738049320
+torque!~tachyon@user/torque
+well, since a u256 is indeed 32 bytes, you would have to 0-pad something smaller
+
+1738049383
+torque!~tachyon@user/torque
+readInt isn't what you're looking for in this case
+
+1738049436
+torque!~tachyon@user/torque
+or, well, it could be, but you probably want to read an int sized to the number of bytes you have and then upcast that to a u256
+
+1738049462
+torque!~tachyon@user/torque
+e.g. `@as(u256, std.mem.readInt(u8, ...));`
+
+1738049559
+torque!~tachyon@user/torque
+you could do this automagically by introspecting the array length
+
+1738049583
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah im thinking the latter approach but i dont know how to comptime the u8, u16, u24 etc part
+
+1738049627
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah get the slice, get its length, but will it work just passing the length to std.mem.readInt? I can try now but it wants a type, or maybe the compiler is smart enough to figure that out?
+
+1738050048
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/E4M57G56Y
+
+1738050049
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah expected type but found usize
+
+1738050052
+torque!~tachyon@user/torque
+you can reify the type
+
+1738050061
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I guess I just have to construct Type myself like I already do with my comptime opcodes
+
+1738050066
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+oh lemme see ur thing first
+
+1738050117
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah ok that's what I thought
+
+1738050269
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+any comments on the debug logging for this too, ive been tangentially thinking about that
+
+1738050296
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+labelled switch gives me nice dispatch but it seems tricky to nicely add logging, perhaps comptime logic that removes it if NOT compiled with the debug flag im still unsure
+
+1738062475
+mountaingoat!~mountaing@user/mountaingoat
+i'm trying to capture some stderr output from `zig build test` (ultimately for CI). the first time i run it, i see it. the second time i run it, it's totally silent. if i delete .zig-cache and rerun, i see it again. am i missing something?
+
+1738062531
+mountaingoat!~mountaing@user/mountaingoat
+in my case, i need to rerun the same tests under a few different environments controlled by env vars
+
+1738062546
+ksynwa!~ksynwa@49.36.209.119
+sskras ElGatoPanzon thanks a lot
+
+1738076590
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: whoops, this is whenever google returned these old docs that I saw it https://ziglang.org/documentation/0.5.0/#Memory
+
+1738077712
+voroskoi!924a802ee9@2a03:6000:1812:100::15c
+https://github.com/ziglang/zig/blob/bf6ee7cb3448faf981edc689791b0a9cbf728a1b/src/link.zig#L1462
+
+1738077790
+voroskoi!924a802ee9@2a03:6000:1812:100::15c
+this line should return &.{} on freestanding, isn't it?
+
+1738077860
+voroskoi!924a802ee9@2a03:6000:1812:100::15c
+I am a bit confused as it says host_libc
+
+1738077961
+voroskoi!924a802ee9@2a03:6000:1812:100::15c
+I would like to get rid of the extra flags, is there a simple way to do that?
+
+1738078050
+voroskoi!924a802ee9@2a03:6000:1812:100::15c
+because it gives &.{ "-lm", "-lpthread", "-lc", "-ldl", "-lrt", "-lutil" }, so the host libc stuff
+
+1738086964
+dsal!sid13060@id-13060.lymington.irccloud.com
+Can I tell whether a type is integral?
+
+1738087030
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh, I asked the question so I could find it in the documentation…
+
+1738089932
+dsal!sid13060@id-13060.lymington.irccloud.com
+Is there any way for errors to carry more information?
+
+1738090282
+dutchie!~dutchie@user/dutchie
+not really. one pattern is to have an extra parameter of type ?*Info, where Info is a struct containing an error message or whatever
+
+1738090293
+ElGatoPanzon!~ElGatoPan@static.46.89.161.5.clients.your-server.de
+dsal: no, only way I know is to use the full catch syntax and inject the error data into an out param
+
+1738090294
+dutchie!~dutchie@user/dutchie
+that the function can fill in if it returns error
+
+1738090297
+ElGatoPanzon!~ElGatoPan@static.46.89.161.5.clients.your-server.de
+Beat me to it lol
+
+1738090336
+dsal!sid13060@id-13060.lymington.irccloud.com
+Heh.  OK.  It's not really worth it for this use case.  This is a sort of developer error kind of thing that I'll probably just use a debug print if I ever actually hit.
+
+1738090362
+dutchie!~dutchie@user/dutchie
+if it's a developer error, maybe an assert is better
+
+1738090610
+dsal!sid13060@id-13060.lymington.irccloud.com
+Hmm...  I had something like that at first.  I kind of like the program being total.  In this case, I'm asking for a coercion that can't exist at runtime.  I probably shouldn't be asking for it, but I have to choose between no data and crash.
+
+1738092476
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+I am cross compile app from linux to mac. It works if I don't try to statically link libssh2.a, if I try to do so I get "thread 70469 panic: TODO" "Unable to dump stack trace: debug info stripped"
+
+1738092503
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+*I am trying to...
+
+1738092671
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+This is the linking like that goes panic: zig cc -o myapp myapp.o -target x86_64-macos -L/home/jack/static/curl-macos-x86_64-dev-8.11.1/curl-x86_64/lib -l:libssh2.a -l:libssl.a -l:libcrypto.a -l:libz.a  -ldl
+
+1738093107
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+does zig compiler support stating linking when cross compiling? That "panic: TODO" quite says otherwise
+
+1738093301
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+well, it seems that I'm into a very edge case (?) https://github.com/search?q=repo%3Aziglang%2Fzig+%40panic%28%22TODO%22%29&type=code
+
+1738093637
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+mh, the panic is due to the -L/bar -l:libfoo.a syntax. Doing /bar/libfoo.a works
+
+1738098810
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm having a weird problem comparing a string:   `if (!std.meta.eql(nd.complex.fmt, want)) { std.debug.print("   incorrect format: {u} ({any}) want {u} ({any})\n", .{ nd.complex.fmt, nd.complex.fmt, want, want });` prints out `incorrect format: { F, f } ({ 70, 102 }) want { F, f } ({ 70, 102 })`
+
+1738102177
+dutchie!~dutchie@user/dutchie
+dsal: std.meta.eql will compare slices by pointer/length equality. if you want to compare contents, use std.mem.eql(u8, nd.complex.fmt, want)
+
+1738102225
+dutchie!~dutchie@user/dutchie
+https://github.com/ziglang/zig/blob/master/lib/std/meta.zig#L780
+
+1738102441
+dsal!sid13060@id-13060.lymington.irccloud.com
+hmm.  I'll figure that out.
+
+1738102445
+dsal!sid13060@id-13060.lymington.irccloud.com
+It does work, thoughl.
+
