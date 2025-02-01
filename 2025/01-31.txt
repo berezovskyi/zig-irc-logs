@@ -1,0 +1,968 @@
+1738288369
+dsal!sid13060@id-13060.lymington.irccloud.com
+One downside of not being able to see what tests run is that I didn't realize I wasn't running tests.
+
+1738288412
+andrewrk!~andrewrk@mail.ziglang.org
+that means you've been caught red handed
+
+1738288431
+andrewrk!~andrewrk@mail.ziglang.org
+always gotta make sure your tests fail before making them pass
+
+1738288464
+dsal!sid13060@id-13060.lymington.irccloud.com
+Heh.  Sure, but then I change some stuff or move something around and things aren't happening.
+
+1738288466
+andrewrk!~andrewrk@mail.ziglang.org
+anyway I'm fairly sure your use case is covered by one of the --summary flags
+
+1738288561
+andrewrk!~andrewrk@mail.ziglang.org
+if it's not then you may have a good case for adding one, and you can argue for changing the default as well
+
+1738288579
+dsal!sid13060@id-13060.lymington.irccloud.com
+The best --summary=all gives me is a count.
+
+1738288657
+dsal!sid13060@id-13060.lymington.irccloud.com
+It doesn't tell me which files or tests are running.  So if I specify the wrong file in my build, all the programs work, and some of the tests run, but some don't run.
+
+1738288881
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh, hmm..  I just found another test that isn't running apparently because it doesn't compile.  I'm not sure how to make this go.  `zig test` gives better output, but complains about not having access to a dependency I've got here.
+
+1738289463
+grayhatter!~grayhatte@user/grayhatter
+dsal: if you have no dependencies I've found zig test file.zig will actually output the number passed
+
+1738289495
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, I have a transitive dependency that this thing doesn't actually need.  I guess I can rearrange it.
+
+1738289506
+grayhatter!~grayhatte@user/grayhatter
+ahh, caught up, yeah... I haven't figured out how to trick zig test into accepting deps either
+
+1738289544
+dsal!sid13060@id-13060.lymington.irccloud.com
+I can't seem to run tests in this module at all because for whatever reason the test doesn't get picked up and if I go the other direction, it gets mad.
+
+1738289713
+dsal!sid13060@id-13060.lymington.irccloud.com
+I moved things around so I could get rid of that dependency and see that test work with `zig test`, but it doesn't solve any real problems, so I put things back.
+
+1738290129
+dsal!sid13060@id-13060.lymington.irccloud.com
+It looks like I just need to add a library target for every file and it does the right thing.
+
+1738290353
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, I just have my build.zig loop over all of the files and specifically create test targets with the right dependencies in each direction and I appear to be good.
+
+1738290415
+torque!~tachyon@user/torque
+when you build your tests, they get compiled into an actual executable
+
+1738290431
+torque!~tachyon@user/torque
+I would generally make my `zig build test` target install that executable so i didn't have to dig it up in the cache
+
+1738290445
+torque!~tachyon@user/torque
+running it directly is slightly more useful than running it through the build protocol
+
+1738290480
+torque!~tachyon@user/torque
+the zig unit test runner is in need of some serious love, though, it's one of the things I hear people most frequently complain about
+
+1738290504
+dsal!sid13060@id-13060.lymington.irccloud.com
+Does it take arguments?  It just crashes if I give it anything.
+
+1738290524
+dsal!sid13060@id-13060.lymington.irccloud.com
+In my case, there are four of these.  The default test runner thing tells me it did four things, but isn't clear what they are.
+
+1738290669
+torque!~tachyon@user/torque
+it takes no arguments
+
+1738290732
+torque!~tachyon@user/torque
+(technically it takes some for interacting with the build runner via stdio but afaik nothing useful for running it directly)
+
+1738290765
+dsal!sid13060@id-13060.lymington.irccloud.com
+I don't think that gets me much further, then.  I have four files with hash names.  `--summary all` tells me it ran four things.  My next step is figuring out what things to run.
+
+1738290772
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/blob/master/lib/compiler/build_runner.zig
+
+1738290783
+torque!~tachyon@user/torque
+this is what gets compiled into the build executable
+
+1738290814
+dsal!sid13060@id-13060.lymington.irccloud.com
+ah neat.
+
+1738290908
+torque!~tachyon@user/torque
+you can always modify it, it's included with your local zig installation
+
+1738290938
+torque!~tachyon@user/torque
+somehow copied the wrong link, I meant to link https://github.com/ziglang/zig/blob/master/lib/compiler/test_runner.zig
+
+1738290943
+torque!~tachyon@user/torque
+brain is falling apart, apparently
+
+1738291027
+torque!~tachyon@user/torque
+also s/build executable/test executable/ seems I should give up
+
+1738291107
+dsal!sid13060@id-13060.lymington.irccloud.com
+I've got two problems.  When tests ar run successfully, I don't know which ones they are.  But also, the default build file doesn't seem to leave the user very near working on multiple files. 
+
+1738291214
+torque!~tachyon@user/torque
+well, I think the theory is that you really only care about the names of tests that fail
+
+1738291233
+torque!~tachyon@user/torque
+though every test runner I know of besides zig has a mode that will print out the name and status of every test run
+
+1738291262
+torque!~tachyon@user/torque
+however, "which tests are running" should not be a mystery to you
+
+1738291310
+torque!~tachyon@user/torque
+you know where your tests are defined, so you should know what tests the compiler is picking up
+
+1738291578
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, but I have three source files.  If I try to run the tests for the highest level (that imports the other two), tests run from two files.  I don't know why it's these two and only noticed it because when I tried to use `zig test` to run it directly, it told me that my test didn't compile.
+
+1738291733
+torque!~tachyon@user/torque
+tests for all files that are referenced are run
+
+1738291761
+torque!~tachyon@user/torque
+from earlier, zig test isn't going to work if you have dependencies without you manually specifying the dependencies
+
+1738291900
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm pretty sure I'm referencing this file and it wasn't running the tests.
+
+1738291997
+torque!~tachyon@user/torque
+it has to be analyzed by the compiler when building for test which you may not be doing
+
+1738292003
+torque!~tachyon@user/torque
+an easy way to do this is like this: https://github.com/epicyclic-dev/nats-client/blob/master/tests/main.zig
+
+1738292028
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, the "top" file imports two other files.  I could see tests failing in one, but the other one's tests didn't even compile.  I'd moved functionality from one file to another.  My software wouldn't work if it didn't load this thing.
+
+1738292066
+torque!~tachyon@user/torque
+yes, but if nothing from file b is referenced in your tests in main, then it won't be analyzed
+
+1738292126
+dsal!sid13060@id-13060.lymington.irccloud.com
+Maybe it's relevant that the test was for a non-public symbol?
+
+1738292208
+torque!~tachyon@user/torque
+I can't really say any details without seeing the code
+
+1738292234
+torque!~tachyon@user/torque
+I have found having the explicit imports for building for test to be the most foolproof way of doing this
+
+1738292276
+torque!~tachyon@user/torque
+a common way of doing it is to put the imports in a test itself, but this creates a bogus test that does nothing
+
+1738292341
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, I might just be confused because it doesn't seem to be running tests in either of the files it imports now.
+
+1738292355
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ifreund: is the README.md and example the best place to find "documentation" for zig-wayland? I'm finding it challenging to parse together e.g. how the setListener is supposed to work (though I think I generally get it)
+
+1738292547
+dsal!sid13060@id-13060.lymington.irccloud.com
+Well, I can get a test to fail for one, but not for the other.  I guess I don't understand the glue here.  I'm using symbols, but not functions from this second file.   The second file is: https://github.com/dustin/zig-gpmf/blob/main/src/constants.zig – devc.zig is importing gpmf.zig and constants.zig.  I can get a test to fail in gpmf.zig, but not in constants.zig.
+
+1738292593
+dsal!sid13060@id-13060.lymington.irccloud.com
+The build at head here loops over all the files and does the thing I expect.
+
+1738293941
+torque!~tachyon@user/torque
+your build.zig is very weird
+
+1738293954
+torque!~tachyon@user/torque
+you shouldn't be looping over multiple files
+
+1738294008
+torque!~tachyon@user/torque
+just like the exe, you specify one root file for test and let imports bring in the others
+
+1738294222
+dsal!sid13060@id-13060.lymington.irccloud.com
+Sure, but that's literally the only way I've figured out how to run the tests in constants.zig
+
+1738294257
+dsal!sid13060@id-13060.lymington.irccloud.com
+I can't use `zig test` because of the transitive dependency on zeit and it doesn't pick them up if I root it at devc.zig.  The change before that was more normall.
+
+1738294429
+dsal!sid13060@id-13060.lymington.irccloud.com
+Like, are you sure you're running all the tests you've specified?  That's the situation I'm running into.  I have six tests across the various files.  When I just look at devc.zig, it says it runs 9.  When I run it like this, it says it runs 12.  I don't know for sure that it's running all of them, but I can spot-check by inducing failures.
+
+1738294465
+torque!~tachyon@user/torque
+I'm kind of curious why you have a "static library" in your build system here
+
+1738294481
+torque!~tachyon@user/torque
+you don't export a C api so that's not actually doing anything
+
+1738294547
+dsal!sid13060@id-13060.lymington.irccloud.com
+Looks like that's what `zig init` does.
+
+1738294754
+torque!~tachyon@user/torque
+zig init does a lot of extra stuff to cover different use cases
+
+1738294779
+torque!~tachyon@user/torque
+the two actually used to be separate (they were `zig init-exe` and `zig init-lib` but got combined into one command for simplicity at some point)
+
+1738294881
+dsal!sid13060@id-13060.lymington.irccloud.com
+This is mostly a library with an example main.  I don't expect anyone to actually do anything with any of this stuff, but it's mostly been good for learning.
+
+1738294978
+torque!~tachyon@user/torque
+if you are exposing a zig api, what you want is to define a module, not a library
+
+1738295087
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh.  Let me see what that concept is.
+
+1738295186
+dsal!sid13060@id-13060.lymington.irccloud.com
+The toplevel documentation doesn't mention this, but I see it in the API docs.
+
+1738295315
+torque!~tachyon@user/torque
+I have a diff for you
+
+1738295368
+torque!~tachyon@user/torque
+https://zigbin.io/176858
+
+1738295469
+torque!~tachyon@user/torque
+this would allow people to use gpmf as a dependency the way you use zeit. it also "fixes" the unit tests (a bit kludgy but eh)
+
+1738295524
+dsal!sid13060@id-13060.lymington.irccloud.com
+More than mine was?  :)
+
+1738295780
+dsal!sid13060@id-13060.lymington.irccloud.com
+I broke the test in constants.zig and tests still pass, though.  :/
+
+1738296178
+dsal!sid13060@id-13060.lymington.irccloud.com
+I could probably rename stuff.  devc.zig depends on the other two
+
+1738297714
+torque!~tachyon@user/torque
+how did you break it
+
+1738297724
+torque!~tachyon@user/torque
+if you add "return error.Fail;" at the end of the test, it definitely fails
+
+1738298119
+dsal!sid13060@id-13060.lymington.irccloud.com
+I stuck this at the top:  `    try testing.expectedEqual(1, 2);`
+
+1738300705
+torque!~tachyon@user/torque
+with my patch on f5ec448168cb3e7e9fab370863c3e97d77174f5c that causes `zig build test` to report the expected error
+
+1738300757
+torque!~tachyon@user/torque
+if you moved things around you need to make sure the imports are pulled in for the compiler to pick up all the tests
+
+1738306233
+dsal!sid13060@id-13060.lymington.irccloud.com
+I think I just changed it to import devc.zig instead of gpmf.zig.  I'll do it again, though.
+
+1738306425
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, so I went back to the version you suggested, applied your patch, and it works…
+
+1738306623
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh, I see what makes it a bit less confusing.  I'm not used to circular dependencies being OK, but at least this does something I've observed owrking.
+
+1738331286
+avallee!uid686632@user/avallee
+the state of std.posix and std.os.linux is such a mess... how do you guys it? I end up reimplementing dozens of syscalls and constants all over the place, while hardcoding for a fixed architecture :-(
+
+1738331879
+avallee!uid686632@user/avallee
+someone has gone on a frenzy of converting all flags to packed structs for some reason. the worst idea ever. now there are meaningless "O" and "E" and "MAP" structs/enums which literally obfuscate the meaning of flags while bringing no clarity. type safety is illusory since half these entities have overlapping values which were left unmapped (I guess because someone realized the packed structs were a bad idea after the fact) so you end up @bitCast'ing 
+
+1738331879
+avallee!uid686632@user/avallee
+back and forth all over the place these structs with magic numbers. Apparently someone also declared that interruptible signals were a mistake in posix, so EINTR is discarded and syscall silently retried. This madness goes down to the syscall wrapper level so there's no way avoiding it unless you rewrite your own syscall trampolines. Also someone decided that the return values they don't want to map are not worth bubbling up to the user, better to crash 
+
+1738331879
+avallee!uid686632@user/avallee
+on unreachable :-(
+
+1738332659
+Earnestly!~earnest@user/earnestly
+Tbf, interruptible signals might have been a mistake
+
+1738332839
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Earnestly: what do you mean?
+
+1738333086
+Earnestly!~earnest@user/earnestly
+hadronized: explicitly needing SA_RESTART
+
+1738333336
+avallee!uid686632@user/avallee
+@Earnestly: there may be an argument for higher level functions to handle retry after EINTR, it's hardly justifiable for e.g. read and recv though...
+
+1738333546
+Earnestly!~earnest@user/earnestly
+Perhaps, I vaguely recall much of std.os/posix/etc being fairly recently broken apart and likely is still undergoing design changes. Then the completed effort appearing as zig specific library apis. E.g. std.net.Stream.read vs. std.posix.recvfrom
+
+1738333569
+Earnestly!~earnest@user/earnestly
+Still a way from 1.0 after all
+
+1738334388
+avallee!uid686632@user/avallee
+I think the crux of the problem is that there are very little tools at the moment to just do basic system programming. i attribute that to a failed tentative to make the lowest layer (syscalls essentially) idiomatic zig, while they don't really fit. the issue is now that these failed attempts being at the lowest level of the stack, there is no way to bypass them. Hopefully the lowest layer should be the most C like possible, and abstraction built on top 
+
+1738334388
+avallee!uid686632@user/avallee
+of that.
+
+1738334479
+avallee!uid686632@user/avallee
+e.g. the packed structs to represent flags are clearly broken, but since they go down to the syscall wrappers, you really just can't do much beside hardcoding your own platform-specific syscall wrappers
+
+1738334622
+avallee!uid686632@user/avallee
+although it's OK to live until 1.0 with bare C-like functions and constants until some cute abstraction are built on top, it's harder to live on half baked abstractions with no escape hatch
+
+1738334682
+hadronized!~hadronize@2001:41d0:a:fe76::1
+wait, packed structs for bitsets are broken?
+
+1738334722
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I don’t use a lot of them but the ones I do use are not broken
+
+1738334792
+avallee!uid686632@user/avallee
+they are not broken in the general case of bitsets, they are broken as an a traction on top of most flags in std.posix/std.os
+
+1738335007
+hadronized!~hadronize@2001:41d0:a:fe76::1
+can you elaborate avallee?
+
+1738335026
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think it’s one of the most interesting features of Zig :D, so it would sadden me a bit if I couldn’t use them in teh end
+
+1738335027
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the*
+
+1738335064
+avallee!uid686632@user/avallee
+that's because 1) a lot of these flags are not exclusive, they are a mix of "masks" and "flags". that is not possible to represent with a packed struct, and 2) a lot of these flags cannot be typed because they are used in multiple places that are unrelated, such as using rdonly/wronly/rdwr, and 3) some of these flags are arithmetically defined, such as mmap HUGETLB_*
+
+1738335281
+avallee!uid686632@user/avallee
+I think if you live in a pure zig world it's fine to use packed structs as flags, but you have to be aware of the hidden constraints. most C codebases do not respect them, libc and kernel especially
+
+1738335393
+avallee!uid686632@user/avallee
+you can see in parts of os.linux that packed structs were abandoned, and plain comptime_int were used instead, but these now can't be mized with the flags that were implemented as packed structs, creating a spaghetti of @bitCast 
+
+1738335607
+avallee!uid686632@user/avallee
+in the end, the summary is just that std.posix and std.os.* are just too ziggy for their own good, and it's creating a lot of pain for not much benefit, to a point where these are hardly usable. I think these parts should just be "C-like zig", and the nice abstractions should live elsewhere
+
+1738335721
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+avallee: are you on the Zulip server for zig? that is the best place stdlib development suggestions
+
+1738335781
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zsf.zulipchat.com/login/
+
+1738335833
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I’ve seen a lot of std.posix and std.os discussion there, I’m sure the feedback would be appreciated
+
+1738335981
+avallee!uid686632@user/avallee
+@rockorager: oh I didn't know that, thanks for the link I'll hang out there :)
+
+1738339745
+hadronized!~hadronize@2001:41d0:a:fe76::1
+iiiiicerice
+
+1738339797
+hadronized!~hadronize@2001:41d0:a:fe76::1
+sorry for that
+
+1738341207
+Zorgatone!~Zorgatone@user/Zorgatone
+learning zig with spacetraders.io :3
+
+1738341538
+grayhatter!~grayhatte@user/grayhatter
+Zorgatone: this looks super cool, thanks for sharing this
+
+1738341557
+Zorgatone!~Zorgatone@user/Zorgatone
+grayhatter: you're welcome
+
+1738341569
+Zorgatone!~Zorgatone@user/Zorgatone
+I really needed some pratical use for my Zig code to get motivated to learn it
+
+1738341915
+grayhatter!~grayhatte@user/grayhatter
+Zorgatone: if you wanna get more into "peak zig", I'd suggest writing a comptime function that takes a struct{} and turns it into an "extended" struct that has functions that will make api calls for you e.g. `const SomeEndpoint = POST(SomeStruct); SomeEndpoint.post(data);`
+
+1738341941
+grayhatter!~grayhatte@user/grayhatter
+if you're new to zig, that might be slightly harder... but IMO it'd be really cool :D
+
+1738342089
+grayhatter!~grayhatte@user/grayhatter
+Zorgatone: I assume you're going CLI too? I've been trying to find an excuse to play with the vaxis gui library
+
+1738343209
+Zorgatone!~Zorgatone@user/Zorgatone
+It seems doable, Yeah I'm going CLI
+
+1738343236
+Zorgatone!~Zorgatone@user/Zorgatone
+grayhatter: not sure if I'm going for the comptime implementation you suggested though
+
+1738343485
+grayhatter!~grayhatte@user/grayhatter
+Zorgatone: I mention it because it's been an idea that's been kicking around for me, not because it's actually better. I know when learning a new language I like playing with the slightly esoteric features, which is the only reason I suggested it :)
+
+1738343500
+Zorgatone!~Zorgatone@user/Zorgatone
+ah I see
+
+1738343556
+Zorgatone!~Zorgatone@user/Zorgatone
+grayhatter: I didn't know about vaxis, interesting
+
+1738343611
+Zorgatone!~Zorgatone@user/Zorgatone
+it uses 0.13.0 instead of master, though
+
+1738343637
+Zorgatone!~Zorgatone@user/Zorgatone
+is it POSIX-only?
+
+1738343650
+Zorgatone!~Zorgatone@user/Zorgatone
+ah it supports Windows
+
+1738343677
+Zorgatone!~Zorgatone@user/Zorgatone
+ooh kitty graphics too, that's awesome!
+
+1738343734
+Zorgatone!~Zorgatone@user/Zorgatone
+I see they have a 0.14 branch too, so I may want to try with that one
+
+1738344075
+grayhatter!~grayhatte@user/grayhatter
+Zorgatone: there's also the #vaxis channel too, and the author is very responsive 
+
+1738344508
+Zorgatone!~Zorgatone@user/Zorgatone
+ah cool
+
+1738344682
+sdc!sid638645@id-638645.lymington.irccloud.com
+heya is there a way to specify building with say avx2 vs avx512?
+
+1738344733
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+grayhatter: a tui interface to your git server would be cool
+
+1738345170
+grayhatter!~grayhatte@user/grayhatter
+rockorager: lol I don't *hate* that idea :D
+
+1738351230
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+is there an easy way to compare if bytes of two slices overlap?  eg. something in std.api?   so i don't have to compare the borders "manually" using @intFromPtr, etc.?
+
+1738351277
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+by "compare" i mean check, or just get the overlapping slice
+
+1738351695
+grayhatter!~grayhatte@user/grayhatter
+netvor: if the bytes? meaning the data or values, themselves. Or bytes meaning memory locations?
+
+1738351788
+grayhatter!~grayhatte@user/grayhatter
+@intFromPtr is the correct way assuming you want to know if some memory location exists within to different slices
+
+1738351835
+grayhatter!~grayhatte@user/grayhatter
+two* different slices
+
+1738351842
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+i mean the data, just to check if i can safely copy a slice to a buffer -- when the slice could be already slice of the buffer
+
+1738351890
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+i'm using @intFromPtr but i find it cumbersome and error prone (or i'm just bad at it :D)
+
+1738351999
+grayhatter!~grayhatte@user/grayhatter
+ideally it's better if you write code so you can't get to a point where you might have overlapping memory slices... but if that results in worse or more complex code. if (src.ptr > dst.ptr + dst.len) { ... } shouldn't be too cumbersome?
+
+1738352058
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+oh i can just do arithmetic like that?  ok that's what i was missing :D
+
+1738352122
+grayhatter!~grayhatte@user/grayhatter
+well, IIRC you  still need the @intFromPtr() on the two {src/dst}.ptr fields
+
+1738352208
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+well if i can just compare .ptr like that, i can do the `if..` as you wrote it, just do it for first and last element.  no @intFromPtr() needed, right>?
+
+1738352357
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+i mean `const src_tail = src[src.len - 1 .. src]; (same for dst);  if (src.ptr >= dst.ptr and src_tail.ptr <= dst_tail.ptr) { return error... }`
+
+1738352372
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+(but that would still break if one of slices is zero-length)
+
+1738352406
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+kind of a rabbit hole for me :D
+
+1738352576
+grayhatter!~grayhatte@user/grayhatter
+no, you'd still need @intFromPtr() to prove to the compiler that you really mean to compare the values of the ptr
+
+1738352729
+grayhatter!~grayhatte@user/grayhatter
+netvor: if either slice length is 0, the ptr value is undefined, and thus you can't copy, in all cases you need the prefix of if (src.len == 0 or dst.len == 0) return;
+
+1738352740
+grayhatter!~grayhatte@user/grayhatter
+can't copy, nor compare
+
+1738352758
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+yeah, i see...
+
+1738352868
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+so that's why i'm looking for std :)
+
+1738353072
+grayhatter!~grayhatte@user/grayhatter
+I don't think I'd want to use stdlib, because it'd give you a bool, where if you write the fn yourself, you can be smarter about the behavior. I.e. you can instead copy backwards, if it overlaps by less than a type size
+
+1738353202
+grayhatter!~grayhatte@user/grayhatter
+that said... I do feel that same desire for a bit more ergonomic syntax. `some.ptr > other.ptr` really should just work but alas
+
+1738353207
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+you are assuming that stdlib would give me a bool and not whatever would be useful?
+
+1738353238
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+that's kind of speculative, i'm fine just accepting that the api does not exist now
+
+1738353290
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+eg. std.mem already has lots of useful stuff like that
+
+1738353397
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+basically something like std.mem.indexOf.. would be 90% of it, it would just need to check for identity in terms of "same bytes", not value
+
+1738353750
+grayhatter!~grayhatte@user/grayhatter
+ahh, like an `indexOfOverlap(T: []const T, []const T) ?usize {}` yeah, I didn't consider getting an index for a pointer overlap
+
+1738353766
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+btw i already overthought this once :D  https://bpa.st/TFWA
+
+1738354036
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+here's my indexof_overlap() overlapping_slice() (probably buggy) https://bpa.st/HRCQ
+
+1738354048
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+without the massive test suite :D
+
+1738354139
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+maybe it would be more useful to just return pair of indices into `b`, and decide what to do based on that
+
+1738356277
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there a way in my code to do something like `if (isDebugBuild()) {....}`?
+
+1738356353
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: yes, build mode is availiable, but generally, you don't wanna do that unless you absolutely have to
+
+1738356375
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm writing a vulkan renderer and I only want to enable validation layers in debug build mode
+
+1738356386
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+how do I access this information? and also, why do you generally not want to do this?
+
+1738356409
+grayhatter!~grayhatte@user/grayhatter
+@import("builtin").mode IIRC
+
+1738356501
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, that provides the enum, but not a way (that I can see) to fetch the current value
+
+1738356554
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: I mention that as a theme, more than a rule. there are times where it makes sense and results in better code I.e. collecting debugging info, obviously... but more often I see people changing program behavior which is sketchy
+
+1738356556
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I guess @import("Build") and then check build.release_mode
+
+1738356572
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, I see
+
+1738356575
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yes I agree with that
+
+1738356576
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+ezzieyguywuf: `if (@import("builtin").mode == .Debug) .{...};` does not work?
+
+1738356596
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+it seems to work for me (judging from LSP)
+
+1738356596
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+netvor: haven't tried it, I was just checking the documentation
+
+1738356630
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+don't confuse with std.builtin.OptimizeMode -- that's the *type*
+
+1738356631
+grayhatter!~grayhatte@user/grayhatter
+builtin != std.builtin
+
+1738356653
+grayhatter!~grayhatte@user/grayhatter
+that's why I used @import("builtin") above
+
+1738356848
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, I was indeed looking at https://ziglang.org/documentation/master/std/#std.builtin.OptimizeMode
+
+1738356862
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I guess I don't really understand what @import("builtin") is then
+
+1738357108
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: you know how you can @import("std")?
+
+1738357177
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yes
+
+1738357191
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+ezzieyguywuf: check out https://ziglang.org/documentation/master/#import 
+
+1738357243
+grayhatter!~grayhatte@user/grayhatter
+well the compiler also provides a bunch of extra data via the "builtin" dep just like the the "std" dep
+
+1738357276
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+way i think of it is that "builtin" is just special in that it does not have a corresponding source code; it simply gives access to things that compiler "knows"
+
+1738357313
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+and the data structures used there are described in @import("std").builtin -- actual file you can read.
+
+1738357329
+grayhatter!~grayhatte@user/grayhatter
+I think netvor meant to link to https://ziglang.org/documentation/master/#Compile-Variables
+
+1738357338
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ahh I see
+
+1738357358
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+that's dope af
+
+1738357367
+ifreund!2940d10f8b@user/ifreund
+both of them being called builtin is kind of confusing, one or both will probably be renamed eventually
+
+1738357434
+netvor!~netvor@2a00:ca8:a1f:cd0:fd0f:51e2:e61e:771b
+i found it confusing initially but after that initial period i actually find it kind of logical that they match
+
+1738358048
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I +1 renaming it
+
+1738358051
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but it's still dopeaf
+
+1738358401
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+can I get a [*]const from an array list? .items is giving me *[]
+
+1738358440
+andrewrk!~andrewrk@mail.ziglang.org
+you can always provide a mutable pointer when a const pointer is expected
+
+1738358443
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh, I guess @ptrCast(...) does the job
+
+1738358453
+andrewrk!~andrewrk@mail.ziglang.org
+@ptrCast is not the right tool for the job
+
+1738358460
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: what is the right tool?
+
+1738358473
+andrewrk!~andrewrk@mail.ziglang.org
+what problem do you have?
+
+1738358548
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+https://imgur.com/a/ThTTqle, I want to provide one or two items to this thing that expects a [*]const OfThings, and since I don't know at comptime whether it will be 1 or 2 items, I'm using an arraylist
+
+1738358573
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+this gives more context actually https://imgur.com/a/1h63wMg
+
+1738358599
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: btw, I'm finding https://github.com/andrewrk/zig-vulkan-triangle super helpful, I'm glad you uploaded it 😁
+
+1738358685
+cancername!~cancernam@user/cancername
+ezzieyguywuf: you can use .ptr to get the pointer of a slice, if that helps. a slice is a pointer to an unknown number of items and an associated length.
+
+1738358689
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/master/#Slices
+
+1738358742
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ahhh ofc!
+
+1738358752
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+that does resolve it, thanks cancername and andrewrk 
+
+1738361576
+dsal!sid13060@id-13060.lymington.irccloud.com
+Is there a convenient way to determine whether a given numeric value can fit into a particular type?   e.g.   @fits(256, u8) or something?
+
+1738362048
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+dsal: you could compare vs std.math.maxInt(T)
+
+1738362066
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+and minInt(T)
+
+1738362087
+dsal!sid13060@id-13060.lymington.irccloud.com
+Thanks.  That's the kind of thing I'm looking for.
+
+1738362180
+andrewrk!~andrewrk@mail.ziglang.org
+dsal: std.math.cast
+
+1738362270
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh nice.  That's even more of the kind of thing I'm looking for.  :)
+
+1738362455
+andrewrk!~andrewrk@mail.ziglang.org
+I figured :)
+
+1738363220
+tristan957!8a107acde4@user/tristan957
+hello o7. Why does linux.syscall2() return a usize? Is it calling syscall(2) under the hood?
+
+1738363258
+tristan957!8a107acde4@user/tristan957
+hmm it calls custom assembly
+
+1738363392
+cancername!~cancernam@user/cancername
+tristan957: it returns usize because all syscalls do
+
+1738363445
+tristan957!8a107acde4@user/tristan957
+cancername: hmm reading syscall(2) it returns a long. Why the discrepancy?
+
+1738363472
+tristan957!8a107acde4@user/tristan957
+I would have expected zig and libc to match
+
+1738363475
+cancername!~cancernam@user/cancername
+tristan957: I don't know
+
+1738363483
+cancername!~cancernam@user/cancername
+you can use std.c.syscall I believe
+
+1738363505
+tristan957!8a107acde4@user/tristan957
+I'm just asking out of curiosity more than anything to understand why things are the way they are
+
+1738363548
+tristan957!8a107acde4@user/tristan957
+seeing this ghostty: thread 808805 panic: integer cast truncated bits related to @intCast()ing the output of linux.clone2
+
+1738363554
+tristan957!8a107acde4@user/tristan957
+*linux.syscall2()
+
+1738363558
+cancername!~cancernam@user/cancername
+huh
+
+1738363575
+cancername!~cancernam@user/cancername
+which function is that in?
+
+1738363593
+cancername!~cancernam@user/cancername
+they might be casting the result of clone (PID?) to the wrong type
+
+1738363621
+tristan957!8a107acde4@user/tristan957
+https://github.com/ghostty-org/ghostty/blob/c5508e7d1922842ecd3160ea73b97da1282168b3/src/os/cgroup.zig#L132-L139
+
+1738363688
+cancername!~cancernam@user/cancername
+might also return negative isize value cast to usize 
+
+1738363694
+tristan957!8a107acde4@user/tristan957
+Reading man clone(2), it seems to return a long when you call it via linux.syscall2()
+
+1738363732
+tristan957!8a107acde4@user/tristan957
+is there an @longCast() in zig? Sorry that I am a zig noob
+
+1738363747
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@intCast is for all integer casts
+
+1738363996
+tristan957!8a107acde4@user/tristan957
+Is it possible to not truncate the bits on this cast then?
+
+1738364009
+tristan957!8a107acde4@user/tristan957
+oops it's an alignCast
+
+1738364013
+tristan957!8a107acde4@user/tristan957
+not an intCast
+
+1738364023
+tristan957!8a107acde4@user/tristan957
+I can't read, sorry
+
+1738364066
+tristan957!8a107acde4@user/tristan957
+wait no, double idiot. It is an intCast(), damn ....
+
+1738364393
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+tristan957: is it failing in ghostty code or zig std code?
+
+1738364423
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it's switching on a call to posix.errno which does an isize bitCast
+
+1738366011
+hadronized!~hadronize@2001:41d0:a:fe76::1
+interesting to see that Zig supports rank-2 type
+
+1738366016
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I didn’t expect that
+
