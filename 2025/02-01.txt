@@ -1,0 +1,1232 @@
+1738368537
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+if I comment out this line https://bpa.st/IYWA#1L237-L237 , the vulkan validation complains that the instance is destroyed before all child objects. when I leave it in, I get a "General protection exception" from the zig compiler https://bpa.st/3DTQ - I'm not really sure how to resolve this
+
+1738368575
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm assuming "no address available" means I'm trying to free something that's already been freed?
+
+1738370638
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, I added some logging, and it seems to be trying to destroy the realy thing ``destroying device vk.Device(678257760)`
+
+1738370643
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+maybe the problem is in vkd...
+
+1738370732
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, I dumped vdk and it shows `vkDestroyDevice = fn (vk.Device, ?*const vk.AllocationCallbacks) callconv(.c) void@aaaaaaaaaaaaaaaa`, and a similar address for all the other functions lol
+
+1738370766
+torque!~tachyon@user/torque
+aaaaaaaa is the `undefined` bit pattern so you're failing to initialize something
+
+1738370819
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, ok the failure is because `error: Command loading failed for "vkCreateSwapchainKHR"` when vkd is being created, and then the `destroyDevice` thing can't do what it needs to do
+
+1738370836
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: yup that's exactly what it is, I need to figure out why vulkan-zig can't load this function
+
+1738399688
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i have a u256 foo and for some operations i need to pretend that those 256 bits represent foo in two's complement
+
+1738399761
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i need to use @bitCast to an i256 right?
+
+1738399770
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+then once im done @bitCast back to u256?
+
+1738417577
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im trying to do some 256-bit modular arithmetic and crypto.ff complains rejectNonCanonical when I try and construct some large values
+
+1738418224
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+the goal is trying to do exponentiation modulo some m, and I see crypto.ff.Modulus has this by default
+
+1738418431
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it seems fromPrimitive will error unless a literal is given to it
+
+1738421875
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+oh hangon it's because the limb count is the same, so we cannot use Moudlus' pow to square something
+
+1738423162
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+actually no this is only happening if either the base or the exponent is equal to the modulus, I assume, bitsize
+
+1738423186
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+bitsize and value that is, so for a 256-bit modulus if either base or exponent is maxInt(u256) this occurs
+
+1738425355
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah im confused, why can't we have a modulus value the size of the bits provided to the modulus where all bits are 1?
+
+1738425463
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+as far as I understand it right now for a modulus of 256 you're actually able to use values up to 2^256 - 2 since if you go to 2^256 - 1 rejectNonCanonical triggers
+
+1738426967
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+okay so it's because Modulus reserves 1 carry bit for itself? So need a way to specify a greater modulus size such that it still is effectively 2^256
+
+1738427051
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I don't actually need the security constraints of constant-time execution here too, rather as fast as possible. So I suppose I should try and use big int instead if that has a modulo power operation
+
+1738428982
+netvor!~netvor@2a00:ca8:a1f:cd0:985c:dc6d:f6ac:dc41
+(happy to see that local rubber duck has been very productive today :))
+
+1738429016
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+me?
+
+1738429037
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+big int doesn't look like it either, unless im missing something very obvious
+
+1738429056
+netvor!~netvor@2a00:ca8:a1f:cd0:985c:dc6d:f6ac:dc41
+( https://en.wikipedia.org/wiki/Rubber_duck_debugging )
+
+1738429197
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ye i just mean in reference to me or not hehe
+
+1738429275
+netvor!~netvor@2a00:ca8:a1f:cd0:985c:dc6d:f6ac:dc41
+sorry i really don't have any helpful answers (i'm just a n00b learning zig), i was just really pleased that you are slowly making progress on your own
+
+1738429299
+netvor!~netvor@2a00:ca8:a1f:cd0:985c:dc6d:f6ac:dc41
+sometimes it happens to me as well .. i just need to formulate the problem and it helps :)
+
+1738429401
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+for today i need to give up, i might have to implement a modular expoentiation algorithm myself
+
+1738429451
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+big.int doesnt have any that are explicitly useable (I think), and Modulus has that 1 carry bit reservation (I think), I could try hack on that but idk at this point I'd rather get something crappy going and come back to this later
+
+1738429527
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+plus since Modulus is intended for use with cryptography they'll run in constant-time (best effort) which in my case (not being used for cryptography) isn't a good thing since that (afaik) usually implies slowing down to a common baselevel speed, I just want to get the modulo exponentiation ASAP
+
+1738434634
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I haven’t followed closely, but is there a proposal somewhere that was approved for lambdas?
+
+1738434646
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(I’m not talking closures; I can see why we don’t want them baked in)
+
+1738436553
+dsal!sid13060@id-13060.lymington.irccloud.com
+What does a slice look like to reflection?  For a `[]const u8`, all I can find is a `Pointer` with a child of `u8`.  I don't think I should assume any pointer is a slice, should I?
+
+1738436560
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I'd bet there's a rejected proposal for lambdas on the issues somewhere
+
+1738436580
+grayhatter!~grayhatte@user/grayhatter
+zig doesn't need lambdas, they're needless complexity 
+
+1738436602
+grayhatter!~grayhatte@user/grayhatter
+dsal: a pointer isn't a slice
+
+1738436612
+grayhatter!~grayhatte@user/grayhatter
+a slice is a pointer, with an "embedded" length
+
+1738436631
+dsal!sid13060@id-13060.lymington.irccloud.com
+Sure, but when I'm looking at this field in reflection, it just tells me it's a pointer.
+
+1738436632
+grayhatter!~grayhatte@user/grayhatter
+if you attach a length to a pointer, you now have a slice
+
+1738436648
+grayhatter!~grayhatte@user/grayhatter
+with @typeInfo?
+
+1738436651
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah
+
+1738436673
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: « Zig doesn’t need lambdas » yet people have been trying to implement them with unnamed struct (which doesn’t work, besides at comptime)
+
+1738436682
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and lambdas are very useful for so many topics
+
+1738436687
+grayhatter!~grayhatte@user/grayhatter
+dsal: did you read  https://ziglang.org/documentation/master/std/#std.builtin.Type.Pointer yet?
+
+1738436709
+grayhatter!~grayhatte@user/grayhatter
+hadronized: name one use case where a lambda works but a function doesn't?
+
+1738436750
+grayhatter!~grayhatte@user/grayhatter
+dsal: if you have seen that already, did you see https://ziglang.org/documentation/master/std/#std.builtin.Type.Pointer.Size ?
+
+1738436754
+dsal!sid13060@id-13060.lymington.irccloud.com
+grayhatter: Yeah, but that doesn't tell me that I'm looking at a slice vs. a pointer to some other thing.
+
+1738436766
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+dsal: https://github.com/ziglang/zig/blob/cdc9d65b0db3e988ae0f4006e05c178312518bfb/lib/std/json/static.zig#L452-L513
+
+1738436767
+dsal!sid13060@id-13060.lymington.irccloud.com
+ohhh
+
+1738436769
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, I missed that.
+
+1738436792
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+oh same reference
+
+1738436794
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, the size thing is the key thing I missed.
+
+1738436799
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+well, reference + usage
+
+1738436804
+grayhatter!~grayhatte@user/grayhatter
+rockorager: json instead of format?
+
+1738436841
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: filtering, event-based code, just to name a few (and that’s just assuming imperative style code; if you open to a more functional style code, like with folding, mapping, traversing, etc., it’s pretty much very everywhere)
+
+1738436854
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+lol I just knew it was in json...
+
+1738436888
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I'm assuming that could be done with a function too, do you have any example code where a function can't be used, but a hypothetical lambda could be?
+
+1738436906
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+libxev has some
+
+1738436915
+grayhatter!~grayhatte@user/grayhatter
+rockorager: has some what?
+
+1738436942
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://github.com/mitchellh/libxev/blob/31eed4e337fed7b0149319e5cdbb62b848c24fbd/src/watcher/stream.zig#L64-L80
+
+1738436952
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+anonymous struct style lambdas
+
+1738436991
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Maybe that isn't actually a lambda...
+
+1738437019
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: declaring a function name for one call site is just boilerplate
+
+1738437030
+hadronized!~hadronize@2001:41d0:a:fe76::1
+sometimes, naming things is the wrong thing to do
+
+1738437031
+taylan!~taylan@user/taylan
+Lambda is an ambiguous term. People variously use it for closures, closure-like things with various limitations (e.g. captured variables are read-only), or just syntax sugar an inline function definition that's hoisted to the top-level (no variable capture).
+
+1738437048
+hadronized!~hadronize@2001:41d0:a:fe76::1
+taylan: I just explained above I was not talking about closures
+
+1738437072
+grayhatter!~grayhatte@user/grayhatter
+hadronized: sometimes naming things is the wrong thing to do?
+
+1738437083
+grayhatter!~grayhatte@user/grayhatter
+yeah, I don't buy that argument
+
+1738437084
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I have the same issue with forbidding shadowing in Zig; I think it’s a bad design, because if you mix it with try (you can’t really chain try statements), you end up having to come up with names for stuff that is temporary
+
+1738437096
+taylan!~taylan@user/taylan
+(I joined 11 minutes ago, seems I missed the beginning.)
+
+1738437097
+grayhatter!~grayhatte@user/grayhatter
+hadronized: use more braces
+
+1738437107
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what?
+
+1738437110
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/issues/1717
+
+1738437114
+torque!~tachyon@user/torque
+enjoy the roller coaster ride
+
+1738437117
+grayhatter!~grayhatte@user/grayhatter
+then the shadowing rule doesn't suck
+
+1738437130
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what braces?
+
+1738437146
+grayhatter!~grayhatte@user/grayhatter
+i.e. then the prohobition on shadowing is actually a good thing that has already prevented a bug for me
+
+1738437147
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: thanks
+
+1738437152
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+named blocks or braced scopes
+
+1738437152
+grayhatter!~grayhatte@user/grayhatter
+hadronized: do you know what braces are?
+
+1738437159
+harmonic_!~harmonic@user/harmonic
+I think he means that you should use blocks
+
+1738437163
+torque!~tachyon@user/torque
+completely forbidding shadowing is really good
+
+1738437168
+grayhatter!~grayhatte@user/grayhatter
+^this
+
+1738437169
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I fail to see why I would like to use blocks there
+
+1738437186
+grayhatter!~grayhatte@user/grayhatter
+hadronized: because you're not allowed to add shadowed variables
+
+1738437196
+harmonic_!~harmonic@user/harmonic
+you can do whatever's temporary in them
+
+1738437201
+harmonic_!~harmonic@user/harmonic
+within
+
+1738437218
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I still don’t get it
+
+1738437245
+grayhatter!~grayhatte@user/grayhatter
+`{ var tmp = thing; ... } { var tmp = thing; ... }`
+
+1738437251
+grayhatter!~grayhatte@user/grayhatter
+no shadowing
+
+1738437265
+grayhatter!~grayhatte@user/grayhatter
+completely valid (assuming the ... is valid code too) 
+
+1738437289
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so you have to use named blocks to break out of them with an expression, right?
+
+1738437313
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so instead of just shadowing, you have to pick stupid names + add extra constructs that serve no purpose just because « shadowing is bad »?
+
+1738437314
+harmonic_!~harmonic@user/harmonic
+yes break :blkname value
+
+1738437315
+grayhatter!~grayhatte@user/grayhatter
+no? but I'm gussing you're assuming more context than you've provided me
+
+1738437330
+hadronized!~hadronize@2001:41d0:a:fe76::1
+nah really, just what I said
+
+1738437342
+hadronized!~hadronize@2001:41d0:a:fe76::1
+imagine you have two functions that you would normally chain
+
+1738437349
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but in Zig you can’t, since try chains bad
+
+1738437350
+grayhatter!~grayhatte@user/grayhatter
+this really feels like you're just comming to terms with the 3 hardest problems in computer science 
+
+1738437352
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so 
+
+1738437360
+grayhatter!~grayhatte@user/grayhatter
+one of the 3
+
+1738437365
+hadronized!~hadronize@2001:41d0:a:fe76::1
+const a = try stuff(input);
+
+1738437381
+hadronized!~hadronize@2001:41d0:a:fe76::1
+const b = try then(a);
+
+1738437383
+hadronized!~hadronize@2001:41d0:a:fe76::1
+etc.
+
+1738437383
+torque!~tachyon@user/torque
+don't chain functions that can produce errors
+
+1738437393
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: why?
+
+1738437413
+torque!~tachyon@user/torque
+having error handling broken out into separate lines makes it a lot clearer that errors are possible in that code path
+
+1738437421
+grayhatter!~grayhatte@user/grayhatter
+if (stuff(input)) |value| { ... } else |err| { return err; }
+
+1738437427
+torque!~tachyon@user/torque
+also, you could always do `var a = try stuff(); a = try then();`
+
+1738437431
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that sounds like a completely objective and forced argument
+
+1738437446
+grayhatter!~grayhatte@user/grayhatter
+hadronized: and yet, is prevents bugs, so not at all forced
+
+1738437453
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: if a’s type is different, I don’t think you can
+
+1738437465
+torque!~tachyon@user/torque
+true
+
+1738437467
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I have never seen a bug due to shadowing in languages that support it correctly
+
+1738437474
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I have
+
+1738437475
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+hadronized: this is a small one but I had a headers json object and stringified it...I didn't actually use the same name but I could have called htem both "headers" https://github.com/rockorager/spunky/blob/0bc4b921fc4cd0a1195244bda6f0105644bbc0ff/src/jmap/db.zig#L176-L213
+
+1738437475
+torque!~tachyon@user/torque
+?????
+
+1738437483
+grayhatter!~grayhatte@user/grayhatter
+hadronized: how do you support it correctly?
+
+1738437503
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I won’t tell you because you won’t like the answer
+
+1738437504
+grayhatter!~grayhatte@user/grayhatter
+til spunky exists and is a private git repo
+
+1738437508
+grayhatter!~grayhatte@user/grayhatter
+time to hax
+
+1738437512
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I can’t access that
+
+1738437513
+grayhatter!~grayhatte@user/grayhatter
+hadronized: rude, but whatever
+
+1738437516
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+lol woops sorry
+
+1738437523
+torque!~tachyon@user/torque
+trying very hard not to patronize you but if you haven't seen shadowing bugs you probably have not read much code
+
+1738437529
+grayhatter!~grayhatte@user/grayhatter
+^ this
+
+1738437530
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: Rust supports it by moving out 
+
+1738437536
+torque!~tachyon@user/torque
+and "the correct way" to do shadowing sure sounds like a no true scotsman argument to me
+
+1738437550
+grayhatter!~grayhatte@user/grayhatter
+^ this 
+
+1738437554
+dsal!sid13060@id-13060.lymington.irccloud.com
+rockorager, grayhatter: What's the difference between Slice and Many?  Is Many closer to a "Raw" pointer?
+
+1738437556
+grayhatter!~grayhatte@user/grayhatter
+> rust is better
+
+1738437563
+grayhatter!~grayhatte@user/grayhatter
+I'm shocked this is your position
+
+1738437567
+dsal!sid13060@id-13060.lymington.irccloud.com
+(in which… isn't One a special case of Many?)
+
+1738437568
+grayhatter!~grayhatte@user/grayhatter
+absolutely **shocked**
+
+1738437580
+hadronized!~hadronize@2001:41d0:a:fe76::1
+eh I mean, I saw the argument that « Rust forces people to code in a certain way », but it’s interesting to see that Zig does the exact same thing
+
+1738437581
+torque!~tachyon@user/torque
+yes, a many pointer is basically a raw pointer
+
+1738437606
+grayhatter!~grayhatte@user/grayhatter
+dsal: many is [*] where in the common case there's a sentinel value you can use to find the end
+
+1738437611
+torque!~tachyon@user/torque
+and yes, one is a special case of many, but the distinction is often useful
+
+1738437625
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+zig just forces style, rust forces implementation
+
+1738437634
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, that makes sense.  I'll continue to not care about those for this task.  :)
+
+1738437671
+grayhatter!~grayhatte@user/grayhatter
+dsal: it's a type so you're in comptime which makes it a perfect case for `comptime unreachable` that way you get a compile error if you refactor later :)
+
+1738437687
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I have been burned by shadowing in go
+
+1738437690
+dsal!sid13060@id-13060.lymington.irccloud.com
+I've got fancy @compileErrors in here
+
+1738437699
+grayhatter!~grayhatte@user/grayhatter
+I've been burned by shadowing in python
+
+1738437719
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rockorager: may you explain? what bugs did that cause?
+
+1738437733
+torque!~tachyon@user/torque
+at work this week one of the guys had a shadowing bug due to a function argument with the same name as a member variable in C++
+
+1738437734
+grayhatter!~grayhatte@user/grayhatter
+well, not me, but my users got burned on a security issue someone else wrote because the language was down with that 
+
+1738437751
+torque!~tachyon@user/torque
+I sure hate c++ and will never understand why people who write it use implicit this, the worst possible language feature
+
+1738437756
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: that’s not a shadowing bug to me, but an implicit horror
+
+1738437766
+hadronized!~hadronize@2001:41d0:a:fe76::1
+being able to use foo instead of this->foo is a terrible design idea
+
+1738437788
+torque!~tachyon@user/torque
+100% agree
+
+1738437808
+torque!~tachyon@user/torque
+but what's even worse is that it's somehow the prevailing style
+
+1738437815
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+what's the point in shadowing? seems like needless complexity to me
+
+1738437831
+torque!~tachyon@user/torque
+technically detecting shadowing is more work
+
+1738437927
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I'm confused what feature you're looking for in shadowing? 
+
+1738437929
+hadronized!~hadronize@2001:41d0:a:fe76::1
+palanix: it prevents having to create temporaries with a weird, unneeded names, and allows to write the code in a more expressive way
+
+1738437943
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: mitigating the lack of chaining of try
+
+1738437948
+grayhatter!~grayhatte@user/grayhatter
+hadronized: sounds like you're not comfortable with writing zig code yet, I've never had this problem
+
+1738437955
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+hadronized: I don’t remember specifically but the same bug it always is: using the wrong variable
+
+1738437956
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+if the temporaries have weird and unneeded names, chances are the temporaries are unneeded
+
+1738437959
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I find it horrible not to be able to use it in suffix position, while we have .?
+
+1738437969
+hadronized!~hadronize@2001:41d0:a:fe76::1
+palanix: see ^
+
+1738437979
+hadronized!~hadronize@2001:41d0:a:fe76::1
+an example is a gRPC / HTTP call
+
+1738438003
+hadronized!~hadronize@2001:41d0:a:fe76::1
+usually you have to create a client (fallible), then maybe set your headers (fallible) and payload (fallible), then send (fallible)
+
+1738438012
+grayhatter!~grayhatte@user/grayhatter
+oh, the real issue is you don't like that zig forces you to explicitly manage errors correctly?
+
+1738438024
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+what a weird thing to say to someone
+
+1738438025
+grayhatter!~grayhatte@user/grayhatter
+yeah, that's intentional, and something I like about zig
+
+1738438026
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Zig forces me to lay my code in a weird way
+
+1738438031
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the managing part is the same
+
+1738438053
+torque!~tachyon@user/torque
+having used the http api, i have not felt any pain from not being able to chain calls
+
+1738438060
+torque!~tachyon@user/torque
+it reads better from top to bottom
+
+1738438060
+grayhatter!~grayhatte@user/grayhatter
+yes, it requires you structure your code in a way that's easy to audit and understand
+
+1738438066
+grayhatter!~grayhatte@user/grayhatter
+this is a feature
+
+1738438066
+torque!~tachyon@user/torque
+than left to right
+
+1738438068
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+it's a bit weird but at the end of the day, zig also has an offical fmt, and it's just enforcing style
+
+1738438084
+hadronized!~hadronize@2001:41d0:a:fe76::1
+haha
+
+1738438090
+hadronized!~hadronize@2001:41d0:a:fe76::1
+this is the wost exotic thing I have seen
+
+1738438094
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+zig doesn't even require you to do it, you can just use parentheses
+
+1738438096
+hadronized!~hadronize@2001:41d0:a:fe76::1
+« Zig has an official fmt »
+
+1738438097
+torque!~tachyon@user/torque
+this is a style preference that I admit is somewhat driven by the design of the langauge
+
+1738438105
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m pretty sure the std has many places where the « style » is inconsistent
+
+1738438118
+torque!~tachyon@user/torque
+but since I think it improves the readability of the code I have no reason to complain about it
+
+1738438121
+grayhatter!~grayhatte@user/grayhatter
+hadronized: you know you can write try then(try stuff(input)); right?
+
+1738438129
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+it's literally `zig fmt`
+
+1738438136
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: if you suggest this, you’re either trolling me, or delusional
+
+1738438136
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+yeah if you use tons of parens you can chain
+
+1738438145
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+but it’s terrible to read
+
+1738438174
+hadronized!~hadronize@2001:41d0:a:fe76::1
+people can’t see « woah, Zig .* is so good because in Rust we have to do *(*(*(*(*(… in unsafe + raw pointers » and then suggest to do « try (try (try … »
+
+1738438178
+hadronized!~hadronize@2001:41d0:a:fe76::1
+s/see/say
+
+1738438183
+grayhatter!~grayhatte@user/grayhatter
+while I'd never give up the chance to troll anyone, I'm actually trying to be helpful, because I have the impression you don't want to write zig code, you want to write rust, and are angry that zig doesn't behave exactly like rust
+
+1738438196
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+but the try keyword seems like a waste to me. it's weird that normal error handling is after the statement, and try is infront
+
+1738438211
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I’ve been around this channel for a while now, and I know you already made up your mind about me a while ago
+
+1738438221
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if I didn’t want to write Zig, why would I still be writing it and talking about it?
+
+1738438253
+hadronized!~hadronize@2001:41d0:a:fe76::1
+> and are angry that zig doesn't behave exactly like rust
+
+1738438257
+torque!~tachyon@user/torque
+I actually like `catch` being a postfix keyword
+
+1738438263
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what? I’d use Rust and never think about Zig if I wanted that
+
+1738438274
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+catch makes sense but try doesn't
+
+1738438278
+grayhatter!~grayhatte@user/grayhatter
+hadronized: I would never write code the way you want to, and I don't have a problem with adding blocks or naming variables... I'm offering alt suggestions that I personally thing are bad, and lead to bad code because you don't *want to like* the common zig way
+
+1738438280
+torque!~tachyon@user/torque
+having try in front makes sense to me, because it's the first thing you read "ah, if this call fails immediately return to the caller"
+
+1738438283
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I actually like many ideas of Zig, and I don’t want to be like Rust; I think alternative ideas are interesting and worth investigating
+
+1738438305
+torque!~tachyon@user/torque
+having catch after follows the logical flow
+
+1738438317
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+catch is constrained by space, it doesn't make sense to put error handling infront of the function. but for try (et al) it's the same either way, so it's weird they didn't make a postfix try
+
+1738438319
+torque!~tachyon@user/torque
+I mean, even in languages with exceptions, try is always first and catch is always after the failable call
+
+1738438324
+grayhatter!~grayhatte@user/grayhatter
+hadronized: you don't think the alternative ideas are interesting, you only complain about how rust is better because I don't have to do [other idea]
+
+1738438337
+torque!~tachyon@user/torque
+try isn't really error handling, it's error propagation
+
+1738438346
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I told you you wouldn’t like the answer…
+
+1738438353
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+try/catch also becomes weird for people that used java and similar before
+
+1738438355
+torque!~tachyon@user/torque
+postfix try would read very weirdly imo
+
+1738438376
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+doesn't have to be try though
+
+1738438377
+torque!~tachyon@user/torque
+reeducating people who have used java is necessary for a brighter future, unfortunately
+
+1738438382
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I did like the ! operator in hare for propagation
+
+1738438388
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+postfix !
+
+1738438395
+grayhatter!~grayhatte@user/grayhatter
+torque: `maybeError(data) catch;`
+
+1738438396
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+both are fine to me though
+
+1738438402
+torque!~tachyon@user/torque
+I thought it read a lot worse
+
+1738438411
+grayhatter!~grayhatte@user/grayhatter
+torque: `maybeError(data) catch |e| return e;` 
+
+1738438423
+torque!~tachyon@user/torque
+I mean that's what try is syntactic surgar for
+
+1738438437
+grayhatter!~grayhatte@user/grayhatter
+yeah, try is obviously superior there :)
+
+1738438456
+torque!~tachyon@user/torque
+I am a big fan of operators being plain words, I am glad zig got rid of return% from the early days lol
+
+1738438456
+palanix!~palanix@2a02:3100:671c:b800:177d:db3:cda:4518
+try is syntactic sugar but bad one. it's the cancer inducing fake sweeteners
+
+1738438468
+torque!~tachyon@user/torque
+it's a good one, and I'm sorry you disagree
+
+1738438523
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ACTION also likes go error handling
+
+1738438537
+grayhatter!~grayhatte@user/grayhatter
+seeing the way try is abused in python, and how awful it is trying to working around it 
+
+1738438542
+grayhatter!~grayhatte@user/grayhatter
+I like zig's try
+
+1738438565
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:)
+
+1738438610
+grayhatter!~grayhatte@user/grayhatter
+if I never have to fix a `catch Exception:` again, I'll be **so** happy
+
+1738438625
+grayhatter!~grayhatte@user/grayhatter
+rockorager: lol, dangerous words in #zig
+
+1738438638
+torque!~tachyon@user/torque
+actually i think decl literals made it so that `try` and `catch |e| return e;` are not exactly equivalent
+
+1738438648
+grayhatter!~grayhatte@user/grayhatter
+but I know you have at least one person who agrees here 
+
+1738438650
+torque!~tachyon@user/torque
+but I haven't messed around with it to tell
+
+1738438757
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+hadronized: back to naming, I had a hard time with names because of optionals until I saw the maybe_x pattern. have you seen that one?
+
+1738438780
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+basically call all your optionals maybe_x so you can unwrap it to just x
+
+1738438796
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.1.1/#errors it used to be so beautiful. I'm glad this is still up lol
+
+1738438807
+torque!~tachyon@user/torque
+it's fun to run across this syntax in really old github issues also
+
+1738438808
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+that was consistently the place that I wanted to use the same name twice
+
+1738438810
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I haven’t really seen that but I did came up with it with my rewrite of flirt in Zig, yes
+
+1738438825
+grayhatter!~grayhatte@user/grayhatter
+hadronized: "an example is a gRPC / HTTP call" yeah, it would be awful if you had to address the fact that errors were possible... also, don't blame zig because your gRPC generation code has an absolute **trash** api... creating a client shouldn't fail (other than OOM?), setting headers shouldn't fail, setting a payload shouldn't fail, sending should maybe fail.
+
+1738438843
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: different opinion
+
+1738438851
+hadronized!~hadronize@2001:41d0:a:fe76::1
+chaining allows to focus on the « happy path » of the code
+
+1738438859
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it doesn’t remove anything from the error management path
+
+1738438869
+grayhatter!~grayhatte@user/grayhatter
+right, but mine is not only objectively better, but it's the way most people who like and use zig would write that api
+
+1738438881
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but when you propagate the error / option / whatever upwards, having that lifting in your face is really annoying
+
+1738438900
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, confirmation bias, I get that
+
+1738438909
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(I do it too, don’t worry)
+
+1738438910
+torque!~tachyon@user/torque
+I do think that having the language encourage trying to write code that does not produce errors while still making error handling straightforward is a good thing
+
+1738438916
+grayhatter!~grayhatte@user/grayhatter
+one... that's not technially confirmation bias... but do you get that?
+
+1738438925
+grayhatter!~grayhatte@user/grayhatter
+ahh, ok, maybe you do get it :)
+
+1738438938
+grayhatter!~grayhatte@user/grayhatter
+torque: couldn't agree more!
+
+1738438951
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh yeah, if people enjoy writing Zig and do not complain about try / shadowing, then one person showing up and complaining about it is not really worth investigating
+
+1738438965
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but it’s the exact definition of a confirmation bias
+
+1738438970
+grayhatter!~grayhatte@user/grayhatter
+it you can write code that does error, or write code that can't error, and you chose to write code that *can* error, you're a bad engineer and should feel bad... and probably stop writing code
+
+1738438981
+hadronized!~hadronize@2001:41d0:a:fe76::1
+maybe you haven’t thought that most people actually would dislike that, and you’re only exposed to people who like it
+
+1738439010
+grayhatter!~grayhatte@user/grayhatter
+hadronized: have you considered, what if you're wrong? what if not emitting errors for every step is a better way to write code?
+
+1738439011
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I remember a discussion pretty similar to that in Rust before the async/await syntax was added
+
+1738439022
+hadronized!~hadronize@2001:41d0:a:fe76::1
+they decided to use the .await syntax, which I initially hated
+
+1738439028
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and now I understand why it was the best idea
+
+1738439060
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: I don’t think I’m wrong, and I don’t think I’m right
+
+1738439066
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I just wanted an alternative way
+
+1738439077
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like, you can use try!(x) in Rust if you want to
+
+1738439087
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(that’s getting deprecated but it has been allowed for more than a decade)
+
+1738439088
+torque!~tachyon@user/torque
+please dont bring up async. youre triggering me
+
+1738439091
+grayhatter!~grayhatte@user/grayhatter
+I thought try! was a macro?
+
+1738439095
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it is
+
+1738439103
+torque!~tachyon@user/torque
+I want zig to have good language-level async support
+
+1738439115
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but still, if you prefer your one-line-one-error-propagation, then do that
+
+1738439120
+grayhatter!~grayhatte@user/grayhatter
+oh, you mean wrap code in magic instead of handling errors?
+
+1738439122
+grayhatter!~grayhatte@user/grayhatter
+*sigh*
+
+1738439139
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: it’s probably pretty hard, and I think Rust is actually doing fine with it (but I do agree it’s super hard to learn and not perfect at all)
+
+1738439152
+torque!~tachyon@user/torque
+it's a very hard problem to solve which is why I think it's worth solving
+
+1738439154
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: so try is magic?
+
+1738439177
+torque!~tachyon@user/torque
+I wrote some stuff with libxev a while ago and reconfirmed to myself that c-style callback-only async will always produce spaghetti code
+
+1738439178
+grayhatter!~grayhatte@user/grayhatter
+nice strawman... no macros are magic
+
+1738439187
+grayhatter!~grayhatte@user/grayhatter
+ok, I'm sufficently frustrated by this conversation now, back to writing zig instead of arguing
+
+1738439190
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: I think the pull-based approach of Rust is good, but I’m not entirely sure about the « move the runtime to libraries » part (it’s probably good too, but I’m not completely convinced)
+
+1738439191
+torque!~tachyon@user/torque
+there's probably a way to minimize that, but.....
+
+1738439191
+grayhatter!~grayhatte@user/grayhatter
+ACTION &
+
+1738439200
+hadronized!~hadronize@2001:41d0:a:fe76::1
+grayhatter: try!() is basically the same as try
+
+1738439224
+hadronized!~hadronize@2001:41d0:a:fe76::1
+there’s nothing wrong in using a simple macro like that
+
+1738439230
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it could even be written in user-land
+
+1738439287
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it basically just do a if let Ok(x) = expr { x } else { return expr; }
+
+1738439292
+hadronized!~hadronize@2001:41d0:a:fe76::1
+nothing really fancy nor magic…
+
+1738439302
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and that’s also how I think about try in zig
+
+1738439336
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I expect try foo(); to be foo() catch |err| return err;
+
+1738440159
+dsal!sid13060@id-13060.lymington.irccloud.com
+`thread 13067574 panic: integer part of floating point value out of bounds` – man, property testing is my favorite.  Now I just have to figure out how to not have this bug.
+
+1738440180
+dsal!sid13060@id-13060.lymington.irccloud.com
+Is there a good reason for math.cast to not support floating point numbers?
+
+1738440299
+torque!~tachyon@user/torque
+since floats technically have infinite range (lol) there's no such thing as an out of range cast
+
+1738440304
+torque!~tachyon@user/torque
+so just use @floatCast
+
+1738440347
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm using @intFromFloat which is panicking
+
+1738440360
+dsal!sid13060@id-13060.lymington.irccloud.com
+std.math.cast returns an optional value but only supports ints
+
+1738440380
+torque!~tachyon@user/torque
+ah, I see
+
+1738440390
+torque!~tachyon@user/torque
+it might make sense for cast to be able to handle that case
+
+1738440475
+torque!~tachyon@user/torque
+there's also std.math.lossyCast which will saturate instead of overflow
+
+1738440502
+torque!~tachyon@user/torque
+that one appears to support float->int conversion
+
+1738440674
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm just writing my own for this.  Still learning.  But having property tests is pretty great.
+
+1738444269
+dsal!sid13060@id-13060.lymington.irccloud.com
+How can I tell which field of a tagged union is active?
+
+1738444287
+dsal!sid13060@id-13060.lymington.irccloud.com
+(I'm trying to write a function EnumA -> EnumB where A is a subset of B)
+
+1738444564
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, found std.meta.activeTag
+
+1738445639
+ifreund!2940d10f8b@user/ifreund
+floats can't represent all integers exactly, conversion can potentially fail in both directions depending on the exact types
+
+1738445693
+ifreund!2940d10f8b@user/ifreund
+e.g. a f64 can represent the full range of an i32 exactly but the full range of an i64
+
+1738446045
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, in practice I can't really include float conversions in my tests for that reason.
+
+1738446256
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+sick, I didn't realize that MyFoo.zig could refer to itself e.g. `pub fn init() MyFoo`
+
+1738448812
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm bombarding this library author.  Hope she doesn't get mad with me shotgunning code all over her repo.
+
+1738449161
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm pretty happy with `fn castUnion(comptime T: type, from: anytype) T`, though.  This reflection stuff feels kind of unfair.
+
+1738451399
+dsal!sid13060@id-13060.lymington.irccloud.com
+It does feel like I should be able to write this as `fn castUnion(from: anytype) T` and use that `T` within the function as a `comptime type`
+
+1738452760
+torque!~tachyon@user/torque
+sounds like you want this https://github.com/ziglang/zig/issues/16313
+
+1738453022
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, I've run into this a few times.
+
+1738453073
+dsal!sid13060@id-13060.lymington.irccloud.com
+I thumbed that up, so I assume it's happening now.
+
