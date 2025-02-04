@@ -1,0 +1,560 @@
+1738564451
+LAC-Tech!~lewis@granite-phrase.bnr.la
+hey std.debug.print works inside tests again on 0.13, neat.
+
+1738580450
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ahh this modular exponentiation is going to be the death of me I swear
+
+1738583970
+zenomat!36eb415140@user/zenomat
+hey, i have a quick question about the usage of allocators. if i have a struct, with an init method that takes a string, which has previously been allocated by the caller of the function, and said struct is to own the data, do I pass in an allocator, create a copy of the string for storing in the struct, which I later free in the deinit call, or do i store the pointer and hope the caller doesn't deallocate the string, before I'm finished? and further, if I ma
+
+1738583970
+zenomat!36eb415140@user/zenomat
+ke the copy, do i store the allocator in the struct, to ensure the deinit call uses the same allocator, or do i pass that allocator back into the deinit call?
+
+1738584022
+zenomat!36eb415140@user/zenomat
+because currently I like to do a copy, and passing the same allocator into the deinit call, but that involves a lot of passing allcators around and doing a lot of copies
+
+1738585288
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is there a non-satanic way to @truncate except the _least_ significant bit?
+
+1738585329
+Betal!~Betal@user/betal
+also learning allocators, zenomat: copying something that will be freed seems like a performance loss, would be good if you can use the same string already allocated
+
+1738585481
+zenomat!36eb415140@user/zenomat
+Betal: thats what I think too. I'm just wondering how to do that idomatically. because hoping that the string will not be freed, while the function still needs it, kinda sucks, and otherwise I'd have to think really hard about lifetimes. I was hoping zig has a design pattern, which might alleviate that thinking^^
+
+1738587515
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is there a way to get nice assembly output and mapping like with C on godbolt? Even a tiny zig program has tens of thousands of lines of assembly in their window and using things like -O ReleaseFast lowers it but removes any mapping and the output is still huge
+
+1738587994
+ifreund!2940d10f8b@user/ifreund
+there should be no problem with -O ReleaseFast, share an example
+
+1738588042
+ifreund!2940d10f8b@user/ifreund
+zenomat: it depends on where these input strings come fro
+
+1738588076
+ifreund!2940d10f8b@user/ifreund
+if they come from parsing input at program startup, it would be reasonable to put them all in an arena when parsing and never copy/free them
+
+1738588087
+ifreund!2940d10f8b@user/ifreund
+(just to share one example)
+
+1738588219
+zenomat!36eb415140@user/zenomat
+the strings I am talking about are received received from a client at some point during the runtime. the strings should be stored, because the are needed to process the request and compute an answer
+
+1738588521
+ifreund!2940d10f8b@user/ifreund
+zenomat: it sounds like the lifetime of the strings ends when the request is finished processing then, which is the classic use-case for a per-request arena
+
+1738588785
+zenomat!36eb415140@user/zenomat
+alright, thank you. Imma take a look at that. Didn't work much with arenas until now
+
+1738592286
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: this is now small enough I'd say, but no mapping: https://godbolt.org/z/e76r4Grc8
+
+1738592610
+ifreund!2940d10f8b@user/ifreund
+tsujp: you've written a function that is completely optimized away as it has no side effects
+
+1738592641
+ifreund!2940d10f8b@user/ifreund
+no line in your source code maps to the generated code, all the generated code is from start.zig
+
+1738592661
+ifreund!2940d10f8b@user/ifreund
+it's generally easier to use exported functions for godbolt exploration
+
+1738592675
+ifreund!2940d10f8b@user/ifreund
+for example: https://godbolt.org/z/oPxv4sEz5
+
+1738592685
+ifreund!2940d10f8b@user/ifreund
+here it's very clear that the function does nothing
+
+1738594417
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: ah okay, I suppose understanding the optimisations it's doing and how they're being triggered is key there then
+
+1738594568
+ifreund!2940d10f8b@user/ifreund
+tsujp: if you don't use the result of your computation, your computation is dead code and will be eliminated
+
+1738594602
+ifreund!2940d10f8b@user/ifreund
+if there are no runtime inputs to your computation, then the result will be calculated at compile time and only the result will be emitted in the generated code
+
+1738594625
+ifreund!2940d10f8b@user/ifreund
+these are the only two optimizations you need to understand to see why things did not work as you expected
+
+1738594672
+ifreund!2940d10f8b@user/ifreund
+to see what your code does, export a function that accepts some arguments, does some computation, and returns the result
+
+1738595572
+avallee!uid686632@user/avallee
+is there a way to create a comptime int of arbitrary size ? Say I have an anytype T, I would like to create an int of the same size as T.
+
+1738595587
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: oh right, sorry im a bit tired right now so my mental capacity is failing -- will give what you said a shot in a bit, trying to get zls working with eglot with emacs whch isn't working currently :'(
+
+1738595601
+avallee!uid686632@user/avallee
+That looks like the @intType propos I found on #261
+
+1738595631
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+avallee: you can create an int with @Type
+
+1738596134
+avallee!uid686632@user/avallee
+thanks !
+
+1738597137
+avallee!uid686632@user/avallee
+hmmm... I managed to do it with @Type, though now I have the issue that apparently I cannot @bitCast from a pointer type to an int type
+
+1738597160
+avallee!uid686632@user/avallee
+even though both the pointer and the int have the same size
+
+1738597277
+avallee!uid686632@user/avallee
+essentially I would like to take an anytype T and check whether all its bits are 1s. I figured I could create an int type U, the size of T, set it to std.math.maxInt(U), and @bitCast my value from T to U
+
+1738597313
+ifreund!2940d10f8b@user/ifreund
+it's not possible to do that in a well-defined way for all types
+
+1738597328
+ifreund!2940d10f8b@user/ifreund
+not all types have a well-defined memory layout
+
+1738597386
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+could you first add a check in the anytype function such that if T is say an int or an enum you can do your logic, and if it's not you @compileError?
+
+1738597437
+avallee!uid686632@user/avallee
+@ifreund: not sure I'm following what is not possible or defined
+
+1738597468
+avallee!uid686632@user/avallee
+@tsujp: I guess I could switch on the type T to do ptrCast for pointers and @bitCast for the rest
+
+1738597484
+avallee!uid686632@user/avallee
+though I'm confused why @bitCast refuses to work on pointers
+
+1738597524
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+avallee: ifreund is saying that not all types T have memory layouts such that your logic of checking all 1s, making a new type, and doing @bitCast would "just work"
+
+1738597725
+avallee!uid686632@user/avallee
+oh you mean for arbitrary T, even structs and such ?
+
+1738597730
+avallee!uid686632@user/avallee
+I wasn't clear then
+
+1738597748
+avallee!uid686632@user/avallee
+my anytype is in fact any primitive type
+
+1738597794
+avallee!uid686632@user/avallee
+so, that's an 8/16/32/64 int, float, pointer essentially
+
+1738597809
+avallee!uid686632@user/avallee
+not a struct, no padding, etc
+
+1738597898
+ifreund!2940d10f8b@user/ifreund
+pointers aren't really integers, you can use @intFromPointer() though
+
+1738597957
+avallee!uid686632@user/avallee
+I guess in my head @bitCast was an equivalent of reinterpret_cast
+
+1738598089
+avallee!uid686632@user/avallee
+the annoying thing is that I have to add a huge mushroom for the special case of void* -> ?*anyopaque instead of doing a bitCast
+
+1738598159
+avallee!uid686632@user/avallee
+soo theres no equivalent of reinterpret_cast, a-la "just reinterpret_cast whatever these bits were to an int"?
+
+1738600443
+ifreund!2940d10f8b@user/ifreund
+reinterpert_cast has all kinds of fun special cases when it comes to pointers
+
+1738600446
+ifreund!2940d10f8b@user/ifreund
+it's not a good feature
+
+1738600952
+Zorgatone!~Zorgatone@user/Zorgatone
+?quit
+
+1738608394
+avallee!uid686632@user/avallee
+Hmmm I can't find a way to do a non-relative import, how does that work?
+
+1738608439
+avallee!uid686632@user/avallee
+Also, I cannot import relatively from above the root source file, meaning for instance that my executables need to be at the top level Src dir
+
+1738608446
+avallee!uid686632@user/avallee
+am I missing something ?
+
+1738608559
+grayhatter!~grayhatte@user/grayhatter
+avallee: zig doesn't support that, intentionlly
+
+1738608612
+grayhatter!~grayhatte@user/grayhatter
+if you're trying to import a dependency/library, you can add that source repo to the build.zig.zon file, and specify a path = "../directory" instead of a url
+
+1738608678
+avallee!uid686632@user/avallee
+hmmm, I see
+
+1738608882
+avallee!uid686632@user/avallee
+so I guess the pattern would be to have a lib/ package with a static library with most core logic, and a bin/ package with the executables entry points using the lib?
+
+1738608899
+avallee!uid686632@user/avallee
+and link each exe with the lib
+
+1738609393
+avallee!uid686632@user/avallee
+Hum no that doesn't seem to solve it
+
+1738609425
+avallee!uid686632@user/avallee
+it's even worst, since there's no headers I'm supposed to redeclare all external at the CU of use ?
+
+1738609499
+avallee!uid686632@user/avallee
+zon is a part of zig or an external project ?
+
+1738609514
+avallee!uid686632@user/avallee
+I can't seem to find its documentation 
+
+1738609753
+avallee!uid686632@user/avallee
+Zig module = compilation unit ?
+
+1738609801
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, zig module = .zig file
+
+1738610044
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a dependency from build.zig.zon is used via b.dependency(...) in the build.zig, easiest to look at examples as I don't think the docs are great on this point
+
+1738610092
+avallee!uid686632@user/avallee
+Indeed the docs are lacking a bit, they mention the terms "package" and "module" but there no links to explain what these are
+
+1738610109
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a package is something with a build.zig in the root
+
+1738610147
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and is what you refer to in dependencies in build.zig.zon
+
+1738610200
+avallee!uid686632@user/avallee
+I see
+
+1738610325
+avallee!uid686632@user/avallee
+if a package has multiple artifacts
+
+1738610332
+avallee!uid686632@user/avallee
+say an executable and a lib
+
+1738610357
+avallee!uid686632@user/avallee
+I can still depend on it and somehow just grab and link with it's lib?
+
+1738610371
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, but you can also expose modules in a package
+
+1738610400
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+with b.addModule(...)
+
+1738610444
+avallee!uid686632@user/avallee
+what will that do ? allow others to link with that object file ?
+
+1738610458
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not an object file, it's a zig module
+
+1738610476
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can use it as if the zig file is a module directly in your project
+
+1738610493
+avallee!uid686632@user/avallee
+okay so in Zig there is always just 1 fat compilation unit with everything ?
+
+1738610515
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1738610526
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you _can_ make static or dynamic libs and linking them
+
+1738610545
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was talking about .addModule specifically
+
+1738610562
+avallee!uid686632@user/avallee
+hum
+
+1738610574
+avallee!uid686632@user/avallee
+okay so say I have an executable exe.zig
+
+1738610583
+avallee!uid686632@user/avallee
+and a module mod.zig
+
+1738610599
+avallee!uid686632@user/avallee
+I use addModule(mod.zig) on my executable 
+
+1738610621
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not exactly
+
+1738610648
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+b.addModule is to _expose_ a module from your package
+
+1738610675
+avallee!uid686632@user/avallee
+expose meaning someone depending on it can @import it ?
+
+1738610676
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if exe.zig and mod.zig are in the same package, there's no reason to do that
+
+1738610705
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it means someone putting your package in build.zig.zon can import it
+
+1738610785
+avallee!uid686632@user/avallee
+and that module that I exposed can reference others parts of the package it is from ?
+
+1738610808
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+technically you don't need to have a separate package to do non-relative imports, you can do b.addAnonymousImport("whatever", ...) https://ziglang.org/documentation/master/std/#std.Build.Module.addAnonymousImport
+
+1738610836
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+avallee: well, yes, that's just relative imports as usual
+
+1738610888
+avallee!uid686632@user/avallee
+alright that makes sense
+
+1738610896
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ehm, `exe.root_module.addAnonymousImport("whatever", ...)` rather
+
+1738611994
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+I'm experimenting with "zig cc -target x86_64-macos" from linux. I'm trying to compile openssl, it errors out with: 'CommonCrypto/CommonCryptoError.h' file not found. Is there anything I can do or I have to use another toolchain?
+
+1738612308
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it common practice to use @bitCast() on packed structs full of bools (bitsets)?
+
+1738612403
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I also wonder about endianness
+
+1738612430
+hadronized!~hadronize@2001:41d0:a:fe76::1
+packed struct { a: bool, b: bool, c: bool }
+
+1738612446
+hadronized!~hadronize@2001:41d0:a:fe76::1
+does @bitCast(_) on it yields 0babc or 0bcba?
+
+1738612450
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yield*
+
+1738613893
+motiejus!~motiejus@88.223.107.21
+arkanoid: you probably need a macos sdk and franeworks dir for this header (with -F IIRC). Zig bundles only a small part of MacOS SDK, just enough to compile/link itself
+
+1738613979
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+motiejus: I have it, but I'm failing in telling zig cc to use it
+
+1738614093
+motiejus!~motiejus@88.223.107.21
+try this? https://github.com/ziglang/zig/issues/10299#issuecomment-989736808 it's been a long time since I tried macos
+
+1738614818
+arkanoid!~arkanoid@2-235-241-4.ip230.fastwebnet.it
+trying with CC="zigcc -target x86_64-macos-none --sysroot /home/arkanoid/SDK/MacOSX10.10.sdk" make, but errors out "include/crypto/rand.h:30:13: fatal error: 'CommonCrypto/CommonCryptoError.h' file not found", the file is in /home/arkanoid/SDK/MacOSX10.10.sdk/usr/include/CommonCrypto/CommonCryptoError.h
+
+1738615780
+toms!~tom@pogostick.net
+arkanoid: I know little of zig and less OSX, but CC="..." strace -fe openat make  ....?
+
+1738615847
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Let's say you have a loop; in each iteration there's a small chance you create an ArrayList(u8), a small chance you delete one, and a much larger chance you append to an existing one. what allocator makes sense here, in this "high churn" scenario?
+
+1738616138
+andrewrk!~andrewrk@mail.ziglang.org
+don't create array lists in the loop, create them outside the loop
+
+1738616220
+andrewrk!~andrewrk@mail.ziglang.org
+I'm sure the software in question could be redesigned to not ask this question, and thus perform significantly better
+
+1738616415
+LAC-Tech!~lewis@granite-phrase.bnr.la
+so then there's a pool of array lists outside the loop you pull from.
+
+1738616532
+andrewrk!~andrewrk@mail.ziglang.org
+that sounds an awful lot like an allocator
+
+1738616725
+LAC-Tech!~lewis@granite-phrase.bnr.la
+most of the time I just put a big ol arena allocator at the top and free it all at the end. I suppose I could just do that, with the caveat that there'd be a bunch of unsued memory I can't reclaim as the loop ticks over
+
+1738617014
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I think I'll just give each array list a max size, and use a top level memory pool thinge that just doles out blocks of that max size.
+
+1738618190
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: one trick is to have only 1 array list rather than N
+
+1738618212
+andrewrk!~andrewrk@mail.ziglang.org
+maybe you can figure out how to make your deletes work with such a system
+
+1738618267
+andrewrk!~andrewrk@mail.ziglang.org
+that's assuming they store the same element type 
+
+1738618494
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: yeah they do. I'm trying to simulate a system with a bunch of read only files, so it's all just u8s. one giant array of u8s would I guess by ideal from a memory management stand point, though then you have to get into shuffling things about if one part of the u8 grows out and wants to overwrite another part. 
+
+1738618555
+andrewrk!~andrewrk@mail.ziglang.org
+it sounds like you kind of are writing an allocator
+
+1738618558
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I think I'll go for the memory pool idea for now. that's at least an order of magnitude less allocations than I originally planned.
+
+1738620020
+avallee!uid686632@user/avallee
+is there an equivalent of 0 sized arrays in Zig?
+
+1738620023
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: I see what you mean, that's probably the ideal end goal. custom allocator. thanks for getting the brain juices flowing
+
+1738620773
+andrewrk!~andrewrk@mail.ziglang.org
+avallee: I mean there are literally zero sized arrays in zig
+
+1738620779
+andrewrk!~andrewrk@mail.ziglang.org
+[0]T
+
+1738620809
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: happy hacking!
+
+1738621582
+avallee!uid686632@user/avallee
+oooh my bad I somehow stumbled across an old post saying they were not there >_<
+
+1738622549
+avallee!uid686632@user/avallee
+Hum..but it seems I cannot index into it
+
+1738622601
+ifreund!2940d10f8b@user/ifreund
+well yeah, it has no elements
+
+1738622679
+avallee!uid686632@user/avallee
+well it does, just, zig doesn't know it ;D
+
+1738622710
+avallee!uid686632@user/avallee
+I want to re create the C behavior of zero sized arrays at end of structs 
+
+1738622737
+ifreund!2940d10f8b@user/ifreund
+those are "flexible array members" not zero sized arrays
+
+1738622750
+avallee!uid686632@user/avallee
+I guess the idiomatic way will be some helper functions in the struct to ptrCast after the size of the struct
+
+1738622760
+ifreund!2940d10f8b@user/ifreund
+and I dont think a zero sized array would help you
+
+1738622805
+ifreund!2940d10f8b@user/ifreund
+yeah, a function that takes a pointer to the struct and adds the size of the struct is a fine way to do thaf
+
+1738622830
+ifreund!2940d10f8b@user/ifreund
+but I would only do this for the purpose of interoperating with a C library
+
+1738622880
+Earnestly!~earnest@user/earnestly
+Oh ZON was merged
+
+1738622920
+ifreund!2940d10f8b@user/ifreund
+0.14.0 will be very nice :)
+
