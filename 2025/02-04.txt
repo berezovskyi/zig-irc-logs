@@ -1,0 +1,320 @@
+1738628431
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Does this mean ZON config files for our apps, to avoid recompilation? that'd be neat
+
+1738628957
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+woah you can directly import a zon file, that’s pretty cool
+
+1738629654
+torque!~tachyon@user/torque
+finally
+
+1738629695
+torque!~tachyon@user/torque
+congrats to all involved
+
+1738629744
+LAC-Tech!~lewis@granite-phrase.bnr.la
+can you dynamically do it? like how rustaceans tend to use toml for config
+
+1738629782
+torque!~tachyon@user/torque
+yes, 
+
+1738629806
+torque!~tachyon@user/torque
+see the top bullet points in https://github.com/ziglang/zig/pull/20271
+
+1738630441
+hadronized!~hadronize@2001:41d0:a:fe76::1
+LAC-Tech: it’s just a toml parser though
+
+1738631900
+LAC-Tech!~lewis@granite-phrase.bnr.la
+neat, I will definitely be using that
+
+1738635146
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+is there a spec somewhere for what types are allowed?
+
+1738636090
+torque!~tachyon@user/torque
+hmm, I thought there was an outline in the pr but maybe it was somewhere else
+
+1738636112
+torque!~tachyon@user/torque
+I think it supports most things that aren't pointers
+
+1738647861
+LAC-Tech!~lewis@granite-phrase.bnr.la
+if it can do what json or toml does, more or less, I'll be happy.
+
+1738650061
+torque!~tachyon@user/torque
+it can certainly represent structured data, but as far as I've seen, it's geared to parsing into a specific data scheme (as represented by a type) than those very general-purpose serialization formats
+
+1738650115
+torque!~tachyon@user/torque
+i.e. I don't think there's any way to parse it into dynamic hashmaps like you can with json; it parses to zig primitive types
+
+1738650265
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/blob/master/lib/std/zon.zig this has an overview of what's supported
+
+1738650308
+torque!~tachyon@user/torque
+anyway, typically it's much better to parse a document into a specific schema anyway, so I don't think that's much of a limitation
+
+1738655570
+Affliction!affliction@idlerpg/player/affliction
+Speaking of documents with schemas, considering zig for a project, any recommendations for XML parsers and HTTP clients? (ideally non-blocking, either with their own event loop or external (incidentally, can anyone recommend one of these for something perhaps unrelated?))
+
+1738664216
+avallee!uid686632@user/avallee
+Im trying to get a struct to have a fixed size of 4k. In practice this struct is a header which is less than 4k, but the 4k are reserved for its future growth. I'm trying to declare it lime the following, though it makes the compiler segfault: extern struct { foo: u32, _: [HEADER_SIZE - @offsetOf(@This(), "_")] }
+
+1738664247
+avallee!uid686632@user/avallee
+I guess the self reference is a no no, though is there some trick to achieve the same effect ?
+
+1738664350
+avallee!uid686632@user/avallee
+I could just not consider that reserved space as part of the header, though it makes the code simpler to have it span the 4k and use sizeOf(Header) to access the trailing data
+
+1738665136
+hadronized!~hadronize@2001:41d0:a:fe76::1
+avallee: 4k? that’s a lot
+
+1738665261
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that sounds like a recursive implementation though, it’s unlikely to be a thing
+
+1738665282
+avallee!uid686632@user/avallee
+essentially I don't want the header to be on the same page as the payload
+
+1738665389
+hadronized!~hadronize@2001:41d0:a:fe76::1
+maybe you can generate that struct with a comptime fn, so that you have the required indirection not to turn that into a recursive call
+
+1738665443
+avallee!uid686632@user/avallee
+oh that's a good idea! I will try that
+
+1738665499
+hadronized!~hadronize@2001:41d0:a:fe76::1
+good luck
+
+1738665535
+avallee!uid686632@user/avallee
+I was thinking also maybe a 0sized field aligned on 4k at the end may work
+
+1738665802
+avallee!uid686632@user/avallee
+oh the 0 sized aligned field worked, that's neat
+
+1738671798
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+damn i thought i had modular binary exponentiation working in zig without overflow but alas it overflows
+
+1738672192
+zenomat!36eb415140@user/zenomat
+hey, because I have been banging my head against this for quite a bit, I ask here: I am working with a windows HANDLE. I receive that handle and need to write that into a u8 array. I tried with `std.mem.writeInt(*anyopaque, hash[4..(4 + @sizeOf(*anyopaque))], item_handle, .little)` but that can't extract the size of a *anyopaque. What is the best way I go about that? I also tried casting the value to another type, like u64, but I'm not sure, what the right ty
+
+1738672192
+zenomat!36eb415140@user/zenomat
+pe is, as the HANDLE type is defined as a `void *`
+
+1738672720
+zenomat!36eb415140@user/zenomat
+wait, nvm, I guess `@intFromPtr` should work
+
+1738683357
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Does zig panic in the stdlib? Trying to search on Github is annoying
+
+1738683699
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if i @bitReverse a u32 (lets say the number 13, i.e. 0b1101) then I use @as(u1, @truncate(...)) on it I get 0 as the output instead of 1
+
+1738683979
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hangon, truncate off the significant bits whoops
+
+1738683988
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i.e. it keeps from least significant upwards
+
+1738686946
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+@bitSizeOf is comptime only right? How can one check a runtime integers value is under a certain amount of bytes in size? Just do a less than to a hardcoded value?
+
+1738687097
+Zorgatone!~Zorgatone@user/Zorgatone
+is there a chat about libxev>
+
+1738687098
+Zorgatone!~Zorgatone@user/Zorgatone
+?
+
+1738687521
+Zorgatone!~Zorgatone@user/Zorgatone
+nvm, there isn't
+
+1738689693
+palanix!~palanix@2a02:3100:5c81:3300:e35d:6e4d:fce3:985a
+bwbuhse the stdlib is always shipped alongside the compiler so you can just grep. the answer to the question: yes, the stdlib has panics in several places
+
+1738689759
+palanix!~palanix@2a02:3100:5c81:3300:e35d:6e4d:fce3:985a
+(although not in many places"
+
+1738689841
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+palanix: I'm on my work laptop and don't have Zig on this machine, otherwise I would've :P thanks
+
+1738691451
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://gist.github.com/rtfeldman/77fb430ee57b42f5f2ca973a3992532f
+
+1738705246
+emigre!~emigre@emigre.online
+I've just seen this in Hacker News: Roc rewrites the compiler in Zig https://news.ycombinator.com/item?id=42935516
+
+1738705294
+emigre!~emigre@emigre.online
+bwbuhse: Oh! Haha... It's that link
+
+1738707867
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Regarding the Roc rewrite in Zig: the comment on code organization is interesting.
+
+1738707916
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+In general I'm a fan of builds that have strong opinions on project layout. Meson is my favorite build system for C/C++, for instance.
+
+1738707952
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Rust crates DO have a lot of ceremony, though. 
+
+1738708017
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+They take it to the extreme, and that has a lot of benifits, but it does remove some joy.
+
+1738708043
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what do you mean?
+
+1738708132
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I think it does introduce a refactoring hurdle. To "break this into it's own crate"
+
+1738708158
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+It's all very well-structured. All crates look the same.
+
+1738708184
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, and that’s reducing the cognitive charge to the minimum, since you know exactly where to look what
+
+1738708211
+hadronized!~hadronize@2001:41d0:a:fe76::1
+projects using code as configuration tends to quickly become hard to understand / audit because of all the, well, control-flow happening
+
+1738708226
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I am not denying the benefits at all. But I think there is a benefit to malleability as well.
+
+1738708295
+hadronized!~hadronize@2001:41d0:a:fe76::1
+indeed, and you have build.rs for that if you really need it
+
+1738708327
+hadronized!~hadronize@2001:41d0:a:fe76::1
+though talking only from experience (especially sbt in scala and CMake / bazel), I find it incredibly hard to ensure the maintainability of a codebase with such systems
+
+1738708350
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I mean sbt and CMake are at the other end of the spectrum
+
+1738708385
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I don't want THAT, for sure. And to be clear I think Cargo is impressive. I just think there's more to explore.
+
+1738708450
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Unfortunately I mostly have vibes. It's hard to make rational arguments against Cargo.
+
+1738708521
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what are you trying with Zig / other languages right now?
+
+1738708617
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Nothing serious, I'm a dabbler. But the first thing will likely be a gradual replacement of a C++ project. A private Kakoune fork, actually.
+
+1738708673
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+So I am actually pretty hyped on surgically inserting zig. That'd be harder with Rust.
+
+1738708682
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh woah, tell me more (Kakoune is my main driver and I’m maintaining some plugins, like kak-tree-sitter)
+
+1738708733
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+yea I know you from kts
+
+1738708747
+hadronized!~hadronize@2001:41d0:a:fe76::1
+why a rewrite?
+
+1738708755
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+My goal is to mostly learn modern C++
+
+1738708793
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+and just make it my own. So I swapped the build to Meson, and I am converting the Unit tests to something TAP-ish that Meson will understand.
+
+1738708873
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I'll live in that world for a while and then shim in Zig at an appropriate layer.
+
+1738708942
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I love Kak's paradigm but I want some more built-ins. I think it's more appropriate to fork than bother mawww all the time.
+
+1738708973
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well I wish you good luck then for that C++ / Zig adventure
+
+1738708993
+hadronized!~hadronize@2001:41d0:a:fe76::1
+eh, if what you think is profitable to everyone, merging upstream makes sense too
+
+1738709005
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, mawww replies at his own pace, I think he’s fine
+
+1738709018
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I need to bother him a bit around shm to kts slightly more natural
+
+1738709035
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+Totes. I will be sending tiny PRs. I got one open now for some lints from my CLion.
+
+1738709054
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+He's great.
+
+1738709086
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, the philosophy of Kakoune is the best
+
+1738709097
+hadronized!~hadronize@2001:41d0:a:fe76::1
+sometimes I challenge it but I realize the rest annoys me
+
