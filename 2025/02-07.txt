@@ -1,0 +1,712 @@
+1738892618
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+This website is dope https://falsepattern.com/zigbrains
+
+1738894837
+reykjalin!7e28cf3a41@user/reykjalin
+ACTION agrees
+
+1738897337
+andrewrk!~andrewrk@mail.ziglang.org
+that sounds like how my head feels after a long day's work
+
+1738897356
+andrewrk!~andrewrk@mail.ziglang.org
+"sorry honey I can't make dinner tonight, I have zigbrains"
+
+1738901297
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I'd like to build a Zig static library to be consumed by some C++; I'm using Zig Build System. I'm getting undefined references to Zig stuff. A shared library works, though. https://codeberg.org/chroot/evilkak/commit/9ae34b7280c88f2fb68ecfa3948b8987708e409b
+
+1738901361
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I am wondering if this is an issue or if I just don't understand how to link it in w/ Meson. A shared library works for now fwiw.
+
+1738902010
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://ziglang.org/documentation/0.13.0/#toc-Translation-failures I'm trying to make sense of this. "as long as the linker is aware of the compiled function", linkSystemLibrary is not enough?
+
+1738902418
+LAC-Tech!~lewis@granite-phrase.bnr.la
+getting a lot of "ld.lld: undefined symbol:", for functions where you go to the generated bindings and it has demoted them to extern
+
+1738904141
+torque!~tachyon@user/torque
+what are you translating?
+
+1738904147
+torque!~tachyon@user/torque
+it's hard to answer your question without more info
+
+1738904161
+torque!~tachyon@user/torque
+but it sounds like something is screwed up
+
+1738904267
+LAC-Tech!~lewis@granite-phrase.bnr.la
+torque: trying to do the ol' C import. https://github.com/LAC-Tech/The-WAL-of-Time/blob/bd920b3c3b2cfecb53b133f2377c7a75e208a512/build.zig#L40 it's possible I've screwed this bit up
+
+1738904316
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://github.com/LAC-Tech/The-WAL-of-Time/blob/bd920b3c3b2cfecb53b133f2377c7a75e208a512/src/dst.zig#L17 then I import it here
+
+1738904361
+torque!~tachyon@user/torque
+I mean this isn't dealing with your immediate problem but I'd recommend checking out vaxis https://github.com/rockorager/libvaxis
+
+1738904380
+torque!~tachyon@user/torque
+what are the symbols the linker is reporting as undefined?
+
+1738904437
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ld.lld: undefined symbol: ncplane_printf
+
+1738904457
+LAC-Tech!~lewis@granite-phrase.bnr.la
+then when you follow the symbol, it says it's been demoted to an extern function
+
+1738904512
+torque!~tachyon@user/torque
+I think notcurses actually has a couple of libraries. you may need to link an additional notcurses lib?
+
+1738904523
+LAC-Tech!~lewis@granite-phrase.bnr.la
+so my first thought was "ok, I just can't do variadic C functions with zig". then I read that part of the zig docs... and unless I misunderstood it suggests I should be able to use it if the code is linkedin
+
+1738904585
+torque!~tachyon@user/torque
+yes, I believe it is possible to call variadic c functions
+
+1738904716
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok so I'm not doing anything obviously wrong that you can see. I appreciate the feedback. I'll focus on the linking side of things
+
+1738904779
+torque!~tachyon@user/torque
+do you have a notcurses-core on your system?
+
+1738904817
+torque!~tachyon@user/torque
+you may need to additionally link that. I don't know if linksystemlibrary prefers dynamic or static libraries, but if it prefers static ones, you may have to pick up missing symbols from other archives
+
+1738904870
+LAC-Tech!~lewis@granite-phrase.bnr.la
+zig is smart enough to do "-lnotcurses -lnotcurses-core"
+
+1738904880
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I think I'll do a little sanity check in C, make sure that works
+
+1738905002
+torque!~tachyon@user/torque
+I'm not convinced that's true
+
+1738905080
+torque!~tachyon@user/torque
+unless linkSystemLibrary is secretly using pkgconfig or something under the hood, which I don't think it is, it should not be automagically adding linker flags for libraries you haven't explicitly requested
+
+1738905088
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://gist.github.com/LAC-Tech/8b158e9308b2e38b667c4385989114ec isn't that what this is telling me?
+
+1738905132
+torque!~tachyon@user/torque
+hmm, so it is
+
+1738905193
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah ok it screws up in C as well. sorry for wasting your time, I blamed C-translate because of that TODO comment.
+
+1738905220
+torque!~tachyon@user/torque
+`use_pkg_config: SystemLib.UsePkgConfig = .yes,`
+
+1738905232
+torque!~tachyon@user/torque
+hmm, it does use pkgconfig under the hood by default
+
+1738905234
+torque!~tachyon@user/torque
+interesting
+
+1738905271
+torque!~tachyon@user/torque
+sounds like your notcurses library was built wrong, somehow
+
+1738905336
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah maybe. I was using termbox2 before. very basic, but at least I could print stuff to the screen. notcurses looks super neat but very complicated
+
+1738905413
+torque!~tachyon@user/torque
+if you're using zig, it's gotta be vaxis. imo.
+
+1738905433
+LAC-Tech!~lewis@granite-phrase.bnr.la
+i looked at the site, it said it simulated flutter and had some super complex code. not smart enoug
+
+1738905477
+torque!~tachyon@user/torque
+not needing terminfo bullshit is a huge selling point
+
+1738905509
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I'll search a bit harder. I just wanted hello world lol
+
+1738905542
+torque!~tachyon@user/torque
+the readme has a well-commented example in it
+
+1738905550
+torque!~tachyon@user/torque
+more than one, actually
+
+1738905670
+LAC-Tech!~lewis@granite-phrase.bnr.la
+hang on let me give up on using one library before I find another one to give up on and just go back to termbox2
+
+1738905725
+reykjalin!7e28cf3a41@user/reykjalin
+LAC-Tech: vaxis has a widget framework called vxfw that’s inspired by flutter, but you don’t have to use it. vaxis also has primitives that let you do anything you want from scratch. that’s how vxfw does its rendering :)
+
+1738905796
+reykjalin!7e28cf3a41@user/reykjalin
+you can drop all the way down to drawing individual cells if you’d like. I built most of https://github.com/reykjalin/todui that way because it was built before vxfw was merged 
+
+1738905984
+torque!~tachyon@user/torque
+<coleman> I am wondering if this is an issue or if I just don't understand how to link it in w/ Meson. A shared library works for now fwiw.
+
+1738905998
+torque!~tachyon@user/torque
+__zig_probe_stack is in `compiler_rt` which gets built as a separate static library, I guess
+
+1738906055
+torque!~tachyon@user/torque
+if you search your global zig cache (~/.cache/zig) for it, you should find one or more `libcompiler_rt.a`
+
+1738906133
+torque!~tachyon@user/torque
+not sure how to get the correct path with a non-zig build system, that's a question for someone else to answer, I think. Also, since this is getting picked up by the default panic function, I think, you could try overriding that in your library to avoid depending on that symbol entirely
+
+1738906369
+torque!~tachyon@user/torque
+(see: https://ziglang.org/documentation/0.13.0/std/#std.builtin.panic, where "root" is the magic module that resolves to your `src/root.zig`)
+
+1738906756
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+that's very helpful, thank you 
+
+1738906788
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+I am to sleep but I will try this tomorrow 
+
+1738906868
+LAC-Tech!~lewis@granite-phrase.bnr.la
+reykjalin: do people use this with build.zig.zon, or do they just copy the whole thing?
+
+1738907009
+reykjalin!7e28cf3a41@user/reykjalin
+I’d go with build.zig.zon, that’s how I use it
+
+1738907062
+reykjalin!7e28cf3a41@user/reykjalin
+I think you can zig fetch --save git+https://github.com/rockorager/libvaxis.git to bring it into the zon file
+
+1738907078
+torque!~tachyon@user/torque
+yeah, it's quite painless to use the zig's dependency management
+
+1738907097
+torque!~tachyon@user/torque
+well, at least for well trod ground such as github repos
+
+1738907165
+reykjalin!7e28cf3a41@user/reykjalin
+and you’ll probably want to look at the low level API example in the readme if that’s the route you want to go :)
+
+1738907333
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah I am. it's super complicated. I am trying to figure out what I do with the tty struct, and if I need an event loop
+
+1738907407
+reykjalin!7e28cf3a41@user/reykjalin
+there’s an event loop in vaxis
+
+1738907514
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah. that's what I'm trying to make sense of
+
+1738907522
+reykjalin!7e28cf3a41@user/reykjalin
+like with any new library you pick up it’s a lot to take in. I’d recommend you just copy the example from here: https://github.com/rockorager/libvaxis#low-level-api , run that, and then start tweaking it to fit your needs 
+
+1738907569
+LAC-Tech!~lewis@granite-phrase.bnr.la
+that's the example I'm reading. you just overestimate my ability to understand things :)
+
+1738907600
+reykjalin!7e28cf3a41@user/reykjalin
+sorry about that, that’s not my intent! :) . take your time with it, no need to rush
+
+1738907631
+reykjalin!7e28cf3a41@user/reykjalin
+the creator (rockorager) is also in this channel. the library also has a deficated channel in #libvaxis if you prefer that :)
+
+1738907647
+reykjalin!7e28cf3a41@user/reykjalin
+sorry, #vaxis not #libvaxis 
+
+1738907698
+LAC-Tech!~lewis@granite-phrase.bnr.la
+reykjalin: I can't figure out how the example receives keyboard events. I see the event enum, I see the event loop, I see the nextEvent function. 
+
+1738907719
+reykjalin!7e28cf3a41@user/reykjalin
+ah, vaxis handles that for you, you don’t have to do the polling 
+
+1738907722
+LAC-Tech!~lewis@granite-phrase.bnr.la
+is there some comptime going on whereby if you give it a struct with "    key_press: vaxis.Key" it "knows" to listen for them?
+
+1738907754
+reykjalin!7e28cf3a41@user/reykjalin
+i *think* the loop is polling for keyboard events on a separate thread 
+
+1738907809
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what I don't understand is the custom event struct though
+
+1738907820
+LAC-Tech!~lewis@granite-phrase.bnr.la
+like I get if vaxis supplied its own one, but you give it a custom one
+
+1738907830
+LAC-Tech!~lewis@granite-phrase.bnr.la
+so how does it know how to use custom events?
+
+1738907954
+reykjalin!7e28cf3a41@user/reykjalin
+the vaxis.Loop struct takes the event struct you define as a parameter. similar to how std.ArrayList accepts the type you’re storing in the list 
+
+1738907973
+LAC-Tech!~lewis@granite-phrase.bnr.la
+right, I understand that. but how does it know what to do with an arbitrary struct?
+
+1738907999
+reykjalin!7e28cf3a41@user/reykjalin
+it doesn’t; if it receives one of those events it’s just added to an event queue
+
+1738908018
+reykjalin!7e28cf3a41@user/reykjalin
+and that’s what you handle in the when you get the next event out of the loop
+
+1738908058
+reykjalin!7e28cf3a41@user/reykjalin
+you can look at the event loop implementation here: https://github.com/rockorager/libvaxis/blob/main/src/Loop.zig if you think it’ll help 
+
+1738908082
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it’s adding events it receives from the terminal, but you can add events from anything else you are doing (network requests, etc).
+
+1738908082
+LAC-Tech!~lewis@granite-phrase.bnr.la
+but how does it know that when I press a keyboard button it should make one of those custom events?
+
+1738908134
+reykjalin!7e28cf3a41@user/reykjalin
+keyboard events will always be vaxis key events. the custom events are something you would post manually to the queue with loop.postEvent 
+
+1738908149
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+vaxis itself will never create a custom event - you can just add them yourself to the queue for handling in the main thread. think of it like a channel in go
+
+1738908229
+reykjalin!7e28cf3a41@user/reykjalin
+for example; you could post your own event manually to the event loop when someone presses a button (ie in reaction to a vaxis key event) or in a separate thread where you’re doing some other work like listening for network requests 
+
+1738908273
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok so presumably there's some "listen for key events" function, that you then post onto the loop
+
+1738908343
+reykjalin!7e28cf3a41@user/reykjalin
+vaxis does that for you here: https://github.com/rockorager/libvaxis/blob/0eaf6226b2dd58720c5954d3646d6782e0c063f5/src/Loop.zig#L108
+
+1738908349
+reykjalin!7e28cf3a41@user/reykjalin
+for key events, specifically 
+
+1738908372
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+if it’s an event from the terminal, you (the user of the library) will just receive it. like termbox’s pollEvent 
+
+1738908392
+reykjalin!7e28cf3a41@user/reykjalin
+so there are some events vaxis will listen for and post to the queue for you, among them key events. also things like window resize events, and other things related to the terminal.
+
+1738908398
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I feel like we're going in circles. how does it now how to map an event from the terminal to whatever custom event type you use?
+
+1738908451
+LAC-Tech!~lewis@granite-phrase.bnr.la
+like in that example does it do some comptime magic to say "find a top level thing in the union that is of type vaxis.Key"
+
+1738908465
+reykjalin!7e28cf3a41@user/reykjalin
+it doesn’t, it’s mapped to a vaxis key event. you see that Event struct in the example? notice how the key event is a vaxis key event?
+
+1738908497
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yes I notice that
+
+1738908519
+torque!~tachyon@user/torque
+you're talking past each other indeed
+
+1738908521
+torque!~tachyon@user/torque
+https://github.com/rockorager/libvaxis/blob/0eaf6226b2dd58720c5954d3646d6782e0c063f5/src/Loop.zig#L192
+
+1738908528
+torque!~tachyon@user/torque
+it looks for a particular named field on the event union
+
+1738908554
+torque!~tachyon@user/torque
+just look for the `@hasField` calls
+
+1738908557
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+was just grabbing that snippet, thanks torque 
+
+1738908558
+reykjalin!7e28cf3a41@user/reykjalin
+ok, so that event struct is you saying “these are the events I’m going to handle”. vaxis will then post those types of events to the queue for you to handle when you call nextEvent 
+
+1738908563
+LAC-Tech!~lewis@granite-phrase.bnr.la
+right! ok that's what was confusing the hell out of me. it looked like the event could just be whatever the hell you wanted.
+
+1738908586
+reykjalin!7e28cf3a41@user/reykjalin
+ok glad that clicked :)
+
+1738908589
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://github.com/rockorager/libvaxis/blob/main/src/event.zig
+
+1738908606
+reykjalin!7e28cf3a41@user/reykjalin
+I’m also not super familiar with how vaxis works, so I’ll let rockorager take over now and go to sleep :p
+
+1738908612
+reykjalin!7e28cf3a41@user/reykjalin
+I hope I helped a bit at least!
+
+1738908615
+LAC-Tech!~lewis@granite-phrase.bnr.la
+are you a maintainer? I'm down to try and write a "hello world example for sleep deprived devs" thingee.
+
+1738908616
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+this is the universe of events you can receive, if you use the vaxis Loop your application won’t receive the cap_* events
+
+1738908619
+LAC-Tech!~lewis@granite-phrase.bnr.la
+reykjalin: you did
+
+1738908651
+reykjalin!7e28cf3a41@user/reykjalin
+glad to hear it! rockorager is the maintainer of libvaxis, yes 
+
+1738908709
+reykjalin!7e28cf3a41@user/reykjalin
+I’ve made some minor contributions 
+
+1738908958
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+LAC-Tech: I would be interested in a better “getting started” guide :)
+
+1738909002
+torque!~tachyon@user/torque
+coleman, re: not sure how to get the correct path with a non-zig build system, it may be simpler than this. it looks like you may just be able to add `lib.bundle_compiler_rt = true;` to your build.zig
+
+1738909020
+torque!~tachyon@user/torque
+not actually sure how that flag works though
+
+1738910400
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what's the replacement for addModule?
+
+1738910410
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ie I have a package in the build.zig.zon. now I want to use it.
+
+1738910420
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(dependency)
+
+1738910490
+LAC-Tech!~lewis@granite-phrase.bnr.la
+oh nvm found it here https://amustaque97.github.io/zig-modules-101/
+
+1738944109
+avallee!uid686632@user/avallee
+I may have missed it, but is there a log_level above .err, to disable logging completely ?
+
+1738945272
+torque!~tachyon@user/torque
+if you want to disable logging you can define a custom log function that is a noop
+
+1738945284
+torque!~tachyon@user/torque
+I don't think you can completely disable it with the level
+
+1738947881
+netvor!~netvor@2a00:ca8:a1f:cd0:985c:dc6d:f6ac:dc41
+or just redirect stderr to /dev/null, eg.  `my_program 2>/dev/null`
+
+1738949232
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there a better way to do this, or is this fine? `const size = if (myVertices.len == 0) 0 else myVertices.len * @sizeOf(@TypeOf(myVertices[0]));` - this is trying to modify the equivalent of https://github.com/Snektron/vulkan-zig/blob/master/examples/triangle.zig#L102, I want `vertices` to be a slice of Vertex instead of a hard-coded 3-element array
+
+1738949395
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why not just `myVertices.len * @sizeOf(@TypeOf(myVertices[0]))`, @TypeOf doesn't evaluate its argument at runtime
+
+1738949729
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+hadronized: primeagen is reading your blog post
+
+1738949866
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh really? rockorager 
+
+1738949936
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah on twitch, okay
+
+1738950290
+Earnestly!~earnest@user/earnestly
+font-variant-ligature with common, or historical, etc. seems to permit "code" ligatures, so I'll just have to disable them entirely
+
+1738951199
+Earnestly!~earnest@user/earnestly
+hadronized: On zig errors; how do you prevent or mitigate the issue found in haskell where there are many different ways to express errors without any common agreement between library authors?
+
+1738951223
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Earnestly: what do you mean? most people use Either
+
+1738951240
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but it’s fair, if you want to use Blabla, you need to convert it to whatever you want in your code
+
+1738951313
+Earnestly!~earnest@user/earnestly
+hadronized: It's old now, the gmane links are dead: https://www.randomhacks.net/2007/03/10/haskell-8-ways-to-report-errors/ https://web.archive.org/web/20171009180725/http://article.gmane.org/gmane.comp.lang.haskell.libraries/6382
+
+1738951569
+hadronized!~hadronize@2001:41d0:a:fe76::1
+to be fair, I’m not aware of that
+
+1738951579
+Earnestly!~earnest@user/earnestly
+It's somewhat why I've always liked perhaps dumb but consistent interfaces for this (such as Ada's design of dding threads (tasks) to the language itself, consistency). Similar to Go's old if (err) pattern
+
+1738951581
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I know that transformers can be rough to play with
+
+1738951585
+hadronized!~hadronize@2001:41d0:a:fe76::1
+EitherT, for instacne
+
+1738951592
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and we also like to do something like MonadError
+
+1738951596
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(typeclass)
+
+1738951608
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but yes, okay, now I see your point
+
+1738951647
+Earnestly!~earnest@user/earnestly
+Yeah it may not be the best, most succinct, most elegant or even most appropriate, but it's the devil you can know
+
+1738951685
+hadronized!~hadronize@2001:41d0:a:fe76::1
+to be honest, I think I mentioned it in my article, that I do like Zig’s error union types
+
+1738951691
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you add carried values, it’s perfect to me
+
+1738951701
+hadronized!~hadronize@2001:41d0:a:fe76::1
+especially because of the coercion
+
+1738951711
+hadronized!~hadronize@2001:41d0:a:fe76::1
+having to do Ok(()) in Rust is such a stupid chore
+
+1738952163
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+Gliptic: what happens if myVertices doesn't have any elements?
+
+1738952168
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I guess @TypeOf knows what to do?
+
+1738952185
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ezzieyguywuf: as I said, @TypeOf doesn't run any code at runtime
+
+1738952203
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔 interesting. I'll certainly make this change thank you.
+
+1738953210
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: don't do that
+
+1738953249
+grayhatter!~grayhatte@user/grayhatter
+you want vertices to be a 3 elem array
+
+1738953286
+grayhatter!~grayhatte@user/grayhatter
+whatever you're trying to do, the "correct" way is a slice of a 3elem array
+
+1738954082
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1738954086
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: why?
+
+1738954100
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh wait wait
+
+1738954103
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+let me think about it for a sec
+
+1738954158
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+nah I rly don't get it - Vertex already has e.g. a 3-elem array for position
+
+1738954170
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I want to be able to send N vertices to the gpu
+
+1738954186
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+(maybe Vertex is poorly named)
+
+1738954990
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: there's a reason all gfx code deals exclusively in triangles
+
+1738955130
+grayhatter!~grayhatte@user/grayhatter
+I tried once to be fancy, regretted it instantly
+
+1738957140
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: I'm afraid I still don't get your point.
+
+1738957155
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+fwiw I too have regretted getting fancy in the past, so I'm eager to understand what you're getting at
+
+1738957565
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+torque: lib.bundle_runtime_rt = true worked swimmingly, thank you
+
+1738957572
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: have you tried searching that question?
+
+1738957650
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: oh, the first few searches I just did all suck
+
+1738957724
+grayhatter!~grayhatte@user/grayhatter
+the reason is because a triangle can only exist in 2d, because it can only exist in 2d, it's **much** faster to draw than other options (for reasons that are way above my head, something to do with optimization, and then I got distracted by something else)
+
+1738957777
+grayhatter!~grayhatte@user/grayhatter
+if you want something other than a triangle, like a square, you just need two triangles, repeat until you have the shape that you want
+
+1738957811
+grayhatter!~grayhatte@user/grayhatter
+more abstractly
+
+1738957852
+grayhatter!~grayhatte@user/grayhatter
+write code that allows you to send [_] number of triangles, instead of trying to send [_]Vertex
+
+1738957869
+ifreund!2940d10f8b@user/ifreund
+i think the story is more like "triangles are what all popular GPU hardware understands, and sticking close to that makes things simpler by removing layers of abstraction"
+
+1738957902
+ifreund!2940d10f8b@user/ifreund
+as for the exact memory layout, use whatever your graphics API of choice expects
+
+1738957912
+grayhatter!~grayhatte@user/grayhatter
+removing layers of abstraction that don't actually exist in a useable form
+
+1738957930
+grayhatter!~grayhatte@user/grayhatter
+try to draw a quad, and have it behave the way you'd expect
+
+1738958114
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: also, user beway of this example code... it's not written in a way to be reusable, it's all hardcoded, and the various functions mix call state/context with global state/context
+
+1738958189
+grayhatter!~grayhatte@user/grayhatter
+err, I meant to write be wary, but really maybe I should say, be disgusted
+
+1738958257
+grayhatter!~grayhatte@user/grayhatter
+start with completely rewriting `uploadVertices` to not use any global state, and you'll have a much easier time figuring out how to send more than just the 3 hardcoded verts
+
+1738961251
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+ifreund: I mean, it is, but the reason they are what all popular GPU hardware understands is that they were experiments in things like GPUs where the primitive was the quad rather than the tri and they turned out to be full of spiders
+
+1738961257
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+*there were
+
+1738961537
+LAC-Tech!~lewis@granite-phrase.bnr.la
+cImport has trouble with gnarlier C headers. trying addCSource and writing a shim. a sort of C containment zone.
+
+1738967662
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: ah, ok yea I think we're on the same page. I plan to send a bunch of vertices but then tell the input assembler to treat each 3 vertices as a triangle
+
+1738967696
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+they're easier to process b/c they can only ever specify a single surface. with more points, you can't assert that they're coplanar. e.g. a quad could be v-shaped
+
+1738967759
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+> start with completely rewriting `uploadVertices` to not use any global state < yup that's exactly what I just got done doing. the example code is very handy for getting started but I think it's pretty obvious it's not intended to be used as-is
+
