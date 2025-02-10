@@ -106,3 +106,259 @@ I mean, any system built into a language that will implicitly reorder execution 
 grayhatter!~grayhatte@user/grayhatter
 writing your own thread pool, probably doesn't count as async, because the ordering and primitives are exposed to you... but it might count if you're doing it within a tight IO bound implementation/system
 
+1739146101
+grayhatter!~grayhatte@user/grayhatter
+but
+
+1739146122
+grayhatter!~grayhatte@user/grayhatter
+if you have any kind of data, that you have a clear before and after picture, might be enough to change my mind, and I'd be interested
+
+1739146127
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I'm most interested in a nice efficient construct for Futures. Then your backend can be whatever you want, thread pool, deterministic simulated (which is what I am doing), io_uring, kqeue, etc. So I guess what I wanted to try in Zig is to make the Future Monad
+
+1739146176
+LAC-Tech!~lewis@granite-phrase.bnr.la
+basically just flattening out callback hell for my usecase
+
+1739146210
+torque!~tachyon@user/torque
+please, please save me from callback hell. i beg of you
+
+1739146234
+grayhatter!~grayhatte@user/grayhatter
+I've never been in callback hell... so perhaps that's a usecase where I'd say async should exist... but again, no frame of reference 
+
+1739146240
+LAC-Tech!~lewis@granite-phrase.bnr.la
+LOL. well I have Henry Bakers paper where he first coined the term "Future" I sort of understand... some of the words.. mainly the articles like "the" and "a".
+
+1739146243
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i'm kind of hazy on this... does passing an argument (always) copy it?   eg. if i have BigStruct with .a_method(self: @This()), would one tend to use `self: *@This()` instead?  or is it a moot point...?
+
+1739146260
+torque!~tachyon@user/torque
+it does not always copy it
+
+1739146263
+grayhatter!~grayhatte@user/grayhatter
+netvor: no that's explained in the main docs
+
+1739146280
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+ahh, i knew i read it somewhere
+
+1739146282
+grayhatter!~grayhatte@user/grayhatter
+function vars are always const in part so that the compiler can decide which is faster
+
+1739146309
+grayhatter!~grayhatte@user/grayhatter
+the compiler will decide if it's worthy of a copy or not
+
+1739146334
+torque!~tachyon@user/torque
+<grayhatter> writing your own thread pool, probably doesn't count as async, because the ordering and primitives are exposed to you
+
+1739146341
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so assuming that in trivial cases i just don't need to care, right?  and generally use @This() unless i need to change it in place
+
+1739146347
+grayhatter!~grayhatte@user/grayhatter
+netvor: I try very hard to use `self: BigStruct` specifically to enable the compiler to be smarter than me
+
+1739146357
+grayhatter!~grayhatte@user/grayhatter
+I use `*BigStruct` if I know it needs to be mutable
+
+1739146362
+grayhatter!~grayhatte@user/grayhatter
+also
+
+1739146366
+torque!~tachyon@user/torque
+when you submit a batch of jobs to a thread pool do you assume they'll get executed deterministically???
+
+1739146373
+grayhatter!~grayhatte@user/grayhatter
+prefer real names to @This()
+
+1739146386
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+yeah, that's what i tended to do but somehow i confused myself right now back to not knowing :D
+
+1739146408
+torque!~tachyon@user/torque
+I am desperately trying to understand why you think threading is Fine Actually, but asychronous IO is impossible to reason about or make sense
+
+1739146410
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: so I think there's 3 parts here. 1) the runtime (thread pool, kqueue, io_uring, whatever), 2) the monad (futures, promises), 3) the language construct (async/await). JS gives you all 3. rust gives you 2 & 3. I am making 1) in zig, and want to make 2), and suspect I don't need 3
+
+1739146416
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thanks!
+
+1739146416
+grayhatter!~grayhatte@user/grayhatter
+@This() is great... but only when you use it exacly once per scope
+
+1739146453
+grayhatter!~grayhatte@user/grayhatter
+torque: I don't care about atomicity of steps when it's opaque to me
+
+1739146461
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+well i get it but personally i also kinda frown when i see `const Self = @This()` in every single struct
+
+1739146479
+grayhatter!~grayhatte@user/grayhatter
+torque: no, I don't care what order my thread execution happens in... I **do** care about the observable side effects
+
+1739146481
+torque!~tachyon@user/torque
+netvor, that should only be done in generic structs (i.e. ones without names bound to them)
+
+1739146496
+grayhatter!~grayhatte@user/grayhatter
+netvor: then your using it wrong
+
+1739146513
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+am i frowning wrong? :D
+
+1739146526
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i think i saw it in some other code
+
+1739146539
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i tend to do self: @This() a lot, though
+
+1739146555
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/verse/blob/src/router.zig#L6
+
+1739146559
+grayhatter!~grayhatte@user/grayhatter
+use the real name
+
+1739146574
+grayhatter!~grayhatte@user/grayhatter
+if it's not worth of a real name, it probably shouldn't exist in that state
+
+1739146610
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i'll need time to wrap my head around that...
+
+1739146612
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+at this point i
+
+1739146614
+torque!~tachyon@user/torque
+I will amend my previous statement to include file-level structs
+
+1739146646
+torque!~tachyon@user/torque
+however, if you have `const MyStruct = struct { def foo(self: MyStruct) void {} }` should be much preferred to ever using `@This()` in that context
+
+1739146680
+torque!~tachyon@user/torque
+grayhatter, what if your threadpool is doing IO
+
+1739146684
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/verse/blob/src/template/page.zig#L403 this is the only case I'd use `Self = @This();` exactly as torque said, comptime constructed sturcts
+
+1739146688
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+at this point i'm in certain stage of learning where i don't yet do file-level structs, and use `self: @This()` in methods (and `init() @This()`)
+
+1739146715
+grayhatter!~grayhatte@user/grayhatter
+torque: I wouldn't trust a threadpool to do io without a sync point between important events
+
+1739146721
+torque!~tachyon@user/torque
+there are times when it is fine for io to happen out of order. for example, I used a threadpool to parallelize a bunch of db calls, and I don't care about what order they're in
+
+1739146754
+grayhatter!~grayhatte@user/grayhatter
+torque: exactly, async (as a language feature) abstracts that important detail away
+
+1739146759
+grayhatter!~grayhatte@user/grayhatter
+that's why I don't like it
+
+1739146767
+torque!~tachyon@user/torque
+no it doesn't
+
+1739146789
+torque!~tachyon@user/torque
+it makes it more obvious where your asynchronous code is
+
+1739146804
+grayhatter!~grayhatte@user/grayhatter
+torque: then explain how I have seen many people advocate for asnyc everywhere calling it faster, without understanding that detail?
+
+1739146816
+torque!~tachyon@user/torque
+I could easily write an API in a library that is backed by a threadpool and just submits jobs with no control 
+
+1739146827
+grayhatter!~grayhatte@user/grayhatter
+torque: me too
+
+1739146842
+torque!~tachyon@user/torque
+I think you really should actually try understanding what asynchronous io is before you get on your high horse about hating it
+
+1739146848
+grayhatter!~grayhatte@user/grayhatter
+I can also replace all my function definitons with anytype and yolo it
+
+1739146853
+torque!~tachyon@user/torque
+idk who is saying it is faster
+
+1739146858
+grayhatter!~grayhatte@user/grayhatter
+torque: k
+
+1739146866
+grayhatter!~grayhatte@user/grayhatter
+nevermind, forget I said anything
+
+1739146888
+torque!~tachyon@user/torque
+I've never heard that argument for async. it gets you 95% of the advantages of threading without a lot of the cognitive overhead of threading
+
+1739146900
+grayhatter!~grayhatte@user/grayhatter
+> at this point i'm in certain stage of learning where
+
+1739146911
+grayhatter!~grayhatte@user/grayhatter
+netvor: nah, you're already way past that
+
+1739146922
+grayhatter!~grayhatte@user/grayhatter
+you're much better than you give yourself credit for
+
+1739146938
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thanks, didn't actually expect that :D
+
+1739146946
+grayhatter!~grayhatte@user/grayhatter
+the only thing stopping you from improving your code quality at this point is your own doubts
+
+1739146946
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+btw reading https://zig.news/kristoff/dont-self-simple-structs-fj8  
+
