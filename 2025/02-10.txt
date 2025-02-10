@@ -434,3 +434,115 @@ netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
 ezzieyguywuf!~Unknown@user/ezzieyguywuf
 will it be possible for me to do something like this in zig? http://github.com/Overv/VulkanTutorial/blob/main/code/23_descriptor_sets.cpp#L762 , e.g. in this c++ example, `uniformBuffersMapped` is a `std::vector<void*>`. The relevent zig function `vk.mapMemory()` returns a `!?*anyopaque` - I don't think I can store a `foo: [*]anyopaque`, because how would I allocate memory for it (my understanding from 
 
+1739162614
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the documentation is that anyopaque has an unknown size)
+
+1739162715
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I think the more interesting line from the c++ example is https://github.com/Overv/VulkanTutorial/blob/main/code/23_descriptor_sets.cpp#L988, where the mapped memory is used
+
+1739162769
+sp2!uid197664@user/meow/sp2
+you can't store an array of anyopaque, but you can store an array of *pointers to* anyopaque (like vector<void*> is)
+
+1739162807
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I need to store a slice though b/c I don't know the size of the array at compile time
+
+1739162840
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also I guess an array of pointers to anyopaque would be `[]*anyopaque`?
+
+1739162850
+sp2!uid197664@user/meow/sp2
+yep
+
+1739162879
+sp2!uid197664@user/meow/sp2
+the analogous code would be `std.ArrayList(*anyopaque)`, which is a dynamically growable list
+
+1739162888
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ACTION nods
+
+1739162895
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+k this is helpful, thank you sp2 
+
+1739162922
+sp2!uid197664@user/meow/sp2
+if I were doing it I might use [*]u8 (or even []u8 -- a known-sized slice) to represent mapped memory
+
+1739162987
+grayhatter!~grayhatte@user/grayhatter
+sp2: is correct, the "correct" form of anyopaque is [*], not []*anyopaque
+
+1739163001
+sp2!uid197664@user/meow/sp2
+huh, I didn't know that
+
+1739163019
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1739163027
+sp2!uid197664@user/meow/sp2
+ah I think I see now
+
+1739163043
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+sp2: but how can []u8 work if the mapped memory is opaque?
+
+1739163044
+grayhatter!~grayhatte@user/grayhatter
+you can still use [start..end] on [*]anyopaque, but you shouldn't be using anyopaque in pure zig*, that's more for interfacing with c code
+
+1739163063
+sp2!uid197664@user/meow/sp2
+the mapped memory is just bytes, and C/C++ generally represent "raw bytes" as void*
+
+1739163075
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: opaque translates more to unknown (undefined) size
+
+1739163082
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm
+
+1739163093
+grayhatter!~grayhatte@user/grayhatter
+if you're getting bytes (octets) you'd use [*]u8 not opaque
+
+1739163153
+grayhatter!~grayhatte@user/grayhatter
+it's a popular style choice in C to make the actual struct itself opaque, and only interacting with a pointer for it (something something, library has a private ABI)
+
+1739163158
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+well, vk.mapMemory() is not my function, it's from the vulkan bindings, and it returns `*anyopaque`
+
+1739163193
+grayhatter!~grayhatte@user/grayhatter
+that's probably better [*]u8, but you're stuck with the API that you have
+
+1739163270
+grayhatter!~grayhatte@user/grayhatter
+the vulkan docs say **void
+
+1739163289
+grayhatter!~grayhatte@user/grayhatter
+err, I guess `void**` but 
+
+1739163326
+grayhatter!~grayhatte@user/grayhatter
+The value of the returned pointer minus offset must be aligned to VkPhysicalDeviceLimits::minMemoryMapAlignment.
+
+1739163344
+grayhatter!~grayhatte@user/grayhatter
+this probably should be encoded for in the zig api
+
+1739163368
+grayhatter!~grayhatte@user/grayhatter
+which lib are you using again ezzieyguywuf?
+
