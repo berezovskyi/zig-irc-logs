@@ -1,0 +1,740 @@
+1739145601
+grayhatter!~grayhatte@user/grayhatter
+maybe I'm just not very good at writing code, but I've never had a problem where I thought... you know what would make this better? non-deterministic execution ordering
+
+1739145637
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: we lead very different lives :)
+
+1739145659
+torque!~tachyon@user/torque
+have you ever written a program that uses more than one thread?
+
+1739145661
+grayhatter!~grayhatte@user/grayhatter
+what problem have you solved with async?
+
+1739145666
+grayhatter!~grayhatte@user/grayhatter
+torque: yes
+
+1739145678
+torque!~tachyon@user/torque
+then you have thought nondeterminism would make something better
+
+1739145680
+torque!~tachyon@user/torque
+it's not nice to lie
+
+1739145704
+grayhatter!~grayhatte@user/grayhatter
+torque: what makes you think I'm not using a single global mutex?
+
+1739145720
+torque!~tachyon@user/torque
+you can do the same with async
+
+1739145727
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok I'm confused, what do people mean when they say "async"? do they mean "async/await syntax", or do they mean "user space units of execution"?
+
+1739145747
+torque!~tachyon@user/torque
+if someone comes up with a nice implementation in userland of some async primitives, futures/promises/whatever, I would like to see it
+
+1739145757
+grayhatter!~grayhatte@user/grayhatter
+I didn't really, but the threads didn't share any dependant (branching) context so there was no execution ordering issues
+
+1739145759
+torque!~tachyon@user/torque
+I don't think zig would play well with it
+
+1739145796
+torque!~tachyon@user/torque
+usually those apis benefit from having (capturing) lambdas, like in C++ and method chaining
+
+1739145807
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: given async/await is more complex than not using it, I want to know how you tested async vs sync, and what metrics you used to decide that one was better than the other
+
+1739145811
+torque!~tachyon@user/torque
+two things that zig doesn't have (and generally doesn't need)
+
+1739145826
+grayhatter!~grayhatte@user/grayhatter
+every single person I've asked, says "that's just what the libarary uses" or "it was like this when I got here"
+
+1739145836
+grayhatter!~grayhatte@user/grayhatter
+no one has ever actually gone, yes, it's better, here's the data
+
+1739145838
+torque!~tachyon@user/torque
+how do you write a program that uses more than one socket at a time
+
+1739145875
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I need a definition first. async/await is syntax in my head, but I don't know if that's what you mean
+
+1739145896
+grayhatter!~grayhatte@user/grayhatter
+I want the data, and the proof, not the cargo cult "it's the new hotness... now also let me tell you about my new coin"
+
+1739145922
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: do you know how async works under the hood?
+
+1739145922
+LAC-Tech!~lewis@granite-phrase.bnr.la
+... units of execution being switched in user space is ancient
+
+1739145944
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I can't continue this discussion without you defining what you mean when you say async. I've asked twice now
+
+1739145962
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: I'm *trying* to get at a shared understand/context
+
+1739146001
+grayhatter!~grayhatte@user/grayhatter
+I mean, any system built into a language that will implicitly reorder execution steps
+
+1739146054
+grayhatter!~grayhatte@user/grayhatter
+writing your own thread pool, probably doesn't count as async, because the ordering and primitives are exposed to you... but it might count if you're doing it within a tight IO bound implementation/system
+
+1739146101
+grayhatter!~grayhatte@user/grayhatter
+but
+
+1739146122
+grayhatter!~grayhatte@user/grayhatter
+if you have any kind of data, that you have a clear before and after picture, might be enough to change my mind, and I'd be interested
+
+1739146127
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I'm most interested in a nice efficient construct for Futures. Then your backend can be whatever you want, thread pool, deterministic simulated (which is what I am doing), io_uring, kqeue, etc. So I guess what I wanted to try in Zig is to make the Future Monad
+
+1739146176
+LAC-Tech!~lewis@granite-phrase.bnr.la
+basically just flattening out callback hell for my usecase
+
+1739146210
+torque!~tachyon@user/torque
+please, please save me from callback hell. i beg of you
+
+1739146234
+grayhatter!~grayhatte@user/grayhatter
+I've never been in callback hell... so perhaps that's a usecase where I'd say async should exist... but again, no frame of reference 
+
+1739146240
+LAC-Tech!~lewis@granite-phrase.bnr.la
+LOL. well I have Henry Bakers paper where he first coined the term "Future" I sort of understand... some of the words.. mainly the articles like "the" and "a".
+
+1739146243
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i'm kind of hazy on this... does passing an argument (always) copy it?   eg. if i have BigStruct with .a_method(self: @This()), would one tend to use `self: *@This()` instead?  or is it a moot point...?
+
+1739146260
+torque!~tachyon@user/torque
+it does not always copy it
+
+1739146263
+grayhatter!~grayhatte@user/grayhatter
+netvor: no that's explained in the main docs
+
+1739146280
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+ahh, i knew i read it somewhere
+
+1739146282
+grayhatter!~grayhatte@user/grayhatter
+function vars are always const in part so that the compiler can decide which is faster
+
+1739146309
+grayhatter!~grayhatte@user/grayhatter
+the compiler will decide if it's worthy of a copy or not
+
+1739146334
+torque!~tachyon@user/torque
+<grayhatter> writing your own thread pool, probably doesn't count as async, because the ordering and primitives are exposed to you
+
+1739146341
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so assuming that in trivial cases i just don't need to care, right?  and generally use @This() unless i need to change it in place
+
+1739146347
+grayhatter!~grayhatte@user/grayhatter
+netvor: I try very hard to use `self: BigStruct` specifically to enable the compiler to be smarter than me
+
+1739146357
+grayhatter!~grayhatte@user/grayhatter
+I use `*BigStruct` if I know it needs to be mutable
+
+1739146362
+grayhatter!~grayhatte@user/grayhatter
+also
+
+1739146366
+torque!~tachyon@user/torque
+when you submit a batch of jobs to a thread pool do you assume they'll get executed deterministically???
+
+1739146373
+grayhatter!~grayhatte@user/grayhatter
+prefer real names to @This()
+
+1739146386
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+yeah, that's what i tended to do but somehow i confused myself right now back to not knowing :D
+
+1739146408
+torque!~tachyon@user/torque
+I am desperately trying to understand why you think threading is Fine Actually, but asychronous IO is impossible to reason about or make sense
+
+1739146410
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: so I think there's 3 parts here. 1) the runtime (thread pool, kqueue, io_uring, whatever), 2) the monad (futures, promises), 3) the language construct (async/await). JS gives you all 3. rust gives you 2 & 3. I am making 1) in zig, and want to make 2), and suspect I don't need 3
+
+1739146416
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thanks!
+
+1739146416
+grayhatter!~grayhatte@user/grayhatter
+@This() is great... but only when you use it exacly once per scope
+
+1739146453
+grayhatter!~grayhatte@user/grayhatter
+torque: I don't care about atomicity of steps when it's opaque to me
+
+1739146461
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+well i get it but personally i also kinda frown when i see `const Self = @This()` in every single struct
+
+1739146479
+grayhatter!~grayhatte@user/grayhatter
+torque: no, I don't care what order my thread execution happens in... I **do** care about the observable side effects
+
+1739146481
+torque!~tachyon@user/torque
+netvor, that should only be done in generic structs (i.e. ones without names bound to them)
+
+1739146496
+grayhatter!~grayhatte@user/grayhatter
+netvor: then your using it wrong
+
+1739146513
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+am i frowning wrong? :D
+
+1739146526
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i think i saw it in some other code
+
+1739146539
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i tend to do self: @This() a lot, though
+
+1739146555
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/verse/blob/src/router.zig#L6
+
+1739146559
+grayhatter!~grayhatte@user/grayhatter
+use the real name
+
+1739146574
+grayhatter!~grayhatte@user/grayhatter
+if it's not worth of a real name, it probably shouldn't exist in that state
+
+1739146610
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i'll need time to wrap my head around that...
+
+1739146612
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+at this point i
+
+1739146614
+torque!~tachyon@user/torque
+I will amend my previous statement to include file-level structs
+
+1739146646
+torque!~tachyon@user/torque
+however, if you have `const MyStruct = struct { def foo(self: MyStruct) void {} }` should be much preferred to ever using `@This()` in that context
+
+1739146680
+torque!~tachyon@user/torque
+grayhatter, what if your threadpool is doing IO
+
+1739146684
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/verse/blob/src/template/page.zig#L403 this is the only case I'd use `Self = @This();` exactly as torque said, comptime constructed sturcts
+
+1739146688
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+at this point i'm in certain stage of learning where i don't yet do file-level structs, and use `self: @This()` in methods (and `init() @This()`)
+
+1739146715
+grayhatter!~grayhatte@user/grayhatter
+torque: I wouldn't trust a threadpool to do io without a sync point between important events
+
+1739146721
+torque!~tachyon@user/torque
+there are times when it is fine for io to happen out of order. for example, I used a threadpool to parallelize a bunch of db calls, and I don't care about what order they're in
+
+1739146754
+grayhatter!~grayhatte@user/grayhatter
+torque: exactly, async (as a language feature) abstracts that important detail away
+
+1739146759
+grayhatter!~grayhatte@user/grayhatter
+that's why I don't like it
+
+1739146767
+torque!~tachyon@user/torque
+no it doesn't
+
+1739146789
+torque!~tachyon@user/torque
+it makes it more obvious where your asynchronous code is
+
+1739146804
+grayhatter!~grayhatte@user/grayhatter
+torque: then explain how I have seen many people advocate for asnyc everywhere calling it faster, without understanding that detail?
+
+1739146816
+torque!~tachyon@user/torque
+I could easily write an API in a library that is backed by a threadpool and just submits jobs with no control 
+
+1739146827
+grayhatter!~grayhatte@user/grayhatter
+torque: me too
+
+1739146842
+torque!~tachyon@user/torque
+I think you really should actually try understanding what asynchronous io is before you get on your high horse about hating it
+
+1739146848
+grayhatter!~grayhatte@user/grayhatter
+I can also replace all my function definitons with anytype and yolo it
+
+1739146853
+torque!~tachyon@user/torque
+idk who is saying it is faster
+
+1739146858
+grayhatter!~grayhatte@user/grayhatter
+torque: k
+
+1739146866
+grayhatter!~grayhatte@user/grayhatter
+nevermind, forget I said anything
+
+1739146888
+torque!~tachyon@user/torque
+I've never heard that argument for async. it gets you 95% of the advantages of threading without a lot of the cognitive overhead of threading
+
+1739146900
+grayhatter!~grayhatte@user/grayhatter
+> at this point i'm in certain stage of learning where
+
+1739146911
+grayhatter!~grayhatte@user/grayhatter
+netvor: nah, you're already way past that
+
+1739146922
+grayhatter!~grayhatte@user/grayhatter
+you're much better than you give yourself credit for
+
+1739146938
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thanks, didn't actually expect that :D
+
+1739146946
+grayhatter!~grayhatte@user/grayhatter
+the only thing stopping you from improving your code quality at this point is your own doubts
+
+1739146946
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+btw reading https://zig.news/kristoff/dont-self-simple-structs-fj8  
+
+1739147025
+grayhatter!~grayhatte@user/grayhatter
+self: @This() is one of the worst crimes
+
+1739147049
+grayhatter!~grayhatte@user/grayhatter
+this: @This() is at least a tiny bit sane
+
+1739147081
+grayhatter!~grayhatte@user/grayhatter
+I was about to roast him for using `self: Person` but he does fix it at the end with `p: Person`
+
+1739147094
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+> you're much better than you give yourself credit for .... > self: @This() is one of the worst crimes ...
+
+1739147102
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i guess i'm the super-villain now :D
+
+1739147125
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+basically almost all my methods do that @This() thing
+
+1739147127
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1739147135
+grayhatter!~grayhatte@user/grayhatter
+I've written it too.. so I mean
+
+1739147146
+grayhatter!~grayhatte@user/grayhatter
+I've never committed it though :P
+
+1739147186
+grayhatter!~grayhatte@user/grayhatter
+as you get more comfortable with Zig, and you learn it's not gonna fight you when defining things
+
+1739147206
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+yeah, i think i got used to it while reading a lot of std, but not fully realizing that it
+
+1739147215
+grayhatter!~grayhatte@user/grayhatter
+you'll use @This() less and less often, and will just default to the top level name of the struct (like this post does with Person)
+
+1739147219
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+..that it's there because it's needed
+
+1739147360
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+btw, `this: @This()` might sound more sane on paper but i would not use it without disclaimer since i'm pretty sure it can trigger Javascript PTSD
+
+1739147383
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(it kinda does for me, i only worked with JS for about a year)
+
+1739152546
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I worked with C++ for a year. the recruiter confused it with C#, so that was fun.
+
+1739152818
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+...that said, if you squint on the plus signs long and hard enough...
+
+1739162608
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+will it be possible for me to do something like this in zig? http://github.com/Overv/VulkanTutorial/blob/main/code/23_descriptor_sets.cpp#L762 , e.g. in this c++ example, `uniformBuffersMapped` is a `std::vector<void*>`. The relevent zig function `vk.mapMemory()` returns a `!?*anyopaque` - I don't think I can store a `foo: [*]anyopaque`, because how would I allocate memory for it (my understanding from 
+
+1739162614
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the documentation is that anyopaque has an unknown size)
+
+1739162715
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I think the more interesting line from the c++ example is https://github.com/Overv/VulkanTutorial/blob/main/code/23_descriptor_sets.cpp#L988, where the mapped memory is used
+
+1739162769
+sp2!uid197664@user/meow/sp2
+you can't store an array of anyopaque, but you can store an array of *pointers to* anyopaque (like vector<void*> is)
+
+1739162807
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I need to store a slice though b/c I don't know the size of the array at compile time
+
+1739162840
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also I guess an array of pointers to anyopaque would be `[]*anyopaque`?
+
+1739162850
+sp2!uid197664@user/meow/sp2
+yep
+
+1739162879
+sp2!uid197664@user/meow/sp2
+the analogous code would be `std.ArrayList(*anyopaque)`, which is a dynamically growable list
+
+1739162888
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ACTION nods
+
+1739162895
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+k this is helpful, thank you sp2 
+
+1739162922
+sp2!uid197664@user/meow/sp2
+if I were doing it I might use [*]u8 (or even []u8 -- a known-sized slice) to represent mapped memory
+
+1739162987
+grayhatter!~grayhatte@user/grayhatter
+sp2: is correct, the "correct" form of anyopaque is [*], not []*anyopaque
+
+1739163001
+sp2!uid197664@user/meow/sp2
+huh, I didn't know that
+
+1739163019
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1739163027
+sp2!uid197664@user/meow/sp2
+ah I think I see now
+
+1739163043
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+sp2: but how can []u8 work if the mapped memory is opaque?
+
+1739163044
+grayhatter!~grayhatte@user/grayhatter
+you can still use [start..end] on [*]anyopaque, but you shouldn't be using anyopaque in pure zig*, that's more for interfacing with c code
+
+1739163063
+sp2!uid197664@user/meow/sp2
+the mapped memory is just bytes, and C/C++ generally represent "raw bytes" as void*
+
+1739163075
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: opaque translates more to unknown (undefined) size
+
+1739163082
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm
+
+1739163093
+grayhatter!~grayhatte@user/grayhatter
+if you're getting bytes (octets) you'd use [*]u8 not opaque
+
+1739163153
+grayhatter!~grayhatte@user/grayhatter
+it's a popular style choice in C to make the actual struct itself opaque, and only interacting with a pointer for it (something something, library has a private ABI)
+
+1739163158
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+well, vk.mapMemory() is not my function, it's from the vulkan bindings, and it returns `*anyopaque`
+
+1739163193
+grayhatter!~grayhatte@user/grayhatter
+that's probably better [*]u8, but you're stuck with the API that you have
+
+1739163270
+grayhatter!~grayhatte@user/grayhatter
+the vulkan docs say **void
+
+1739163289
+grayhatter!~grayhatte@user/grayhatter
+err, I guess `void**` but 
+
+1739163326
+grayhatter!~grayhatte@user/grayhatter
+The value of the returned pointer minus offset must be aligned to VkPhysicalDeviceLimits::minMemoryMapAlignment.
+
+1739163344
+grayhatter!~grayhatte@user/grayhatter
+this probably should be encoded for in the zig api
+
+1739163368
+grayhatter!~grayhatte@user/grayhatter
+which lib are you using again ezzieyguywuf?
+
+1739163688
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: https://github.com/Snektron/vulkan-zig
+
+1739163766
+grayhatter!~grayhatte@user/grayhatter
+how the gfx thing coming along?
+
+1739163823
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: ?
+
+1739163971
+grayhatter!~grayhatte@user/grayhatter
+are you just playing around with vulkan? or are you making something you want to exist?
+
+1739164069
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm making something I want to exist, with vulkan
+
+1739164110
+grayhatter!~grayhatte@user/grayhatter
+that's what I'm asking about, making progress or stuck battling with vulkan?
+
+1739164135
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah, yea I'm making progress
+
+1739180268
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ezzieyguywuf: fwiw it seems to be easier a lot of the time to make a little C shim inside your zig project, rather than try and use c libs directly.
+
+1739199353
+avallee!uid686632@user/avallee
+I see from #6396 that there is some WIP on the memory model. In the meantime, am I safe to assume "monotonic" is a slightly stricter variant of the C11 "relaxed"?
+
+1739203653
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+LAC-Tech: hm, what do you mean by "c shim"? the vulkan-zig bindings are generally working very nicely for me.
+
+1739204152
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah I’m not a huge fan of vulkan-zig, it’s opinionated in a weird way to me
+
+1739204186
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I had a discussion on Discord with the author and I don’t agree with the choices made with how it does the function pointer loading
+
+1739204213
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t recall exactly but I thought it was more correct for my use case to just @cImport and link myself
+
+1739204629
+ifreund!2940d10f8b@user/ifreund
+avallee: https://llvm.org/docs/LangRef.html#atomic-memory-ordering-constraints
+
+1739204650
+ifreund!2940d10f8b@user/ifreund
+right now the enum matches llvm IR
+
+1739204727
+ifreund!2940d10f8b@user/ifreund
+iirc "monotonic" is exactly C++'s "relaxed"
+
+1739205345
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hadronized: hrm I see. I guess you're referring to the Proxy* wrapper's? e.g. ProxyDevice (er, or maybe it's DeviceProxy). I recall being a bit confounded about DeviceDispatch vs DeviceProxy but once I understood what was going on I didn't have any real problems with it
+
+1739206352
+grayhatter!~grayhatte@user/grayhatter
+mlugg doesn't idle in IRC, does he?
+
+1739206533
+grayhatter!~grayhatte@user/grayhatter
+the compiler > undefined discussion on zulip is impressively enlightening, it's a very deep, very technical conversation that I'm enjoying watching
+
+1739222151
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ezzieyguywuf: by C shim I mean, add a C file to your zig project that uses the header of the lib you want to use directly, then make your own header file that exports the operations you actually want to do. Zigs C-interop seems to have some rough edgers around bitfields, variadic functions and header only libraries, bit it's very easy to just through a bit of C in there yourself and give zig a header
+
+1739222153
+LAC-Tech!~lewis@granite-phrase.bnr.la
+it can handle
+
+1739222920
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I haven't seen mlugg here for a long time
+
+1739223606
+grayhatter!~grayhatte@user/grayhatter
+bah, undefined behavior is so endlessly frustrating!
+
+1739223642
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: have you read Raymond Chen's essay about UB and time travel?
+
+1739223648
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:)
+
+1739223854
+grayhatter!~grayhatte@user/grayhatter
+yeah, enjoy the popcorn hadronized, but I'd rather UB fuck up my whole application than ever [the remainder of the message redacted because would have been unkind]
+
+1739223868
+hadronized!~hadronize@2001:41d0:a:fe76::1
+eh I don’t enjoy any popcorn
+
+1739223884
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I just wish Zig catches UB at runtime so that I can start using it seriously :)
+
+1739223901
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what UB are you talking about?
+
+1739223941
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m probably going to make an erratum to my blog post
+
+1739223971
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think the part on miri was unfair to Zig, as I should have compared it to Zig+asan / valgrind / whatever (it’s a bit less powerful than miri, but still, unfair)
+
+1739223999
+hadronized!~hadronize@2001:41d0:a:fe76::1
+in the end, miri is still an interpreter, so it somehow needs to run the code through the HIR
+
+1739224363
+andrewrk!~andrewrk@mail.ziglang.org
+if you don't want the possibility of illegal behavior from undefined, then don't use undefined
+
+1739224370
+andrewrk!~andrewrk@mail.ziglang.org
+you can almost always code around it
+
+1739224388
+grayhatter!~grayhatte@user/grayhatter
+in debug mode it's well defined right? 
+
+1739224401
+andrewrk!~andrewrk@mail.ziglang.org
+yes, and in release safe mode
+
+1739224413
+grayhatter!~grayhatte@user/grayhatter
+how hard would it be to maintain a patch set were release modes assigned it to 0; instead?
+
+1739224421
+andrewrk!~andrewrk@mail.ziglang.org
+in zig we say "illegal behavior" which is distinct from "undefined behavior"
+
+1739224431
+grayhatter!~grayhatte@user/grayhatter
+my problem isn't with the illegal behavior, it's with the optimizer using my mistake to make it worse
+
+1739224450
+andrewrk!~andrewrk@mail.ziglang.org
+illegal behavior is usually "checked" in Debug and ReleaseSafe mode, making it "checked illegal behavior" which triggers a safety panic
+
+1739224477
+andrewrk!~andrewrk@mail.ziglang.org
+not all illegal behavior can be checked, and ReleaseFast and ReleaseSmall modes do not check. "unchecked illegal behavior" triggers "undefined behavior"
+
+1739224498
+andrewrk!~andrewrk@mail.ziglang.org
+checked or not, illegal behavior is always a bug
+
+1739224537
+grayhatter!~grayhatte@user/grayhatter
+right, I'm superficially aware of these semantics
+
+1739230156
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+I think zig really needs to start taking direction more from reddit :P
+
+1739230161
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+zig reddit is <3 
+
+1739230399
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Joking aside,  I was curious what is the current status of postmortem debugging?
+
+1739230532
+andrewrk!~andrewrk@mail.ziglang.org
+same as C
+
+1739230538
+andrewrk!~andrewrk@mail.ziglang.org
+same tools work
+
