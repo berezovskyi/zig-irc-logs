@@ -1,0 +1,584 @@
+1739324290
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+aw
+
+1739324293
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hadronized :(
+
+1739324432
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+anywho, I made my triangles rotate in 3d in zig! zig is so fun! https://imgur.com/a/7lIEDK8
+
+1739324441
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+(I need to fix some culling issues but it's still neat)
+
+1739324835
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+nice :)
+
+1739325761
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+btw i've noticed that using struct name within its scope won't work inside a function or test scope.  just curious what would be reason for that..?
+
+1739325821
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+eg. `const Foo = struct { fn init() Foo {} };` works but just moving that code to a test {} or fn scope breaks it
+
+1739325854
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+ie. `error: use of undeclared identifier: Foo`
+
+1739325881
+freshcoffee!~fresh@user/freshcoffee
+see `@This()`
+
+1739325990
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+does not quite answer it..  i mean, i know i can use @This(), i was just wondering why .. {what i wrote}
+
+1739326089
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+in particular, when just defining a struct in my file, eg. `const Foo = struct ...`  i can  directly use the name, without need to use @This at all, but i can't do that if that struct definition is within `test`
+
+1739326112
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+then i *have( to do `const Self = @This();` or similar
+
+1739326119
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+s/(/*/
+
+1739326182
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thing is, i was actually using just `@This()` all over the place, which is frowned upon for other reasons, so now i'm refactoring everything :)
+
+1739326225
+dsal!sid13060@id-13060.lymington.irccloud.com
+I missed the conversation about why we don't like @This
+
+1739326232
+freshcoffee!~fresh@user/freshcoffee
+I believe there is a difference between top-level decls vs. in-function
+
+1739326244
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+dsal this one is good: https://zig.news/kristoff/dont-self-simple-structs-fj8
+
+1739326311
+freshcoffee!~fresh@user/freshcoffee
+top-level you can have structs mutually dependent but moving those into a fn, order matters
+
+1739326361
+dsal!sid13060@id-13060.lymington.irccloud.com
+I don't know… that says why you shouldn't use `Self` for simple structs and then talks about why you don't need an alias for it.  I don't think I'd use `Self` in general, but it doesn't discourage me from using @This()
+
+1739326361
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so not all {} are created equal?   kinda makes sense
+
+1739326580
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i still feel like it should work.. it's a minor thing but .. eg. for tests i usually create TestCase which contains common asserts and boilerplate.  now this type is sometimes shared across tests, sometimes not.  when not shared, it makes sense to put it *within* the `test` (and name it just Case), otherwise i need to keep it outside
+
+1739326602
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so as i'm evolving things, i might go back and forth between sharing or not
+
+1739326669
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so this kinda adds some friction, since don't want to have `const Self = @This();` there unless necessary, so i have to add or remove it
+
+1739326749
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+dsal: regarding the article, the discussion below is also interesting
+
+1739326859
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+overall the bit i needed to take from the article was: prefer within a concrete (named) struct, say, Foo, always use `self: Foo` instead of `self: @This()`.
+
+1739326883
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(for some reason i started using @This() everywhere)
+
+1739326899
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+using the name is more explicit, so that actually makes sense
+
+1739327032
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+then there are places where you can't use the name, eg. generic `fn (..) type` , so just use @This there -- and only *once*, just to get one reference
+
+1739327137
+dsal!sid13060@id-13060.lymington.irccloud.com
+I've not seen a compelling argument for putting the name of the struct in all the things.  It looks like you can only do that in a subset of the cases and disadvantages aren't clearly communicated.
+
+1739327294
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+well to me, it's enough that it's more inline with the general principle of preferring explicit syntax vs. implicit.
+
+1739327484
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+otoh i might just found myself another counter case, albeit weak:  i have a union(enum) of 15 different structs, all of which have `fn run()` with identical signature, and then i'm dispatching it in the enum's own `run()` 
+
+1739327541
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+the fact that the signature is `fn run(self: @This(), ...)` and not the concrete name (which varies, ofc) helped me with refactoring so far
+
+1739327551
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+as it's literally identical line now
+
+1739327655
+torque!~tachyon@user/torque
+<netvor> eg. `const Foo = struct { fn init() Foo {} };` works but just moving that code to a test {} or fn scope breaks it
+
+1739327667
+torque!~tachyon@user/torque
+tests are just functions, so their bodies behave the same way
+
+1739327706
+torque!~tachyon@user/torque
+but the answer is that function bodies are an imperative scope, where statements are ordered, where as struct and other type bodies are declarative scopes, where statements are not ordered
+
+1739327721
+torque!~tachyon@user/torque
+since files are structs, that makes file scope declarative
+
+1739327789
+torque!~tachyon@user/torque
+in a function/test, you can do `const Declarative = struct { const Foo = struct { fn bar(self: Foo) void {} }; };`
+
+1739327826
+torque!~tachyon@user/torque
+in general though, there isn't really a very good reason to define a struct with methods on it inside of a function, imo
+
+1739327854
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+how about my reasoning about the test cases?
+
+1739327869
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(it's really only place where i do it)
+
+1739327935
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+eg. https://bpa.st/T4SA 
+
+1739327988
+torque!~tachyon@user/torque
+if you're only using it once, just put the contents directly in the test instead of adding boilerplate, imo. if it's used more than once, put it in a function outside of the test
+
+1739328070
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+"just put the contents directly in the test" i think i'm doing that, IIUC
+
+1739328097
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i mean i can't put the functions there..
+
+1739328145
+torque!~tachyon@user/torque
+your qstr and qblob functions have the same signature so you could just pass that as a function pointer to a function that does the setup/teardown
+
+1739328172
+a16p!~abhi@user/a16p
+q
+
+1739328175
+torque!~tachyon@user/torque
+I think the `Case.init().whatever()` generally doesn't read very well
+
+1739328309
+torque!~tachyon@user/torque
+unless you are actually trying to test alloc failures (in which case you should use `std.testing.allocator`) you may want to consider `std.testing.FixedBufferAllocator` since all your tests have small, well known, bounds
+
+1739328432
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+by "doesn't read very well" i assume you mean the indirection?   (ie. you have to "look up" what .init() is, etc..?)
+
+1739328496
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+what does make it more readable is that it's on single line, and that details not important to the test are hidden
+
+1739328545
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+wrt the signature & the FBA .. i agree, looks like a good direction to go
+
+1739328708
+torque!~tachyon@user/torque
+you can define functions in a function scope, but the sytnax is a little goofy: `const myFunc = struct { fn myFunc() void {} }.myFunc;`
+
+1739328730
+torque!~tachyon@user/torque
+in general, unless the function is closing over some comptime parameter, it's better to have things not defined inside a function, though
+
+1739328965
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+well in later work i do tend to share the testcase, but still, if you find the indirection less readable then you would not like this one :)  https://bpa.st/W23A
+
+1739328969
+torque!~tachyon@user/torque
+anyway, to my overall point, I think something like https://zigbin.io/a746f2 reads a lot better than the boilerplate
+
+1739329023
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+on the other hand, i hope this OpaquePoolTestCase actually shows how that indirection can be put to a good use -- within one assert i check existence, non-existence of items, including iterators..
+
+1739329097
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+expectEscapeEqual() is much better than my Case(), that's for sure :)
+
+1739329202
+torque!~tachyon@user/torque
+I mean, writing infrastructure for testing is fine, though I think a lot of unit testing frameworks get a bit too magical. I don't have much to comment about it. I just think in general the boilerplate should stay out of the test body itself, and in that sense your OpaquePoolTestCase is nicer than the baked in Case stuff
+
+1739329231
+torque!~tachyon@user/torque
+your approach feels very object-oriented to me, though. I'm kind of curious what your background is
+
+1739329318
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+well, ... to be true, i wrote a ton of tests, but mostly in Bash (shocking, short story: trust me, there are good reasons for that :) )
+
+1739329326
+torque!~tachyon@user/torque
+I am so sorry
+
+1739329337
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+my background is 90% in QE
+
+1739329358
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i actually enjoyed it, and i'm not even kidding.
+
+1739329407
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+the thing is, with a language like bash, the only way to survive is to 1. get a good linter (shellcheck) 2. use only safe subset of the language  3. have a sane set of style rules for readability
+
+1739329429
+torque!~tachyon@user/torque
+I am not a bash expert and I truly hope to never become one
+
+1739329455
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+bash gets a lot of bad rap for similar reasons why Perl does.  it's because there's just so much so horrible code everywhere
+
+1739329456
+torque!~tachyon@user/torque
+but I wonder if the "safe subset of the language" restricts it down to nothing
+
+1739329483
+torque!~tachyon@user/torque
+I don't have an opinion on perl but I don't think it does completely cursed things with strings the way bash does
+
+1739329531
+torque!~tachyon@user/torque
+bash has a hard to remember syntax, its default operation mode is fuckit.js, and everything being a string and quoting nightmare is just the cherry on top of these other issues
+
+1739329555
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+you can get a long way with just few basic disciplines (plus shellcheck, don't go, not one step, without shellcheck)
+
+1739329574
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+just quote strings with "foo" gets you 90%
+
+1739329600
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i could go on and on about Bash, I guess i'm one of those weirdos :D
+
+1739329663
+torque!~tachyon@user/torque
+well, it takes all types. hopefully zig provides some helpful rehab
+
+1739329741
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+absolutely!  no joke, learning just a bit of zig has been a breakthrough for me.  i was writing a lot of python back then, and i just immediately got better, couldn't believe it
+
+1739329786
+torque!~tachyon@user/torque
+nice
+
+1739329818
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thing is i've been listening to all those Uncle Bob haters all along, and wanted to give them but the problem always was that nobody really shows, if not OO this OO that, then what?
+
+1739329874
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+zig was the first time i learned about unions, tagged unions and how to really use enums
+
+1739329924
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so i realized, so yeah, maybe this is the well kept "secret" of how to actually do things in non-OO way
+
+1739329931
+torque!~tachyon@user/torque
+I've dabbled in various languages and have appreciated finding constructs in one language that map onto useful patters in other languages
+
+1739329934
+torque!~tachyon@user/torque
+patterns
+
+1739329982
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thing is i immediately started adopting the tagged-union, enum-heavy style in Python, and that's when i knew.  because just by learning that, now my Python is better
+
+1739329998
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(and that's despite the fact that enums suck in python)
+
+1739330009
+torque!~tachyon@user/torque
+haha, I was just going to say python has decent enums
+
+1739330021
+torque!~tachyon@user/torque
+but compared to a zig they are kind of clunky
+
+1739330033
+torque!~tachyon@user/torque
+better than most other languages though imo
+
+1739330100
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+can't compare, i only know python's enums and zig's
+
+1739330128
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+in python they are good for what they are -- an after-thought bolted on the language by force of thousand hammers :D
+
+1739330157
+torque!~tachyon@user/torque
+the terrifying power of python metaprogramming
+
+1739330377
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i do think that years of writing predominantly bash has taught me hard but good lessons,  although it's not like i'm going to flex on people on job interviews :D
+
+1739330498
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(not necessarily bash specifically, but years of writing very high-level code (like, upgrading machines and testing pre/post conditions) in a restrained environment, where it just boils down to bash because reasons[tm])
+
+1739330722
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+anyway, thanks for review, torque :)
+
+1739330747
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+and the chat.. (need to hit the bed now, it's past 4am)
+
+1739330754
+torque!~tachyon@user/torque
+have a good night
+
+1739331466
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I want a struct of bools to represent different states, e.g. essentially a bitmask. I was looking at using a packed struct for this, though I'm not really sure what the pros/cons of doing this versus just using a regular struct
+
+1739334370
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+if I want/need to include linux/input-event-codes.h, do I need to tell zig where to find it? if yes how do I do so in a generic enough way such that it can find it regardless of the linux distro it is compiling on?
+
+1739335803
+torque!~tachyon@user/torque
+a packed struct will be much more space efficient under the hood for this than a normal struct if you have more than one flag
+
+1739335833
+torque!~tachyon@user/torque
+but from a usage perspective, they don't look any different to the user, really
+
+1739335996
+torque!~tachyon@user/torque
+re: the header, I believe if you link libc the build system also adds various standard os include paths so c headers can be included. I don't know if the linux headers are special though I don't recall needing any special compiler flags to use them from c
+
+1739362930
+sskras!sid542048@id-542048.tinside.irccloud.com
+ netvor: cheers re your scripting background! And thanks for some good insights. I also do a bit of shell scripting. Bash is mostly for my interactive use, and in scripts I tend to use the POSIX sh. I guess that puts me pretty much into the safe subset of Bash.
+
+1739363022
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+well, except, IIRC, `local` is not in POSIX so... the price for safety in sh is actually higher
+
+1739363079
+ifreund!2940d10f8b@user/ifreund
+in POSIX sh the only real datastructure is the filesystem :/
+
+1739363167
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+yeah, that's where i hit the edge of Bash scripting.  you can do associative arrays (i needed a really long backwards compat so i really could not..) but a temdir is easier
+
+1739363187
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+but it does get finnicky, error prone and performance is pretty bad
+
+1739363241
+sskras!sid542048@id-542048.tinside.irccloud.com
+well, you kind of have one dimensional arrays too in sh, I guess.
+
+1739363241
+ifreund!2940d10f8b@user/ifreund
+I've never regretting deciding to use python or lua rather than a shell script
+
+1739363248
+ifreund!2940d10f8b@user/ifreund
+*regretted
+
+1739363273
+sskras!sid542048@id-542048.tinside.irccloud.com
+ifreund: any experience with perl?
+
+1739363281
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(the advantage is that you can make it persistent for free, which was actually somewhat useful in the domain i was working, since the machine could reboot several times over the courese of the test)
+
+1739363312
+ifreund!2940d10f8b@user/ifreund
+sskras: nope
+
+1739363323
+sskras!sid542048@id-542048.tinside.irccloud.com
+ACTION has none too. Excuse the offtopic, please.
+
+1739363361
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+ACTION has, many years ago, fwiw (it's been his first language :D)
+
+1739363386
+ifreund!2940d10f8b@user/ifreund
+here's a fun page of examples of why you should use a real language rather than posix sh: https://www.etalabs.net/sh_tricks.html
+
+1739363429
+sskras!sid542048@id-542048.tinside.irccloud.com
+netvor: good point. And cool story about Perl being your first language!
+
+1739363467
+ifreund!2940d10f8b@user/ifreund
+my favorite is using $1, $2, $3... as an array
+
+1739363518
+sskras!sid542048@id-542048.tinside.irccloud.com
+and mine is ability to use awk :D (where this syntax is also valid!)
+
+1739363536
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+so i've created this testing infrastructure/framework for testing whole-machine upgrades (with use cases supplied by other teams).   and i kept it all in bash.   that made me the weird guy even for Red Hat's standards :D
+
+1739363605
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+thing is, few would actually appreciate how hard i actually tried to move it to python, but that just does not really fly when you need to support migrations across RHEL5 to RHEL9
+
+1739363649
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(RHEL5, yeah, it only has python2 (less than .7) and its bash version does not *yet* support asssociative arrays :D)
+
+1739363685
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+plus you need to integrate other people's test code, which is usually in bash for similar reasons :D
+
+1739363723
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+that said, all of that was just a BREEZE compared to working with Javascript :D
+
+1739363732
+sskras!sid542048@id-542048.tinside.irccloud.com
+netvor: welcome on the board! Even if I don't use Zig (yet:) and am just a casual stalker here.
+
+1739370366
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+looking at labeled switch, im curious what the proposal author needed it for, and if it's a frequent idiom in zig code
+
+1739370900
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+here's the proposal https://github.com/ziglang/zig/issues/8220 fwiw
+
+1739370971
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+(i myself don't have strong plans with it, i will wait how i'll end up using it.. i vaguely recall skimming through that proposal in past)
+
+1739371038
+passerby!~chris@user/Passerby
+i can see a few ways it might be useful but not sure it something i would think of doing in the momenyt
+
+1739371040
+passerby!~chris@user/Passerby
+i can see a few ways it might be useful but not sure it something i would think of doing in the moment
+
+1739371589
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: cool thanks for the help!
+
+1739385920
+haeckmaeck!~haeckmaec@2a02:908:13c0:dc20:d336:9a26:c81e:ed6
+hi there. I foud on the community page that Shpong is not avialable anymore and I would remove the entry by creating a pull request. Are there certain rules I should pay attention to before starting a PR?
+
+1739399040
+frmdstryr!~jrm@172.56.217.236
+Is there a way to catch all errors in a block in one catch statement (without writing a seprate function)?
+
+1739399139
+passerby!~chris@user/Passerby
+99% sure no
+
+1739399152
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+wdym without a separate function
+
+1739399196
+passerby!~chris@user/Passerby
+think they mean not having to define a function to just get 1 error return to hit
+
+1739399205
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+An error will return the function, so no...not if you want to continue control flow below the block
+
+1739399231
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You can catch them all and log or do something else, but you can't change the returned error, or continue flow
+
+1739399248
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+{ errdefer |err| { // do something }; // do stuff }
+
+1739399252
+frmdstryr!~jrm@172.56.217.236
+I'm interfacing with python. It wants `?*Object` return types. I defined a bunch of !*Object functions. I have to use catch return null for each one which is really annoying.
+
+1739399337
+frmdstryr!~jrm@172.56.217.236
+Didn't think about errdefer, that'd probably work
+
+1739399421
+frmdstryr!~jrm@172.56.217.236
+Actually that can't change the return though can it?
+
+1739399438
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+No, you can't change the return
+
+1739399479
+passerby!~chris@user/Passerby
+what are you trying to do, like have it if err return null or otherwise just the *Object
+
+1739403707
+sdc!sid638645@id-638645.lymington.irccloud.com
+looking at some simd stuff
+
+1739403744
+sdc!sid638645@id-638645.lymington.irccloud.com
+seems like @shuffle/@select requires the mask to be known at compile time
+
+1739403768
+sdc!sid638645@id-638645.lymington.irccloud.com
+is there no way to get something like VPGATHERQD to be emitted?
+
+1739403798
+sdc!sid638645@id-638645.lymington.irccloud.com
+ie I'm trying to construct a mask at runtime
+
+1739404088
+sdc!sid638645@id-638645.lymington.irccloud.com
+er VPERMD
+
