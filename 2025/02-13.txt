@@ -1,0 +1,120 @@
+1739409521
+torque!~tachyon@user/torque
+<frmdstryr> I'm interfacing with python. It wants `?*Object` return types. I defined a bunch of !*Object functions. I have to use catch return null for each one which is really annoying.
+
+1739409530
+torque!~tachyon@user/torque
+when I've done this in the past I have added an indirection function
+
+1739409563
+torque!~tachyon@user/torque
+that does all of the work, and your api boundary wrapper just does `catch return null;` once
+
+1739409630
+torque!~tachyon@user/torque
+requiring error handling on every fallible function is actually a good thing in zig but it does get awkward when you're up against a boundary where you can't just propagate the error
+
+1739410697
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: if you can't propagate the error then you just have to handle it, *shrug*
+
+1739410935
+torque!~tachyon@user/torque
+yes but the point is if you are calling many functions that can fail at that boundary layer, handling it at every call site is a bit onerous.
+
+1739410962
+torque!~tachyon@user/torque
+so the nicest way to deal with that is to wrap the work with a function
+
+1739411852
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea sure that's fine
+
+1739417272
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is this valid zig? `pub const WaylandContext(comptime CallbackType: type) = struct {...};`? I got it from gemini
+
+1739417289
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I don't understand why the `fn` keyword is not present
+
+1739417457
+andrewrk!~andrewrk@mail.ziglang.org
+sdc: looks like a deficiency in the language. you're welcome to file an issue for it
+
+1739417544
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol nvm I don't think it's valid zig. silly gemini
+
+1739418275
+torque!~tachyon@user/torque
+there's a very easy way to see if something is valid zig, and that's to try to compile it
+
+1739418296
+torque!~tachyon@user/torque
+but in this case i would strongly recommend not using "AI" for anything
+
+1739418748
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ai can be helpful for getting pointed in the general direction of a right answer
+
+1739420799
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+in this example https://dpaste.com/6SR44MW3Q why does `src/main.zig:30:9: error: variable of type 'main.Foo(main.Bar)' must be const or comptime`. it says it's because of the `callback` field, but I don't understand the connection
+
+1739420842
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+this is the full error https://dpaste.com/3C2T93KVS
+
+1739420955
+sp2!uid197664@user/meow/sp2
+values of type `fn (...) ..` (function *bodies*) are comptime only; to get a function pointer you want `*const fn (...) ...` (see https://ziglang.org/documentation/master/#toc-Functions)
+
+1739420977
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ahhh of course, and that's in the last part of the error message
+
+1739420980
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+thanks for the link sp2
+
+1739420985
+sp2!uid197664@user/meow/sp2
+np!
+
+1739475088
+andrewrk!~andrewrk@mail.ziglang.org
+I hope this doesn't come off as antagonistic but I think it's a bit rude to ask for help from people to troubleshoot crap that an LLM gave you
+
+1739475106
+andrewrk!~andrewrk@mail.ziglang.org
+you know? we're here to help people learn and get better and it takes a lot of patience to do it. we're not your GPU
+
+1739485938
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+is there a nice syntax for this?  i have a `const foos = []?Foo;`  in a loop somewhere i want to access pointer to a Foo, but continue if the slot was null
+
+1739485976
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+i mean i'm looping over indexes and i want to skip nulls, but modify the non-null data
+
+1739486147
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+the skipping is easy, just `if (foos[idx] == null) continue;`
+
+1739486282
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+oh maybe it's `const foo_ptr = &foos[idx].?;`
+
+1739489020
+squeek502!~squeek502@user/squeek502
+netvor, i think `const foo_ptr = &(foos[idx] orelse continue);` might work
+
+1739489077
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+oh that would be even better
+
+1739489160
+netvor!~netvor@2a00:ca8:a1f:cd0:982:6538:4c46:b377
+the `&foos[idx].?` did work nice, though.  and with the `if .. continue` check it's even safe and pretty readable
+
