@@ -1,0 +1,176 @@
+1739497380
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: I think that's fair. I didn't really realize it was crap though at the time :\
+
+1739497430
+andrewrk!~andrewrk@mail.ziglang.org
+no big deal *shrug*
+
+1739497439
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1739497682
+torque!~tachyon@user/torque
+*slowly working myself up to get put in the dunce corner* and yet it came from a crap machine!!!!!!!!
+
+1739498368
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+copmilers used to be people
+
+1739498373
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+now they're machines
+
+1739498382
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤯
+
+1739500569
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yooo I fixed the problems with my rotating square: it's a square now, and doesn't disappear, and it responds to click events! https://imgur.com/a/GIgmopX
+
+1739500604
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+https://github.com/ezzieyguywuf/zcad this is the code, I'm happy to take any critiques/criticisms as I'm very new to zig
+
+1739503931
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+in this example https://dpaste.com/2FM9T3CQ4  why does `my_struct` have .bar = true? I expect .bar = false, as seen in `my_other_struct`. If I change Flags to a regular struct (not packed) I get the expected behaviour
+
+1739504008
+sp2!uid197664@user/meow/sp2
+`allocator.create` returns a pointer to uninitialized memory, if I remember correctly
+
+1739504166
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+indeed "Returns a pointer to undefined memory."
+
+1739504299
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+how do I define the memory though? this is a smaller example of what I have going on in https://github.com/ezzieyguywuf/zcad/blob/main/src/main.zig#L63-L65 , where so far I'm not getting any errors or issues with `wl_ctx`, but I do have this odd behaviour with the bit being initialized to 1
+
+1739504335
+sp2!uid197664@user/meow/sp2
+you can just write into the pointer -- `ptr.* = .{ }`
+
+1739504494
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea that fixes it. so I guess I was mutzing around with undefined behaviour before?
+
+1739504501
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I would've expected an error or warning or smthn
+
+1739504546
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lisk, in the github I linked, why can I call init on the undefined memory?
+
+1739504600
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+s/lisk/like/
+
+1739504624
+sp2!uid197664@user/meow/sp2
+the convention is actually that `init` is *always* called on uninitialized memory, and it's responsible for initializing the whole structure
+
+1739504720
+sp2!uid197664@user/meow/sp2
+Zig doesn't do any compile-time tracking of definedness, so it can't warn at compiletime. The expectation is that the `undefined` bitpattern (/ONLY IN DEBUG modes/, 0xAA...) is sufficiently weird to notice when you're inadvertently treating it as initialized
+
+1739504778
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hmhm
+
+1739504786
+sp2!uid197664@user/meow/sp2
+(I could be wrong in my previous message about convention. I've gotten this feel mostly from getting around the standard library, not explicit messaging)
+
+1739504800
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I wondered why in my dpaste example I couldn't call .init on the heap allocated struct
+
+1739504811
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but I think I'll leave these mysteries for another night lol
+
+1739504825
+sp2!uid197664@user/meow/sp2
+fair enough haha
+
+1739505059
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the pattern I'm using though isn't odd? e.g. heap allocate and then init? `pub fn init(self: *Foo...` felt odd but it was the only way I could make "it" work
+
+1739505100
+sp2!uid197664@user/meow/sp2
+I think normally it's `fn init() Self`, unless the pointer needs to be stable (which is pretty likely with Wayland, although I haven't looked at your code much)
+
+1739505107
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I think b/c e.g. the callbacks I set up for wayland in init, if I have to copy the WaylandContext to the callsite things get messed up and crash
+
+1739505110
+sp2!uid197664@user/meow/sp2
+yeah
+
+1739505115
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yup
+
+1739505125
+sp2!uid197664@user/meow/sp2
+because wayland really likes intrusive linked lists, and those require stable pointers
+
+1739505128
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+k cool, I'll leave it alone and then like I said file it away for another night 😅
+
+1739505248
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+> it's responsible for initializing the whole structure < I can go back to the packed struct though since I should be initializing this in init anyway. I suppose this means I can't really rely on the default values I set up.
+
+1739505279
+sp2!uid197664@user/meow/sp2
+yeah
+
+1739505296
+sp2!uid197664@user/meow/sp2
+when I do it, I think I would have init just have the first thing being `self.* = .{ ... .}`, so you can't forget to initialize any members
+
+1739505332
+sp2!uid197664@user/meow/sp2
+and if you need to initialize something later, you can do `.member = undefined`; this means it's nearby the code that initializes it so it's hard to forget
+
+1739505362
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍 yea honestly I should clean up that init a bit, but I end up having to do some wayland gymnastics before I can `self.* = .{...}` so it wouldn't be at the top anyways
+
+1739505368
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+thanks again for the help sp2 !
+
+1739505393
+sp2!uid197664@user/meow/sp2
+np!
+
+1739515535
+dsal!sid13060@id-13060.lymington.irccloud.com
+Signs you might be thinking too Haskelly:   `pub fn id(a: anytype) @TypeOf(a) { return a; }`
+
+1739528414
+gviegas!~gviegas@user/gviegas
+Hi. I'm getting the following compilation error: "error: EXTRACTVAL: Invalid type (Producer: 'zig 0.14.0' Reader: 'LLVM 19.1.7')". I'd like some guidance on how to debug this, as I have no knowledge about the compiler. A quick search on the sources for this error didn't lead me anywhere. zig version 0.14.0-dev.3219+bffbc918e (linux x86_64).
+
+1739528689
+ifreund!2940d10f8b@user/ifreund
+gviegas: that seems like an error message from LLVM while it is procesding the IR bitcode generate by Zig
+
+1739528734
+ifreund!2940d10f8b@user/ifreund
+(aplogies for phone keyboard spelling)
+
+1739565266
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+> Signs you might be thinking too Haskelly < I was super into haskell a few years ago, but ultimately as my project grew I got pretty jaded with it
+
