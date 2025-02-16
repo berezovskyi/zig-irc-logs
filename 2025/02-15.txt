@@ -1,0 +1,404 @@
+1739578377
+LAC-Tech!~lewis@granite-phrase.bnr.la
+after spending some time around various task/future/promise implementations and abstractions, I sort of get why tigerbeetle just uses callbacks.
+
+1739581377
+dsal!sid13060@id-13060.lymington.irccloud.com
+ezzieyguywuf: I've got a bunch of Haskell projects that keep things going around here and it's my primary work language.  It has some downsides, but it matches my thinking better than anything else I've used.
+
+1739585031
+dsal!sid13060@id-13060.lymington.irccloud.com
+Is it possible to express a tuple in a type signature?  I can't figure out how to express this.
+
+1739585187
+dsal!sid13060@id-13060.lymington.irccloud.com
+Or just as a type in general.  I want to make a map with a value that's a tuple.
+
+1739586476
+torque!~tachyon@user/torque
+`struct {u8, u32}`
+
+1739586485
+torque!~tachyon@user/torque
+it's just a struct where the fields do not have names
+
+1739586580
+dsal!sid13060@id-13060.lymington.irccloud.com
+ohhh.  Thanks.
+
+1739594627
+LAC-Tech!~lewis@granite-phrase.bnr.la
+do you store an rng after initializing it, or fater initializing it then calling "random()"? like is the result of random that you want to persist?
+
+1739596264
+torque!~tachyon@user/torque
+depending on the context, you might need to store both, since the Random interface may store a type erased pointer to the actual random implementation
+
+1739596329
+torque!~tachyon@user/torque
+well, I guess you can always get the interface from the implementation
+
+1739604725
+andrewrk!~andrewrk@mail.ziglang.org
+the interface is not worth storing
+
+1739608982
+LAC-Tech!~lewis@granite-phrase.bnr.la
+it's a confusing api for me. why random().int(T) and not randomInt(T)?
+
+1739609115
+torque!~tachyon@user/torque
+same reason Allocator exists
+
+1739609150
+torque!~tachyon@user/torque
+there are many different possible rng algorithms. by having the Random interface, functions can be agnostic to the actual implementation
+
+1739609183
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I'm not seeing the link here. could all the actual implementations just have randomInt(T) ?
+
+1739609243
+torque!~tachyon@user/torque
+sure, but then functions would need to take an anytype parameter. just like how all allocators could implement the high level `alloc` and `create` functions
+
+1739609375
+torque!~tachyon@user/torque
+it would also be more code duplication on each implementation, with a higher likelihood of inconsistent completeness of api coverage
+
+1739611456
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok maybe it's not the rng that's slow. what do people use to profile? tried strace -k but it's not super readiable with a default build
+
+1739614232
+daurnimator!~daurnimat@vultr.daurnimator.com
+LAC-Tech: perf/flamegraphs?
+
+1739624151
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm wyhash/wyrand whitepaper claims that these are the default in i.a. zig, but checking through past zig versions, xoshiro has been the default for most of zig's history
+
+1739626148
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ifreund: how do I use wl_shell_surface::move in zig-wayland? I checked the generated code for wl.Surface and don't see the relevant method
+
+1739626177
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+dsal: haskell for sure gets your brain thinking in a much saner way I think than, say, java
+
+1739626307
+ifreund!2940d10f8b@user/ifreund
+ezzieyguywuf: wl_shell is is deprecated and you shouldn't touch it
+
+1739626356
+ifreund!2940d10f8b@user/ifreund
+many compositors (including river) don't even advertise support for it any more
+
+1739626374
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1739626391
+ifreund!2940d10f8b@user/ifreund
+use xdg-shell instead
+
+1739626405
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I don't see that documented under wl_shell_surface here https://wayland.freedesktop.org/docs/html/apa.html
+
+1739626414
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ahh I'm already using xdg for other things, should be an easy change
+
+1739626456
+ifreund!2940d10f8b@user/ifreund
+to actually answer your question though, that function would be in the wl.ShellSurface namespace not wl.Surface
+
+1739626490
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ifreund: gotcha gotcha, thanks for the help :)
+
+1739626518
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol I didn't scroll far enough up "Note! This protocol is deprecated and not intended for production use."
+
+1739626541
+ifreund!2940d10f8b@user/ifreund
+heh
+
+1739626680
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ahhh maybe https://github.com/ifreund/zig-wayland/blob/master/example/hello/hello.zig needs to be updated to use xdg_shell? or is it out-of-scope for that example?
+
+1739626692
+ifreund!2940d10f8b@user/ifreund
+it uses xdg_shell...
+
+1739626739
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ctrl-f shell didn't find it, maybe I'm just being thick
+
+1739626791
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah - xdg_shell is the whole thing that comes with xdg_surface
+
+1739626799
+ifreund!2940d10f8b@user/ifreund
+the protocol is called xdg-shell, it include interfaces such as xdg_wm_base, xdg_surface, xdg_toplevel, etc.
+
+1739626853
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1739635450
+norineko!~norineko@user/norineko
+zls reccomends copying the code used to set up the exe for build_on_save (minus the install step to skip LLVM). is there a way to do this without duplicating all the code?
+
+1739635496
+norineko!~norineko@user/norineko
+mainly to copy linked libraries, conditionals, etc. Keeping two copies in sync feels bad
+
+1739636116
+Der_Teufel!~DerTeufel@87-206-205-214.dynamic.chello.pl
+probably doable using the root_module of the Compile step
+
+1739636963
+ifreund!2940d10f8b@user/ifreund
+norineko: put all the code adding libraries and other dependencies to the Compile step in a function
+
+1739636979
+ifreund!2940d10f8b@user/ifreund
+you do need two separate Compile steps as build.zig is declarative
+
+1739636999
+ifreund!2940d10f8b@user/ifreund
+you can factor away all the shared logic configuring those two Compile steps though
+
+1739637078
+norineko!~norineko@user/norineko
+i found a snippet doing exactly that, which feels good. the build system is very complex but also very capable
+
+1739637136
+ifreund!2940d10f8b@user/ifreund
+the core idea of a declarative directed graph of steps is pretty simple, there is a fair amount of cruft on top though :D
+
+1739646178
+andrewrk!~andrewrk@mail.ziglang.org
+I'll defend the cruft! it gets you: file system watching, incremental builds, caching, dependencies on third party code, and parallel builds
+
+1739647080
+Earnestly!~earnest@user/earnestly
+One of those things is a bit different from the others lol
+
+1739648103
+andrewrk!~andrewrk@mail.ziglang.org
+which one?
+
+1739649292
+Earnestly!~earnest@user/earnestly
+dependencies on third party code
+
+1739649350
+andrewrk!~andrewrk@mail.ziglang.org
+nah, it's all connected
+
+1739649375
+andrewrk!~andrewrk@mail.ziglang.org
+(picture the meme with the guy with sticky notes and crazy hair with yarn connecting everything on a corkboard)
+
+1739649379
+Earnestly!~earnest@user/earnestly
+I know, but from the view of "this is nice", that one usually isn't
+
+1739649390
+Earnestly!~earnest@user/earnestly
+I was thinking more of the "trade offer" meme
+
+1739649400
+andrewrk!~andrewrk@mail.ziglang.org
+haha
+
+1739649426
+andrewrk!~andrewrk@mail.ziglang.org
+really, you don't want to depend on any code at all?
+
+1739649440
+andrewrk!~andrewrk@mail.ziglang.org
+any major successful project that has real users is going to have dependencies
+
+1739649448
+Earnestly!~earnest@user/earnestly
+It's one of those things, as necessary
+
+1739649474
+Earnestly!~earnest@user/earnestly
+I'm a bit of a fan of wirth which is more or less to look at complexity and just say "nope"
+
+1739649515
+Earnestly!~earnest@user/earnestly
+I do tend to like the smaller projects which is usually made by one developer with a solid vision, catering almostly exclusively to scratching just their itch, and few users
+
+1739649543
+Earnestly!~earnest@user/earnestly
+But you're not wrong of course
+
+1739649729
+andrewrk!~andrewrk@mail.ziglang.org
+I like those projects too, but I also want to see great open source software eat some of the proprietary competition
+
+1739654143
+torque!~tachyon@user/torque
+having worked with a variety of C(++) build systems, I think having dependency resolution integrated into the build system is a good idea
+
+1739654234
+torque!~tachyon@user/torque
+it's interesting to philosophize about the conditions that created the hellscape known as node js
+
+1739654438
+andrewrk!~andrewrk@mail.ziglang.org
+nodejs package management is great! major inspiration for zig
+
+1739654451
+LAC-Tech!~lewis@granite-phrase.bnr.la
+daurnimator: ok I'll play around with perf, so how that goes :)
+
+1739654477
+andrewrk!~andrewrk@mail.ziglang.org
+it's not the creators of node.js fault that many javascript programmers have no taste 
+
+1739654517
+LAC-Tech!~lewis@granite-phrase.bnr.la
+one great benefit of JS is the ecosystem is huge! but one of its biggest drawbacks is that the ecosystem is huge :(
+
+1739654525
+andrewrk!~andrewrk@mail.ziglang.org
+exactly
+
+1739654726
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I am not a fan of a registry, so I'm glad zig hasn't (so far?) followed node in that way
+
+1739654958
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I mean isn't github that registry? don't worry I'm sure it'll last forever ;)
+
+1739655133
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+github is namespaced to my username
+
+1739655528
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah but I mean github is not eternal, right? it's just some companies website
+
+1739655643
+andrewrk!~andrewrk@mail.ziglang.org
+which is why the hash system exists, it makes github storage a commodity
+
+1739655668
+andrewrk!~andrewrk@mail.ziglang.org
+mirrors will make it even less important where something is stored
+
+1739655724
+LAC-Tech!~lewis@granite-phrase.bnr.la
+oh so that's what that's for
+
+1739655886
+andrewrk!~andrewrk@mail.ziglang.org
+as it stands, right now if github.com went down permanently or started charging money for hosting or whathaveyou, zig programmers would see a broken build, spend the time to mirror their dependencies to an alternative, and then change the URL and keep the hashes the same, and then the build would be fixed
+
+1739655905
+andrewrk!~andrewrk@mail.ziglang.org
+that's a pretty minimal disruption if you ask me
+
+1739656152
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+So I'm working on an "out of the box" shell concept and it's coming along pretty nicely. Basically, each command is run in an embedded ghostty terminal. Each embedded terminal is essentially a sandbox operating on it's own, and I never fully surrender my terminal screen to a compiler
+
+1739656343
+andrewrk!~andrewrk@mail.ziglang.org
+sounds interesting, but not quite sure I understand fully - what UI application is the user interacting with in this example?
+
+1739656345
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+There are some bugs in it and a lot more to take advantage of with the shell owning the terminal like this
+
+1739656347
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://0x0.st/8Nt7.mp4
+
+1739656357
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+andrewrk: a terminal still
+
+1739656431
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it's like if tmux was also a shell and a little bit smarter about what was running in each process
+
+1739656488
+andrewrk!~andrewrk@mail.ziglang.org
+oh that's interesting, it let you start working on the next command while the previous one was still going
+
+1739656553
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah, it's all async and you can jump into and out of previous commands even (if they are still running, obviously)
+
+1739656642
+andrewrk!~andrewrk@mail.ziglang.org
+neat
+
+1739656675
+torque!~tachyon@user/torque
+<andrewrk> it's not the creators of node.js fault that many javascript programmers have no taste
+
+1739656678
+torque!~tachyon@user/torque
+i agree with this
+
+1739656775
+torque!~tachyon@user/torque
+which is why it's interesting to ponder. you can definitely make the argument that easy-to-use dependency management makes people more likely to reach for dependencies
+
+1739656783
+torque!~tachyon@user/torque
+but I don't think that explains the problem
+
+1739657002
+Earnestly!~earnest@user/earnestly
+(I hope zig can avoid the curse of the little library, the leftpads and the haskell ecosystem)
+
+1739657070
+Earnestly!~earnest@user/earnestly
+rust seems to have it but I can't claim it for certain
+
+1739657105
+Earnestly!~earnest@user/earnestly
+(Reinventing the wheel also helps us remember how to make wheels)
+
+1739661305
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Earnestly: yeah rust has that disease for sure.
+
+1739661328
+LAC-Tech!~lewis@granite-phrase.bnr.la
+but that's a "culture" thing, right?
+
+1739663726
+andrewrk!~andrewrk@mail.ziglang.org
+I think it's more like a popular thing
+
+1739663735
+andrewrk!~andrewrk@mail.ziglang.org
+as zig gets more mainstream we'll see the exact same thing happen
+
+1739663973
+ifreund!2940d10f8b@user/ifreund
+rockorager: have you seen Arcans crazy awesome shell demos?
+
+1739663976
+ifreund!2940d10f8b@user/ifreund
+https://arcan-fe.com/2022/04/02/the-day-of-a-new-command-line-interface-shell/
+
+1739663985
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ifreund: yeah I have
+
