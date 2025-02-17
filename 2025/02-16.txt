@@ -1,0 +1,172 @@
+1739664000
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+this was partially inspired by those
+
+1739664015
+Earnestly!~earnest@user/earnestly
+I agree, however, the theme I noticed between languages like haskell and rust is that the language itself didn't really come with much standard lib (C is a bit of a singuality here) so lots of people developed fairly minor but core bits and pieces before the lang could standardise their own
+
+1739664103
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+kind of like a “I bet we can solve a lot of these problems today”
+
+1739664104
+Earnestly!~earnest@user/earnestly
+Consider haskell word8, an entire library just a data type. https://hackage.haskell.org/package/word8-0.1.3/docs/src/Data-Word8.html
+
+1739664145
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+(the /dev/random one for example - each command is run in its own terminal, any messed up state stays there and doesn’t affect the prompt nor anything else)
+
+1739664223
+Earnestly!~earnest@user/earnestly
+andrewrk: E.g. To install pandoc it needs 671 libraries. A dynamically linked pandoc is /significantly/ slowed down just by the loader.
+
+1739664242
+Earnestly!~earnest@user/earnestly
+Hm
+
+1739664265
+ifreund!2940d10f8b@user/ifreund
+rockorager: neat, I'm curious to see what you come up with and what limitations you hit
+
+1739664266
+Earnestly!~earnest@user/earnestly
+Sorry, I had duplicates. 222 libraries
+
+1739664339
+Earnestly!~earnest@user/earnestly
+(I don't think there's much to do about this, just my observation that even more "disciplined" languages suffer just as much as javascript, which tends to unfairly get more stick)
+
+1739664483
+mountaingoat!~mountaing@user/mountaingoat
+is there any way to "see" comptime generated code?
+
+1739664622
+andrewrk!~andrewrk@mail.ziglang.org
+it goes from ZIR to AIR, so your options are to look at that output, or the final machine code
+
+1739664668
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps @compileLog could help here
+
+1739668369
+torque!~tachyon@user/torque
+javascript getting bullied is fair, imo, it's easily the most visible language and I don't think there are any others that have had as many successful supply chain attacks executed on them (these are probably correlated)
+
+1739668508
+norineko!~norineko@user/norineko
+python has had malicious packages based on typos IIRC. 
+
+1739668649
+torque!~tachyon@user/torque
+that's definitely a problem but it's a bit different than publishing malicious versions of existing packages
+
+1739671340
+mountaingoat!~mountaing@user/mountaingoat
+andrewrk: thanks
+
+1739671427
+dsal!sid13060@id-13060.lymington.irccloud.com
+Can I have a HashMap in a struct with a default value?  I want to be able to do something like  `T{.someField=3}.init(alloc);`
+
+1739673698
+LAC-Tech!~lewis@granite-phrase.bnr.la
+... is "addCSourceFile" supposed link in about 50 shared object libraries, like libvulkan, libogg, libchromium? as in, I comment it out, and they don't get linked.
+
+1739673793
+LAC-Tech!~lewis@granite-phrase.bnr.la
+oh I assume it's lazy, so what you add in "linkSystemLibrary" doesn't get added until you have something your project that uses it
+
+1739676261
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: I have no idea what you are talking about
+
+1739676272
+andrewrk!~andrewrk@mail.ziglang.org
+addCSourceFile adds a single object to your compilation
+
+1739676316
+andrewrk!~andrewrk@mail.ziglang.org
+oh, now I understand. yes the default is "as needed". so perhaps you already link those things, and have introduced the first symbol dependency on them in this C source file
+
+1739684965
+dsal!sid13060@id-13060.lymington.irccloud.com
+It seems a little strange that `std.sort.binarySearch` has a slice of items.  Seems like an arbitrary context would be more generally applicable.
+
+1739704132
+Earnestly!~earnest@user/earnestly
+torque: (Fwiw, virtually all infrastructure both digital and physical, is more or less unprotected. It has always dependended on trust and good will (by having legitimacy). From the Arch Linux AUR to substations; I'm not aware of anyone even trying to secure these things outside of appstores perhaps)
+
+1739704218
+Earnestly!~earnest@user/earnestly
+I also don't believe it is "securable" either, but I am probably ignorant of some fancy crypto which can aid the trust problem (besides verification via reproducible builds)
+
+1739704520
+Earnestly!~earnest@user/earnestly
+torque: iow, I don't blame js (yet); there are more lucrative incentives in attacking it compared with other places
+
+1739726733
+norineko!~norineko@user/norineko
+is there a way to easily convert primitive types (think i32, u8) into a []u8? I have a c function that takes void* and length, and relies on C coercion that I want to interface with
+
+1739731986
+norineko!~norineko@user/norineko
+I have a solution that I feel is satisfactory - comptime type parameter and then using `undefined` for the getter and `data: *T` for the setter!
+
+1739737419
+dsal!sid13060@id-13060.lymington.irccloud.com
+norineko: I use a combination of readInt and @bitCast to go the other way.
+
+1739737591
+grayhatter!~grayhatte@user/grayhatter
+norineko: []u8 is a pointer to u8, and a length
+
+1739737631
+grayhatter!~grayhatte@user/grayhatter
+const something: u8 = value; const something_slice: []u8 = &something;
+
+1739737668
+grayhatter!~grayhatte@user/grayhatter
+if you have a i32 std.mem.toBytes() 
+
+1739737710
+norineko!~norineko@user/norineko
+right - so I had it working with u8 slices, but I wanted to i.e get a i32 out. toBytes is another way to do it.
+
+1739737882
+norineko!~norineko@user/norineko
+I ended up with https://bpa.st/63JA . The main thing is that the set function takes a pointer to an arbitrary type. I think this would be possible to improve with comptime checking though
+
+1739737971
+norineko!~norineko@user/norineko
+i.e if a non-pointer type is passed, take the address of it and use sizeOf(TypeOf(x)). If it's a pointer type, don't & it, and do something else to get the size of the underlying type.
+
+1739737982
+grayhatter!~grayhatte@user/grayhatter
+norineko: like dsal suggested std.mem.readInt is what I'd reach for first... this on first glance looks fine, but I didn't check any of the ptrCasts
+
+1739738068
+norineko!~norineko@user/norineko
+this works with structs which is the next step. I wasn't sure if it would be needed, but it seems like it will.
+
+1739738094
+grayhatter!~grayhatte@user/grayhatter
+only some structs have a defined layout
+
+1739738160
+norineko!~norineko@user/norineko
+right. Can I assert that a struct is packed at compile time?
+
+1739738273
+andrewrk!~andrewrk@mail.ziglang.org
+start with: `comptime assert @typeInfo(`
+
+1739740225
+norineko!~norineko@user/norineko
+found ContainerLayout, which does what I need.
+
+1739749117
+LAC-Tech!~lewis@granite-phrase.bnr.la
+anyone had any like getting "perf report" to display callgraphs? feels like whatever flag I use it just shows me a flat layout. not sure if can't be done or skill issue.
+
