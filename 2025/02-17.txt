@@ -1,0 +1,244 @@
+1739758640
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: definitely a skill issue
+
+1739758660
+grayhatter!~grayhatte@user/grayhatter
+I've gotten perf, and got useful information out of it with a zig binary
+
+1739758711
+grayhatter!~grayhatte@user/grayhatter
+but... I do remember giving up twice before actually getting it to work... so it does work, but none of the guides I found actually mapped 1:1 with getting anything useful
+
+1739758996
+grayhatter!~grayhatte@user/grayhatter
+the implication that it's actually hard and confusing was intentional... so I think the skill issue is more on the side of creators of perf because ideally it shouldn't be so fragile nor require the strange incantations it does
+
+1739766915
+LAC-Tech!~lewis@granite-phrase.bnr.la
+lmao. grayhatter if you can remember any of the magic incantatnions, that'd be nice. I used -g and then used dwarves to call my graph or something, but it still appears like a big flat list of functions
+
+1739766969
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(wrote some code that seems identicaly in zig and rust, the rust was like 4x faster when i used release/production mode for both. trying to figure out wtf is so slow, I assume Zig's GPA is much slower than rusts default allocator, but want to be sure).
+
+1739767481
+grayhatter!~grayhatte@user/grayhatter
+I have no idea which one actually worked, but I have a few versions of `perf record -e cycles [binary]` and a bunch of `perf annotate -d [file]` in series I assume it was one of them, but I remember something different so I have no idea
+
+1739767609
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: what do these two functions do?
+
+1739768920
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I dunno, you just told me about them! I'll report back
+
+1739773756
+grayhatter!~grayhatte@user/grayhatter
+...
+
+1739773767
+grayhatter!~grayhatte@user/grayhatter
+I meant the two functions *you* wrote, and want to test
+
+1739775891
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: oh. atm I'm way more interested in getting good at profiling so i can figure out wtf is going on. I am fairly confident that equivalent rust and zig should be neck and neck.
+
+1739775913
+LAC-Tech!~lewis@granite-phrase.bnr.la
+OR I could write a clickbait article, "RUST IS 4X FASTER THAN ZIG" and get that sweet HN front page karma again. But I need to be strong.
+
+1739776499
+ifreund!2940d10f8b@user/ifreund
+LAC-Tech: -fno-omit-frame-pointer and use frame pointers rather than dwarf
+
+1739776537
+ifreund!2940d10f8b@user/ifreund
+https://www.brendangregg.com/blog/2024-03-17/the-return-of-the-frame-pointers.html
+
+1739776605
+ifreund!2940d10f8b@user/ifreund
+also, the perf commands you need are listed here: https://github.com/brendangregg/FlameGraph
+
+1739779446
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ifreund: I'll read the perf docs, and zigbuild, and see if I can use frame pointers. or is the long answer I need this dudes perl script? (not sure what perf commands from that big repo are relevant)
+
+1739779804
+LAC-Tech!~lewis@granite-phrase.bnr.la
+god I wish zig.build was documented (I know I know, pre 1.0)
+
+1739780161
+ifreund!2940d10f8b@user/ifreund
+LAC-Tech: you only need the Perl script if you want to use the flame graph visualization
+
+1739780192
+ifreund!2940d10f8b@user/ifreund
+(which is interactive and way more readable than the text output of perf)
+
+1739780242
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok, went to zig.build and added "omit_frame_pointer = false", ran "doas perf record -g zig-out/bin/dst", as the docs said default is to use fp for the callgraph, looked at the report with "perf report -g", same thing. just looks completely flat
+
+1739780343
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I am assuming perf report just can't display nested calls, and you have to read the text file. 
+
+1739780408
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok I'll install perl and use this clusterf*** of scripts to get flamegraphs tomorrow, that seems to be the only way out
+
+1739780412
+LAC-Tech!~lewis@granite-phrase.bnr.la
+thanks for the pointers
+
+1739780801
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://github.com/ziglang/zig/issues/1501#issuecomment-420336519 some ancient wisdom {2018!!!) from our BDFL - I'll try out valgrind for profiling.
+
+1739783568
+ifreund!2940d10f8b@user/ifreund
+yes, callgrind also works
+
+1739783583
+ifreund!2940d10f8b@user/ifreund
+I had no issues using perf with zig in the past though
+
+1739784144
+andrewrk!~andrewrk@mail.ziglang.org
+august 5 this year will be the 10 year anniversary of `git init`
+
+1739784364
+sskras!sid542048@id-542048.tinside.irccloud.com
+yay! :)
+
+1739785491
+motiejus!~motiejus@88.223.107.21
+LAC-Tech: you don't need those Brendan's perl scripts, cool kids use inferno (it's in my distro repo, so convenient) to generate flame graphs today.
+
+1739785563
+motiejus!~motiejus@88.223.107.21
+and in my experience, building non-stripped binaries, with no-omit-frame-pointer, and calling `perf record -g`, followed by the inferno script, produces the flamegraphs
+
+1739785604
+motiejus!~motiejus@88.223.107.21
+also, `perf` needs to access hw counters — do you see branch misses in, say, `perf stat ls`?
+
+1739785671
+motiejus!~motiejus@88.223.107.21
+in my experience the flat line is usually caused by lack of frame-pointer in elf or by lack of `-g` parameter to `perf record`
+
+1739785715
+LAC-Tech!~lewis@granite-phrase.bnr.la
+when I say it looks flat, I mean specifically when I call perf REPORT. ie the ncurses interface thingee. I suspect I am just wating time and that interface is incapable of displaying callgraphs in a nested fashion
+
+1739786262
+LAC-Tech!~lewis@granite-phrase.bnr.la
+motiejus: which inferno script? tried inferno-collapse-perf perf.data
+
+1739786377
+LAC-Tech!~lewis@granite-phrase.bnr.la
+oh right you need to put it into a text format first
+
+1739786476
+motiejus!~motiejus@88.223.107.21
+this is from my shell history: perf script | inferno-collapse-perf | inferno-flamegraph > flamegraph.svg
+
+1739786538
+motiejus!~motiejus@88.223.107.21
+I never managed to make good use of perf's tui :( 
+
+1739786549
+LAC-Tech!~lewis@granite-phrase.bnr.la
+aha. I'll write a little script for this. I got a nice little picture
+
+1739786559
+LAC-Tech!~lewis@granite-phrase.bnr.la
+motiejus: well I fell glad I'm not the only one
+
+1739786620
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok looks like my zig code is mainly slower because calling the default prng with random().float(), then comparing that with a float, is much slwoer than rust/rand smallrng, random_bool(some_float). rust one uses a distribution. well mystery solved.
+
+1739786644
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(some algorithm for both rngs)
+
+1739807212
+norineko!~norineko@user/norineko
+So I've got some C code that uses function pointers for a callback - can I use comptime to make a "function wrapper" that adjusts the type of the function to fit the C callback?
+
+1739807359
+norineko!~norineko@user/norineko
+I see some examples that create a struct with a method on it and return that: https://stackoverflow.com/questions/79191056/in-zig-how-to-return-a-function-from-another-function
+
+1739807639
+ifreund!2940d10f8b@user/ifreund
+norineko: maybe this is the kind of thing you're trying to do: https://codeberg.org/ifreund/zig-wayland/src/commit/8fe2242147d558836f05b5e5a7f22420a570331c/src/wayland_server_core.zig#L98
+
+1739807655
+ifreund!2940d10f8b@user/ifreund
+if not, it may nonetheless be an interesting example
+
+1739808043
+norineko!~norineko@user/norineko
+oh that's similar, I should be able to make that work
+
+1739809177
+norineko!~norineko@user/norineko
+ifreund: a question about that code. does the `extern fn` let you change the type signature? right now I'm using a lot of c.func_call(@ptrcast(self)), which seems less than ideal.
+
+1739809221
+norineko!~norineko@user/norineko
+I notice that the extern fn has a pointer to an opaque zig type (Server), which presumably does not exist in the linked library.
+
+1739809236
+ifreund!2940d10f8b@user/ifreund
+the extern function definition must match the ABI of the library that implements the function
+
+1739809275
+ifreund!2940d10f8b@user/ifreund
+C has opaque pointers as well, e.g. `struct foo;` without a full definition
+
+1739809401
+norineko!~norineko@user/norineko
+ah, so as long as it's a pointer to a struct, since it's "just a pointer" the ABI is preserved and it works.
+
+1739809649
+ifreund!2940d10f8b@user/ifreund
+all pointers are passed the same way regardless of what they point to
+
+1739809710
+ifreund!2940d10f8b@user/ifreund
+you do need to make sure that if the library expects the pointer to point to a specific struct type that the ABI of that type matches on the zig side
+
+1739809746
+ifreund!2940d10f8b@user/ifreund
+e.g. `struct { a: int } foo;` in C matches `const foo = extern struct { a: c_int };` in zig
+
+1739809815
+norineko!~norineko@user/norineko
+right, using extern struct if needed
+
+1739809866
+norineko!~norineko@user/norineko
+is the preference between @cImport and extern fn's just that you get more control over the signatures? 
+
+1739810380
+ianliu!~ianliu@179.160.42.117
+Is it possible to @import(std.fmt.comptimePrint("...", .{...})) somehow?
+
+1739812195
+ifreund!2940d10f8b@user/ifreund
+norineko: pretty much, declaring the ABI types manually can increase type safety if they are used directly
+
+1739812211
+ifreund!2940d10f8b@user/ifreund
+e.g. ?[*]u8 rather than [*c]u8
+
+1739833443
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Staring at a paragraph from the 1977 paper where they first coin the term "Future". Looking at it thinking "surely I could make this in Zig..."
+
