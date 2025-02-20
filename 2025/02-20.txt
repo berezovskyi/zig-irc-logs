@@ -126,3 +126,91 @@ C automatic int coercion is actually bad around edge cases
 grayhatter!~grayhatte@user/grayhatter
 I'm gonna double down on torque's suggestion... you're doing some really **really** weird shit with types that you simply do not need to
 
+1740022599
+grayhatter!~grayhatte@user/grayhatter
+ditto with globals... I have no idea why these are all top level vars
+
+1740022608
+SultansOfCode!~SultansOf@user/SultansOfCode
+I feel that, but could not find a better way yet
+
+1740022616
+SultansOfCode!~SultansOf@user/SultansOfCode
+The globals are for simplicity (yet too)
+
+1740022622
+andrewrk!~andrewrk@mail.ziglang.org
+I have to admit though with code like this there is still some language awkwardness leftover. I have some plans to address it
+
+1740022702
+SultansOfCode!~SultansOf@user/SultansOfCode
+I mean, in my head all is clear and I check everything with ifs to address the cases, I don't need to be warned every time that I am using unsigned and signed together
+
+1740022718
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: did you try using a single int type, instead of switching back and forth, everywhere?
+
+1740022755
+SultansOfCode!~SultansOf@user/SultansOfCode
+Not yet, was focusing on features, then got annoyed by the amount of @intCast and came to ask for help and tips
+
+1740022879
+torque!~tachyon@user/torque
+what do you expect to happen if you have u32 0x8000_0000 and you pass it to a function that implicitly reinterprets it as an i32?
+
+1740022951
+grayhatter!~grayhatte@user/grayhatter
+I don't know how to help you if you got annoyed by too many intCasts, if you haven't considered using the correct int type
+
+1740022977
+torque!~tachyon@user/torque
+I think it's pretty reasonable of zig to not do implicit value coercion when it could cause bugs due to out of range values getting reinterpreted unexpectedly
+
+1740022984
+SultansOfCode!~SultansOf@user/SultansOfCode
+I wouldn't do it, all values would be in range. But I understand the enforcement for safety here. It was just me thinking "makes no sense to have this variable accepting negative values"
+
+1740023012
+SultansOfCode!~SultansOf@user/SultansOfCode
+Changed everything to i32 now, lemme fix everything else first
+
+1740023016
+torque!~tachyon@user/torque
+you have to use the type system to tell the compiler it's in range, or you have to use @intCast to make the claim manually
+
+1740023027
+torque!~tachyon@user/torque
+that's just kind of how it goes
+
+1740023080
+torque!~tachyon@user/torque
+this doesn't work everywhere, though, and you probably will still need some @intCast
+
+1740023091
+SultansOfCode!~SultansOf@user/SultansOfCode
+For loops are always usize? Or can I make it smaller?
+
+1740023114
+SultansOfCode!~SultansOf@user/SultansOfCode
+Some @intCast sounds reasonable. But I felt I was using it too much, hence doing something wrong
+
+1740023115
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode that question does't make sense
+
+1740023142
+SultansOfCode!~SultansOf@user/SultansOfCode
+Oh, I mean the range index: for(0..256) |i|, can't i be u8 here? It is always usize
+
+1740023152
+torque!~tachyon@user/torque
+those are always usize
+
+1740023180
+grayhatter!~grayhatte@user/grayhatter
+@intCast() is a nice sign that you might be doing something wrong. If you're debugging later, and see an intCast, you know that's a good place to start debugging, because that's where a lot of bugs like to hide
+
+1740023209
+grayhatter!~grayhatte@user/grayhatter
+it's also nice, because zig will panic for you in safe modes if you're actually wrong about it being safe/correct to cast like that
+
