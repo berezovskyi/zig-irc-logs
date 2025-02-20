@@ -1,0 +1,488 @@
+1739923547
+andrewrk!~andrewrk@mail.ziglang.org
+argh, linux sendfile() still does not accept MSG flags such as NOSIGNAL
+
+1739924948
+m257!msa@msa.planetofnix.com
+ACTION wishes libc wasn't so god awful to use
+
+1739924988
+m257!msa@msa.planetofnix.com
+its one of the main reasons I have been trying C alternatives
+
+1739927621
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+did I read right that GenericWriter is going away in favor of AnyWriter?
+
+1739928108
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: have a peek at my wrangle-writer-buffering branch if you are curious
+
+1739928128
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+andrewrk: will do
+
+1739928163
+andrewrk!~andrewrk@mail.ziglang.org
+summary: APIs can start taking *std.io.BufferedWriter instead of anytype, and they will have same or better perf, while no longer being generic
+
+1739928205
+andrewrk!~andrewrk@mail.ziglang.org
+the tradeoff is the return type error set becomes anyerror
+
+1739928446
+andrewrk!~andrewrk@mail.ziglang.org
+happy to discuss any questions or concerns 
+
+1739928750
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I’m a fan. I’ll take a look tomorrow
+
+1739928811
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+who do you see as having the onus to flush?
+
+1739928966
+andrewrk!~andrewrk@mail.ziglang.org
+the code that initializes the BufferedWriter, for sure
+
+1739929799
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: I have an idea... one ring buffer to rule them all
+
+1739930088
+andrewrk!~andrewrk@mail.ziglang.org
+the `data: []const []const u8` parameter of the write function is so flexible, that BufferedWriter could gain a read_index field and thereby become std.io.Stream. then you could use the same buffer as a reader and writer. and it would never need to do mem.copyForwards because you can send [i..] and [0..i] as two vectors
+
+1739934496
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: why BufferedWriter instead of, AnyWriter, or etc?
+
+1739934510
+grayhatter!~grayhatte@user/grayhatter
+ACTION reads the branch diff
+
+1739935081
+andrewrk!~andrewrk@mail.ziglang.org
+happy to answer the question if you clarify what you are asking
+
+1739935107
+grayhatter!~grayhatte@user/grayhatter
+the diff answers my previous questions
+
+1739935218
+aos1!~aos1@user/aos1
+If I want to check for an optional and unwrap it, what's the idiomatic zig way? Should I just `if (optional) |o| { if (o == blah) { // do something } }`?
+
+1739935321
+grayhatter!~grayhatte@user/grayhatter
+aos1: it depends, if (opt) |real| is more useful when there's other logic const real = opt orelse return error.Invalid; is more useful when it's "required"
+
+1739935380
+grayhatter!~grayhatte@user/grayhatter
+aos1: if you have a slightly longer example case I might be able to provide a better answer
+
+1739935545
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: is reducing the scope of std.fmt a mid term goal? Reading this diff, I'm wondering if moving the "print" functions into buffered writer isn't going to make these hard to discover them in docs. I would never look at std.io looking for print functions, not while std.fmt exists at least
+
+1739935582
+aos1!~aos1@user/aos1
+Sure thing! Does this help? https://paste.sr.ht/~aos/f5dd22c17224ac8217210df5c76a04dd1d437ef8
+
+1739935711
+aos1!~aos1@user/aos1
+grayhatter: Sorry I just realized that's not valid syntax. Lemme send another one
+
+1739935724
+grayhatter!~grayhatte@user/grayhatter
+aos1: you're all good, it's close enough
+
+1739935989
+grayhatter!~grayhatte@user/grayhatter
+aos1: these are your options https://zigbin.io/0aa973
+
+1739936015
+LAC-Tech!~lewis@granite-phrase.bnr.la
+can any function pointer fit in *anyopaque? I know in C you can't always do this
+
+1739936048
+aos1!~aos1@user/aos1
+https://paste.sr.ht/~aos/0dcec83ba4326bf63e3e210271236798c3c3499b
+
+1739936074
+grayhatter!~grayhatte@user/grayhatter
+pick which ever makes your code more readable. you'll notice in the actuallyOptional function you can use a single set of braces, because you can use a bare if and end it with a ;
+
+1739936126
+aos1!~aos1@user/aos1
+grayhatter: oh ya option 1 seems the nicest. Thank you ! I will use that
+
+1739936132
+grayhatter!~grayhatte@user/grayhatter
+for your 2nd example it should be `(key != null and key.? == 3)` notice the added .? 
+
+1739936163
+aos1!~aos1@user/aos1
+Interesting! when I tested that out locally on my playground it didn't panic
+
+1739936169
+aos1!~aos1@user/aos1
+(Without the .?)
+
+1739936238
+grayhatter!~grayhatte@user/grayhatter
+aos1: right (null != 3) so that if was always just false
+
+1739936434
+aos1!~aos1@user/aos1
+Oh right that makes sense :-) Thanks
+
+1739936777
+grayhatter!~grayhatte@user/grayhatter
+github > large diffs are not rendered by default (157 changed lines) 
+
+1739936788
+grayhatter!~grayhatte@user/grayhatter
+github and I have a very different opinion about "large"
+
+1739936938
+andrewrk!~andrewrk@mail.ziglang.org
+no, actually, I want to increase scope. I liked it better when I could use e.g. {x} for hex, {B} for byte size, and I'm even adding base64
+
+1739936950
+andrewrk!~andrewrk@mail.ziglang.org
+screw these "fmtBinSizeUpper" functions
+
+1739936993
+grayhatter!~grayhatte@user/grayhatter
+yeah, I also like that change
+
+1739937027
+torque!~tachyon@user/torque
+it would be nice if the formatting syntax got a bit closer to python's imo
+
+1739937040
+grayhatter!~grayhatte@user/grayhatter
+torque: any specific examples?
+
+1739937042
+torque!~tachyon@user/torque
+this would make it closer to rust's as well, afaik
+
+1739937060
+torque!~tachyon@user/torque
+the main thing is the format specifier coming after `:`
+
+1739937079
+torque!~tachyon@user/torque
+and then the index or name coming before, i.e. `{field:x}`
+
+1739937100
+torque!~tachyon@user/torque
+having it be `{[field]x}` feels like being different for the sake of being different for no good reason
+
+1739937118
+grayhatter!~grayhatte@user/grayhatter
+I agree with that
+
+1739937152
+grayhatter!~grayhatte@user/grayhatter
+I'll never write that fmt syntax, I'd rather rewrite the function to provide positional args instead
+
+1739937332
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: did you consider deleting BufferedWriter instead, and just adding Writer that has an internal buffer? Might be nice for APIs to just accept *Writer instead of *BufferedWriter. If the callers have to call flush() on their own, they'd also need to know if the internal buffer was `[_]u8` or `void` anyways
+
+1739937881
+andrewrk!~andrewrk@mail.ziglang.org
+I agree with that too
+
+1739937891
+andrewrk!~andrewrk@mail.ziglang.org
+I was a little lax in reviewing contributions to std.fmt I'm afraid
+
+1739938013
+andrewrk!~andrewrk@mail.ziglang.org
+Writer is just a vtable. it doesn't make sense to force it to have a buffer
+
+1739938380
+grayhatter!~grayhatte@user/grayhatter
+I probably don't understand the implications well enough, but I've never seen anyone recommend an unbuffered over a buffered. Infact I always see the buffered be the default in "all" cases, such that it does seem like the correct thing to optimize for
+
+1739938397
+grayhatter!~grayhatte@user/grayhatter
+I'll have to give it some more thought before offically taking that stance though :thinking:
+
+1739939381
+andrewrk!~andrewrk@mail.ziglang.org
+stderr is unbuffered, for instance
+
+1739939830
+andrewrk!~andrewrk@mail.ziglang.org
+or rather, stderr is typically used unbuffered
+
+1739943209
+dsal!sid13060@id-13060.lymington.irccloud.com
+I saw some code using `u0` and found that to be pretty neat.  `i0` also works.  What a magical language.
+
+1739943422
+grayhatter!~grayhatte@user/grayhatter
+dsal: if you see someone using u0, smack them upside the head with a ~~large trout~~ void
+
+1739943454
+dsal!sid13060@id-13060.lymington.irccloud.com
+It actually made sense.  It was figuring out which size of a number is needed per-OS for the mmap interface.
+
+1739943465
+dsal!sid13060@id-13060.lymington.irccloud.com
+For some OSes, it's 0.
+
+1739945689
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what is the magical zen koan people use to deal with the lack of functor sig... sorry, "interfaces"?
+
+1739946038
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: I don't understand the question
+
+1739946078
+grayhatter!~grayhatte@user/grayhatter
+are you asking for a pithy abstract guiding truth about how to write code without an interface?
+
+1739946306
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: "interface" is an awful word for what a language like Zig wants. this isn't a Go or C++ situation, it's an ML one. but yeah, how do you get used to it?
+
+1739946326
+LAC-Tech!~lewis@granite-phrase.bnr.la
+comptime type constraints, shall we say
+
+1739946329
+grayhatter!~grayhatte@user/grayhatter
+how do I get used to not having something I've never wanted?
+
+1739946342
+LAC-Tech!~lewis@granite-phrase.bnr.la
+right well you're probably not qualified to answer the question then
+
+1739946455
+grayhatter!~grayhatte@user/grayhatter
+or, counter point, I'm the perfect person to answer... because I haven't been gaslit into thinking interfaces are a good thing
+
+1739946495
+LAC-Tech!~lewis@granite-phrase.bnr.la
+the fact that all the issues on github think "interfaces" is how you solve this, is probably why it will never get solved.
+
+1739946519
+grayhatter!~grayhatte@user/grayhatter
+I actually don't have a strong opinion, I understand their use
+
+1739946524
+LAC-Tech!~lewis@granite-phrase.bnr.la
+"but what is there to solve?" retorts the wise grayhatter, and that moment I was... not at all enlightened. because I miss them.
+
+1739946536
+grayhatter!~grayhatte@user/grayhatter
+I've just never wanted to do something in a complicated way when there's a simpler way 
+
+1739946558
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: you want to express rules for how to use the code, right?
+
+1739946586
+grayhatter!~grayhatte@user/grayhatter
+what if, instead of adding rules, you didn't add any rules?
+
+1739946598
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah i want a thing that says "your comptime type expects something that looks like X, but it doesn't look like X".
+
+1739946632
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: do you have a case, where the compiler is willing to compile something wrong?
+
+1739946651
+grayhatter!~grayhatte@user/grayhatter
+that would be fixed by you adding more rules?
+
+1739946812
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I appreciate the effort, but I need a convert, not someone who was born into the religion
+
+1739946880
+grayhatter!~grayhatte@user/grayhatter
+but... under duress... I'll link you to an example where I abuse comptime to enforce some expectations https://srctree.gr.ht/repo/verse/blob/src/endpoint.zig#L49 for the record, except in very rare cases, I'm pretty sure you shouldn't do this. But I'm digging into the callers type, and wanted to create more helpful error messages if something isn't what I expected given how I'm looking up the names
+
+1739946882
+grayhatter!~grayhatte@user/grayhatter
+internally 
+
+1739946993
+LAC-Tech!~lewis@granite-phrase.bnr.la
+it's more like... I have a preference for static typing. but I end up using some dynamically typed language because of unrelated reasons to the typing discipline. and yet, I miss the static types. the solution is to not try and re-create static typing in my new home, and moan about "types" on social media. it's to learn the ways of the people of this language, how they think about the world etc.
+
+1739947045
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1739947073
+grayhatter!~grayhatte@user/grayhatter
+I hear shaming people on social media is the best way to effect meaningful change :P
+
+1739947096
+grayhatter!~grayhatte@user/grayhatter
+(that was a joke; for anyone not amused by the drama about it)
+
+1739947122
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I was amused, but I will refrain from further commentary :)
+
+1739948786
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+LAC-Tech: to answer your original question about interfaces, *anyopaque + vtable if I don’t know all the implementations, and tagged union if I do
+
+1739948905
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it’s more work than go interfaces, but then again I’m using a lower level language so that’s expected
+
+1739948969
+ifreund!2940d10f8b@user/ifreund
+andrewrk: nice, my bait issue is working!
+
+1739950941
+LAC-Tech!~lewis@granite-phrase.bnr.la
+rockorager: yeah I should have avoided the I word. but that makes sense for when you want runtime dispatch
+
+1739955255
+mountaingoat!~mountaing@user/mountaingoat
+so... since .reader() is strongly typed, is the only way to get a "generic" reader that doesn't contaminate the consumer's type to use the type erased AnyReader? and you would pass in .reader().any()?
+
+1739955316
+mountaingoat!~mountaing@user/mountaingoat
+i.e. i'd like to take in any reader, but i don't want to parametrize by the reader's type at comptime
+
+1739956980
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: yes, this is the purpose of AnyReader
+
+1739957707
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: sounds good, thanks
+
+1739958543
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: this is the use case that I have been working on in the wrangle-writer-buffering branch
+
+1739969312
+flower_!~archie@46.244.61.4
+meh I can't solve this exercise: https://codeberg.org/ziglings/exercises/src/branch/main/exercises/062_loop_expressions.zig#L49
+
+1739969322
+flower_!~archie@46.244.61.4
+else null;
+
+1739969324
+flower_!~archie@46.244.61.4
+hm
+
+1739970858
+esensar!63f86f7972@2a03:6000:1812:100::e04
+flower_: where did you put else null; It should be in line 50 I think.
+
+1739971793
+a-khabarov!~a-khabaro@user/a-khabarov
+andrewrk: Is there any way we can land https://github.com/ziglang/zig/pull/19818 in 0.14.0? Please see my email regarding this
+
+1739977258
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+anything a shitter like me can do to help with zig's upcoming 0.14.0 release? not because it's too slow or any other negative implication but rather simply: I just want to help if I can
+
+1739977331
+esensar!63f86f7972@2a03:6000:1812:100::e04
+flower_: if you look at the description above the exercise, it tells you to add else branch after the for (or in that case, while) expression (for {} else null;)
+
+1739978230
+flower_!~archie@46.244.61.4
+esensar: ah you're right
+
+1739978286
+flower_!~archie@46.244.61.4
+esensar: hm I've to get used to that flow, unfamiliar.
+
+1739979213
+esensar!63f86f7972@2a03:6000:1812:100::e04
+flower_: yes, it is unusual, but if you think about it, it makes sense, because the whole loop evaluates to that single value, so it kind of makes sense for the else branch to go there, I guess
+
+1740001540
+SultansOfCode!~SultansOf@user/SultansOfCode
+Hello, me again. How to concatenate slices made with printBuf and printBufZ and then turn it into [*:0]const u8?
+
+1740001860
+SultansOfCode!~SultansOf@user/SultansOfCode
+I tried something like: const x: []const u8 = try std.fmt.bufPrint(&buffer, "%s", "A"); const y: [*:0]const u8 = try std.fmt.bufPrintZ(&buffer, "%s", "B"); const z: [*:0]const u8 = x + y; but it complains about error: incompatible types: '[]const u8' and '[*:0]const u8' and if they are the same type I get error on the z line saying that x and y
+
+1740001860
+SultansOfCode!~SultansOf@user/SultansOfCode
+types must be known at compile time
+
+1740002004
+SultansOfCode!~SultansOf@user/SultansOfCode
+Need to use allocators or anything? (I am a newbie to Zig)
+
+1740005099
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I think you need to think more about exactly what you're trying to do
+
+1740005158
+grayhatter!~grayhatte@user/grayhatter
+you wouldn't concat these two strings, you'd call bufPrint (or bufPrintZ) on it's own
+
+1740005188
+grayhatter!~grayhatte@user/grayhatter
+bufPrintZ(&buffer, "{s}{s}", .{"A", "B"});
+
+1740006857
+frmdstryr!~jrm@172.56.223.203
+Is there any way to do a dynamic cast in zig? 
+
+1740006910
+frmdstryr!~jrm@172.56.223.203
+Working on a python extension and would like to cast a *Object to say a *List
+
+1740006933
+frmdstryr!~jrm@172.56.223.203
+at runtime each type can be found by using a "check" function
+
+1740007326
+squeek502!~squeek502@user/squeek502
+frmdstryr, @ptrCast ? might also need an @alignCast
+
+1740008368
+SultansOfCode!~SultansOf@user/SultansOfCode
+Are structs zero initialized?
+
+1740008384
+SultansOfCode!~SultansOf@user/SultansOfCode
+Is it assured that an u32 is 0 and bool is false?
+
+1740008725
+squeek502!~squeek502@user/squeek502
+SultansOfCode, not initializing a field is a compile error
+
+1740008760
+squeek502!~squeek502@user/squeek502
+see also undefined: https://ziglang.org/documentation/master/#undefined
+
+1740008812
+squeek502!~squeek502@user/squeek502
+there's also `std.mem.zeroInit` if you really want zero initialization for fields without defaults: https://ziglang.org/documentation/master/std/#std.mem.zeroInit
+
+1740008978
+squeek502!~squeek502@user/squeek502
+(for context, i've never needed `std.mem.zeroInit` in my code)
+
+1740009592
+ScTpA!~T@p200300dbdf3d5b0052f7407afc8b884a.dip0.t-ipconnect.de
+Not doing Zig at the moment, but yeah, you'll need to initialize them to something or explicitly mark them undefined. When you init them, they're initialized. :)  (The compiler will probably remove those assignments if you later assign something else, be aware when using multiple threads or signal handlers.)
+
