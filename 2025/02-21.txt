@@ -630,3 +630,131 @@ but I believe you can do the same things in python, you just lose the nice synta
 stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
 grayhatter, have you read the link i sent you? https://unixism.net/loti/async_intro.html it explains what async/asynchronous is very good
 
+1740170668
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+When the kernel is actually doing the IO, it is not using CPU right?
+
+1740170729
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, if you wait you are wasting time, so it just wakes up when content is ready(as in written to ram)
+
+1740170749
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I'm not asking about waiting
+
+1740170763
+grayhatter!~grayhatte@user/grayhatter
+rockorager: yes and no, the "blocking" part of IO is when the kernel is waiting, and where the kernel is "doing" the IO it's basically memcpy
+
+1740170763
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If I schedule IO on io_uring, when the kernel is off *doing the io*, what is happening?
+
+1740170796
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+And does using that free up...a core? to run a thread?
+
+1740170804
+grayhatter!~grayhatte@user/grayhatter
+the kernel is using the CPU, or it's not
+
+1740170818
+grayhatter!~grayhatte@user/grayhatter
+meaning the kernel is doing some sort of memcpy, or it's waiting
+
+1740170846
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, please read https://unixism.net/loti/async_intro.html it explains what io_uring does
+
+1740170905
+grayhatter!~grayhatte@user/grayhatter
+I actually disagree it explains what the kernel is doing 
+
+1740170963
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, to answer your question simply, kernel makes 1 IO call, and it goes and does other things. it doesn't just sit there waiting for that IO to finish
+
+1740170979
+mov-eax!~mov-eax@user/mov-eax
+Hi there! Trying to play with Zig by adapting it's build system to existing CPP project. The project has many objects which get linked into different binaries by combining those objects in various ways. So I defined many `Build.addObject()` s. There is `Build.add{Static,Shared}Library()` which you can link with `Compile.linkLibrary()`, but how I'm
+
+1740170980
+mov-eax!~mov-eax@user/mov-eax
+supposed to link those objects? There is no `Compile.linkObject()`. I'm using Zig 0.13.0.
+
+1740171037
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+stealth_: so after the kernel makes that io call - let's say it take 5 minutes to complete. During that 5 minutes, the kernel isn't using CPU waiting? And if I *instead* blocked a thread to wait, it would be using CPU - probably by scheduling the thread?
+
+1740171059
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+(Am reading that article too)
+
+1740171062
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, yep you got it
+
+1740171090
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Alright
+
+1740171107
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so rather than finish 1 task in 5min now it could finish million of task in that 5min 
+
+1740171138
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Well, how about this then
+
+1740171153
+grayhatter!~grayhatte@user/grayhatter
+rockorager: think about networking IO, you will read() from a socket, but the data packet is still somewhere "in-flight", the kernel will task switch to a different process, the packet will arrive to the NIC, and sit in the memory for the NIC (it's more complicated than just that) Eventually the kernel will come back to that data, and memcpy that data from the NIC into the process that called read().
+
+1740171155
+grayhatter!~grayhatte@user/grayhatter
+With io_uring, you've already "given" that memory to the kernel, so (I'm gonna get handwavy here) instead of needing to come back to memcpy that packet into your process, the kernel already has that block of memory, and can skip that extra memcpy
+
+1740171155
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I have a single core and run two threads: one is blocking on IO and the other is doing tasks
+
+1740171206
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Does that scenario get less work done than a single CPU which has issued an async io_uring read, and the single thread processes tasks?
+
+1740171232
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+And if so, is it because of the scheduler + context switching between threads?
+
+1740171264
+grayhatter!~grayhatte@user/grayhatter
+because the kernel is allowed to use the ring buffer io-u-ring, however it wants, it doesn't matter what order the kernel sees the IO, it can just use an existing buffer, that's already mem-mapped into your process
+
+1740171337
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, people use to do IO back in the day using thread as for your example. Its not efficient, since its expensive to open thread and manage it, also make syscall's, ... io_uring already does all this for you at kernel level very efficiently
+
+1740171363
+grayhatter!~grayhatte@user/grayhatter
+the assumed "time saved" is the syscalls between the process, and the kernel. Because the kernel can read-write from the buffer, there's no syscall overhead between the process and kernel
+
+1740171375
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah I get the overhead of thread and syscalls, I just mean from a pure throughput (after setup) stance in those two scenarios
+
+1740171431
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Remove all the overhead - does the computer actually get more work done?
+
+1740171452
+grayhatter!~grayhatte@user/grayhatter
+rockorager: async is only faster (wall time) if the calling application is written in a way that's very specific to the flavor of IO latency that it's actually seeing
+
+1740171484
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, yes, gets tons of work done.
+
+1740171525
+grayhatter!~grayhatte@user/grayhatter
+async is faster (cpu cycles) in almost all cases, for a number of reasons. The ambiguity is how much improvement you can actually get from it. 
+
