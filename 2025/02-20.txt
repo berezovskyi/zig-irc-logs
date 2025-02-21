@@ -1,0 +1,664 @@
+1740011587
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+how can i read a zon file? (0.13)  say, i have a 'foo.zon' with `.{.foo = "bar"}`.   i found that i can get std.zig.Ast by `std.zig.Ast.parse(gpa.allocator(), pathZ, .zon) `  .. but how do i get the values from it?
+
+1740011681
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i only need simple string key/value pairs
+
+1740012237
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+oh.. it's not path
+
+1740012247
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+ACTION is probably too tired already :D
+
+1740014574
+SultansOfCode!~SultansOf@user/SultansOfCode
+Is it normal for @intCast be the most typed thing when coding in Zig? Holy sh*t
+
+1740016179
+andrewrk!~andrewrk@mail.ziglang.org
+no, you're probably doing something silly
+
+1740016205
+andrewrk!~andrewrk@mail.ziglang.org
+it may take a while to unlearn bad habits from other prog langs
+
+1740021673
+SultansOfCode!~SultansOf@user/SultansOfCode
+andrewrk: do you mind code reviewing it to point it out?
+
+1740021726
+torque!~tachyon@user/torque
+don't ask to ask
+
+1740021739
+torque!~tachyon@user/torque
+if someone's around and is interested, you'll probably get some feedback
+
+1740021759
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque: wasn't an ask to ask, but got your point :P
+
+1740021799
+SultansOfCode!~SultansOf@user/SultansOfCode
+Which files should I .gitignore? Will push it to GH
+
+1740021816
+torque!~tachyon@user/torque
+usually .zig-cache, zig-out
+
+1740021906
+torque!~tachyon@user/torque
+hopefully you know what are your source files and what aren't, though
+
+1740022045
+SultansOfCode!~SultansOf@user/SultansOfCode
+So, here it is: https://github.com/SultansOfCode/RayxEdigor/blob/main/src/main.zig The linter keeps creating long lines for structs, but...
+
+1740022184
+torque!~tachyon@user/torque
+if you add a comma after the last item, the formatter will format it into multiple liens
+
+1740022333
+torque!~tachyon@user/torque
+I mean you would need fewer @intCasts if you didn't introduce type conflicts for no reason
+
+1740022344
+SultansOfCode!~SultansOf@user/SultansOfCode
+Thanks :D Now it is much better
+
+1740022373
+grayhatter!~grayhatte@user/grayhatter
+what language are you coming from?
+
+1740022384
+SultansOfCode!~SultansOf@user/SultansOfCode
+I am coming from C, where it does not give a single f*ck when I mix u32 with i32
+
+1740022390
+torque!~tachyon@user/torque
+like `var screenWidth: u32` could be an i32, which is what all the raylib calls take. also having everything being a global variable sure is interesting
+
+1740022428
+SultansOfCode!~SultansOf@user/SultansOfCode
+But doesn't it sound stupid to have width and height as i32, since it can't be negative?
+
+1740022440
+torque!~tachyon@user/torque
+well, you could make it a u31 then
+
+1740022447
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: raylib is a 3d engine, isn't it?
+
+1740022455
+torque!~tachyon@user/torque
+which can coerce to an i32 without needing a cast because all u31 are in range of an i32
+
+1740022472
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: 2d and 3d
+
+1740022479
+torque!~tachyon@user/torque
+unlikely to draw on a screen 2 billion pixels wide
+
+1740022487
+grayhatter!~grayhatte@user/grayhatter
+so, raylib needs to support negative values then?
+
+1740022491
+andrewrk!~andrewrk@mail.ziglang.org
+when you have @as(T, @intCast(...)) you can usually delete the @as
+
+1740022501
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque: interesting
+
+1740022538
+torque!~tachyon@user/torque
+C automatic int coercion is actually bad around edge cases
+
+1740022563
+grayhatter!~grayhatte@user/grayhatter
+I'm gonna double down on torque's suggestion... you're doing some really **really** weird shit with types that you simply do not need to
+
+1740022599
+grayhatter!~grayhatte@user/grayhatter
+ditto with globals... I have no idea why these are all top level vars
+
+1740022608
+SultansOfCode!~SultansOf@user/SultansOfCode
+I feel that, but could not find a better way yet
+
+1740022616
+SultansOfCode!~SultansOf@user/SultansOfCode
+The globals are for simplicity (yet too)
+
+1740022622
+andrewrk!~andrewrk@mail.ziglang.org
+I have to admit though with code like this there is still some language awkwardness leftover. I have some plans to address it
+
+1740022702
+SultansOfCode!~SultansOf@user/SultansOfCode
+I mean, in my head all is clear and I check everything with ifs to address the cases, I don't need to be warned every time that I am using unsigned and signed together
+
+1740022718
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: did you try using a single int type, instead of switching back and forth, everywhere?
+
+1740022755
+SultansOfCode!~SultansOf@user/SultansOfCode
+Not yet, was focusing on features, then got annoyed by the amount of @intCast and came to ask for help and tips
+
+1740022879
+torque!~tachyon@user/torque
+what do you expect to happen if you have u32 0x8000_0000 and you pass it to a function that implicitly reinterprets it as an i32?
+
+1740022951
+grayhatter!~grayhatte@user/grayhatter
+I don't know how to help you if you got annoyed by too many intCasts, if you haven't considered using the correct int type
+
+1740022977
+torque!~tachyon@user/torque
+I think it's pretty reasonable of zig to not do implicit value coercion when it could cause bugs due to out of range values getting reinterpreted unexpectedly
+
+1740022984
+SultansOfCode!~SultansOf@user/SultansOfCode
+I wouldn't do it, all values would be in range. But I understand the enforcement for safety here. It was just me thinking "makes no sense to have this variable accepting negative values"
+
+1740023012
+SultansOfCode!~SultansOf@user/SultansOfCode
+Changed everything to i32 now, lemme fix everything else first
+
+1740023016
+torque!~tachyon@user/torque
+you have to use the type system to tell the compiler it's in range, or you have to use @intCast to make the claim manually
+
+1740023027
+torque!~tachyon@user/torque
+that's just kind of how it goes
+
+1740023080
+torque!~tachyon@user/torque
+this doesn't work everywhere, though, and you probably will still need some @intCast
+
+1740023091
+SultansOfCode!~SultansOf@user/SultansOfCode
+For loops are always usize? Or can I make it smaller?
+
+1740023114
+SultansOfCode!~SultansOf@user/SultansOfCode
+Some @intCast sounds reasonable. But I felt I was using it too much, hence doing something wrong
+
+1740023115
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode that question does't make sense
+
+1740023142
+SultansOfCode!~SultansOf@user/SultansOfCode
+Oh, I mean the range index: for(0..256) |i|, can't i be u8 here? It is always usize
+
+1740023152
+torque!~tachyon@user/torque
+those are always usize
+
+1740023180
+grayhatter!~grayhatte@user/grayhatter
+@intCast() is a nice sign that you might be doing something wrong. If you're debugging later, and see an intCast, you know that's a good place to start debugging, because that's where a lot of bugs like to hide
+
+1740023209
+grayhatter!~grayhatte@user/grayhatter
+it's also nice, because zig will panic for you in safe modes if you're actually wrong about it being safe/correct to cast like that
+
+1740023542
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I’m a fan of the u31 approach
+
+1740023567
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+if you negatives don’t make sense and you have to cast to i32 anyways 
+
+1740023717
+aos1!~aos1@user/aos1
+i love that zig lets you create u/i-anything types
+
+1740023935
+torque!~tachyon@user/torque
+I hope the ranged int proposal gets accepted, having non-power-of-two numbers would be nice for a variety of things
+
+1740024043
+grayhatter!~grayhatte@user/grayhatter
+torque: sell me on that
+
+1740024059
+grayhatter!~grayhatte@user/grayhatter
+to me it seems like a mistake
+
+1740024061
+SultansOfCode!~SultansOf@user/SultansOfCode
+Updated the code in GH, now it only has 6 intCasts (due to for loops usize)
+
+1740024097
+torque!~tachyon@user/torque
+i mean, why do you want to have a u3 or whatever? ranged ints are a superset of arbitrarily sized number
+
+1740024114
+torque!~tachyon@user/torque
+they just operate at the numeric level rather than the storage level (which itself is an arbitrary choice)
+
+1740024158
+torque!~tachyon@user/torque
+if you have a number representing nanoseconds of a second, why should it have to be declared in some bit-size type rather than a range of 0-999,999,999
+
+1740024174
+torque!~tachyon@user/torque
+there are lots of physical values that don't operate in base 2
+
+1740024198
+SultansOfCode!~SultansOf@user/SultansOfCode
+Are my other SultansOfCode stuff correct, or am I being dumb there too? like @ceil, @max, @min, @intFromFloat, @floatFromInt (specially these last two)
+
+1740024241
+SultansOfCode!~SultansOf@user/SultansOfCode
+Typed @ and the web client changed it to my nickname when pressed space
+
+1740024359
+grayhatter!~grayhatte@user/grayhatter
+jesus, I hate github a little more every day
+
+1740024389
+SultansOfCode!~SultansOf@user/SultansOfCode
+This code `@intFromFloat(@ceil(@as(f32, @floatFromInt(data.len)) / 16.0))` would be nice if @divCeil exists
+
+1740024409
+grayhatter!~grayhatte@user/grayhatter
+you don't need the * in the *:0  for drawTextCustom
+
+1740024432
+torque!~tachyon@user/torque
+there is std.math.divCeil
+
+1740024461
+torque!~tachyon@user/torque
+you probably need some casting stuff still, though
+
+1740024475
+andrewrk!~andrewrk@mail.ziglang.org
+the main idea behind ranged ints is that you can replace N safety checks in a given function with 1 @intCast at the end
+
+1740024493
+andrewrk!~andrewrk@mail.ziglang.org
+so the points of failure become fewer and more obvious
+
+1740024546
+grayhatter!~grayhatte@user/grayhatter
+what would you call syntatic sugar that's bitter instead of sweet?
+
+1740024553
+andrewrk!~andrewrk@mail.ziglang.org
+(or maybe you use @saturate instead of @intCast)
+
+1740024582
+torque!~tachyon@user/torque
+syntactic base
+
+1740024587
+andrewrk!~andrewrk@mail.ziglang.org
+https://en.wikipedia.org/wiki/Syntactic_sugar#Syntactic_salt
+
+1740024670
+grayhatter!~grayhatte@user/grayhatter
+is @saturate undocumented? 
+
+1740024682
+SultansOfCode!~SultansOf@user/SultansOfCode
+What seems better? `try std.math.divCeil(i32, @as(i32, @intCast(data.len)), 16)` or `@as(i32, @intCast(try std.math.divCeil(usize, data.len, 16)))`? The later makes more sense to me, since it doesn't lose information if data.len is big enough and the result of the division is, of course, smaller than data.len (and hopefully will always fit inside
+
+1740024683
+SultansOfCode!~SultansOf@user/SultansOfCode
+i32 in my use case)
+
+1740024686
+grayhatter!~grayhatte@user/grayhatter
+oh, this is the hypothetical where the proposal is accepted
+
+1740024749
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: syntatic sriracha it is :D
+
+1740024755
+andrewrk!~andrewrk@mail.ziglang.org
+lol
+
+1740024760
+aos1!~aos1@user/aos1
+can someone link me to the ranged ints proposal? I'm curious to read it
+
+1740024787
+SultansOfCode!~SultansOf@user/SultansOfCode
+rockorager: using u31 I would need a lot of @intCasts, no?
+
+1740024791
+andrewrk!~andrewrk@mail.ziglang.org
+aos1: https://github.com/ziglang/zig/issues/3806
+
+1740024796
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: it wouldn't need any
+
+1740024803
+aos1!~aos1@user/aos1
+andrewrk: thank you
+
+1740024823
+grayhatter!~grayhatte@user/grayhatter
+a u31 can fit safely into an i32 for all cases. The compiler can cast for you because it can't ever be wrong
+
+1740024846
+grayhatter!~grayhatte@user/grayhatter
+that's using the word "cast" very loosely
+
+1740024910
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: fuck*ng interesting
+
+1740024956
+SultansOfCode!~SultansOf@user/SultansOfCode
+Thanks, people. Learning a lot. Loving Zig so far
+
+1740025372
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: "coerce"
+
+1740025379
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/#Type-Coercion
+
+1740025901
+SultansOfCode!~SultansOf@user/SultansOfCode
+Dunno why web client disconnects. But, fixed changing the printed var from i32 to u31
+
+1740025912
+SultansOfCode!~SultansOf@user/SultansOfCode
+Thank you all, will continue tomorrow
+
+1740030311
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: there were far more ring buffer implementations in std than you could possibly imagine
+
+1740030333
+andrewrk!~andrewrk@mail.ziglang.org
+almost every reader/writer implementation in std.io was a ring buffer :D
+
+1740035738
+ifreund!2940d10f8b@user/ifreund
+andrewrk: oh fun, Im curious to have a good look at your solution, please ping  me when its ready for review :)
+
+1740036158
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looking at zig, found it interesting. is io_uring part of std library btw?
+
+1740036294
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: it's been for a while
+
+1740036312
+andrewrk!~andrewrk@mail.ziglang.org
+oops, I misread "btw" as "now"
+
+1740036370
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, that is interesting, i work with that in python, and was looking at zig since there might be some linking/memory issue in one of the function bring it from C and cython wrapper. 
+
+1740036485
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: will do
+
+1740036984
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+watched a yt video by Loris Cro, sounds like zig is solution to all the problem! :p
+
+1740063767
+frmdstryr!~jrm@172.56.28.30
+Is it possible to somehow get the file path of the @cImport'd translated file?
+
+1740063805
+frmdstryr!~jrm@172.56.28.30
+Would like to update my kdevelop plugin to locate and parse it
+
+1740075877
+SultansOfCode!~SultansOf@user/SultansOfCode
+std.fs.path.extension(filename) returns []const u8, but I need it to be [:0]const u8, how can I achieve that?
+
+1740075937
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: https://ziglang.org/documentation/master/std/#std.mem.Allocator.dupeZ
+
+1740076533
+SultansOfCode!~SultansOf@user/SultansOfCode
+const extension = try std.mem.Allocator.dupeZ(std.heap.page_allocator, u8, std.fs.path.extension(filename)); If I leave it as it is, it compiles and work, but the LSP inlays its type as []u8. If I type it manually, then it doesn't work, why?
+
+1740076576
+SultansOfCode!~SultansOf@user/SultansOfCode
+https://pastebin.com/mVjdzpuq This is the code
+
+1740076593
+SultansOfCode!~SultansOf@user/SultansOfCode
+textReplace expects [*:0]const u8
+
+1740076639
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+zls is not perfect at type resolution
+
+1740076719
+SultansOfCode!~SultansOf@user/SultansOfCode
+dupeZ returns [:0]u8
+
+1740076754
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+SultansOfCode: I recommend either 0x0.st or pastes.sh (cat <foo> | ssh pastes.sh)
+
+1740076761
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+for pastebins, neither have that ad crap
+
+1740076812
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I wouldn't use raylib's string management functions
+
+1740076917
+grayhatter!~grayhatte@user/grayhatter
+see also std.fs.path.stem
+
+1740076987
+grayhatter!~grayhatte@user/grayhatter
+you also should avoid [*:0] in zig code, prefering [:0] instead
+
+1740077219
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I wouldn't use *any* of raylibs helpers
+
+1740077236
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: stem seems nice, but I need to keep the relative paths and all, just removing the extension
+
+1740077250
+squeek502!~squeek502@user/squeek502
+rockorager, zigbin.io is even better
+
+1740077279
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+squeek502: true, for zig code ;)
+
+1740077357
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: even the ones that checks for key presses?
+
+1740077417
+squeek502!~squeek502@user/squeek502
+SultansOfCode, just fyi using the page allocator directly is a mistake, it'll allocate at least a full page for every requested size (so if you allocate 10 bytes it'll actually allocate 4KiB or w/e the page size is)
+
+1740077419
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: well, that would be a raylib object reciveing the keys... so unless you want to write your own system input manager, the only thing that will see those keypresses will be raylib's object
+
+1740077556
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: paths and files have extra semantic rules, you're going to introduce a bug if you treat paths like strings instead of treating them like paths... but you do you
+
+1740077869
+grayhatter!~grayhatte@user/grayhatter
+std.fs.path.joinZ(alloc, &[3]const []const u8{dirname() orelse "", stem(), ".tbl"}); I think will be what you want
+
+1740080116
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what king of implementation does zig have of io_uring? like is it using liburing or does zig work directly with io_uring api?
+
+1740080248
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also how up to date is zig with io_uring, are we talking current io_uring that works with linux 6.13 or io_uring maybe few years old?
+
+1740080280
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: which kind of allocator would be better on these string manipulation situations? I know heap allocates an entire page, but was not worrying about it yet
+
+1740080618
+phaleth!~phaleth@user/phaleth
+stealth_: I think zig uses 5.1.0 apis
+
+1740080973
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+phaleth, o i c, well old io_uring does do the basic read/write very well, the new once have socket and such support.
+
+1740081101
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the newer io_uring api is also backwards compatible though! (or at least it should be)
+
+1740081807
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/std/#std.os.linux.IoUring
+
+1740081967
+slbtty!~slbtty@2620:101:f000:7c0::1:f75
+Hi, can someone with merging power please merge 1 of 3 possible PRs? It occurs in the first guide of zig's build system.
+
+1740081971
+slbtty!~slbtty@2620:101:f000:7c0::1:f75
+ https://github.com/ziglang/www.ziglang.org/issues/422
+
+1740081993
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Are there any "dead code" linters out there?
+
+1740082017
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+IE - show me what functions are never called if I compile with root_source_file = <path>?
+
+1740082025
+andrewrk!~andrewrk@mail.ziglang.org
+slbtty: I was planning instead to migrate those docs to a "guide" within the build API
+
+1740082050
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, thanks that not bad actually it must be up to date with linux 6.1, currently after 6.11 bind/listen was added.
+
+1740082130
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, p.s. its weird i am actually watching your talk on zig and talking to you on here at same time :p
+
+1740082284
+slbtty!~slbtty@2620:101:f000:7c0::1:f75
+-_- A learn guide page being broken for more than half a year is not a good image for newcomers. Cannot we just have it fixed ASAP, the total task is pretty much press a merge button and update a url?
+
+1740083878
+andrewrk!~andrewrk@mail.ziglang.org
+I'm busy working on more important things
+
+1740083916
+andrewrk!~andrewrk@mail.ziglang.org
+there are like 50 people asking me to do some task "real quick" and half the time the thing they want is ill-advised, or at least deserves additional considerations
+
+1740084585
+squeek502!~squeek502@user/squeek502
+SultansOfCode, https://ziglang.org/documentation/master/#Choosing-an-Allocator
+
+1740085117
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+can i simply free a slice only if it's been allocated?  i mean, i have `some_text: []const u8`, which is sometimes a string literal. sometimes on heap (eg. result of allocPrint())
+
+1740085162
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+if i just allocator.free(some_text) i'm double-freeing if i ended up having a string literal there
+
+1740085218
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're not double-freeing, you're just freeing something that wasn't allocated with the allocator, causing all kinds of mayhem
+
+1740085237
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i meant "trying to double free, i guess" :D
+
+1740085245
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, there's no double free at all
+
+1740085259
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+to double-free, you must have freed it the first time
+
+1740085274
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+ah you're right
+
+1740085291
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+there is mayhem, though.. (segfault, actually in my case)
+
+1740085321
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i realized i should probably save myself even more headache by using arena, though..
+
+1740085348
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+still wonder if there's an easy solution for it
+
+1740085815
+SultansOfCode!~SultansOf@user/SultansOfCode
+const HEAP_SIZE: u31 = 200; const HEAP: [HEAP_SIZE]u8 = undefined; const fba: std.heap.FixedBufferAllocator = std.heap.FixedBufferAllocator.init(&HEAP); is giving me error: expected type '[]u8', found '*const [200]u8'
+
+1740085936
+frmdstryr!~jrm@172.56.28.30
+heap should be a var?
+
+1740085939
+SultansOfCode!~SultansOf@user/SultansOfCode
+The doc I saw was passing &
+
+1740085943
+SultansOfCode!~SultansOf@user/SultansOfCode
+Already changed it to var
+
+1740086013
+SultansOfCode!~SultansOf@user/SultansOfCode
+Oh, thanks, I changed to var while doing other modifications, makes sense
+
+1740086135
+SultansOfCode!~SultansOf@user/SultansOfCode
+headerBuffer = std.ArrayList(u8).init(fba.allocator()); how can I type the var headerBuffer and set it to undefined before it is initialized in main()? headerBuffer is a global variable
+
+1740086188
+SultansOfCode!~SultansOf@user/SultansOfCode
+The inlay just says ArrayListAligned(...)
+
+1740086665
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.ArrayList(u8).init() returns an.. std.ArrayList(u8)
+
+1740086675
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(which is an alias of ArrayListAligned)
+
