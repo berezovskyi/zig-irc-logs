@@ -1,0 +1,960 @@
+1740097621
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+where are the `test` for `io_uring`? 
+
+1740100548
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: I didn't get the std.fs.path.joinZ(alloc, &[3]const []const u8{dirname() orelse "", stem(), ".tbl"}); thing
+
+1740100556
+SultansOfCode!~SultansOf@user/SultansOfCode
+Finished other stuff and came back to it now
+
+1740100843
+SultansOfCode!~SultansOf@user/SultansOfCode
+I did like this to test: const x = try std.fs.path.joinZ(std.heap.page_allocator, &[3][]const u8{ std.fs.path.dirname(filename) orelse "", std.fs.path.stem(filename), ".tbl" });
+
+1740100853
+SultansOfCode!~SultansOf@user/SultansOfCode
+filename is: "resources/test.txt"
+
+1740100883
+SultansOfCode!~SultansOf@user/SultansOfCode
+x becomes:  resources\test\.tbl (which is wrong, it should be: resources/test.tbl)
+
+1740100986
+torque!~tachyon@user/torque
+are you just trying to change the extension of a file or what
+
+1740101066
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yes, I am passing a string to load a file, then I want to check if exists a file within the same path with different extension to load it and parse
+
+1740101140
+torque!~tachyon@user/torque
+something like `const ext = std.fs.path.extension(filename); filename[0..filename.len - ext.len];` will give you the filename with the extension sliced off
+
+1740101148
+torque!~tachyon@user/torque
+you don't need to decompose the path further than that
+
+1740101283
+torque!~tachyon@user/torque
+you can then just use `std.mem.joinZ(alloc, "",  &.{truncname, ".tbl"})` or similar
+
+1740102276
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque: ohhhhh, nice :D Thanks a lot. It was exactly what I was trying to achieve
+
+1740102356
+reykjalin!7e28cf3a41@user/reykjalin
+std.fs.path.stem will also give you the file name without the extension 
+
+1740102359
+reykjalin!7e28cf3a41@user/reykjalin
+https://ziglang.org/documentation/0.13.0/std/#std.fs.path.stem
+
+1740103043
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+how to extract type of a comptime-known union field?  eg. my type is `const FooU = union(enum) { a: struct { a1: bool} };`  an i want to define a fn which accepts the struct in the FooU.a field
+
+1740103065
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+(i want to avoid having to name the struct separately)
+
+1740103074
+grayhatter!~grayhatte@user/grayhatter
+netvor: @TypeOf()
+
+1740103157
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+but that accepts value, right?  i dont' have a value
+
+1740103160
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+or i don't get it
+
+1740103162
+grayhatter!~grayhatte@user/grayhatter
+or @typeInfo() depending on what you mean by comptime
+
+1740103184
+grayhatter!~grayhatte@user/grayhatter
+netvor: do you have code yet?
+
+1740103236
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+in the middle of refactoring, so not sure if i would not cause more confusion by sharing :D
+
+1740103294
+grayhatter!~grayhatte@user/grayhatter
+types are always known at comptime, so you can just use functionBuilder(@TypeOf(some_object.a), some_object.a);
+
+1740103338
+grayhatter!~grayhatte@user/grayhatter
+it doesn't matter if some_object.a is runtime, because the type will be known at comptime (many restrictions apply)
+
+1740103443
+grayhatter!~grayhatte@user/grayhatter
+also take a look at the docs for switch(on_union), there's a way to get the type and the object with inline else => |a, b|
+
+1740103539
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+you mean i end up with signature like this?   `fn _query_match_kv(self: TokenIterator, kv: @typeInfo(Token{ .kv = .{} })) bool`  (Token is the union(enum) which has non-default keys)
+
+1740103597
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+not sure what's functionBuilder()
+
+1740103621
+grayhatter!~grayhatte@user/grayhatter
+functionBuilder is whatever you're trying to pass a type to
+
+1740103684
+grayhatter!~grayhatte@user/grayhatter
+your question is very non-specific, (or maybe I'm just dumb) you're gonna need to find some example of the code you're stuck on
+
+1740103697
+SultansOfCode!~SultansOf@user/SultansOfCode
+reykjalin: stem would remove previous relative paths
+
+1740104137
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+grayhatter: more concrete example: https://bpa.st/FNYA
+
+1740104164
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i want to type something smart instead of `SomethingHere`
+
+1740104203
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+(ofc the real code is more involved, i had to reduce it to not include things that are broken & irrelevant)
+
+1740104218
+grayhatter!~grayhatte@user/grayhatter
+netvor: []const u8
+
+1740104241
+grayhatter!~grayhatte@user/grayhatter
+I'm only half kidding
+
+1740104253
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+well i see now my example i pasted is broken :D
+
+1740104268
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i want to .eql() both .key and .section
+
+1740104362
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i'm not really blocked: i know i can either, give a name to the struct,  or just call _match_kv(query: ?Query, token: Token) and assert that the passed `token == .kv`
+
+1740104416
+grayhatter!~grayhatte@user/grayhatter
+something like this https://bpa.st/52EA
+
+1740104433
+grayhatter!~grayhatte@user/grayhatter
+more docs https://ziglang.org/documentation/master/#Inline-Switch-Prongs
+
+1740104441
+grayhatter!~grayhatte@user/grayhatter
+see the test_inline_switch_union_tag.zig example
+
+1740104452
+reykjalin!7e28cf3a41@user/reykjalin
+SultansOfCode: ah yeah, I suppose that’s true. I think you could use dirname to keep that part :)
+
+1740104474
+reykjalin!7e28cf3a41@user/reykjalin
+depends on if you want to use std more or just do thing yourself I guess :)
+
+1740104500
+grayhatter!~grayhatte@user/grayhatter
+netvor: I made a mistake in that paste, pretend I replaced SomethingHere with KEYTYPE as well, you can use an argument as the type for the whole function
+
+1740104543
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+interesting .. i did not know about the |kv, tag| syntax..
+
+1740104550
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+thanks grayhatter !
+
+1740104565
+grayhatter!~grayhatte@user/grayhatter
+netvor: me neither, it's very well hidden
+
+1740104582
+grayhatter!~grayhatte@user/grayhatter
+I also forgot to add the inline keyword to the switch too lol
+
+1740105327
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+no worries, i make these little mistakes all the time; would get there :D
+
+1740105720
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+btw i ended up sweeping it under the Query:  https://bpa.st/Y7CQ (beware, it might be too OO for some, i guess...)
+
+1740106095
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+also btw, i'm rewriting my custom INI config parser I created many years ago, originally in Bash.   since then i already rewrote it in Python 3.   now i'm rewriting it yet again in zig.
+
+1740106157
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i tested it with an average-sized ini file.  bash: ~177 ms.  python: ~50 ms.  zig?  ~20 ms, (and ~10 with ReleaseFast :D)
+
+1740107404
+torque!~tachyon@user/torque
+netvor, for future reference, 0.13 has std.meta.FieldType and 0.14 will have @FieldType
+
+1740107479
+torque!~tachyon@user/torque
+for tagged unions there is also std.meta.TagPayload
+
+1740107733
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+nice, looking forward for 0.14
+
+1740107898
+SultansOfCode!~SultansOf@user/SultansOfCode
+What is the difference between std.memtokenize and std.mem.split? They seem to do the exact same thing
+
+1740107947
+torque!~tachyon@user/torque
+it's how they handle adjacent tokens
+
+1740107971
+torque!~tachyon@user/torque
+eg a//b tokenized on "/" will give you "a", "b", but split will give you "a", "", "b"
+
+1740107987
+torque!~tachyon@user/torque
+also they have slightly different behavior on no tokens, i think
+
+1740108070
+torque!~tachyon@user/torque
+oh I think maybe splitting an empty string that they differ on
+
+1740111318
+SultansOfCode90!~SultansOf@user/SultansOfCode
+There is a way to tell compiler that an optional is not null at that moment? I have an optional in a struct, then I initialize it, then I want to use it in places, but compiler keeps saying that it may be null
+
+1740112188
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+field.?
+
+1740117613
+grayhatter!~grayhatte@user/grayhatter
+netvor: 10ms is slow, unless it's a huge file
+
+1740117759
+grayhatter!~grayhatte@user/grayhatter
+well... ok, it's obviously not slow... but you should be able to measure it in us instead of ms
+
+1740147846
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+sure could be improved (not a priority now, though...)
+
+1740149709
+robertgzr!5db90f0c51@user/robertgzr
+heyyo. is there any policy on what belongs into stdlib?
+
+1740149822
+robertgzr!5db90f0c51@user/robertgzr
+was looking for some akin to mktemp but there only seem to be similar-ish APIs for std.build and std.testing
+
+1740155292
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I can use `zig cc` to compile c+cython+python project, it works just like in cc/gcc. What the deal with `zig build-exe`? I get errors when I try that.
+
+1740155409
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+compiling this to be more specific https://github.com/YoSTEALTH/Liburing/blob/master/setup.py
+
+1740155698
+torque!~tachyon@user/torque
+why do you need zig build-exe if zig cc works?
+
+1740155719
+torque!~tachyon@user/torque
+zig cc is intended to be a drop-in CLI-compatible c/c++ compiler
+
+1740155732
+torque!~tachyon@user/torque
+zig build-exe is primarily for building zig executables
+
+1740155757
+torque!~tachyon@user/torque
+the serve completely different purposes
+
+1740155852
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, there is a bug in one of the function that segfault https://github.com/YoSTEALTH/Liburing/blob/master/test/queue/get_cqe_test.py#L25-L42, its been giving me problems for years and i finally found it and created that test.  C developer says its not their fault, Cyton developers says its not their issue, all i am doing it wrapping the function just like other functions. 
+
+1740155886
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so long story short, i figured i use zig to see if anything changes! but it doesn't the zig cc segfaults as well, so its not the compiler/linker issue. 
+
+1740155981
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww i see (built-exe). why I am bit interested in zig is if I can just drop the whole c/wrapper project and use zigs io_uring, maybe it wont be unstable!?
+
+1740156022
+torque!~tachyon@user/torque
+zig cc is just using clang under the hood, it's not a separate c compiler
+
+1740156064
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+gotcha 
+
+1740156140
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+arocc begging to be mentioned
+
+1740156292
+torque!~tachyon@user/torque
+zig doesn't have a magical io_uring interface either, fwiw. honestly i'd expect you have a bug in your segfaulting function. have you tried porting it to c and seeing if the same sequence of operations works as expected
+
+1740156390
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I am not really a C coder, Python is my thing, I just wanted to do a C project wrap and it turned into years of dealing with too many bugs.
+
+1740156473
+torque!~tachyon@user/torque
+you're going to have a very hard time debugging python->c binding issues if you aren't willing to get your hands dirty with c
+
+1740156496
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the C developers have tons of test and the function has no issues in C itself.
+
+1740156519
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+good point but I don't want to learn C, i would rather learn zig.
+
+1740167877
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`const win = @import("std").os.windows;` vs `const win = @import("std.os.windows");` planned?
+
+1740167910
+grayhatter!~grayhatte@user/grayhatter
+stealth_: are you asking if the latter is planned?
+
+1740167923
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya
+
+1740167931
+grayhatter!~grayhatte@user/grayhatter
+why would you want that? seems awful
+
+1740168021
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, does it load `std` and `os` module as well, when you just wanted `windows`? 
+
+1740168037
+grayhatter!~grayhatte@user/grayhatter
+stealth_: coming from python?
+
+1740168047
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya
+
+1740168065
+grayhatter!~grayhatte@user/grayhatter
+yeah, zig isn't like python, it doesn't include things that you aren't using
+
+1740168074
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just started reading https://ziglang.org/learn/samples/ :D
+
+1740168085
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww thats cool
+
+1740168098
+grayhatter!~grayhatte@user/grayhatter
+you could even write `win = @import("std").os.windows;` and if you never actually used `win` it wouldn't be included
+
+1740168121
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, that is awesome.
+
+1740168128
+grayhatter!~grayhatte@user/grayhatter
+yeah, stealth_, welcome to a good language :D
+
+1740168284
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, thanks, going to give zig a try ;)
+
+1740168570
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is async implemented in zig yet?
+
+1740168847
+grayhatter!~grayhatte@user/grayhatter
+stealth_: everything needed to write async code exists, yes. Does the language itself provide a builtin async api, no
+
+1740168943
+grayhatter!~grayhatte@user/grayhatter
+but, you also gain anything if it did, because async doesn't make zig code faster the way it would for python or js
+
+1740168968
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, o, stuff like async/await keyword does make it lot easy to use async functions. so you just write normal function like you would in C that are async? 
+
+1740169018
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i would mainly use async/await to do io_uring calls. 
+
+1740169019
+grayhatter!~grayhatte@user/grayhatter
+you have to think about zig code different from python
+
+1740169046
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya zig seem totally difference (in a good way)
+
+1740169110
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i wrote this in python https://github.com/yostealth/shakti you can see how async/await makes things so easy to use.
+
+1740169190
+grayhatter!~grayhatte@user/grayhatter
+I would call this harder to use, not easier
+
+1740169295
+grayhatter!~grayhatte@user/grayhatter
+why is this easier?
+
+1740169351
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm... i am looking at it from the usability point of view, like you type few lines to open/read/write/close, for most ppl that's what they want.
+
+1740169391
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like python has a language is really good, easy to use/learn... 
+
+1740169396
+torque!~tachyon@user/torque
+<grayhatter> but, you also gain anything if it did, because async doesn't make zig code faster the way it would for python or js
+
+1740169408
+torque!~tachyon@user/torque
+I don't really want to bring this argument up again but I see you're trotting this line out for no reason
+
+1740169438
+torque!~tachyon@user/torque
+"async" doesn't make python or js faster either
+
+1740169445
+grayhatter!~grayhatte@user/grayhatter
+lol, torque still waiting for the citation/data showing async is worth the extra complexity
+
+1740169501
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya async/await truly becomes powerful when it comes to not waiting for IO
+
+1740169505
+grayhatter!~grayhatte@user/grayhatter
+I don't actually think async makes python faster either, but it at least has a chance to given python's GIL
+
+1740169507
+torque!~tachyon@user/torque
+the point of using async is reduced conceptual complexity compared to trying to use threads for IO
+
+1740169534
+torque!~tachyon@user/torque
+that statement makes no sense
+
+1740169534
+grayhatter!~grayhatte@user/grayhatter
+torque: it increases the conceptual complexity for me
+
+1740169544
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+The point of using async is "this is a design that calls for generalized coroutines but I am immured in a language that doesn't have them"
+
+1740169583
+torque!~tachyon@user/torque
+ToxicFrog, I think you're conflating "asynchronous" code with `async` as a language-level keyword
+
+1740169600
+grayhatter!~grayhatte@user/grayhatter
+hiding "blocking IO" under async/await makes exactly what the (virtual) machine is doing harder to reason about
+
+1740169615
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is a good ready on why async/io_uring https://unixism.net/loti/async_intro.html
+
+1740169675
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, i use async as shorthand for asynchronous 
+
+1740169684
+torque!~tachyon@user/torque
+grayhatter, what is your mental model of calling "read()" on a file descriptor
+
+1740169720
+torque!~tachyon@user/torque
+at some point, the blocking io has to actually read bits from a file, let's say on an ssd. do you care all the way down to how the ssd itself retrieves the stored data?
+
+1740169753
+torque!~tachyon@user/torque
+abstractions are useful ways to prevent complexity overload. it is useful, and often desirable, to operate on idealized abstractions of functionality
+
+1740169785
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+torque: given that stealth_ specifically mentioned "async/await" and not "asynchronous code" I assumed the latter, yes.
+
+1740169790
+torque!~tachyon@user/torque
+sometimes this can bite you, but not usually
+
+1740169809
+grayhatter!~grayhatte@user/grayhatter
+torque: that statement makes no sense <- in python, the overhead of spinning blocking IO into threads is increased by the GIL. Thus making the tradeoff between "raw" "threaded IO" and "async IO" much closer in performance. But even that's more of an abstract statement given no one ever cites real data when making these comparisons...
+
+1740169826
+torque!~tachyon@user/torque
+the gil is unlocked during io
+
+1740169835
+grayhatter!~grayhatte@user/grayhatter
+myself included, but at least I get to say "I'm uncovinced either is better" and "threading is simpler" 
+
+1740169840
+torque!~tachyon@user/torque
+the gil only slows down python when executing python code, not when blocked on os-level io calls
+
+1740169867
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think they removed/going to remove gil in the newer version of python
+
+1740169870
+torque!~tachyon@user/torque
+anyway, I'm not going to continue trying to argue about this with you
+
+1740169872
+grayhatter!~grayhatte@user/grayhatter
+torque: the pass back from a python code in a thread into the "spawning" function
+
+1740169913
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yeah, I know. A friend of mine is working on it... he's one of the few who I'd trust to do it correctly. I'm looking forward to never talking about it again :)
+
+1740169918
+torque!~tachyon@user/torque
+but I think it would be nice if you could be less aggressive about promulgating your own biases
+
+1740169943
+grayhatter!~grayhatte@user/grayhatter
+torque: I will stop complaining about async when people start bringing data to back up their claims
+
+1740169951
+grayhatter!~grayhatte@user/grayhatter
+I will shut up once someone has some sort of data
+
+1740169974
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, cool, what exactly is the problem with async in your point of view? 
+
+1740170032
+grayhatter!~grayhatte@user/grayhatter
+async makes code more complex, harder use, and harder (for me) to reason about, for no meaningful improvement in any metrics you're likely to see in the real world
+
+1740170052
+torque!~tachyon@user/torque
+ToxicFrog, since python does have generalized coroutines and also async/await (effectively as syntactic sugar), your statement is a bit off the mark anyway, I think
+
+1740170175
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i see, for me its other way around it makes things very easy to use, and in read world application when dealing with blocking IO you see improvements that makes a huge difference in resources. e.g serving 100 socket connection vs 1000's of connects per second. 
+
+1740170197
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+torque: the issue with async/await, at least in python and js, is you cannot yield (using await) unless you are lexically inside a coroutine body.
+
+1740170211
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+(i.e. an "async def")
+
+1740170258
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+In some cases this is because the language doesn't have coroutines and async/await are implemented at compile time via transformation into continuation-passing style; I'm not sure what python's excuse is.
+
+1740170290
+torque!~tachyon@user/torque
+I don't really see how that's an issue, per se, unless you're talking about colored functions
+
+1740170317
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for a while they used `yield from` before `await` keyword was adding to python, (which was awesome and clear)
+
+1740170416
+ToxicFrog!~ToxicFrog@host-216-58-89-184.gta.igs.net
+That is what I'm talking about, yes. Contrast with e.g. Lua.
+
+1740170447
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you just said async makes code faster, but didn't explain *how* it's faster, nor cite any data
+
+1740170496
+torque!~tachyon@user/torque
+I think the claim is that it scales better, not that it is "faster" per se
+
+1740170515
+grayhatter!~grayhatte@user/grayhatter
+but, instead of getting yelled at by torque again, I'm gonna defer to this being off-topic for #zig
+
+1740170525
+torque!~tachyon@user/torque
+since you don't have the process creation overhead you would have if every single io needed to be in its own thread
+
+1740170539
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, though i did, hmm.... it doesn't have to wait for IO! like reading/writing.
+
+1740170541
+torque!~tachyon@user/torque
+ToxicFrog, I haven't done much with coroutines in lua
+
+1740170576
+torque!~tachyon@user/torque
+but I believe you can do the same things in python, you just lose the nice syntactic sugar you get for being within the asyncio realm with the event loop
+
+1740170644
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, have you read the link i sent you? https://unixism.net/loti/async_intro.html it explains what async/asynchronous is very good
+
+1740170668
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+When the kernel is actually doing the IO, it is not using CPU right?
+
+1740170729
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, if you wait you are wasting time, so it just wakes up when content is ready(as in written to ram)
+
+1740170749
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I'm not asking about waiting
+
+1740170763
+grayhatter!~grayhatte@user/grayhatter
+rockorager: yes and no, the "blocking" part of IO is when the kernel is waiting, and where the kernel is "doing" the IO it's basically memcpy
+
+1740170763
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If I schedule IO on io_uring, when the kernel is off *doing the io*, what is happening?
+
+1740170796
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+And does using that free up...a core? to run a thread?
+
+1740170804
+grayhatter!~grayhatte@user/grayhatter
+the kernel is using the CPU, or it's not
+
+1740170818
+grayhatter!~grayhatte@user/grayhatter
+meaning the kernel is doing some sort of memcpy, or it's waiting
+
+1740170846
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, please read https://unixism.net/loti/async_intro.html it explains what io_uring does
+
+1740170905
+grayhatter!~grayhatte@user/grayhatter
+I actually disagree it explains what the kernel is doing 
+
+1740170963
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, to answer your question simply, kernel makes 1 IO call, and it goes and does other things. it doesn't just sit there waiting for that IO to finish
+
+1740170979
+mov-eax!~mov-eax@user/mov-eax
+Hi there! Trying to play with Zig by adapting it's build system to existing CPP project. The project has many objects which get linked into different binaries by combining those objects in various ways. So I defined many `Build.addObject()` s. There is `Build.add{Static,Shared}Library()` which you can link with `Compile.linkLibrary()`, but how I'm
+
+1740170980
+mov-eax!~mov-eax@user/mov-eax
+supposed to link those objects? There is no `Compile.linkObject()`. I'm using Zig 0.13.0.
+
+1740171037
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+stealth_: so after the kernel makes that io call - let's say it take 5 minutes to complete. During that 5 minutes, the kernel isn't using CPU waiting? And if I *instead* blocked a thread to wait, it would be using CPU - probably by scheduling the thread?
+
+1740171059
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+(Am reading that article too)
+
+1740171062
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, yep you got it
+
+1740171090
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Alright
+
+1740171107
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so rather than finish 1 task in 5min now it could finish million of task in that 5min 
+
+1740171138
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Well, how about this then
+
+1740171153
+grayhatter!~grayhatte@user/grayhatter
+rockorager: think about networking IO, you will read() from a socket, but the data packet is still somewhere "in-flight", the kernel will task switch to a different process, the packet will arrive to the NIC, and sit in the memory for the NIC (it's more complicated than just that) Eventually the kernel will come back to that data, and memcpy that data from the NIC into the process that called read().
+
+1740171155
+grayhatter!~grayhatte@user/grayhatter
+With io_uring, you've already "given" that memory to the kernel, so (I'm gonna get handwavy here) instead of needing to come back to memcpy that packet into your process, the kernel already has that block of memory, and can skip that extra memcpy
+
+1740171155
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I have a single core and run two threads: one is blocking on IO and the other is doing tasks
+
+1740171206
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Does that scenario get less work done than a single CPU which has issued an async io_uring read, and the single thread processes tasks?
+
+1740171232
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+And if so, is it because of the scheduler + context switching between threads?
+
+1740171264
+grayhatter!~grayhatte@user/grayhatter
+because the kernel is allowed to use the ring buffer io-u-ring, however it wants, it doesn't matter what order the kernel sees the IO, it can just use an existing buffer, that's already mem-mapped into your process
+
+1740171337
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, people use to do IO back in the day using thread as for your example. Its not efficient, since its expensive to open thread and manage it, also make syscall's, ... io_uring already does all this for you at kernel level very efficiently
+
+1740171363
+grayhatter!~grayhatte@user/grayhatter
+the assumed "time saved" is the syscalls between the process, and the kernel. Because the kernel can read-write from the buffer, there's no syscall overhead between the process and kernel
+
+1740171375
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah I get the overhead of thread and syscalls, I just mean from a pure throughput (after setup) stance in those two scenarios
+
+1740171431
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Remove all the overhead - does the computer actually get more work done?
+
+1740171452
+grayhatter!~grayhatte@user/grayhatter
+rockorager: async is only faster (wall time) if the calling application is written in a way that's very specific to the flavor of IO latency that it's actually seeing
+
+1740171484
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, yes, gets tons of work done.
+
+1740171525
+grayhatter!~grayhatte@user/grayhatter
+async is faster (cpu cycles) in almost all cases, for a number of reasons. The ambiguity is how much improvement you can actually get from it. 
+
+1740171578
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also you need to be aware of when you want to use async, lets say your application just does 1 read/write and it, you probably don't want to use async, a normal io.read is more than enough. Async makes a difference in high IO usage scenario 
+
+1740171607
+grayhatter!~grayhatte@user/grayhatter
+if your async code ballons the memory needed, being able to saturate the CPU with more uops that aren't context switches  might not actually be fasterif you're ruining your l2 cache
+
+1740171644
+grayhatter!~grayhatte@user/grayhatter
+rockorager: it depends on how you define "more work"
+
+1740171674
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, another usage is time, if you are waiting for many things in your application you can use io_uring to await timeouts on things, (maybe in your game or whatever.)
+
+1740171683
+grayhatter!~grayhatte@user/grayhatter
+more requests finished, or requests finished faster, are different versions of "more work"
+
+1740171706
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I mean work as in the classical sense
+
+1740171774
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Would I mine more bitcoin
+
+1740171776
+grayhatter!~grayhatte@user/grayhatter
+rockorager: so more requests finished? given "wall time"
+
+1740171848
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, no, cause that work is done by cpu/gpu, ... but you can manage bitcoin connection more efficiently (without blocking/waiting)
+
+1740171921
+alih!~alih@user/alih
+This isn't something that I actively need help with, but I was cross compiling to target linux the other night. At first I did -target x86_64-linux and it produced a binary that I couldn't execute, but then I did -target x86_64-linux-gnu and the resulting binary could execute fine. So... conceptually, what am I missing? Why does the one work and the other not?
+
+1740172035
+torque!~tachyon@user/torque
+mov-eax, it may be worth compiling your source files into static libraries rather than object files
+
+1740172047
+torque!~tachyon@user/torque
+(a static library is just a bunch of object files in a single file anyway)
+
+1740172078
+mov-eax!~mov-eax@user/mov-eax
+I understand that, but for start I don't want to depart far from existing project's build system.
+
+1740172086
+torque!~tachyon@user/torque
+however, I believe object files can be added as source files to e.g. a library
+
+1740172105
+mov-eax!~mov-eax@user/mov-eax
+I tried that already and this didn't work.
+
+1740172129
+torque!~tachyon@user/torque
+well, you're already rewriting it in zig, which has its own build infrastructure
+
+1740172142
+torque!~tachyon@user/torque
+so you're not going to get a 1:1 probably anyway
+
+1740172153
+mov-eax!~mov-eax@user/mov-eax
+I've just found `Compile.addObject()` and `Compile.addObjectFile()` and now trying to utilize those. What is the difference, though?
+
+1740172210
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.13.0/std/#std.Build.Step.Compile.addObject vs https://ziglang.org/documentation/0.13.0/std/#std.Build.Step.Compile.addObjectFile
+
+1740172252
+torque!~tachyon@user/torque
+the former takes a Compile object, the latter takes a lazyPath. for your case, you probably want the former, since https://ziglang.org/documentation/0.13.0/std/#std.Build.addObject creates a Compile
+
+1740172263
+mov-eax!~mov-eax@user/mov-eax
+I've seen them in IDE, but still in doesn't make much difference to me.
+
+1740172284
+mov-eax!~mov-eax@user/mov-eax
+torque: thought the same way, thanks!
+
+1740172416
+mov-eax!~mov-eax@user/mov-eax
+Another question is: executable I'm working right now on links to `-lrt`, and I've seen `Compile.linkLibC()` and `Compile.linkLibCpp()`. I bet I need the later, because the project is CPP project. Is that correct?
+
+1740172449
+torque!~tachyon@user/torque
+you could try compiling without that and seeing what happens
+
+1740172456
+torque!~tachyon@user/torque
+but most likely you will need it
+
+1740172489
+mov-eax!~mov-eax@user/mov-eax
+Okay, going to try it. Thanks!
+
+1740172757
+torque!~tachyon@user/torque
+alih, what error did you get when trying to execute the file that wouldn't work
+
+1740172779
+torque!~tachyon@user/torque
+I believe the default when targeting linux is to use musl, which should produce a static executable
+
+1740172807
+torque!~tachyon@user/torque
+(unless of course you link other libraries)
+
+1740173137
+alih!~alih@user/alih
+i tried to replicate it and i think i was just completely mistaken and copied the wrong binary. ): so, uhhh... nevermind my question, total user error
+
+1740173512
+mov-eax!~mov-eax@user/mov-eax
+Did I understand correctly that in Zig Build a "static library" corresponds to an "archive" - that is, a file with `.a` extension produced by `ar`?
+
+1740175419
+torque!~tachyon@user/torque
+that's the traditional definition of a static library, yes
+
+1740176750
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a doc that explains what zig syntax mean? like e.g: `.{}` like what does `.` mean here 
+
+1740178561
+grayhatter!~grayhatte@user/grayhatter
+stealth_: isn't syntatic sugar for "this type"
+
+1740178586
+grayhatter!~grayhatte@user/grayhatter
+s/isn't/it's
+
+1740178699
+grayhatter!~grayhatte@user/grayhatter
+var thing = Thing{}; is a common way, but the idomatic zig way would be var thing: Thing = .{};
+
+1740178766
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm...
+
+1740178803
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its default value holder? 
+
+1740178927
+grayhatter!~grayhatte@user/grayhatter
+no? var thing: Thing = .{ .a = something, .b = otherthing };
+
+1740178983
+grayhatter!~grayhatte@user/grayhatter
+or Thing might be an enum, Thing = enum { first, second }; var thing: Thing = .first; var thing = Thing.first;
+
+1740179008
+grayhatter!~grayhatte@user/grayhatter
+you should read/skim all of https://ziglang.org/documentation/master/ to get a better feel for the language
+
+1740179089
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, i suppose new language has new syntax to do certain thing!
+
+1740179192
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there not grammar in the docs? it would have been nice if there was a search option
+
+1740179206
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o nm, i am dumb, found it. 
+
+1740179678
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+how can i change std.log level at the runtime?  eg. to be controlled by CLI arguments...
+
+1740179796
+netvor!~netvor@2a00:ca8:a1f:cd0:c59:8d9d:5f8:5e80
+i think i found the answer .. https://ziggit.dev/t/set-debug-level-at-runtime/6196/3
+
+1740181300
+mov-eax!~mov-eax@user/mov-eax
+How to handle conditional defines in `build.zig`? I mean, some header or source has `#if defined(__LINUX__)` etc. Two questions: how I'm supposed to `-D` efine them in build system; provide same choice to defined different options?
+
+1740181489
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+netvor: you have to set it to .debug at compile time, and then have your logFn be runtime setable
+
+1740181507
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+oh you found a link :)
+
+1740181537
+mov-eax!~mov-eax@user/mov-eax
+Another question is: I've found `Build.addIncludePath()` but how to specify system include directory so `#include <linux/vt.h` will work as expected?
+
