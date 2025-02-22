@@ -54,3 +54,183 @@ pinky swears are programming best practice
 stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
 why is this not an error? https://bpa.st/EZVA
 
+1740190268
+grayhatter!~grayhatte@user/grayhatter
+const abc: [3:0]u8 = "abc" == const abc: [4]u8 = u8{97, 98, 99, 0};
+
+1740190303
+grayhatter!~grayhatte@user/grayhatter
+stealth_: did you run it?
+
+1740190321
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya
+
+1740190325
+grayhatter!~grayhatte@user/grayhatter
+in debug/release safe?
+
+1740190352
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+default, i guess its in debug? 
+
+1740190382
+grayhatter!~grayhatte@user/grayhatter
+weird, I'd also expect that to panic
+
+1740190404
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it seems like the null pointer at the end being displayed in the array
+
+1740190481
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not `0` its `<0x00`
+
+1740190488
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ `<0x00>`
+
+1740190492
+torque!~tachyon@user/torque
+it's not a pointer, it's the null terminator
+
+1740190505
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure
+
+1740190507
+torque!~tachyon@user/torque
+it's <0x00> because you're printing it as a unicode character
+
+1740190509
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/dadb07
+
+1740190523
+grayhatter!~grayhatte@user/grayhatter
+sentinel in zig
+
+1740190541
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+string literals are null terminated
+
+1740190551
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the problem is not the print but `abc[3]` itself should raise an error.
+
+1740190567
+torque!~tachyon@user/torque
+it's not an out of range read, because there's an extra index for the 0
+
+1740190596
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.. is that normal in zig? 
+
+1740190611
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/#Sentinel-Terminated-Arrays
+
+1740190667
+torque!~tachyon@user/torque
+it's not typical for pure zig code, but string literals in zig are null-terminated as rockorager mentioned, which significantly eases C interop
+
+1740190672
+grayhatter!~grayhatte@user/grayhatter
+I didn't think accessing the sentinel value was legal in zig?
+
+1740190684
+torque!~tachyon@user/torque
+normally in zig you can ignore the sentinel and carry on your way
+
+1740190689
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/39126c slightly extended
+
+1740190695
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+showing abcz[3] is legal also
+
+1740190725
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, if its a feature, no worries, i thought it was a bug! lol
+
+1740190730
+grayhatter!~grayhatte@user/grayhatter
+huh... til
+
+1740190752
+torque!~tachyon@user/torque
+"Sentinel-terminated slices allow element access to the len index." from the langref
+
+1740190760
+mov-eax!~mov-eax@user/mov-eax
+Finally managed to build just one executable from CPP project! 🥳
+
+1740190780
+grayhatter!~grayhatte@user/grayhatter
+stealth_: try to set abc[3] = 9
+
+1740190795
+grayhatter!~grayhatte@user/grayhatter
+(make abc var first)
+
+1740190808
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure let me try
+
+1740190827
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`error: cannot assign to constant`
+
+1740190838
+grayhatter!~grayhatte@user/grayhatter
+...
+
+1740190858
+torque!~tachyon@user/torque
+you would have to do `var abc = "abc".*;`
+
+1740190884
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i get that error when i tried `var abc = "abc"; abc[3] = 9;`
+
+1740190895
+mov-eax!~mov-eax@user/mov-eax
+Althoug, "reference" executable from existing package is just 164K but mine is 6.7M 😅
+
+1740190911
+torque!~tachyon@user/torque
+that's because `"abc"` is actually `*const [3:0]u8`
+
+1740190911
+grayhatter!~grayhatte@user/grayhatter
+torque already give you the part I missed
+
+1740190913
+mov-eax!~mov-eax@user/mov-eax
+What I'm doing wrong?
+
+1740190935
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok with the `.*` no error, and it doesn't populate with `9` either. 
+
+1740190941
+torque!~tachyon@user/torque
+in order to be able to mutate it you have to dereference the pointer to copy it into a mutable structure
+
+1740190975
+torque!~tachyon@user/torque
+mov-eax, probably compiling in debug with debug info whereas the other build system is in release and stripped
+
+1740190983
+grayhatter!~grayhatte@user/grayhatter
+zigbin.io is weird
+
+1740191045
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, i see, i haven't gotten that fan into learning yet :p just started today. 
+
+1740191111
+grayhatter!~grayhatte@user/grayhatter
+I don't understand why this isn't a panic
+
