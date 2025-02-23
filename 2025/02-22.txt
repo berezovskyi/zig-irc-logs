@@ -1,0 +1,796 @@
+1740184588
+torque!~tachyon@user/torque
+typically for platform-specific defines you branch on the build target platform. for example, see https://github.com/allyourcodebase/libuv/blob/master/build.zig#L43
+
+1740184647
+torque!~tachyon@user/torque
+I believe linking lib c will cause the build system to set up standard C include paths so you usually don't have to manually wrangle this
+
+1740184820
+torque!~tachyon@user/torque
+anyway what you probably want is addSystemIncludePath
+
+1740188412
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is `const self.foo, const self.baz = getThings();` expected to work? I could get this working with `const foo, const baz = getThings();` but not with self.
+
+1740188839
+torque!~tachyon@user/torque
+uh, no, because `const self.foo` is nonsensical
+
+1740188859
+torque!~tachyon@user/torque
+you could try `self.foo, self.baz = stuff()`
+
+1740188977
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤦
+
+1740188986
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+sometimes it's the little things, ya know?
+
+1740188992
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+😁 thanks torque 
+
+1740189061
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I guess the way I saw it though, `pub fn thing(self: *MySelf){....}` indicates I can mutate self, and `const self.foo = ...` indicates "I'm not gonna mutate it after this". but you're right it's nonsensical.
+
+1740189542
+torque!~tachyon@user/torque
+you could do `const constself: *const Self = self;` and then pinky swear that you won't use `self` later, but this is not enforcable by the compiler
+
+1740189559
+torque!~tachyon@user/torque
+I think there's a proposal for it, don't recall if it got rejected already though
+
+1740189928
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+pinky swears are programming best practice
+
+1740190160
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why is this not an error? https://bpa.st/EZVA
+
+1740190268
+grayhatter!~grayhatte@user/grayhatter
+const abc: [3:0]u8 = "abc" == const abc: [4]u8 = u8{97, 98, 99, 0};
+
+1740190303
+grayhatter!~grayhatte@user/grayhatter
+stealth_: did you run it?
+
+1740190321
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya
+
+1740190325
+grayhatter!~grayhatte@user/grayhatter
+in debug/release safe?
+
+1740190352
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+default, i guess its in debug? 
+
+1740190382
+grayhatter!~grayhatte@user/grayhatter
+weird, I'd also expect that to panic
+
+1740190404
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it seems like the null pointer at the end being displayed in the array
+
+1740190481
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not `0` its `<0x00`
+
+1740190488
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ `<0x00>`
+
+1740190492
+torque!~tachyon@user/torque
+it's not a pointer, it's the null terminator
+
+1740190505
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure
+
+1740190507
+torque!~tachyon@user/torque
+it's <0x00> because you're printing it as a unicode character
+
+1740190509
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/dadb07
+
+1740190523
+grayhatter!~grayhatte@user/grayhatter
+sentinel in zig
+
+1740190541
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+string literals are null terminated
+
+1740190551
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the problem is not the print but `abc[3]` itself should raise an error.
+
+1740190567
+torque!~tachyon@user/torque
+it's not an out of range read, because there's an extra index for the 0
+
+1740190596
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.. is that normal in zig? 
+
+1740190611
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/#Sentinel-Terminated-Arrays
+
+1740190667
+torque!~tachyon@user/torque
+it's not typical for pure zig code, but string literals in zig are null-terminated as rockorager mentioned, which significantly eases C interop
+
+1740190672
+grayhatter!~grayhatte@user/grayhatter
+I didn't think accessing the sentinel value was legal in zig?
+
+1740190684
+torque!~tachyon@user/torque
+normally in zig you can ignore the sentinel and carry on your way
+
+1740190689
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/39126c slightly extended
+
+1740190695
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+showing abcz[3] is legal also
+
+1740190725
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, if its a feature, no worries, i thought it was a bug! lol
+
+1740190730
+grayhatter!~grayhatte@user/grayhatter
+huh... til
+
+1740190752
+torque!~tachyon@user/torque
+"Sentinel-terminated slices allow element access to the len index." from the langref
+
+1740190760
+mov-eax!~mov-eax@user/mov-eax
+Finally managed to build just one executable from CPP project! 🥳
+
+1740190780
+grayhatter!~grayhatte@user/grayhatter
+stealth_: try to set abc[3] = 9
+
+1740190795
+grayhatter!~grayhatte@user/grayhatter
+(make abc var first)
+
+1740190808
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure let me try
+
+1740190827
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`error: cannot assign to constant`
+
+1740190838
+grayhatter!~grayhatte@user/grayhatter
+...
+
+1740190858
+torque!~tachyon@user/torque
+you would have to do `var abc = "abc".*;`
+
+1740190884
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i get that error when i tried `var abc = "abc"; abc[3] = 9;`
+
+1740190895
+mov-eax!~mov-eax@user/mov-eax
+Althoug, "reference" executable from existing package is just 164K but mine is 6.7M 😅
+
+1740190911
+torque!~tachyon@user/torque
+that's because `"abc"` is actually `*const [3:0]u8`
+
+1740190911
+grayhatter!~grayhatte@user/grayhatter
+torque already give you the part I missed
+
+1740190913
+mov-eax!~mov-eax@user/mov-eax
+What I'm doing wrong?
+
+1740190935
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok with the `.*` no error, and it doesn't populate with `9` either. 
+
+1740190941
+torque!~tachyon@user/torque
+in order to be able to mutate it you have to dereference the pointer to copy it into a mutable structure
+
+1740190975
+torque!~tachyon@user/torque
+mov-eax, probably compiling in debug with debug info whereas the other build system is in release and stripped
+
+1740190983
+grayhatter!~grayhatte@user/grayhatter
+zigbin.io is weird
+
+1740191045
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, i see, i haven't gotten that fan into learning yet :p just started today. 
+
+1740191111
+grayhatter!~grayhatte@user/grayhatter
+I don't understand why this isn't a panic
+
+1740191118
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+far*
+
+1740191119
+grayhatter!~grayhatte@user/grayhatter
+and compiler devs around?
+
+1740191215
+mov-eax!~mov-eax@user/mov-eax
+torqu: Tried to build --release=fast - gained only 1M
+
+1740191263
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would make sense for it to raise some kind of error, but i guess they did add safety measure by not being able to mess around with the null terminator 
+
+1740191361
+grayhatter!~grayhatte@user/grayhatter
+interesting, it's only a runtime panic if you re-slice it abc2 = abc[0..:0]; will panic (after setting it to 9)
+
+1740191374
+mov-eax!~mov-eax@user/mov-eax
+Is not it that zig will not shake static libs and will link anything compiled in to final executable? Probably I need to manage objects more thorougly.
+
+1740191379
+grayhatter!~grayhatte@user/grayhatter
+but it's really weird that it prints 0... something is fucked
+
+1740191469
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya if you have any type
+
+1740191482
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is *? a weird way to do this? https://github.com/ezzieyguywuf/zcad/blob/main/src/VulkanRenderer.zig#L362-L373 it feels awkward but I'm not sure if there's a better approach
+
+1740191722
+torque!~tachyon@user/torque
+<grayhatter> I don't understand why this isn't a panic
+
+1740191726
+torque!~tachyon@user/torque
+i think there are open bug(s) around this
+
+1740191819
+torque!~tachyon@user/torque
+ezzieyguywuf, I don't really understand why you're making it a pointer
+
+1740191898
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: because I want to modify self.point_instanced_data or self.line_instanced_data etc, I couldn't think of a way to do so otherwise
+
+1740191906
+mov-eax!~mov-eax@user/mov-eax
+Wow! --release=small did just 436K!
+
+1740191980
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mov-eax, why you worried about space? its for embed device ? 
+
+1740192008
+torque!~tachyon@user/torque
+ezzieyguywuf, what is actually writing there?
+
+1740192019
+torque!~tachyon@user/torque
+the transferToDevice callse?
+
+1740192036
+torque!~tachyon@user/torque
+oh i guess the init function is
+
+1740192131
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: correct, the init function.
+
+1740192167
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://github.com/ziglang/zig/issues/19795
+
+1740192205
+torque!~tachyon@user/torque
+I would probably break it the "default initialization" to a separate function and then use that in the switch body
+
+1740192212
+mov-eax!~mov-eax@user/mov-eax
+stealth_: because we all should worry. 146K vs 6M is enormous differnce. Either I did something wrong, or... I don't know acctually.
+
+1740192260
+torque!~tachyon@user/torque
+but for what it is I think it's fine
+
+1740192261
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mov-eax, it might make the program slower as well
+
+1740192307
+mov-eax!~mov-eax@user/mov-eax
+stealth_: exactly
+
+1740192313
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its like database takes up 2x + space but it easy to find the data you are looking for fast.
+
+1740192325
+mov-eax!~mov-eax@user/mov-eax
+And "the program" is PID 1 so care should be taken.
+
+1740192332
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mov-eax, i am saying small size will make the program slow.
+
+1740192352
+mov-eax!~mov-eax@user/mov-eax
+stealth_: yeah... How could that be?
+
+1740192378
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+large space is because of how its arranged, indexed, .... 
+
+1740192380
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: "break the default initialization" so in this case, `const instanced_data` would be a copy then, since I don't need the pointer any more? (i think..)
+
+1740192398
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its designed to read faster
+
+1740192401
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: "I think it's fine" this is mostly what I was looking for, I wasn't sure if I was doing something super weird
+
+1740192431
+torque!~tachyon@user/torque
+it's a weird pattern, but I don't know enough about the use case to say more
+
+1740192461
+torque!~tachyon@user/torque
+like, lazy initializing the buffers seems odd to me in the first place, but there's probably a reason for that
+
+1740192475
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mov-eax, its better for your software to run fast, even if it takes up larger space, if it gets GB+ maybe you can look into shipping encrypted some source code and having it compile on users system.
+
+1740192491
+torque!~tachyon@user/torque
+why are these buffers stored on `self`?
+
+1740192503
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: yea, it's def odd, I hope to maybe find a better way to do this :)
+
+1740192518
+torque!~tachyon@user/torque
+I'm not a graphics guy so I can't give you any real insight there
+
+1740192535
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea I was moreso looking for zig advice, this has been helpful thank you
+
+1740192570
+torque!~tachyon@user/torque
+I think you can drop most of the `.*.`
+
+1740192592
+torque!~tachyon@user/torque
+i.e. `smth.*.?.field` should be equivalent to `smth.?.field` I think
+
+1740192621
+mov-eax!~mov-eax@user/mov-eax
+stealth_: Well, thanks for the notice. I will dig in later, now - good night everyone! 💤
+
+1740192633
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+night
+
+1740192634
+torque!~tachyon@user/torque
+haven't done much with pointers to optionals though so maybe .? behaves weirdly trying to go through the pointer vOv
+
+1740192706
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: that's what I thought I first too but the compiler didn't like it https://dpaste.com/H7XMGZ75Y
+
+1740192722
+torque!~tachyon@user/torque
+yeah so I guess .? is special. unfortunate
+
+1740192758
+torque!~tachyon@user/torque
+kind of makes sense but it's a bit of an odd case where it looks like field access but it isn't actually
+
+1740193039
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, https://github.com/ziglang/zig/issues/19795 i added a comment as well. you should too if you have anything more to say on it, but looks like its in plans to be fixed. 
+
+1740193456
+torque!~tachyon@user/torque
+stealth_, accessing the index of the sentinel is fine
+
+1740193462
+torque!~tachyon@user/torque
+the snippet you posted has no bug
+
+1740193494
+torque!~tachyon@user/torque
+the problem is that overwriting the sentinel with the wrong value was not being properly safety checked
+
+1740193554
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, well if you have a for loop and you by mistake include the sentinel and it give you 0, that would be considered data! it could mess something up
+
+1740193557
+torque!~tachyon@user/torque
+<torque> "Sentinel-terminated slices allow element access to the len index." from the langref
+
+1740193585
+torque!~tachyon@user/torque
+if you have a "for loop" you will never get the sentinel because that's not how for loops work in zig
+
+1740193609
+torque!~tachyon@user/torque
+i.e. `for (abc) |char| { ... }` will never hit the sentinel
+
+1740193632
+torque!~tachyon@user/torque
+don't make up a hypothetical failure case based on code you haven't actually run, please
+
+1740193658
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i haven't learnt for loop yet. can you not do `abc[0..4]` ? might be wrong syntax? 
+
+1740193675
+torque!~tachyon@user/torque
+that is slicing syntax
+
+1740193694
+torque!~tachyon@user/torque
+and if you want to slice properly you would do `abc[0..abc.len]`
+
+1740193738
+torque!~tachyon@user/torque
+(though this would not really accomplish anything). in practice you'd never use a hardcoded length for the end of the slice value unless you'd already checked it against `.len` anyway
+
+1740193740
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even if its not a for loop and you mistakely called the end by slice and gives you 0, that could lead to bugs though. 
+
+1740193761
+torque!~tachyon@user/torque
+if you're using hardcoded numbers you can slice anything out of bounds and cause bugs, this isn't a compiler problem
+
+1740193791
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can't do `abc[4]` for example, cause that's give you an error
+
+1740193804
+torque!~tachyon@user/torque
+yes, and?
+
+1740193830
+torque!~tachyon@user/torque
+if you do `const abc: []const u8 = "abc"` you can't do `abc[3]` either
+
+1740193844
+torque!~tachyon@user/torque
+I recommend taking more time to learn the language before you are trying to invent problems with it
+
+1740193905
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono the code started by being a `const abc = "abc";`
+
+1740193944
+torque!~tachyon@user/torque
+apologies if I come across as rude, but the signal to noise ratio on the issue tracker is something that benefits everyone when it is high, and going off half-cocked while learning does not help the developers
+
+1740193995
+torque!~tachyon@user/torque
+`const abc = "abc";` is equivalent to `const abc: *const [3:0]u8 = "abc"` as I noted earlier
+
+1740194012
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no worries, i am new to learning as well, so i don't really know much about what i am talking about
+
+1740194013
+torque!~tachyon@user/torque
+i.e. it is a pointer to a constant sentinel terminated array of length 3
+
+1740194058
+torque!~tachyon@user/torque
+if you look at the docs for sentinel terminated arrays, you can see the test explicitly accessing array[array.len], because this is how sentinel termination works https://ziglang.org/documentation/master/#Sentinel-Terminated-Arrays
+
+1740194132
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm its even `try expect(array[4] == 0);` at the end, so its a feature. 
+
+1740194218
+torque!~tachyon@user/torque
+you may also want to read this section https://ziglang.org/documentation/master/#String-Literals-and-Unicode-Code-Point-Literals for more info on how string literals work
+
+1740194297
+torque!~tachyon@user/torque
+it mentions type coercion as well, which is how you can go from `*const [3:0]u8` to `[]const u8` without needing any casting syntax
+
+1740194333
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, alright. 
+
+1740194334
+torque!~tachyon@user/torque
+idk, everyone learns differently, there are a lot of resources for learning zig out there
+
+1740194336
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+or allocation
+
+1740194354
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, should i mention the bug you are talking about of are you going to comment on it? 
+
+1740194368
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://github.com/ziglang/zig/issues/19795
+
+1740194405
+torque!~tachyon@user/torque
+I mostly just read the langref, there are a lot of guided tutorials out there as well that step you through the language features with small zig programs
+
+1740194463
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am going through one of those exercises, still at the early stage, keeps getting distracted by other things. 
+
+1740194465
+torque!~tachyon@user/torque
+one that gets mentioned a lot is https://codeberg.org/ziglings/exercises#ziglings
+
+1740194495
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya thats the one. 
+
+1740194541
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://codeberg.org/ziglings/exercises/src/branch/main/exercises/005_arrays2.zig#L32 that line kept tripping me up, think thats a bug should be `1 3 3 71 3 3 71 3 3 7`
+
+1740194622
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I think you are reading it wrong
+
+1740194656
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+what do you need to replace ??? with to get what the  sequence they have
+
+1740194671
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+am i? could be. to do 1 0... you have to write some kind of for loop, and its too early in the language to write those?
+
+1740194702
+torque!~tachyon@user/torque
+what happens if you make it `1, 0, 0, 1`
+
+1740194713
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+well, look at the string and what is repeated 3 times
+
+1740194728
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+(** 3 means replicated 3 times)
+
+1740194743
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, where is the 1 0 coming from?
+
+1740194768
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+from you?
+
+1740194775
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, does this look right? https://bpa.st/PYBQ
+
+1740194782
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you would put in 1, 0, 0, 1
+
+1740194822
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, they are saying i should reassign `var[0] = 1` so on? 
+
+1740194830
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+no
+
+1740194832
+torque!~tachyon@user/torque
+that looks like an actual bug, yeah, but if you're using 0.13, it may have been fixed in 0.14-dev already
+
+1740194871
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, ya i am using 0.13
+
+1740194910
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+const bit_pattern = [_]u8{ 1,0,0,7 } ** 3;
+
+1740194928
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+lol oops, 1
+
+1740194935
+torque!~tachyon@user/torque
+hmm, doesn't look fixed but I would be surprised if there is not an issue for this open already
+
+1740195096
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/issues/9791 here's part of it
+
+1740195119
+torque!~tachyon@user/torque
+the comment from mtlynch shows the behavior you are seeing
+
+1740195193
+torque!~tachyon@user/torque
+so the problem is documented
+
+1740195216
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, well that would have been easier, i might have overthought that problem :p
+
+1740230002
+mov-eax!~mov-eax@user/mov-eax
+He there!
+
+1740230022
+mov-eax!~mov-eax@user/mov-eax
+Can't figure a way to build executable statically, on linux.
+
+1740230069
+mov-eax!~mov-eax@user/mov-eax
+--static isn't accepted as parameter to `zig build` - should I specify that in `build.zig` for particular executable?
+
+1740231789
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+not an expert but afaik static is the default.. (ie. what falls out the default build.zig that you get from `zig init`)
+
+1740231860
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+eg. this `exe` ends up as static: https://git.sr.ht/~netvor/zig-inigrep/tree/main/item/build.zig#L14  (ldd gives me `not a dynamic executable`)
+
+1740239624
+mov-eax!~mov-eax@user/mov-eax
+netvor: at least for gnu libc this is not the case because gnu doesn't support statically linked executables in the first place. But I've found `.linkage` attribute of `Build.ExecutableOptions`. Trying to build that with gnu libc results in `error: libc of specified the specified target requires dynamic linking`
+
+1740239735
+mov-eax!~mov-eax@user/mov-eax
+Building with musl gives me a handful of missing headers ://
+
+1740244878
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Ziglings exercise is such a fun way to learn zig!!! And zig itself is so well designed, usage of e.g `\\` mind blowing, very impressed.
+
+1740245105
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+second that! :)
+
+1740252467
+motiejus!~motiejus@88.223.107.21
+mov-eax: musl historically has been static-only, but that has had some movement: https://github.com/ziglang/zig/issues/5364 ; and yes, zig+glibc is dynamic only today, for the reasons you outlined. 
+
+1740252487
+motiejus!~motiejus@88.223.107.21
+what headers are you missing? are you using something that's glibc-only?
+
+1740252573
+motiejus!~motiejus@88.223.107.21
+this seems most relevant/recent: https://github.com/ziglang/zig/issues/11909#issuecomment-2081634630
+
+1740254976
+mov-eax!~mov-eax@user/mov-eax
+motiejus: thanks a lot! Very related info ^_^
+
+1740255049
+mov-eax!~mov-eax@user/mov-eax
+motiejus: The missing header is ttyent.h
+
+1740255072
+mov-eax!~mov-eax@user/mov-eax
+Not sure is it glibc-only or not.
+
+1740255193
+mov-eax!~mov-eax@user/mov-eax
+Tryping to sum up all this. So, is it either "glibc = dynamic" or "musl = static"? I don't care about glibc for now, as I'm targeting musl-based distro, but not having dynamic linking would be a problem. Did I understand correctly that currently musl-dynamic is not supported?
+
+1740255277
+mov-eax!~mov-eax@user/mov-eax
+Also, I'v plans to target FreeBSD, but can't find which -Dtarget should I specify for that. (Eeager to try building for BSD :D)
+
+1740255417
+torque!~tachyon@user/torque
+I don't believe cross-compiling for bsds is currently supported because zig does not ship their libc headers
+
+1740255442
+mov-eax!~mov-eax@user/mov-eax
+Yes, that's glibc thing: https://www.gnu.org/software/gnulib/manual/html_node/Glibc-Header-File-Substitutes.html
+
+1740255482
+mov-eax!~mov-eax@user/mov-eax
+torque: > because zig does not ship their libc headers
+
+1740255493
+torque!~tachyon@user/torque
+however, the target should be `x86_64-freebsd`
+
+1740255501
+mov-eax!~mov-eax@user/mov-eax
+That's exactly with what I've stubled upon.
+
+1740255531
+torque!~tachyon@user/torque
+yeah, you have to compile from a bsd to target that bsd. but it should be easy to run in a vm if you really want to
+
+1740255531
+mov-eax!~mov-eax@user/mov-eax
+torque: thanks!
+
+1740255571
+mov-eax!~mov-eax@user/mov-eax
+I've some spare machine for that, but is is far future for now :D
+
+1740256291
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a plan to use wasm as the build system runner for zig on difference system?
+
+1740256734
+squeek502!~squeek502@user/squeek502
+stealth_, https://github.com/ziglang/zig/issues/14286
+
+1740257057
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+squeek502, thanks
+
+1740261524
+mov-eax!~mov-eax@user/mov-eax
+Okay, I decided to use that "gnulib" thing for musl target, and add appropriate feature macros to sources. But I still want to preserve ability to build against glibc as well. So, how I'm supposed to support that case in `build.zig`? I mean, is there any way to decide on supplied -Dtarget in order to fill missing parts for musl build?
+
+1740261600
+mov-eax!~mov-eax@user/mov-eax
+As it stated on gnulib website, it is "not a library actually", so I'm plannig to "vendor" missing parts eg. in `lib`.
+
+1740262048
+squeek502!~squeek502@user/squeek502
+mov-eax, if i understand what you're asking correctly, then `if (target.result.abi.isMusl()) {`
+
+1740262085
+squeek502!~squeek502@user/squeek502
+here's a random example of checking the target from zig's build.zig: <https://github.com/ziglang/zig/blob/0dcba03b67af0aee612b51191a8110d91a55019e/build.zig#L339-L346>
+
+1740264502
+mov-eax!~mov-eax@user/mov-eax
+squeek502: Thanks! Will try (and report, if anyone interested 😁)
+
