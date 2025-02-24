@@ -1,0 +1,568 @@
+1740318339
+mov-eax!~mov-eax@user/mov-eax
+Morning!
+
+1740318934
+mov-eax!~mov-eax@user/mov-eax
+I've managed to re-target my executable for musl (found a lot of interesting quirks along the way). When I'm building for host I've successful with `Compile.addSystemIncludePath()` and `Compile.linkSystemLibrary()`. When I'm building for musl, I get those libs from musl-based distro and placed them in projects directory, and zig picks them up with `Compile.addIncludePath()` and `Compile.addLibraryPath()` accordingly (`linkSystemLibrary()` hasn't been changed).
+
+1740318946
+mov-eax!~mov-eax@user/mov-eax
+Now that I want to link executable statically, with `{.linkage = LinkMode.Static}` but unfortunately, it fails with message "error: using shared libraries requires dynamic linking". Is there analogue of `.linkSystemLibrary()` but for static linking?
+
+1740322105
+mov-eax!~mov-eax@user/mov-eax
+Okay, I've found `Compile.addOjbectFile` which seems to do what I need. Unfortunately, now that ld.lld fails ://
+
+1740322122
+mov-eax!~mov-eax@user/mov-eax
+error: ld.lld: usr/lib/libuuid.a(src_compare.c.o): Invalid record
+
+1740322251
+mov-eax!~mov-eax@user/mov-eax
+Well, stritly speaking that's not required - successful build for musl is enough for now. But this makes the project to depend on system libraries. That's not good. If I decide to replace system libs with dependencies gathered from sources, do I need them to be buildable by zig as well? I mean, do I need to port dependencies to Zig Build system?
+
+1740333108
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://ziglang.org/documentation/master/std/#std.os.linux.IoUring.init "although the kernel will make the final call on how many entries the submission and completion queues will ultimately have" makes no sense! why would kernel do that. when you specify how many ring it should use.
+
+1740333145
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also "entries must be a power of two between 1 and 32768" should be "entries must be a power of two, from 2 to 32768"
+
+1740333264
+grayhatter!~grayhatte@user/grayhatter
+stealth_: IRC's not a great place to sumbit bug reports. I'd open a github issue, or even better if you open a PR for it
+
+1740333342
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, true, its the first thing i read and my mind just wend numb.
+
+1740333456
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+has `async/await` been implemented yet? its kind of confusing, some place it has other says it hasn't
+
+1740333521
+grayhatter!~grayhatte@user/grayhatter
+stealth_: have you read the zig language docs yet?
+
+1740333526
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/#Async-Functions
+
+1740333616
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hasn't the LLVM been resolved already? 
+
+1740333649
+grayhatter!~grayhatte@user/grayhatter
+hasn't the LLVM been resolved? 
+
+1740333676
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thought they rewrote the llvm in zig
+
+1740333678
+grayhatter!~grayhatte@user/grayhatter
+what question were you trying to ask?
+
+1740333688
+grayhatter!~grayhatte@user/grayhatter
+"the llvm" isn't a thing
+
+1740333733
+torque!~tachyon@user/torque
+1 is a power of 2
+
+1740333739
+torque!~tachyon@user/torque
+2^0
+
+1740333784
+torque!~tachyon@user/torque
+<stealth_> has `async/await` been implemented yet? its kind of confusing, some place it has other says it hasn't
+
+1740333787
+grayhatter!~grayhatte@user/grayhatter
+torque: I was thinking that too, but wanted to verify if the linux api accepts 1, did you check first?
+
+1740333818
+torque!~tachyon@user/torque
+there was an implementation of async/await in the old C++ compiler but since that got deleted in 0.11.0, the answer is "not currently"
+
+1740333861
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe there was some confusion about power of 2, it actually should be devisable by 2, like ring can only be in 2, 4, 6, ... since there is 2 rings sqe, cqe. 
+
+1740333903
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you give it 1 io_uring will make it 2 internally, cause ppl kept giving it 1, 3, .. 
+
+1740333958
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i head on youtube video that llvm has been replaced/rewritten in zig. or maybe its "planned" ?
+
+1740334002
+torque!~tachyon@user/torque
+you are very confused
+
+1740334043
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am still learning zib so i am taking in info from all over the place. 
+
+1740334058
+grayhatter!~grayhatte@user/grayhatter
+My take was not confusion, just making a number of poor assumptions
+
+1740334061
+torque!~tachyon@user/torque
+zig is working on native codegen backends but they aren't exactly replacements for llvm
+
+1740334077
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+zig*
+
+1740334109
+torque!~tachyon@user/torque
+the native backends are not optimizing, for example, and the only one that is close to usable is x86
+
+1740334179
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see. 
+
+1740334221
+torque!~tachyon@user/torque
+afaik the main goal there is to enable very fast debug compile times, since llvm is quite slow
+
+1740334261
+torque!~tachyon@user/torque
+to speed up the developer servo loop. it's a good goal, but I don't think there's a concrete plan to replace llvm for optimized builds
+
+1740334273
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thats what makes it confusing, cause everyone is talking about their point of view. and its turns into a big thing. 
+
+1740334332
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+see replacing/not using llvm seems to be implied online.
+
+1740334372
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+there's no plan to replace optimized llvm, but it's a dream worth dreamin :P
+
+1740334377
+grayhatter!~grayhatte@user/grayhatter
+stealth_: might want to be more selective with which content you consume then
+
+1740334400
+grayhatter!~grayhatte@user/grayhatter
+if someone's lying or being misleading, they're probably not worth watching
+
+1740334408
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, thats like saying you should only pick the winning lotto number :p
+
+1740334419
+grayhatter!~grayhatte@user/grayhatter
+stealth_: no it's not
+
+1740334443
+grayhatter!~grayhatte@user/grayhatter
+being able to identify trustworthy sources of information is a skill you can learn
+
+1740334488
+grayhatter!~grayhatte@user/grayhatter
+e.g. the more clickbait a title is, the less likely it's author is to be trustworthy
+
+1740334551
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i agree there are some clickbait when it comes to zig on youtube, ignoring those, its hard to tell what zig core devs are actually planning. maybe they actually want to replace the whole llvm when they own thing for zig? 
+
+1740334676
+grayhatter!~grayhatte@user/grayhatter
+stealth_: it's not actually that hard, lurking here in IRC you can pick up what's actively getting worked on. Github issues, pulls, and most importantly commits makes it near impossible to get bad information
+
+1740334727
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, true, why i ask/talked about it here so you guys can clarify on facts. 
+
+1740334757
+grayhatter!~grayhatte@user/grayhatter
+tranzystorekk: with the rate at which LLVM is becoming broken and painful to actually use... I'd be shocked the the zig backends didn't start beating LLVM by a number of metrics within just a few years
+
+1740334839
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there no core devs here that can say if they are working on replacing llvm or not? maybe a smaller version of it for zig only use.
+
+1740334878
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that's a bad question because it's not written in a way to give you a clear answer.
+
+1740334892
+grayhatter!~grayhatte@user/grayhatter
+let me find you a github issue
+
+1740334941
+grayhatter!~grayhatte@user/grayhatter
+stealth_: https://github.com/ziglang/zig/issues/16270
+
+1740334982
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, "This issue is to fully eliminate LLVM, Clang, and LLD libraries from the Zig project." didn't you say they weren't doing that? 
+
+1740335048
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I didn't say that, no. Why did you think I did?
+
+1740335070
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o my bad "<tranzystorekk> there's no plan to replace optimized llvm" said it :p
+
+1740335251
+grayhatter!~grayhatte@user/grayhatter
+replacing LLVM as the default backend, and dropping support for LLVM optimization passes are two different tasks/ideas. I also think that take is otherwise wrong, this issue seems to state that creating a compiler that can optimize zig code better than LLVM could as an explicit goal. But then, I try to avoid taking hard stances on things that might happen years in the future when I don't need to
+
+1740335626
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Ii was talking about replacing backend, I am assuming zig will keep support for llvm, like they keep support to include C. Andrew must have good reason to do so, otherwise it wouldn't even be mentioned.
+
+1740335676
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not like we are back to drawing board, we can still use zig and compile and what not.. when the custom backend is ready it will just benefit everyone.
+
+1740335854
+grayhatter!~grayhatte@user/grayhatter
+I'm re-reading this issue thread, and I find it very amusing... there's a *LOT* of people complaining that "zig can't drop support for compiling c/c++" but unless there's been a number of edits I've missed, I don't think there's any reason to complain about that.
+
+1740335877
+grayhatter!~grayhatte@user/grayhatter
+reading comprehension is really hard I guess?
+
+1740336155
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya doesn't make sense why zig would drop c/c++ compiler all of a sudden. it just benefits to have those as "you can use zig as a build/compile"
+
+1740336177
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its a good selling point. 
+
+1740336313
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe once zig reacher version 3+ they can drop the c/c++ compiler then. 
+
+1740336395
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+with https://github.com/Vexu/arocc being developed, we definitely don't aim to be left without a c frontend
+
+1740336574
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+tranzystorekk, ha, its a c compiler written in zig! that's neat
+
+1740336882
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, video i mentioned i watched https://www.youtube.com/watch?v=i9nFvSpcCzo seems legit.
+
+1740337082
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+developer voices is a pretty good podcast,but i dont think Loris explicitly said zig is planning to replace llvm entirely
+
+1740337182
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+tranzystorekk, did you not see this link? https://github.com/ziglang/zig/issues/16270
+
+1740337223
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the llvm divorce is still not the same as replacing llvm
+
+1740337305
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+im just trying to help manage expectations
+
+1740337353
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+we are not talking about creating zig version of llvm for other projects to use, or become the next llvm but for zig to not use llvm for its internal use.
+
+1740337404
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+well yeah, i misunderstood your point then
+
+1740337425
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+more middleman you have the more bug and complicated it is to fix/manage, ... 
+
+1740337511
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it does
+
+1740337524
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+never mind, was scrolled up
+
+1740337654
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+<stealth_> if you give it 1 io_uring will make it 2 internally, cause ppl kept giving it 1, 3, .. 
+
+1740337664
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it rounds up to the nearest power of two, but 1 already is a power of two
+
+1740337767
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, the entries should be in even numbers, is what it should say, but io_uring internally will change 1 to be 2.
+
+1740337781
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: says who, the code certainly doesn't do that
+
+1740337844
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"Setting  cq_entries  in
+
+1740337844
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+       struct  io_uring_params  will tell the kernel to allocate this many entries for the CQ ring, independent of the SQ ring size in given in entries.  If the
+
+1740337844
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+       value isn't a power of 2, it will be rounded up to the nearest power of 2"
+
+1740337859
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, that's what I said
+
+1740337875
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+1 == 2^0
+
+1740337916
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can't have 1 ring though, its 2 ring, incoming and outgoing. 
+
+1740337933
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe jens use wrong wording there by saying power of 2
+
+1740337944
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, the code literally is like that
+
+1740337949
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+`p->sq_entries = roundup_pow_of_two(entries);`
+
+1740338061
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+1 == 2^0 // false, 2 == 2^0 // true
+
+1740338074
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+???
+
+1740338094
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you talking about XOR, what does that have to do with power of twos?
+
+1740338100
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that what i get when u run it in python, is it different in zig/c? 
+
+1740338106
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was obviously using ^ as exponentiation
+
+1740338112
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in python you would use **
+
+1740338168
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+confusing. 
+
+1740338312
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+everyone but 1==2**0 would be false!
+
+1740338372
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+huh?
+
+1740338393
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that 1 is a power of two is not controversial at all
+
+1740338589
+grayhatter!~grayhatte@user/grayhatter
+stealth_: consider sending messages that form more complete thoughts. "everyone but 1==2**0 would be false!" is hard for me to parse because it makes no sense. You're not explaining yourself well at all
+
+1740338630
+grayhatter!~grayhatte@user/grayhatter
+which wouldn't be a problem, except you're doing it while asking for help understanding things.
+
+1740338648
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya, i just changed the font, it was to tiny i would hardly see what i was typing, also i am always multitasking. 
+
+1740338840
+grayhatter!~grayhatte@user/grayhatter
+stealth_: a number of people, myself included, consider that very rude. Given it needlessly wastes the time of other people trying to help. I know I'm guilty of that myself, but I try very hard not to do it when I'm asking others people to help me
+
+1740339088
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, not like i am doing it on porous.
+
+1740339191
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I don't think you are doing it on purpose. I'm pointing out you're doing it in case you happen to be too distracted to notice you're doing it. I'm also explaining more context than I normally would, because the lack of context is what I'm complaining about. It would be unfair to complain, and then do it myself
+
+1740339351
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, thanks for clarifying, https://github.com/YoSTEALTH/Liburing/commit/5898d15bfae088173cf50674876c5d1e3e5f1b70
+
+1740339782
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, looks like the power of 2 was added in liburing 2.2 https://github.com/axboe/liburing/commit/7f17de7928388215eaffbcfeb71c1caac80cb993 before that it was assumed it was assumed to be multiple by 2, since there was 2 rings. Sometimes its hard to tell what someone else implemented/changed within their software
+
+1740340264
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm looking at the kernel, not a library wrapper
+
+1740340281
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it doesn't matter what liburing docs say
+
+1740340327
+grayhatter!~grayhatte@user/grayhatter
+the kernel version literally uses 1UL << (most_significant_bit - 1) as the definiton for power of 2
+
+1740340369
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, that might have been a good way to go about it, i was heavily invested in c library and it was really hard to figure out what going on, i probably did 10x times the work that i should have.
+
+1740340400
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, i still have some issues with ffi not wrapping c -> cython -> python very well. I am so sick of it.
+
+1740344851
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, In Zig its handled differently, it bypasses the cqe/batch (that leads to segfault) by copying the cqe https://github.com/axboe/liburing/issues/103#issuecomment-686665007 its weird (since it uses more space) but brilliant (solves problem/faster) at same time.
+
+1740344929
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+context: https://ziglang.org/documentation/master/std/#std.os.linux.IoUring.copy_cqes
+
+1740345394
+grayhatter!~grayhatte@user/grayhatter
+stealth_: if you can find something in stdlib that will cause a segv with valid inputs, you should open an issue or PR
+
+1740345794
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, What? I am saying how good zig's io_uring implementation is. I can see why tigerbeetle project can be so confident, because they have really solid software to depending on (makes all the difference).
+
+1740345999
+grayhatter!~grayhatte@user/grayhatter
+ahh, I thought you were saying the way zig's library uses it will lead to a segfault, not that it's different from the way that might segfault
+
+1740347012
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, mhmm... I will create a PR once I learn and play wit zig for a while, there are many io_uring features currently not added. That being said do you by any change know how zig handles different linux version, lets say a function needs version 6.11, and you are on 6.1 how will zig compile?
+
+1740347120
+grayhatter!~grayhatte@user/grayhatter
+in std? there's a number of examples of comptime checks if supported APIs exist I was just looking at an example in std.net
+
+1740347137
+grayhatter!~grayhatte@user/grayhatter
+has_unix_sockets in https://ziglang.org/documentation/master/std/#src/std/net.zig
+
+1740347355
+ifreund!2940d10f8b@user/ifreund
+iirc io uring has some form of runtime feature detection 
+
+1740347389
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, sendmsg_zc 6.1 features https://ziglang.org/documentation/master/std/#src/std/os/linux/IoUring.zig they added it without checking for linux version check?
+
+1740347405
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ifreund, o it does.
+
+1740347479
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ifreund, so they use the probe to figure out which feature exist and only compile those functions associated with it?
+
+1740347575
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://ziglang.org/documentation/master/std/#std.os.linux.io_uring_probe
+
+1740347631
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you can't do runtime checks at compile time. Zig can compile for any target os, from any compile-host os
+
+1740347711
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I'm guessing that this API exists just to duplicate the API provided by linux, and it would be the callers job to ensure it's being used correctly. E.g. zig doesn't stop you from calling std.os.linux.read() with invalid arguments either
+
+1740348078
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+had to restart
+
+1740348205
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, how exactly are you saying zig deals with a function that isn't for the kernel version you are using? 
+
+1740348261
+ifreund!2940d10f8b@user/ifreund
+theres nothing preventing you for building code that targets a newer kernel
+
+1740348284
+ifreund!2940d10f8b@user/ifreund
+running it is is the part that won't work
+
+1740348324
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ifreund, ok, so what happens if you run it?
+
+1740348438
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ifreund, like... will it segfault, give you no return value, or give you 0, ...
+
+1740352865
+grayhatter!~grayhatte@user/grayhatter
+-1 and errno will be ENOSYS
+
+1740353124
+grayhatter!~grayhatte@user/grayhatter
+but I also assume that most io_uring calls aren't 1:1 to a syscall, so I have no idea what the kernel will do in these cases... you'd have to read the API docs
+
+1740353404
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, so the function will run and io_uring will return error in cqe.res! will have to see cause right now if i upload a feature that github(actions) kernel doesn't support it wont even build.
+
+1740353529
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wait, thats not true, cause it will build but it will raise when run
+
+1740353684
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i normally add a `@pytest.mark.skip_linux('6.7')` that wont run test if the feature is not supported, and user run program will raise error.
+
+1740353727
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose same thing will happen in zig as well?
+
+1740353785
+grayhatter!~grayhatte@user/grayhatter
+yes, there's a way to skip tests in zig
+
+1740353940
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+zig also has a compile time check/option right? i suppose in std you could make is that function doesn't even get compiled if that feature is not supported on the OS!
+
+1740354046
+grayhatter!~grayhatte@user/grayhatter
+there's nothing you can't do in zig if you're willing to write enough code for it
+
+1740354117
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cool, looks like it...
+
