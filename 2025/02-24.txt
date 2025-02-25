@@ -1,0 +1,884 @@
+1740361029
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I don't get why zig didn't keep just basic async/await around! cancel and other complex feature can be programmed later.
+
+1740361390
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for example io_uring provides a cancel event calls, so that whole library could have been put to full use with just async/await keyword.
+
+1740361925
+Drixtan!~Drixtan@user/Drixtan
+well, for my part, I don't like the coloring, if that matter anyhow...
+
+1740361950
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also io_uring errors are returned in `cqe.res` it wouldn't effect zig's (async/await)
+
+1740361954
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+coloring? 
+
+1740362014
+Drixtan!~Drixtan@user/Drixtan
+https://www.linkedin.com/pulse/what-function-coloring-how-go-prevent-amirreza-askarpour-1e 
+
+1740362036
+Drixtan!~Drixtan@user/Drixtan
+I didn't really read that particular article, but it takes about the coloring in question, if you want to learn more about it.
+
+1740362090
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i like colors in code syntax, and its talking about go, we are in #zig
+
+1740362148
+Drixtan!~Drixtan@user/Drixtan
+yea, I should just turn off the syntax color, you are right
+
+1740362236
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well that person doesn't know what they are talking about, you don't need to make all the function async/await only IO/time,...
+
+1740362320
+Drixtan!~Drixtan@user/Drixtan
+yea, but that tend to become like a cancer and bubbleup to the main, it spreads
+
+1740362417
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i would rather my web server serve millions of request per second vs 10/s
+
+1740362527
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i only serves 10/s without async because 1 of those connection is still on 56k modem.
+
+1740364675
+andrewrk!~andrewrk@mail.ziglang.org
+there is no "just keep" - the two options were do a whole heck of a lot of work, or not
+
+1740364871
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how about leaving it in -dev ? just so ppl can code their software with it, till its ready for release. 
+
+1740364892
+torque!~tachyon@user/torque
+???
+
+1740364921
+torque!~tachyon@user/torque
+the original implementation was written in C++ and would have had to be rewritten for the new compiler architecture when the self-hosted compiler was written
+
+1740364923
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+0.4.0-dev vs 0.4.0 release. 
+
+1740364959
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, i don't know the back story. 
+
+1740364967
+torque!~tachyon@user/torque
+also I don't know why people get so upset about function coloring, I think it's a fake problem
+
+1740365037
+torque!~tachyon@user/torque
+one of the great features of having an await keyword is that it explicitly shows you where asynchronous work may happen, which makes it much easier to reason about things like data races
+
+1740365061
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is async/await at least being worked on? could it be released in say this year sometime?
+
+1740365087
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, i really like async/await, its awesome.
+
+1740365090
+torque!~tachyon@user/torque
+it is not currently being worked on
+
+1740365121
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+:(
+
+1740365404
+andrewrk!~andrewrk@mail.ziglang.org
+well, depends on what you mean by "work". does ideas on paper count?
+
+1740365451
+torque!~tachyon@user/torque
+fair
+
+1740365455
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol sure its a start... work as in just wait for even to happen and resume 
+
+1740365467
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+event*
+
+1740365674
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, async/await that can do basic https://github.com/YoSTEALTH/Shakti?tab=readme-ov-file#example i can write my own event manager.
+
+1740369306
+Drixtan!~Drixtan@user/Drixtan
+torque: so how do you fix the code duplication when you have to support sync and async cases? Async can't call sync code because it will block the thread and the whole thing is moot, and sync code can't call async because you have nothing to do with the returned future, so I wonder?
+
+1740369582
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just have async function create a new thread and have it run your sync code while async is doing its own thing, once the job inside thread is done it can let async know.
+
+1740369739
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+futex2 works with async/await its using in io_uring as well https://ziglang.org/documentation/master/std/#std.os.linux.FUTEX2
+
+1740369775
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*used
+
+1740369862
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+search for ``futex2_` https://ziglang.org/documentation/master/std/#std.os.linux
+
+1740373000
+grayhatter!~grayhatte@user/grayhatter
+an async function calling a sync function doesn't automatically make the caller block
+
+1740373096
+grayhatter!~grayhatte@user/grayhatter
+alotta misstatements flying around here tonight
+
+1740373277
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: it only counts as being worked on when se.vruntime is increasing more than 2% of sum(se.vruntime) :P
+
+1740373292
+torque!~tachyon@user/torque
+Drixtan, sync code that doesn't block for long periods of time is fine to run from async functions
+
+1740373419
+torque!~tachyon@user/torque
+calling async code from sync code can be fine, as long as the sync code doesn't have to get the result of the async call
+
+1740373447
+torque!~tachyon@user/torque
+which is what you get when you're in callback hell anyway
+
+1740373482
+grayhatter!~grayhatte@user/grayhatter
+torque: do you have an example of software that you'd consider existing within callback hell?
+
+1740373503
+torque!~tachyon@user/torque
+anything in c using libuv etc
+
+1740373514
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+async/await is coroutine rather than callback. 
+
+1740373521
+torque!~tachyon@user/torque
+any js written pre-es5 or es6 or whenever they added it
+
+1740373549
+grayhatter!~grayhatte@user/grayhatter
+I meant a repo
+
+1740373589
+torque!~tachyon@user/torque
+I'm not really interested in linking any of my repos from like a decade ago
+
+1740373604
+grayhatter!~grayhatte@user/grayhatter
+I'm looking to build a heuristic of good code ruined by callback hell, or if it's just bad code generally, and thus callback hell is a symptom rather than it's own disease
+
+1740373606
+Drixtan!~Drixtan@user/Drixtan
+aren't the result from async "callback hell" passed as a param anyway? So, even "callback hell" can get the result of the async call afaik
+
+1740373646
+torque!~tachyon@user/torque
+you don't get the result in the calling function
+
+1740373662
+torque!~tachyon@user/torque
+you get the result in the callback, which can't call back into the calling function. this is why it's callback hell
+
+1740373670
+torque!~tachyon@user/torque
+you don't get the result in a manner that appears to be procedural
+
+1740373711
+torque!~tachyon@user/torque
+this is like, the whole problem that async/await keywords largely solves, it lets async code look more or less procedural
+
+1740373821
+torque!~tachyon@user/torque
+grayhatter, https://crux.epicyclic.dev/factotum/rotint is callback hell imo. but the code is also kind of garbage as I wrote it very quickly
+
+1740373828
+torque!~tachyon@user/torque
+https://crux.epicyclic.dev/factotum/rotint/src/branch/master/src/networking.zig in particular is kind of gross
+
+1740374120
+Drixtan!~Drixtan@user/Drixtan
+I wonder how async/await fits in "No hidden control flow." :P
+
+1740374156
+torque!~tachyon@user/torque
+if it's explicitly marked with a keyword it's not hidden
+
+1740374161
+torque!~tachyon@user/torque
+just like `try` isn't hidden control flow
+
+1740374215
+grayhatter!~grayhatte@user/grayhatter
+this callback hell seems to be the design intention of xev
+
+1740374257
+torque!~tachyon@user/torque
+this is also effectively how libuv works, because this is the only way to do asynchronous programming in c family languages that do not have coroutines and do not have closures
+
+1740374259
+grayhatter!~grayhatte@user/grayhatter
+but I can't tell if I actually think it's sane... it "feels" like there's a better API for this, but I can't describe that feeling yet
+
+1740374289
+grayhatter!~grayhatte@user/grayhatter
+well, yes and no
+
+1740374347
+grayhatter!~grayhatte@user/grayhatter
+you could pretty easily implement an io_uring like api, where your coroutine thread accepts and returns the data into a list, that your "main thread" could then wait for consume, and switch on
+
+1740374379
+grayhatter!~grayhatte@user/grayhatter
+but [mumbles something incohent about epoll]
+
+1740374400
+torque!~tachyon@user/torque
+uh
+
+1740374400
+grayhatter!~grayhatte@user/grayhatter
+incoherent*
+
+1740374418
+torque!~tachyon@user/torque
+all epoll/select/whatever do is make you run the event loop manually yourself
+
+1740374457
+torque!~tachyon@user/torque
+you still end up in callback hell if you want to dispatch the results you're waiting for to other code
+
+1740374490
+torque!~tachyon@user/torque
+libxev's readme talks about mimicing io_uring design patterns https://github.com/mitchellh/libxev?tab=readme-ov-file#libxev
+
+1740374518
+grayhatter!~grayhatte@user/grayhatter
+you're running "it" manually on main.zig/452 loop.run(), just because it lives in a library doesn't mean you're not running it
+
+1740374519
+torque!~tachyon@user/torque
+I can't tell you how close that actually is, not having used io_uring myself, but mitchell's a pretty smart guy so i doubt he'd write a fucked up async io library as a joke
+
+1740374539
+torque!~tachyon@user/torque
+no, I am not manually running the event loop, the library is
+
+1740374552
+torque!~tachyon@user/torque
+it dynamically adds listeners etc when i call functions
+
+1740374592
+torque!~tachyon@user/torque
+it does the bookkeeping and the result dispatch
+
+1740374592
+grayhatter!~grayhatte@user/grayhatter
+torque: you and I deeply disagree about code ownership... just because some code is burried in a 3rd party lib, doesn't mean you're not running that code
+
+1740374701
+torque!~tachyon@user/torque
+I'm not sure how to respond to this. I never said I wasn't running the code, but having an event loop managed by a library is a different beast than writing your own event loop around os-level primitives like epoll (which is probably used under the hood by libxev anyway, I haven't checked)
+
+1740374704
+grayhatter!~grayhatte@user/grayhatter
+it doesn't matter how many function calls deep any code is; it's still code you're using
+
+1740374783
+torque!~tachyon@user/torque
+but if you're using epoll to poll a read fd and a write fd or something, that's very different in terms of complexity than a full-featured async library that lets you dynamically add and remove io handles and do things like run timers etc
+
+1740374838
+grayhatter!~grayhatte@user/grayhatter
+you said you're not running the code, "no, I am not manually running the event loop, the library is" but you're running the library. If you don't like that the lib uses a clunky callback API, unroll it a bit so you don't have callbacks, and can dispatch your functions "inline"
+
+1740374913
+grayhatter!~grayhatte@user/grayhatter
+then it's not a callback, but "unordered" procedural  
+
+1740374917
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you still need async/await implemented in zig to use it or else its callback. even with io_uring, event manager.
+
+1740374933
+grayhatter!~grayhatte@user/grayhatter
+or do I mean to say imperative?
+
+1740374946
+torque!~tachyon@user/torque
+I do not know how to help you get it
+
+1740374967
+torque!~tachyon@user/torque
+you can't "unroll it a bit"
+
+1740374988
+torque!~tachyon@user/torque
+all the read and write calls end up having their results resolved in a single location, which is not the caller
+
+1740374989
+grayhatter!~grayhatte@user/grayhatter
+yeah, not suprised, you and I use fundementally different mental frameworks for understanding how code actually works
+
+1740374999
+torque!~tachyon@user/torque
+it is the event loop
+
+1740375048
+torque!~tachyon@user/torque
+you can end up with shoving everything down a big event queue while using an async library just as well as you can writing an epoll loop yourself
+
+1740375075
+torque!~tachyon@user/torque
+however, now your queue needs a state machine or something on it so that you can extract the necessary ordering out of things coming in in arbitrary orders
+
+1740375098
+torque!~tachyon@user/torque
+because you can't write code that is "result = await read(); await write(result)`
+
+1740375123
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+callback is actually faster than coroutine though.
+
+1740375132
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+by tiny bit.
+
+1740375145
+grayhatter!~grayhatte@user/grayhatter
+do you mean state machine, or a stateful context handler?
+
+1740375168
+torque!~tachyon@user/torque
+what's the difference
+
+1740375186
+grayhatter!~grayhatte@user/grayhatter
+uh... 
+
+1740375211
+grayhatter!~grayhatte@user/grayhatter
+https://en.wikipedia.org/wiki/Finite-state_machine
+
+1740375219
+torque!~tachyon@user/torque
+in your own words, please
+
+1740375308
+grayhatter!~grayhatte@user/grayhatter
+it's an algo that can be defined as having a finite set of states, and can only transition between these states given some set of rules
+
+1740375339
+torque!~tachyon@user/torque
+ok, and what is a "stateful context handler"?
+
+1740375369
+grayhatter!~grayhatte@user/grayhatter
+vs a stateful context handler that is something that builds and holds on to a potentially unlimited number of events, and the context needed to finish and execute those events
+
+1740375445
+torque!~tachyon@user/torque
+the statefulness being something that transitions between states based on rules?
+
+1740375455
+grayhatter!~grayhatte@user/grayhatter
+a state machine in theory needs to store no data, where as a stateful contex handler, has context it has to retain
+
+1740375469
+torque!~tachyon@user/torque
+the state machine has to know at a minimum its current state
+
+1740375487
+grayhatter!~grayhatte@user/grayhatter
+torque: no, it doesn't
+
+1740375518
+torque!~tachyon@user/torque
+how does it know what rules and what states it can transition to if it does not know its state
+
+1740375541
+grayhatter!~grayhatte@user/grayhatter
+`a -> b -> c` needs to store no state, because it'll transition from a to b given some event, and then b -> c
+
+1740375567
+grayhatter!~grayhatte@user/grayhatter
+you might store that machine in a machine that *does* store the state, but that can be described as external to the machine
+
+1740375600
+torque!~tachyon@user/torque
+that is not really a state machine, that's a linear flow
+
+1740375604
+grayhatter!~grayhatte@user/grayhatter
+var a = 0; a = a + 1; a = a + 10;
+
+1740375622
+grayhatter!~grayhatte@user/grayhatter
+yes, the simplest example, is often pointlessly simple
+
+1740375629
+torque!~tachyon@user/torque
+it's pointless
+
+1740375639
+torque!~tachyon@user/torque
+a = a + 1 uses the state of a to increment a
+
+1740375658
+torque!~tachyon@user/torque
+anyway this is getting meaninglessly pedantic
+
+1740375675
+grayhatter!~grayhatte@user/grayhatter
+you're the one who asked for my own discription
+
+1740375679
+torque!~tachyon@user/torque
+I'm done arguing this with you a third time
+
+1740375684
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1740375732
+Drixtan!~Drixtan@user/Drixtan
+the async/await is always fun 
+
+1740375735
+andrewrk!~andrewrk@mail.ziglang.org
+what I want to be able to do is write reusable code that does not arbitrarily impose an order on I/O operations when it doesn't need to
+
+1740375820
+grayhatter!~grayhatte@user/grayhatter
+I think that's a much better problem discription that I've heard from *any* async/await arugment previously
+
+1740375859
+Drixtan!~Drixtan@user/Drixtan
+in any case, you will need a "state machine" behind, now the question is do we really want to have the await/async or go, let's say, like java with project loom?
+
+1740375890
+torque!~tachyon@user/torque
+given that async/await actually make it signficantly easier to impose order on IO operations within a broader context where global order doesn't matter, I'm not sure I think it is
+
+1740375912
+Drixtan!~Drixtan@user/Drixtan
+andrewrk: if I recall correctly, about a year ago you mentioned you liked nodejs and you liked the async/await. So I guess my dog is kind of dead, hoping for no coloring, am I right?
+
+1740375975
+grayhatter!~grayhatte@user/grayhatter
+I've had to read and maintain a lot of async code before, and the way most people use it is a nightmare... so many poorly implemented "primitives" or "helpers" that start simple, but someone "extends" them, and they're instantly unwieldy
+
+1740376042
+grayhatter!~grayhatte@user/grayhatter
+I wonder if asnyc/await isn't the right implementation idea, but instead an const results = unordered { ... }; block instead, similar to comptime {};
+
+1740376074
+Drixtan!~Drixtan@user/Drixtan
+grayhatte: did you do some C# too? I had to code in an async/await nightmare, exceptions where not trapped correctly - people coding it initially thought async/await was magic and "it was just like sync code, coding just as they normally going"
+
+1740376161
+Drixtan!~Drixtan@user/Drixtan
+grayhatter: I like this unordered block, results can then be managed by questioning it (like a future/task?) 
+
+1740376168
+grayhatter!~grayhatte@user/grayhatter
+Drixtan: at [old job] you'd see a mix or 20 inline calls `something = await async_function_call(data)` and then `results = gather_dict([names], [list_of_functions_to_call])` 
+
+1740376199
+grayhatter!~grayhatte@user/grayhatter
+where gather_dict was the least awful asyncio executor you'd see
+
+1740376267
+Drixtan!~Drixtan@user/Drixtan
+isn't that a little bit your idea behind the unordered block thou? gather_dict func <==> unordered block
+
+1740376270
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, you talking about python asyncio?
+
+1740376318
+grayhatter!~grayhatte@user/grayhatter
+Drixtan: I have no idea, it's just some idea I've been toying with, trying to equate the idea of "unordered IO" using the same context that I have for what a compiler is allowed to reorder. Where, when you need to, you can add in a "sync point" but if you don't both the compiler, and the CPU itself is allowed to reorder operations
+
+1740376396
+Drixtan!~Drixtan@user/Drixtan
+ah ok, so the "results" in your case is a definition of the unordered block, not the actual results of the calls within that block, do I understand correctly?
+
+1740376412
+grayhatter!~grayhatte@user/grayhatter
+I think there's some understanding in how memory access ordering is done on the CPU, that could be reused for non-memory IO operations. Where maybe the Zig compiler would be allowed to reorder network, disk, **all** IO, however it thinks is best, until it hits some sync point
+
+1740376477
+torque!~tachyon@user/torque
+i mean, you can't really do that without a runtime. and then you have go
+
+1740376543
+grayhatter!~grayhatte@user/grayhatter
+Drixtan: in my head it was something like `const results: Type = unordered brk: { break :brk Type.init(all_io_vars); };` or something I'm thinking outloud with poorly formed ideas, and just trying to match common syntax
+
+1740376565
+grayhatter!~grayhatte@user/grayhatter
+stealth__: yeah, python, where we had both asyncio, and 2 others that were common enough
+
+1740376596
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, aww, well the initial asyncio wasn't very good
+
+1740376609
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, this is what i implemented https://github.com/yostealth/shakti
+
+1740376621
+torque!~tachyon@user/torque
+that just sounds like working with a really ugly codebase to me
+
+1740376637
+Drixtan!~Drixtan@user/Drixtan
+grayhatter: I think I get it, I like that better than a/a
+
+1740376672
+torque!~tachyon@user/torque
+I used asyncio in python since 3.6 and it was way nicer than trying to do async stuff in python 2
+
+1740376698
+torque!~tachyon@user/torque
+but I'm not opposed to trying to innovate on async/await either
+
+1740376718
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, give that link a look
+
+1740376730
+grayhatter!~grayhatte@user/grayhatter
+torque: this was at a FAANG, and yeah, you have no idea
+
+1740376742
+torque!~tachyon@user/torque
+I'm sorry that you had to work at a FAANG
+
+1740376772
+grayhatter!~grayhatte@user/grayhatter
+part of why I'm not opposed to callback hell... because "it couldn't possibly be worse" :D
+
+1740376781
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+noob question: does zig not have generator?
+
+1740376807
+grayhatter!~grayhatte@user/grayhatter
+torque: ehh, I don't care about the job, the people (engineers) were for the most part, great... and that seems to be a pretty strong constant
+
+1740376831
+grayhatter!~grayhatte@user/grayhatter
+I worked in privacy/security/integrity with SREs so that helped a lot too :D
+
+1740376894
+grayhatter!~grayhatte@user/grayhatter
+stealth__: a generator, like from python? depending on what you mean, no?
+
+1740376899
+Drixtan!~Drixtan@user/Drixtan
+privacy, so it's not google, nor facebook, security it's not microsoft... so you worked at Apple?
+
+1740376902
+torque!~tachyon@user/torque
+stealth__, there is an iterator pattern you can use with `while` loops
+
+1740376912
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, didn't know python 2 had async, you mean callback? i started with python 3.
+
+1740376913
+torque!~tachyon@user/torque
+it's fairly common in the standard library
+
+1740376915
+Drixtan!~Drixtan@user/Drixtan
+ok, I am bad at joke, I am stopping
+
+1740376931
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya like in python
+
+1740376932
+torque!~tachyon@user/torque
+python 2 didn't have async so yeah it was pretty much just callbacks
+
+1740376951
+torque!~tachyon@user/torque
+it was possible to write a system using coroutines but messy
+
+1740376962
+torque!~tachyon@user/torque
+none of the major libraries did that afaik
+
+1740377017
+grayhatter!~grayhatte@user/grayhatter
+torque's answer is what I think you're asking. Most of the std api's default to the "lazy" execution style similar to python... but they're actually fast, instead of using the super expensive exceptions to yeild :)
+
+1740377035
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok thats good, zig atleast has iterators... can't async/await be implemented through that? think thats what they did in python.
+
+1740377038
+torque!~tachyon@user/torque
+stealth__, here's an example of a hashmap iterator: https://github.com/ziglang/zig/blob/master/lib/std/hash_map.zig#L1555-L1559
+
+1740377057
+torque!~tachyon@user/torque
+no, for various reasons
+
+1740377099
+torque!~tachyon@user/torque
+an iterator is just a stateful object that has a call that returns an optional value that is `null` when all values have been exhausted
+
+1740377135
+grayhatter!~grayhatte@user/grayhatter
+"is just" :P
+
+1740377208
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in python it just raises an error to stop async
+
+1740377250
+grayhatter!~grayhatte@user/grayhatter
+I'll double down on torque's "no, for various reasons", and then add, you probably would enjoy learning a lot more about python internals. About how exceptions work, about the built in context manager for the python interpreter, etc. There's a LOT of details between python and Zig that don't transer at all in any meaningful way. And the reasons are obvious once you understand how the various systems
+
+1740377252
+grayhatter!~grayhatte@user/grayhatter
+in python interact
+
+1740377252
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i feel like i came to zig 5 years later or else i would have been better help. 
+
+1740377308
+andrewrk!~andrewrk@mail.ziglang.org
+there's plenty of work to do... if you came 5 years earlier you probably would have just argued with me about language stuff, I would have said "no" a lot, and you would have left
+
+1740377388
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am just a casual coder, or a hobby!
+
+1740377510
+Drixtan!~Drixtan@user/Drixtan
+Linus made a little project as a hobby, too... >_>
+
+1740377664
+grayhatter!~grayhatte@user/grayhatter
+I wonder if there's any software that I enjoy using that's *not* a "hobby project"
+
+1740394940
+blurrycat!~blurrycat@user/blurrycat
+Hey! Are there good resources on building idiomatic bindings/wrappers to C libraries in Zig?
+
+1740411047
+nagitsu!e8e753ada7@2a03:6000:1812:100::dce
+I built some recently for libdbus and used ifreund's bindings as reference, as they're super clean and not very opinionated: https://codeberg.org/ifreund
+
+1740414651
+kyzer!~ibrahim@user/kyzer
+ls
+
+1740414722
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+Desktop Documents Downloads Music Pictures Public Templates Videos
+
+1740415245
+Drixtan!~Drixtan@user/Drixtan
+yesssss, I am not the only one with compulsive pasting problems
+
+1740416123
+blurrycat!~blurrycat@user/blurrycat
+nagitsu: thanks for the recommendation, I'll have a look at those!
+
+1740416203
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+Drixtan: i'd think that's a problem with window focusing
+
+1740418006
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+At one point it seems like zig used liburing, later dumped that idea and went directly to use io_uring, this was actually a good move(i am realizing this now).
+
+1740428183
+andrewrk!~andrewrk@mail.ziglang.org
+zig standard library never used liburing
+
+1740428389
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm weird, i though i saw liburing source being added in one of github merge 
+
+1740429158
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, https://github.com/ziglang/zig/pull/9336/files maybe you guys used same naming as liburing back in the day, later change it to short names?
+
+1740429181
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+e.g `io_uring_prep_epoll_ctl`
+
+1740429796
+bblack!~bblack@wikimedia/bblack-WMF
+stealth_: there was a big rework of layout and namespacing about a year ago in https://github.com/ziglang/zig/commit/265f42d472fa110c1e211e5f82fdf540ee198aa8
+
+1740429818
+andrewrk!~andrewrk@mail.ziglang.org
+I'm sure the person who wrote that code was inspired by liburing
+
+1740429945
+grayhatter!~grayhatte@user/grayhatter
+you can tell this is an old file, because all the function names are snake case instead of camel
+
+1740430159
+andrewrk!~andrewrk@mail.ziglang.org
+but that's clearly an implementation, not bindings
+
+1740430296
+grayhatter!~grayhatte@user/grayhatter
+I wonder at what rate humans hallucinate compared with popular LLMs
+
+1740430494
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+liburing is still a good way to learn/reference since thats were the developer will add whats new and later it can be implemented in Zig.
+
+1740430665
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: a question to distract you from 0.14 stuff (i.e. feel free to ignore the nerd snipe until then). But I was thinking about what idomatic unordered code would look like, and thinking about gfx shaders which led to the question of; do you think zig will get native support for something like expressing a shader? 
+
+1740430709
+andrewrk!~andrewrk@mail.ziglang.org
+you mean like this? https://codeberg.org/andrewrk/daw/src/branch/main/shaders/ui.zig
+
+1740430717
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+oh that reminds me, grayhatter: have you seen https://github.com/Cloudef/zig-aio?
+
+1740430718
+grayhatter!~grayhatte@user/grayhatter
+would be pretty dope to write a shader in zig instead of glsl
+
+1740430763
+andrewrk!~andrewrk@mail.ziglang.org
+recommend to pay attention to what Ali Chagri and Robin Voetter are up to
+
+1740431749
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig foundation support this Mach game engine/gui project?
+
+1740431861
+grayhatter!~grayhatte@user/grayhatter
+support ambigious there, what kind do you mean?
+
+1740431950
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+to keep the project going and doesn't die after time like most do. 
+
+1740431976
+grayhatter!~grayhatte@user/grayhatter
+that increased the ambiguity of "support"
+
+1740431983
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I think grayhatter means like: financial, dev hours, or recommends
+
+1740432020
+grayhatter!~grayhatte@user/grayhatter
+rockorager, right but these are all very different questions
+
+1740432038
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+yeah that's what I mean
+
+1740432069
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+financially, since that can keep that project going long term.
+
+1740432069
+grayhatter!~grayhatte@user/grayhatter
+oh, I thought you were addressing me, not referencing 
+
+1740432076
+grayhatter!~grayhatte@user/grayhatter
+sorry rockorager :)
+
+1740432105
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+zsf probably doesn't support financially, but they sometimes do offer dev hours for breaking changes to large projects (or at least I have seen the idea of that discussed)
+
+1740432108
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you can find that out yourself by looking around github https://github.com/sponsors/emidoots#sponsors
+
+1740432131
+grayhatter!~grayhatte@user/grayhatter
+rockorager: you might be suprised there :D
+
+1740432131
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+well damn
+
+1740432153
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, thanks.
+
+1740432404
+SultansOfCode!~SultansOf@user/SultansOfCode
+Until now I am using FixedBufferAllocator and it is nice. But I need to load a file into a buffer and I want to load the entire file (don't want to deal with seek, streams and etc. right now). Which allocator is better for this?
+
+1740432496
+SultansOfCode!~SultansOf@user/SultansOfCode
+And how to free the allocated mem after using readToEndAlloc?
+
+1740432508
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+SultansOfCode: depends what the lifetime of the file is, but probably a good place to start is std.heap.GeneralPurposeAllocator
+
+1740432525
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+allocator.free(contents);
+
+1740433004
+SultansOfCode!~SultansOf@user/SultansOfCode
+error: type '[*]u8' does not support field access
+
+1740433023
+SultansOfCode!~SultansOf@user/SultansOfCode
+Trying to get the buffer.len returned by File.readToEndAlloc
+
+1740434538
+andrewrk!~andrewrk@mail.ziglang.org
+show your code
+
+1740434996
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, Do you by any change know/imagined how async/await should fully work in zig yet? In terms of syntax and usability 
+
+1740435356
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zig.guide/async/async-await
+
+1740436104
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://bpa.st/744Q
+
