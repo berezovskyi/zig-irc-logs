@@ -1,0 +1,628 @@
+1740444682
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+How can I convert a []u8 into a [*c]const u8?
+
+1740444704
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+Also, what does "*c" signify?
+
+1740445214
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.13.0/#C-Pointers
+
+1740445234
+andrewrk!~andrewrk@mail.ziglang.org
+together with https://ziglang.org/documentation/0.13.0/#Pointers you should be able to answer the first question
+
+1740445708
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+Thanks...it didn't quite, but through google-fu I found dupeZ which worked
+
+1740445784
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+I guess Zig will implicitly cast a [*:0]u8 to a [*c]const u8, but not a []u8?
+
+1740446305
+bblack!~bblack@wikimedia/bblack-WMF
+slondr: a []u8 is an actual Zig "Slice", which is (internally) more like a struct containing a pointer and a length field.
+
+1740446348
+bblack!~bblack@wikimedia/bblack-WMF
+whereas [*c]u8 and [*:0]u8 and such are just a pointer (no stored length), with various safety/semantics about sentinels.
+
+1740446489
+bblack!~bblack@wikimedia/bblack-WMF
+and thus, you can't just "cast" from just-a-pointer to pointer-with-length.  But there are ways to get there for sure.  std.mem.span() and spanZ are helpful, too.
+
+1740446521
+bblack!~bblack@wikimedia/bblack-WMF
+(sorry not spanZ, that's dupeZ)
+
+1740447693
+slondr!cf9f9e8f44@2a03:6000:1812:100::10b6
+I see 
+
+1740447729
+andrewrk!~andrewrk@mail.ziglang.org
+the first thing I would try would be not duplicating any strings
+
+1740447754
+andrewrk!~andrewrk@mail.ziglang.org
+if you're working with an API that needs null-terminated strings, then I'd work with null-terminated strings
+
+1740455579
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Ziglings exercise says: "When arguments are passed to a function, they are ALWAYS passed as constants within the function, regardless of how they were declared in the calling function."
+
+1740455585
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+later when I try to pass string slice to function into `fn printPhrase(part1: []u8, ` it gives error saying "expected type '[]u8', found '[]const u8'"
+
+1740455676
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if its going to auto convert to `const` why complain?
+
+1740456085
+grayhatter!~grayhatte@user/grayhatter
+stealth_: re-read the docs about what which parts are const vs which aren't
+
+1740456116
+grayhatter!~grayhatte@user/grayhatter
+the compiler isn't complaing about something it's going to make constant, it's complaining that you're passing the wrong type
+
+1740456219
+grayhatter!~grayhatte@user/grayhatter
+in this case, just because you can't change the slice ptr,  or the slice length. Doesn't apply to the memory backing the slice
+
+1740456400
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am passing `const base1: []const u8 = scrambled[15..23];` to `fn printPhrase(part1: []u8,` i get why its doing that, its just makes for confusion. it wants me to `part1: []const u8`
+
+1740456463
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its like saying you can enter that room and the door wont slam into your face and you enter and door slams your face!
+
+1740456481
+grayhatter!~grayhatte@user/grayhatter
+stealth_: it's not confusing at all, you're missing a critical peice of understanding
+
+1740456529
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i get why its doing that, i am saying the quote needs improvement.
+
+1740456576
+grayhatter!~grayhatte@user/grayhatter
+bruh
+
+1740456660
+grayhatter!~grayhatte@user/grayhatter
+if you think the ziglings quote is saying that the Zig compiler will convert `func(a: []u8)` into `func(a: []const u8)` for you, you don't understand what the quote is saying
+
+1740456705
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well the compiler IS doing that though
+
+1740456711
+grayhatter!~grayhatte@user/grayhatter
+stealth_: wanna bet?
+
+1740456749
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why you need to `func(*a:` if you want to mutate `a`
+
+1740456773
+grayhatter!~grayhatte@user/grayhatter
+`func(*a:` would be invalid syntax
+
+1740456797
+grayhatter!~grayhatte@user/grayhatter
+is `*u8` the same as `u8`
+
+1740456802
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`func(a: *`
+
+1740456808
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+still learning. 
+
+1740456828
+grayhatter!~grayhatte@user/grayhatter
+follow up is `**u8` the same as `*u8`?
+
+1740456843
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have learned the `**` yet
+
+1740456860
+grayhatter!~grayhatte@user/grayhatter
+follow follow up is `**const u8` the same as `*const u8`?
+
+1740456876
+grayhatter!~grayhatte@user/grayhatter
+is *const *u8 the same as *const u8?
+
+1740456903
+grayhatter!~grayhatte@user/grayhatter
+no, these are all different types
+
+1740456911
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can use double star for const and u8? thats ...
+
+1740456920
+torque!~tachyon@user/torque
+i'm not entirely confident this line of questioning is strictly pedagogically useful
+
+1740456974
+grayhatter!~grayhatte@user/grayhatter
+you believe that zig will turn (*u8) into (*const u8) and it wont, it will turn `var a: *const u8 = something;` into `const a: *const u8;`
+
+1740456991
+torque!~tachyon@user/torque
+coming from python, where nothing is constant, there's probably a bit of a learning curve
+
+1740457000
+torque!~tachyon@user/torque
+zig will turn *u8 into *const u8 tho
+
+1740457010
+torque!~tachyon@user/torque
+it will not do the inverse, however, which was the problem
+
+1740457011
+grayhatter!~grayhatte@user/grayhatter
+it will *NOT* turn `var a: *u8 = something;` into `const a: *const u8 = something;`
+
+1740457060
+grayhatter!~grayhatte@user/grayhatter
+torque: we're talking about the ziglings comment about function args, not const auto casting 
+
+1740457086
+torque!~tachyon@user/torque
+zig types read left-to-right, so `*u8` is read as "pointer to a u8" and `*const u8` is "pointer to a const u8"
+
+1740457106
+grayhatter!~grayhatte@user/grayhatter
+torque: also, there are a lot of cases where zig will refuse to convert []u8 into []const u8
+
+1740457113
+torque!~tachyon@user/torque
+that's not true at all
+
+1740457125
+grayhatter!~grayhatte@user/grayhatter
+torque: which part?
+
+1740457126
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i thought nothing was hidden in zig. 
+
+1740457127
+torque!~tachyon@user/torque
+that's a guaranteed coersion and if it fails that's a compiler bug
+
+1740457134
+torque!~tachyon@user/torque
+[]u8 coercing to []const u8
+
+1740457136
+grayhatter!~grayhatte@user/grayhatter
+torque: wanna bet :D
+
+1740457151
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+all of a sudden it does this auto const its going to trip whoever isn't learning from exercise
+
+1740457158
+torque!~tachyon@user/torque
+there's nothing to bet about here
+
+1740457194
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also who bets with someone who is learn? thats like taking candy from a baby :p
+
+1740457200
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/#Type-Coercion-Stricter-Qualification
+
+1740457308
+grayhatter!~grayhatte@user/grayhatter
+torque: is this valid?
+
+1740457312
+grayhatter!~grayhatte@user/grayhatter
+https://zigbin.io/080180
+
+1740457321
+grayhatter!~grayhatte@user/grayhatter
+it should be fine with this auto promotion, right?
+
+1740457382
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+off topic you guys should add `zigbin.io` to Topic
+
+1740457403
+torque!~tachyon@user/torque
+grayhatter, why do you think that doesn't work?
+
+1740457408
+torque!~tachyon@user/torque
+did you try running it?
+
+1740457443
+torque!~tachyon@user/torque
+zigbin.io isn't officially associated with zig so I don't think it's appropriate for the topic
+
+1740457454
+grayhatter!~grayhatte@user/grayhatter
+torque: yes... that's how I know it doesn't work anymore
+
+1740457458
+grayhatter!~grayhatte@user/grayhatter
+it broke my shell 
+
+1740457460
+grayhatter!~grayhatte@user/grayhatter
+https://zig.godbolt.org/z/do8z1qh15
+
+1740457491
+grayhatter!~grayhatte@user/grayhatter
+I think it doesn't work, because it doesn't work
+
+1740457502
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, it doesn't need to be official, its just a service provided, ppl can utilize. unless they are doing shady stuff like data mining it.
+
+1740457529
+grayhatter!~grayhatte@user/grayhatter
+stealth_: it does need to be offical for it to belong in the topic though
+
+1740457549
+torque!~tachyon@user/torque
+[]const []const u8 is a valid coercion there, and my brain is not big enough to immediately grok the error message around why [][]const u8 is invalid
+
+1740457566
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the once they use in #python its not official, i don't think just some person did the site and they use it!?
+
+1740457567
+torque!~tachyon@user/torque
+but casting [][]u8 to [][]const u8 is not the same, evidently as []u8 to []const u8
+
+1740457603
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok, i am going to get back to learning if i read more i will get more confused. 
+
+1740457618
+torque!~tachyon@user/torque
+I'm not entirely convinced this is not a bug, fwiw
+
+1740457623
+grayhatter!~grayhatte@user/grayhatter
+torque: took me a minute too, the answer (I assume) is because if exa "leaks" into a different location, it might have  the type [][]u8, where exa[1] isn't []u8, but is actually []const u8, and writing to that const u8, would be illegal
+
+1740457651
+torque!~tachyon@user/torque
+that doesn't make sense to me
+
+1740457687
+grayhatter!~grayhatte@user/grayhatter
+basically, if this was allowed, it'd be a way to smuggle a `[]const u8` into a `[]u8` secretly dropping the const, which would be bad
+
+1740457787
+torque!~tachyon@user/torque
+I suppose I see the logic there, but I'm not really convinced by it
+
+1740457823
+torque!~tachyon@user/torque
+however, this does not change my claims from earlier and also the fact that you were providing misleading information in response to a fairly simple question
+
+1740457842
+grayhatter!~grayhatte@user/grayhatter
+torque: should this compile? https://zig.godbolt.org/z/zPqzToTx6
+
+1740457922
+torque!~tachyon@user/torque
+https://zig.godbolt.org/z/WW7rGKz19
+
+1740457925
+torque!~tachyon@user/torque
+shoudl that?
+
+1740457938
+torque!~tachyon@user/torque
+oh i guess in this case exa is local to the function
+
+1740457943
+torque!~tachyon@user/torque
+yeah ok
+
+1740458047
+torque!~tachyon@user/torque
+I appreciate the explanation
+
+1740458065
+grayhatter!~grayhatte@user/grayhatter
+you may not like or agree with me, but I'd apprecate a bit more good faith
+
+1740458074
+grayhatter!~grayhatte@user/grayhatter
+<3
+
+1740458091
+torque!~tachyon@user/torque
+well, I do not concede that I think your response to the question asked was helpful
+
+1740458109
+torque!~tachyon@user/torque
+since it was a simple question of why can I not pass []const u8 to a parameter that wants []u8
+
+1740458125
+torque!~tachyon@user/torque
+asking questions about nested pointers in this context does not help
+
+1740458214
+grayhatter!~grayhatte@user/grayhatter
+because the disagreement was about types. Just because you didn't like the explanation, doesn't mean it's wrong, or unhelpful. That's exactly the description that would have fixed my understanding when I was confused by the const rules. 
+
+1740458223
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there is no `*const *u8` is there?
+
+1740458234
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yes, *const *u8 exists
+
+1740458238
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+darn it.
+
+1740458278
+torque!~tachyon@user/torque
+you can have pointers as deeply nested as you want, with any arbitrary const qualification on them
+
+1740458372
+torque!~tachyon@user/torque
+I think that probably we have an issue of notation here, but at face value the statement "<grayhatter> you believe that zig will turn (*u8) into (*const u8) and it wont" is misleading at best and incorrect at worst because of course that coercion is well defined without nested pointers
+
+1740458383
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the exercise says: https://bpa.st/CKFQ
+
+1740458383
+grayhatter!~grayhatte@user/grayhatter
+stealth_: coming from python, you've never had to think about *where* memory lives. but understanding exactly where memory lives, is a critical skill for zig
+
+1740458409
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have worked with cython alot so i kinda have some grasp of pointers 
+
+1740458523
+grayhatter!~grayhatte@user/grayhatter
+torque: I stand by that. It's true in the context of function args. Which is the topic, it's also true in the case of nested slices, another counter example where zig wont. How many expections to the rule before the rule stops being helpful?
+
+1740458541
+torque!~tachyon@user/torque
+it's true in the context of function args?
+
+1740458589
+torque!~tachyon@user/torque
+I must be misunderstanding something major at this point
+
+1740458598
+torque!~tachyon@user/torque
+are you not talking about the first example here: https://ziglang.org/documentation/master/#Type-Coercion-Stricter-Qualification
+
+1740458603
+grayhatter!~grayhatte@user/grayhatter
+yes, stealth_ was trying to pass a `[]const u8` into a function that needs `[]u8` and then he said the ziglings description said zig would convert function args into const
+
+1740458623
+torque!~tachyon@user/torque
+ok
+
+1740458662
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, so it was going to convert it to const already, why ask to be specific there.
+
+1740458696
+grayhatter!~grayhatte@user/grayhatter
+stealth_: because your function is allowed to change the data of `[]u8` but it's not allowed to change the date of `[]const u8`
+
+1740458697
+torque!~tachyon@user/torque
+I would phrase that as "zig will not turn *const u8 into *u8"
+
+1740458732
+torque!~tachyon@user/torque
+as in, the function parameter demands a "pointer to (mutable) u8" but you are trying to provide a "pointer to const u8"
+
+1740458752
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, thanks. so you still have to type it properly, even though it does make it const. 
+
+1740458772
+grayhatter!~grayhatte@user/grayhatter
+zig will not convert your function arg of []u8 into a function arg of []const u8, doesn't highlight the error in understanding very well
+
+1740458782
+grayhatter!~grayhatte@user/grayhatter
+stealth_: IT DOES NOT MAKE IT CONST!
+
+1740458801
+grayhatter!~grayhatte@user/grayhatter
+gg, I give up...
+
+1740458808
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol
+
+1740458829
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+chill, we know its trippy
+
+1740458831
+torque!~tachyon@user/torque
+for compiled executables, some data can be stored in read-only memory, like string literals
+
+1740458862
+torque!~tachyon@user/torque
+this is why you can do `const mystr: []const u8 = "asdasd"` but you can't do `const mystr: []u8 = "asdasd"`
+
+1740458883
+torque!~tachyon@user/torque
+because trying to mutating the read-only data will cause a segfault or similar
+
+1740458931
+torque!~tachyon@user/torque
+however, it is safe to automatically convert from `[]u8` to `[]const u8` because you're basically saying "this read-write data should be treated as read-only"
+
+1740458962
+torque!~tachyon@user/torque
+since "read" is a subset of "read-write" but of course the inverse is not true
+
+1740459013
+torque!~tachyon@user/torque
+so when you have `pub fn foo(a: []u8) void {}`, the function is saying "I need read-write" data, but if you try to provide it with `[]const u8`, which is read-only, the compiler knows that is not a valid change
+
+1740459036
+torque!~tachyon@user/torque
+so you either have to provide it with `[]u8` or change the function signature to accept `[]const u8`
+
+1740459054
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why the two const, if the variable is const, should the type be const as well?
+
+1740459072
+torque!~tachyon@user/torque
+a slice is just a pointer
+
+1740459083
+torque!~tachyon@user/torque
+and a pointer is just, essentailly a number
+
+1740459112
+torque!~tachyon@user/torque
+so `const foo: *u8` says, you can't modify the pointer itself, but you can modify the data it points to
+
+1740459140
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o right the pointer always has to be const 
+
+1740459144
+torque!~tachyon@user/torque
+i.e. in this case you can't do "foo = something" but you can do "foo.* = something"
+
+1740459179
+torque!~tachyon@user/torque
+`var foo: *const u8` is the opposite: you can modify the pointer, but not the data pointed to (so you could do `foo = something_else` but you can't do `foo.* = 123`)
+
+1740459238
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm
+
+1740459300
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok thanks torque, i will get back to learning.
+
+1740459672
+torque!~tachyon@user/torque
+<grayhatter> you may not like or agree with me, but I'd apprecate a bit more good faith
+
+1740459678
+torque!~tachyon@user/torque
+fwiw I don't have any problem with you
+
+1740459686
+torque!~tachyon@user/torque
+though it seems we will never see eye-to-eye on async
+
+1740459710
+torque!~tachyon@user/torque
+I could have phrased some of my statements better, so I'm sorry
+
+1740461836
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, are you working on anything for zig?
+
+1740493081
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+building with zig: what if you want to append cflags based on build options; what data scructure should one use to append these?
+
+1740493164
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ArrayList?
+
+1740493192
+ifreund!2940d10f8b@user/ifreund
+sure
+
+1740495554
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+merci
+
+1740506189
+blurrycat!~blurrycat@user/blurrycat
+what do y'all do when a function needs to allocate inside of it but all the memory is free by the time it returns, do you pass in the allocator or create one in the function itself?
+
+1740506206
+blurrycat!~blurrycat@user/blurrycat
+freed*
+
+1740506474
+blurrycat!~blurrycat@user/blurrycat
+also this may be a XY problem so I'm gonna ask another question instead, I need null-terminated strings for interop with a C library, but I want my function to take in a `[]const u8` as argument, is there a way to have a sentinel-terminated slice of this argument other than `allocator.dupeZ()`?
+
+1740506597
+ifreund!2940d10f8b@user/ifreund
+I would make my function accept [:0]const u8
+
+1740506698
+blurrycat!~blurrycat@user/blurrycat
+I wanted to avoid that but I guess this is better than allocating a whole copy just for an extra byte at the end (and I don't see a way around allocating now that I thing a bit more about it)
+
+1740506724
+blurrycat!~blurrycat@user/blurrycat
+Thanks for your advice ifreund 
+
+1740508518
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nice https://vimeo.com/649009599
+
+1740513915
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+that talk is great, and it got even better once i learned what alignment is :)
+
+1740513972
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+...but even before that, it did a great job opening my mind to DoD
+
+1740514138
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya alignment is something you don't hear about, you know about how much bytes a struct fields take depending on the type used.
+
+1740514320
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+back in the day ppl learned these struct as common knowledge and later they pretended like they were really smart, nowadays ppl come from higher level language and its backwards learning and much harder.
+
+1740520777
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its nice  to see enum starts with `0`
+
+1740526856
+LAC-Tech!~lewis@granite-phrase.bnr.la
+let's say I happen to need to store 256 booleans. am I better off using an array of u1s, or bit bashing a u256?
+
+1740526993
+andrewrk!~andrewrk@mail.ziglang.org
+on modern hardware, not wasting bits is probably your better bet
+
+1740527018
+andrewrk!~andrewrk@mail.ziglang.org
+I haven't personally used these APIs but note that std.bit_set exists
+
+1740527261
+LAC-Tech!~lewis@granite-phrase.bnr.la
+not wasting bits? no this brainwave is me trying to save them :) thanks, https://ziglang.org/documentation/0.13.0/std/#std.bit_set.IntegerBitSet is what I want
+
