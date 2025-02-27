@@ -1,0 +1,648 @@
+1740529373
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can you not do `zig build ./path/to/build.zig`?
+
+1740530497
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this feature seem to exist for `zig run ./folder/my_file.zig`
+
+1740530534
+torque!~tachyon@user/torque
+there's `zig build-exe`
+
+1740530553
+torque!~tachyon@user/torque
+oh, I misread your previous statement
+
+1740530616
+torque!~tachyon@user/torque
+`zig build` only pulls from build.zig in the cwd. how does `zig build ./path/to/build.zig` differ from `cd ./path/to && zig build`?
+
+1740530675
+torque!~tachyon@user/torque
+oh I guess technically it also looks in parent directories for `build.zig` as well
+
+1740530704
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, well you are using another language to do that though. normally you would have `zig --cwd=""` with software
+
+1740530751
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like if you wanted to run zig through a script and that without want to change it cwd or else it would break (maybe)
+
+1740530941
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its not a big deal
+
+1740534949
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Does std.debug.assert() in a comptime scope make sense? Should I just if + @compileError?
+
+1740535202
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the dvui zig showtime was so good!
+
+1740535213
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm hella gonna (try to) use dvui now 😁
+
+1740537689
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+looks neat
+
+1740540620
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, dvui pretty good start, would have been even better if it was async
+
+1740542925
+SultansOfCode!~SultansOf@user/SultansOfCode
+Hello, me again. Now suffering with std.fs. At compile time, if I do: std.fs.cwd().openFile("resources/foo.bar"); it works and loads file. But, at running time, if I pass a []const u8 with "resources/foo.bar" it says BadPath or FileNotFound (depending on the test I ran)
+
+1740542934
+SultansOfCode!~SultansOf@user/SultansOfCode
+What am I doing wrong here?
+
+1740543006
+grayhatter!~grayhatte@user/grayhatter
+you're passing the wrong path to cwd().openFile()
+
+1740543010
+grayhatter!~grayhatte@user/grayhatter
+or the file doesn't exist
+
+1740543047
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig need to have "./resources/foo.bar" ?
+
+1740543064
+SultansOfCode!~SultansOf@user/SultansOfCode
+Tried the ./ too and the windows \ version too
+
+1740543131
+SultansOfCode!~SultansOf@user/SultansOfCode
+It fails here: https://github.com/SultansOfCode/RayxEdigor/blob/main/src/main.zig#L110
+
+1740543140
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you sure the cwd is same for both compile time and run time? might be in different location as mentioned above 
+
+1740543157
+SultansOfCode!~SultansOf@user/SultansOfCode
+And this code is called from one place where the string is comptime known, and one known only at runtime, and I guarantee it is 0 terminated
+
+1740543196
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yes, I checked the cwd with this snippet https://stackoverflow.com/a/72717941
+
+1740543208
+SultansOfCode!~SultansOf@user/SultansOfCode
+They're the same on both calls
+
+1740543358
+SultansOfCode!~SultansOf@user/SultansOfCode
+It is known here at comp time: https://github.com/SultansOfCode/RayxEdigor/blob/main/src/main.zig#L1001 and here at run time: https://github.com/SultansOfCode/RayxEdigor/blob/main/src/main.zig#L461
+
+1740543438
+torque!~tachyon@user/torque
+what is the type of `commandHandler.buffer.data`
+
+1740543458
+torque!~tachyon@user/torque
+it looks like you're passing in a pointer to an array, which, while it decays to a slice, will probably have extra junk bytes on the end
+
+1740543466
+SultansOfCode!~SultansOf@user/SultansOfCode
+Adding the snippet to log CWD and the FILENAME, they output this: info: cwd: C:\Users\SultansOfCode\Projects\RayxEdigor filename: resources/test.txt for the first call, the comp time one. And this for the run time one: info: cwd: C:\Users\SultansOfCode\Projects\RayxEdigor filename: resources/pkmngold.gbc (and, yes, this file exists and works if I
+
+1740543467
+SultansOfCode!~SultansOf@user/SultansOfCode
+set it on comp time)
+
+1740543467
+grayhatter!~grayhatte@user/grayhatter
+you haven't provided enough context for us to help you debug this
+
+1740543473
+torque!~tachyon@user/torque
+s/decayse/coerces/
+
+1740543502
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+where the is the cwd pointing too? maybe you need `../resources/foo.bar`
+
+1740543503
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque: [256]u8
+
+1740543513
+torque!~tachyon@user/torque
+yeah so you're passing in a slice of len 256
+
+1740543533
+SultansOfCode!~SultansOf@user/SultansOfCode
+Hmmmmm, need the @ptrCast or .ptr access?
+
+1740543535
+torque!~tachyon@user/torque
+you need some way to track the actually populated length of the array
+
+1740543541
+torque!~tachyon@user/torque
+and then slice it
+
+1740543551
+grayhatter!~grayhatte@user/grayhatter
+&array considered harmful :P
+
+1740543555
+SultansOfCode!~SultansOf@user/SultansOfCode
+It is an inputbuffer, I have the count of populated bytes
+
+1740543560
+torque!~tachyon@user/torque
+if you know it has \0 at the end you could probably use std.mem.span
+
+1740543565
+torque!~tachyon@user/torque
+oh ok if you already know it then slice it
+
+1740543570
+torque!~tachyon@user/torque
+commandHandler.buffer.data[0..len]
+
+1740543634
+SultansOfCode!~SultansOf@user/SultansOfCode
+Holy, f*ck, sh*t. Worked! :D
+
+1740543636
+SultansOfCode!~SultansOf@user/SultansOfCode
+Thanks
+
+1740543659
+SultansOfCode!~SultansOf@user/SultansOfCode
+I first found it weird when I passed the array without & and compiler said me to user &. In my head, I was just passing the address of the array
+
+1740543678
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is it common to pass string/byte as array?
+
+1740543688
+SultansOfCode!~SultansOf@user/SultansOfCode
+Being an []u8, thought it would read until \0
+
+1740543703
+SultansOfCode!~SultansOf@user/SultansOfCode
+stealth_... Yes?
+
+1740543720
+grayhatter!~grayhatte@user/grayhatter
+memory is memory 
+
+1740543737
+SultansOfCode!~SultansOf@user/SultansOfCode
+I mean, comming from C, it does not give a d*mn
+
+1740543748
+grayhatter!~grayhatte@user/grayhatter
+strings or bytes, it's still just system memory
+
+1740543777
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am coming from python so its new to me. so its like passing mmap bytes string. 
+
+1740543787
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: coming from C, avoid trying to use c strings
+
+1740543816
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: and what do you mean? [:0]u8?
+
+1740543825
+torque!~tachyon@user/torque
+c arrays are worthless garbage!!!!! i hate them!!!!!!! what on earth was dennis ritchie thinking
+
+1740543837
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque too much pot
+
+1740543852
+grayhatter!~grayhatte@user/grayhatter
+no, I mean restrict yourself exclusively to torque's suggestion, and use explicit slices
+
+1740543883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you mean [0...123] ?
+
+1740543889
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter are slices dynamic? Cnai I just increase the .len?
+
+1740543903
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: a slice is a ptr & len
+
+1740543910
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how would you know that without counting? 
+
+1740543925
+grayhatter!~grayhatte@user/grayhatter
+if the ptr memory is large enough, yes, that's exactly what ArrayList does
+
+1740543959
+grayhatter!~grayhatte@user/grayhatter
+but slice1 = array[0.100]; slice2 = slice[0..10]; works
+
+1740543983
+grayhatter!~grayhatte@user/grayhatter
+and I *think* slice3 = slice2[0..50] works too?
+
+1740544033
+SultansOfCode!~SultansOf@user/SultansOfCode
+And the new slices are not copies, right? Just new structs pointing to somewhere in the original array and its size?
+
+1740544042
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, what's that the problem? it was empty space or 0 why it couldn't find the file
+
+1740544043
+SultansOfCode!~SultansOf@user/SultansOfCode
+In c we call it "string view"
+
+1740544050
+torque!~tachyon@user/torque
+that last one might trigger checked illegal behavior in safe modes, not sure
+
+1740544082
+torque!~tachyon@user/torque
+maybe only indexing beyond bounds and not slicing is illegal
+
+1740544091
+SultansOfCode!~SultansOf@user/SultansOfCode
+stealth_ not sure, but coercing an arbitrary array to slice maybe broken what was being passed
+
+1740544140
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i thought the solution [0..len] was the right call. 
+
+1740544155
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I assume openFile(); tried to find a file that contained nulls
+
+1740544179
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since len tells you exactly how much string or whatever is in memory of 256
+
+1740544247
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya seems like it
+
+1740544269
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yeah, probably. And it was being correctly printed to the logs because of the null terminated strings
+
+1740544273
+grayhatter!~grayhatte@user/grayhatter
+torque: yeah, that's illegal
+
+1740544287
+SultansOfCode!~SultansOf@user/SultansOfCode
+So, can I do something like: rom = try ROM.init(.{ .ptr = commandHandler.buffer.data, .len = commandHandler.buffer.count });, create a slice by hand?
+
+1740544294
+grayhatter!~grayhatte@user/grayhatter
+var slice3 = slice2; slice3.len = 50; would work though
+
+1740544298
+SultansOfCode!~SultansOf@user/SultansOfCode
+It is idiot, but just out of curiosity
+
+1740544346
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I'm pretty sure you can't do that, because you'd get a struct instead of a []u8 there
+
+1740544353
+SultansOfCode!~SultansOf@user/SultansOfCode
+ error: type '[]const u8' does not support struct initialization syntax Hmmmmm, seems that I just need to cast it
+
+1740544368
+grayhatter!~grayhatte@user/grayhatter
+there might be a way to trick the compiler into casting it though
+
+1740544383
+torque!~tachyon@user/torque
+i mean the way to create a slice is to use the slicing syntax
+
+1740544383
+grayhatter!~grayhatte@user/grayhatter
+you'd only do that if you hated... everyone and everything
+
+1740544401
+torque!~tachyon@user/torque
+you can't do it with struct initialization syntax
+
+1740544424
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter it has a lil bit of truth
+
+1740544443
+SultansOfCode!~SultansOf@user/SultansOfCode
+How to cast the struct to slice?
+
+1740544472
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: some knowledge is forbidden... or at least, I refuse to answer :P
+
+1740544554
+grayhatter!~grayhatte@user/grayhatter
+generally, you don't wanna fight the compiler
+
+1740544558
+grayhatter!~grayhatte@user/grayhatter
+this isn't C
+
+1740544565
+grayhatter!~grayhatte@user/grayhatter
+fighting the compiler is always wrong
+
+1740544575
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter satan is awaiting for my offering :(
+
+1740544614
+SultansOfCode!~SultansOf@user/SultansOfCode
+will not use it (I think). Just wanna to learn the occultism of it
+
+1740544663
+grayhatter!~grayhatte@user/grayhatter
+@ptrCast()
+
+1740544691
+grayhatter!~grayhatte@user/grayhatter
+let me know if you actually get it to work
+
+1740544944
+SultansOfCode!~SultansOf@user/SultansOfCode
+Not yet, but trying
+
+1740545069
+SultansOfCode!~SultansOf@user/SultansOfCode
+The @ptrCast docs states that: Casting a non-slice pointer to a slice, use slicing syntax ptr[start..end]. So it will not work
+
+1740545817
+grayhatter!~grayhatte@user/grayhatter
+I got it to work... but now I feel dirty
+
+1740546299
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: why async though? the immediate mode stuff seems very practical
+
+1740546747
+torque!~tachyon@user/torque
+it's async in the sense that it has an event loop (driven by sdl)
+
+1740546819
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, lets say you are trying to make a graphic program and you import a large file, now it going to block your software, normally they use thread to do stuff like this.
+
+1740546862
+reykjalin!7e28cf3a41@user/reykjalin
+I don’t think the GUI library should be async just for you to offload something to a worker thread 
+
+1740546939
+reykjalin!7e28cf3a41@user/reykjalin
+sure, it’d be nice to have wrappers for it built into the library to guide you into the correct usage patterns, but you can just as easily just move it to a worker thread yourself 
+
+1740546946
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am not saying with async you can do it in 1 thread your software+io
+
+1740546989
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even if think of mouse event, its socket! and those are better in async. 
+
+1740547019
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+plus gui runs a while loop all the time to check for new events is ready, this can be awaited. 
+
+1740547082
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you really see this effect in windows system, everytime you are doing something the software just freezes and you move again and it will crash.
+
+1740547127
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+async would fix stuff like that since its not bond to 1 previous event.
+
+1740547154
+reykjalin!7e28cf3a41@user/reykjalin
+I understand what you’re saying, I just disagree. if you want the windows to not freeze run them in separate threads
+
+1740547203
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+managing thread isn't easy and mostly ipc is pain vs just simple async/await calls
+
+1740547208
+reykjalin!7e28cf3a41@user/reykjalin
+DVUI will also wait for events instead of running the while loop at 100% CPU the whole time. I’m pretty sure all immediate mode gui frameworks do that 
+
+1740547237
+reykjalin!7e28cf3a41@user/reykjalin
+I didn’t say it was easy :)
+
+1740547255
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well you don't run the while loop at 100% it just sleeps for fraction of a second. 
+
+1740547314
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+gui shouldn't be so complex, its what user uses, a single thread can do tons of request per seconds, even millions+ thas more than enough.
+
+1740547459
+reykjalin!7e28cf3a41@user/reykjalin
+a good gui is one of the most complex things you can build. i don’t think zig is the right language to hide that complexity in a library
+
+1740547534
+reykjalin!7e28cf3a41@user/reykjalin
+that’s not to say it should be complex “just because”. but in this case I don’t think the gui library should be handling the asynchronous abstraction for you
+
+1740547567
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+async/await is all about events though!
+
+1740547731
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the reason it was complex cause it was designed poorly, you can see it in dvui, most of those complexity goes away, and zig comes out winning, once async/await is ready it will just make the software even better.
+
+1740547846
+reykjalin!7e28cf3a41@user/reykjalin
+you think gui frameworks are complex because they were designed poorly?
+
+1740547892
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it could have been better
+
+1740548054
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you could also say gui developers were limited by the language they used as well, there is that too. 
+
+1740548091
+reykjalin!7e28cf3a41@user/reykjalin
+good design doesn’t always hide complexity. complexity is necessary to express nuanced solutions, and guis are one thing that’s all about nuance 
+
+1740548144
+reykjalin!7e28cf3a41@user/reykjalin
+we have some pretty great frameworks out there today, and from what I’ve seen DVUI is one of them
+
+1740548162
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya like what i saw with dvui 
+
+1740548202
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its getting there.. with zig I think in the future that/other zig gui will really shine.
+
+1740548275
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for example i could make really good gui using python and its async/await... but at the end it will run really show... there is nothing i could do about it. with zig you write a bit more code but you also will get the speed and support for all the os/processors
+
+1740548529
+reykjalin!7e28cf3a41@user/reykjalin
+you’re mixing up languages and performance here. while interpreted languages may be inherently slower you can make really snappy applications of any type with almost any language, python and zig included.
+
+1740548549
+reykjalin!7e28cf3a41@user/reykjalin
+but I think we’re veering a bit off topic for this channel so maybe we can stop this particular tangent gere
+
+1740548564
+reykjalin!7e28cf3a41@user/reykjalin
+s/gere/here
+
+1740548577
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure, i am off to sleep anyways, have a good one. 
+
+1740552834
+SultansOfCode!~SultansOf@user/SultansOfCode
+Easy way to convert u8 to i8 signaling it?
+
+1740552865
+SultansOfCode!~SultansOf@user/SultansOfCode
+I mean
+
+1740552873
+SultansOfCode!~SultansOf@user/SultansOfCode
+I have 2 u8 and wanna get their differences as i8
+
+1740572506
+kaigwa!~kaigwa@user/kaigwa
+SultansOfCode it is not always possible to fit difference of two u8s into a i8, e.g. (255 - 1) is larger than i8 can hold...
+
+1740580128
+SultansOfCode!~SultansOf@user/SultansOfCode
+How to set the executable icon?
+
+1740581235
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Ok I find this being used in a example: b.addSystemCommand; where can I find more information about such a function? Are all the build methods available somewhere?
+
+1740581669
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, https://ziglang.org/documentation/master/std/#std.Build
+
+1740582980
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+thx
+
+1740582992
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to mimic this step in zig build: https://github.com/linuxaudio/non/blob/master/wscript#L44
+
+1740583539
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+captureStdOut(); returns a LazyPath. I don't see what that actually is. That's not the text printed to stdout apparently
+
+1740583685
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I would expect something like this: https://pkg.go.dev/os/exec#Cmd.CombinedOutput
+
+1740583947
+Earnestly!~earnest@user/earnestly
+zig can test if sse is available directly, without needing to query /proc/cpuinfo
+
+1740584003
+Earnestly!~earnest@user/earnestly
+flower_: https://ziglang.org/documentation/master/std/#std.Target.Query.parse
+
+1740584022
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Earnestly: oh nice
+
+1740586179
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+  try std.testing.expect(!Target.x86.featureSetHas(target.cpu.features, .sse));
+
+1740586187
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+what is !Target here?
+
+1740586741
+PDawgs!~PDawgs@user/PDawgs
+I'm running an experiment. I'm using a tool via system command in build.zig. the tool generates c++ source files with unpredictable names into a predictable directory. Is there a way to have exe target depend on all the source files in that directory?
+
+1740588843
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_: "!Target" isn't a single thing here, there's `!` for `not`, and `Target.x86.featureSetHas(target.cpu.features, .sse)`
+
+1740590832
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: I see. A bit confusion here as ! also is type related in zig
+
+1740590889
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+any idea how to get rid of this error?  https://bpa.st/ORKA  I mean, i'm iterating over sa `comptime` slice parameter, what's not to be known?  (also the whole thing is called as `const foo = comptime subcommandPattern(..);`   What am i missing?
+
+1740590906
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+)
+
+1740590960
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+(btw don't get confused--the TODO comment is outdated :D)
+
+1740590983
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+the error message is the second "file" in my paste
+
+1740591488
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+also i think previous version of the loop (https://bpa.st/AEOA) worked, ie. before i made the two parts of the prefix optional
+
+1740591635
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+oh, so... "the whole thing is called as `const foo = comptime subcommandPattern(..);`"  <<< this was wrong
+
+1740591647
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+and adding `comptime` helped, indeed..
+
+1740591681
+netvor!~netvor@2a00:ca8:a1f:cd0:ea03:c78:140a:1531
+(also i needed to replace &.{} with [0]Spec{} ...)
+
+1740597984
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: ah good point, I hadn't thought of that. but also I don't _have_ to load the large file in my main thread - e.g. I don't need to rely on dvui to offline this for me, rather I can just spin up a thread on my own for uploading the file
+
+1740598351
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, sure, depends on the use-case
+
+1740599027
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, if you have many small image like icons, buttons, ... it can effect the software load time as well.
+
+1740599080
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe you have 10 different plugin that loads with the software, all this could be done async
+
