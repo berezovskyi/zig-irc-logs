@@ -394,3 +394,79 @@ Verilator has the ability to compile to a binary, but I have no clue what compil
 tsmanner!~tsmanner@mkmvpn.amd.com
 I also considered modifying the Compile.make function to, as a local hack for now, to detect a Generated LazyPath for the CSourceFile root directory and no subpath to mean "compile all the sources in that generated directory"
 
+1740682769
+grayhatter!~grayhatte@user/grayhatter
+tsmanner: I'm pretty much convinced that the build system already can do exactly what you'd want from it. But It's not really documented, and it's innards are somewhat complex so I have no idea how do it
+
+1740682809
+grayhatter!~grayhatte@user/grayhatter
+I think/assume it already can, because you're basically describing parts of how it works
+
+1740682886
+grayhatter!~grayhatte@user/grayhatter
+if you figure out how to write a custom step, you can build a dependency chain that will call your custom function in the order it needs to be
+
+1740682955
+tsmanner!~tsmanner@mkmvpn.amd.com
+Yeah I feel the same way!  I have been rooting around for a bit, but haven't found it.  It does _feel_ like there's a Right Place to do this
+
+1740683007
+grayhatter!~grayhatte@user/grayhatter
+what are you building in zig?
+
+1740683021
+grayhatter!~grayhatte@user/grayhatter
+i.e. what's the final output artifact of build.zig
+
+1740683022
+tsmanner!~tsmanner@mkmvpn.amd.com
+grayhatter a custom step is a good idea too, I'm leaning toward hacking it into the c_source stuff locally just for a proof of concept, and if that works, invest in a custom "Verilator" step that does the right thing end-to-end, emitting a static library or so
+
+1740683072
+tsmanner!~tsmanner@mkmvpn.amd.com
+An exe that simulates a RISC-V processor with some C++ test bench components to stimulate and verify it
+
+1740683112
+tsmanner!~tsmanner@mkmvpn.amd.com
+Specifically from verilator, I at least need a library to link that has the compiled System Verilog of the logical design
+
+1740683116
+grayhatter!~grayhatte@user/grayhatter
+there's build.addSystemCommand() so `verilog = addSystemCommand();` and then `zig_exe.dependOn(verilog.Step);` (or something like that)
+
+1740683169
+tsmanner!~tsmanner@mkmvpn.amd.com
+Yeah, that's what we've got right now, the output of that system command is a directory of files, that I don't know the names of
+
+1740683176
+grayhatter!~grayhatte@user/grayhatter
+there's a lot of useful sounding functions in here too https://ziglang.org/documentation/master/std/#std.Build.Step.Run
+
+1740683190
+grayhatter!~grayhatte@user/grayhatter
+addOutputDirecotryArg
+
+1740683203
+tsmanner!~tsmanner@mkmvpn.amd.com
+I can ask verilator to produce a library, but I have no clue what compiler it will invoke under the covers, probably some random system installed one
+
+1740683295
+tsmanner!~tsmanner@mkmvpn.amd.com
+I've gotten as far as the directory being produced from a sv source file, and put into the .zig-cache/ dir.  The next build step uses `addCSourceFiles` to build the contents of that directory, but there are 4 files in there with names that include some random hash
+
+1740683366
+tsmanner!~tsmanner@mkmvpn.amd.com
+Zig understands the dependence on that generated directory through the addCSourceFiles({.root = generated_dir, ...}), so we're SOOOO CLOSE!
+
+1740683508
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.Build.LazyPath.addStepDependencies
+
+1740683614
+grayhatter!~grayhatte@user/grayhatter
+you just gotta create a step, and that step finds and then outputs a list the compiled files, and have that finder step, depend on the command that generates the files
+
+1740683619
+grayhatter!~grayhatte@user/grayhatter
+I assume that'll work?
+
