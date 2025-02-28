@@ -1,0 +1,484 @@
+1740619025
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there a way to do something like `var os_window = if (use_x11) try allocator.create(x11.X11Context(*AppContext)) else try allocator.create(wl.WaylandContext(*AppContext));` e.g. at runtime select one of two different types?
+
+1740619225
+torque!~tachyon@user/torque
+you could do `var os_window: *anyopaque = if (foo) ...` but then every time you want to actually do something to it you'd have to cast it back
+
+1740619239
+torque!~tachyon@user/torque
+which is essentially how interfaces like std.mem.Allocator work
+
+1740620075
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: what torque suggested would work, but I would use a tagged union instead of anyopaque
+
+1740620175
+grayhatter!~grayhatte@user/grayhatter
+but I get the sense you're trying to add an abstraction at the wrong layer
+
+1740620563
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: can you elaborate on the mistake you think I'm making?
+
+1740620605
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+"you'd have to cast it back" I think I only use it in one place so this isn't too terrible
+
+1740620768
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+(er, I guess it's like 4 or 5 places but still)
+
+1740620817
+grayhatter!~grayhatte@user/grayhatter
+I mean, you just described exactly why I said what I said
+
+1740620858
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm abstracting at the wrong layer b/c I only use it in 4 or 5 places?
+
+1740620864
+grayhatter!~grayhatte@user/grayhatter
+> "cast it back" is something you say when you're trying to fight the type system, instead of allowing it to help you. That's the mistake, maybe
+
+1740620920
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, yea fair, but I think the tradeoff is to instead compile different versions of my binary, one for X11 one for Wayland. I'm not married to the idea but I'd prefer to compile this into a single binary instead
+
+1740620920
+grayhatter!~grayhatte@user/grayhatter
+yeah, there are some places where the type system can't help you... but every time I've tried to fight it, I later decide that was stupid, and I go back and rewrite it without fighting it. 
+
+1740621036
+grayhatter!~grayhatte@user/grayhatter
+there's no reason you can't write `union (enum) { x11: *X11PointerThing, wayland: *WaylandPointerThing };` no casting, no fighting
+
+1740621070
+torque!~tachyon@user/torque
+it's more or less equivalent to casting because you have to then check the active union field at every use point
+
+1740621087
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+btw I found this error super helpful: "src/main.zig:161:27: error: value with comptime-only type 'type' depends on runtime control flow" 👏
+
+1740621092
+torque!~tachyon@user/torque
+it's just embedded into the type instead of being a separate boolean
+
+1740621128
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+right
+
+1740621155
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+actually I think I'm already using a tagged union for such a thing somewhere
+
+1740621164
+grayhatter!~grayhatte@user/grayhatter
+and, you don't have to cast anything... that feels like a really important point
+
+1740621244
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: the layer I was thinking, was, most/all of your code should probably call the Compositor api you write which will wrap x11 and wayland, and dispatch to either. Then you don't have to worry about casting, or checking everywhere, only when you write the api itself
+
+1740621269
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh that's right, I'm doing that here https://github.com/ezzieyguywuf/zcad/blob/stash/src/VulkanRenderer.zig#L659-L663
+
+1740621278
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I suppose I could just use the same pattern in both spots
+
+1740621445
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: yea I get your point, but rly it seems this just pushes the casting/switch-statements into this Compositor thing. there's no getting rid of them rly
+
+1740621477
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the approach I've been taking is "start simple then abstract", so I think leaving the casting/switch-statements in main is probably fine for now
+
+1740621478
+grayhatter!~grayhatte@user/grayhatter
+you probaly know your code better than I do
+
+1740621509
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+*shrug* you'd be surprised lol
+
+1740621777
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, why are you writing same project in different language ? 
+
+1740622092
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: I stopped the project in those other languages lol
+
+1740622135
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, so you were just searching for the right language to write your software in, eh. 
+
+1740622184
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I mean, this is just a side project that I've had for far too long. and I've been using it to explore what I do/don't like about different languages
+
+1740622240
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, makes sense. btw do you know of https://openscad.org/
+
+1740622254
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I've learned a lot - like honestly, at the end of the day the language doesn't matter too much, the core skills needed to code good don't really change. but there are many parts of different languages that end up making it so I do/don't want to code in them for large complex projects
+
+1740622272
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: very familiar with openscad, and opencascade as well
+
+1740622341
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I haven't looked at openscad in many years though, it may be worth checking out. I recently downloaded a newish version of freecad after stepping away for a long time (they finally got to v1.0!) and while it's still a very impressive piece of software my excursion reinforced for me the decision to (try to) roll my own
+
+1740622430
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, openscad has done a lot of improvements, they are close to releasing new version but you can always download their nightly build should be up to date.
+
+1740622480
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i head somewhere freecad dev passed away or something? maybe thats why?
+
+1740622506
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah but I remember now, I believe openscad is constructive solid geometry whereas I wanted a Boundary Representation modeler
+
+1740622529
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but yea openscad is pretty nice, I honestly should've just probably used it and ran with it, as much as I like programming
+
+1740622544
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but this brep project has kept me entertained for quite some time, so there's also that 😁
+
+1740622591
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya nothing wrong with creating your own project, the learning part is important.
+
+1740622633
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+they are even adding https://pythonscad.org/ into openscad project.
+
+1740622658
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: yikes that's sad. freecad leans heavily (entirely) on opencascade, and there's this "topological naming issue" that is extremely vexing, and their ultimate solution to that (if you google realthunder topological naming you'll find info) is just not something that I'm happy with. plus the codebase (at least back when I was in it) is _very_ OOP and layers and layers and abstraction.
+
+1740622669
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+2012-me would've loved that, but 2025-me doesn't rly
+
+1740622691
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hah pythonscad nice
+
+1740622745
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+all i know is i type code and it gives me a 3d module i can use in my 3d printer :p
+
+1740622776
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was thinking of using blender for it but its hard to get precision right. you really need cad
+
+1740622876
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea, I've never tried to use blender for smthn like that, but I do imagine it's hard to get right in there since it wasn't designed for that.
+
+1740622926
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yep, well its free. most good cad software are very expensive.
+
+1740622935
+torque!~tachyon@user/torque
+blender is common for modeling artistic models for 3d printing, but some people also use it for engineering models
+
+1740622948
+torque!~tachyon@user/torque
+there is (was?) some parametric modeling plugin for blender
+
+1740622969
+torque!~tachyon@user/torque
+I've mostly used onshape recently though since I do not care overmuch about tools being open source
+
+1740623032
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there are few cad type plugin for blender, i just got convinced to use OpenScad. It was simple enough and saw the result right away so its alright. 
+
+1740623062
+torque!~tachyon@user/torque
+I strongly dislike openscad because it only creates meshes, you don't get a parametric model out of it
+
+1740623127
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see. 
+
+1740623181
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think i saw another program that did openscad like code to module and you could also draw apparently! It might have been some saas project. 
+
+1740623264
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zoo.dev/ not sure good it is.
+
+1740623319
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+fancy website
+
+1740623348
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i actually been telling OpenScad dev to move the project to using Zig :p
+
+1740623360
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: hah dope! are they interested?
+
+1740623379
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+zig is pretty nice, I hope it sticks around. I don't want to have to restart my project again lol
+
+1740623409
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, it will take time since they are just hearing about it. They seem to have the gui they are using and debugging anything in C++ seems like hell. 
+
+1740623530
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I been pondering if i should learn C or Rust for the past 5years and i finally started learning Zig :) I wanted to learn high level language (Python) and 1 low level zig should do it. I don't want to learn any other language.
+
+1740623584
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*hate the gui
+
+1740623622
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: you should show them the dvui zig showtime video, I'm super excited to give it a try after watching that
+
+1740623667
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, funny you should mention that, i did send the link to the dev :D
+
+1740623707
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+😁
+
+1740623714
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it's a long vid, so hopefully that doesn't put them off
+
+1740623725
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it can only get better from here... if a language + software solves the problems ppl been having for ages, they will use it.
+
+1740623734
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+who knows, i did my part. 
+
+1740623764
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is anyone here familiar with dvui? I'm curious if I can use it to render into a vulkan surface
+
+1740623772
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also the discord link on their website doesn't work lol
+
+1740623820
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+they should have mentioned this irc link, would have gotten more exposure and already users here.
+
+1740623961
+torque!~tachyon@user/torque
+pretty sure it's just a channel on the main zig discord
+
+1740624030
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+#gui-dev maybe
+
+1740624163
+torque!~tachyon@user/torque
+i use discord as little as possible but good luck
+
+1740624171
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hah thanks
+
+1740624174
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea I much prefer irc
+
+1740624347
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, there is talk about that zoo software i mentioned https://www.youtube.com/watch?v=7USuyXL0q6Y
+
+1740624558
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: ah nice video I'll definitely have to give this a listen
+
+1740624576
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Is there a working project that does wrapping zig to python? I found this "Ziggy" but looks like 0.12+ update killed it.
+
+1740625871
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, trying out this freecad, it sure has come a long way. Its neat how openscad script works on it, though its very slow.
+
+1740625924
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+openscad on the other hand runs too fast to control sometimes.
+
+1740626119
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea freecad is a very solid piece of software
+
+1740626168
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does it run slow on your system? i have a brand new system and it seems really slow to me. 
+
+1740626381
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I honestly just opened it, checked if https://forum.freecad.org/viewtopic.php?p=222760#p222760 this bug still exists (it doesn't) then closed it
+
+1740626386
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but yea I guess it did seem kind of slow
+
+1740626415
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+they really need to improve that, slow = ppl wont use.
+
+1740626468
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I was working on freecad back in the v0.16ish days, it was pretty zippy then. I think the realthunder stuff probably slowed it down quite a bit, but I'm very much guessing
+
+1740626516
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cool...
+
+1740680039
+tsmanner!~tsmanner@mkmvpn.amd.com
+Does anyone here have an idea for how to hook up unpredictably named generated code to a zig build step?  I'm trying to wrap calls to an external tool that generates C++ sources in a zig build step.  I can control some aspects of the generated file names (a prefix, the output dir) but not the names.  Some of the names include a hash of some kind, and I can't disable that behavior, but I still need to build those generated sources.
+
+1740680751
+grayhatter!~grayhatte@user/grayhatter
+tsmanner: can you get the generated name somehow?
+
+1740680820
+grayhatter!~grayhatte@user/grayhatter
+huh, I don't understand why you need it, or what behavior you want from your build.zig so I don't have many ideas I can suggest
+
+1740681118
+k_hachig!~k_hachig@2605:b100:12d:f432:f83e:81a5:daa1:718e
+tsmanner: you could write a directory crawler and add the sources to your build that way?
+
+1740681293
+grayhatter!~grayhatte@user/grayhatter
+yeah I was thinking what k_hachig suggested with std.fs.Dir.walk
+
+1740682319
+tsmanner!~tsmanner@mkmvpn.amd.com
+I looked into it, the problem is that the files don't exist until the upstream step has run, so when the build itself is compiled, the files aren't actually known, only the directory they'll be in.
+
+1740682386
+tsmanner!~tsmanner@mkmvpn.amd.com
+It's an open-source hardware simulation tool called verilator, that transpiles SystemVerilog code into C++, and some of the files include a hash that I don't know how to predict.  All I do _know_ is that I have to compile all the .cpp files in that predictable output directory.
+
+1740682559
+tsmanner!~tsmanner@mkmvpn.amd.com
+Verilator has the ability to compile to a binary, but I have no clue what compiler it will be using to do that, I am hoping to get zig to do all the C++ compilation work, and have verilator do the transpile.  Some sort of hook between that step and the exe make function maybe? 
+
+1740682650
+tsmanner!~tsmanner@mkmvpn.amd.com
+I also considered modifying the Compile.make function to, as a local hack for now, to detect a Generated LazyPath for the CSourceFile root directory and no subpath to mean "compile all the sources in that generated directory"
+
+1740682769
+grayhatter!~grayhatte@user/grayhatter
+tsmanner: I'm pretty much convinced that the build system already can do exactly what you'd want from it. But It's not really documented, and it's innards are somewhat complex so I have no idea how do it
+
+1740682809
+grayhatter!~grayhatte@user/grayhatter
+I think/assume it already can, because you're basically describing parts of how it works
+
+1740682886
+grayhatter!~grayhatte@user/grayhatter
+if you figure out how to write a custom step, you can build a dependency chain that will call your custom function in the order it needs to be
+
+1740682955
+tsmanner!~tsmanner@mkmvpn.amd.com
+Yeah I feel the same way!  I have been rooting around for a bit, but haven't found it.  It does _feel_ like there's a Right Place to do this
+
+1740683007
+grayhatter!~grayhatte@user/grayhatter
+what are you building in zig?
+
+1740683021
+grayhatter!~grayhatte@user/grayhatter
+i.e. what's the final output artifact of build.zig
+
+1740683022
+tsmanner!~tsmanner@mkmvpn.amd.com
+grayhatter a custom step is a good idea too, I'm leaning toward hacking it into the c_source stuff locally just for a proof of concept, and if that works, invest in a custom "Verilator" step that does the right thing end-to-end, emitting a static library or so
+
+1740683072
+tsmanner!~tsmanner@mkmvpn.amd.com
+An exe that simulates a RISC-V processor with some C++ test bench components to stimulate and verify it
+
+1740683112
+tsmanner!~tsmanner@mkmvpn.amd.com
+Specifically from verilator, I at least need a library to link that has the compiled System Verilog of the logical design
+
+1740683116
+grayhatter!~grayhatte@user/grayhatter
+there's build.addSystemCommand() so `verilog = addSystemCommand();` and then `zig_exe.dependOn(verilog.Step);` (or something like that)
+
+1740683169
+tsmanner!~tsmanner@mkmvpn.amd.com
+Yeah, that's what we've got right now, the output of that system command is a directory of files, that I don't know the names of
+
+1740683176
+grayhatter!~grayhatte@user/grayhatter
+there's a lot of useful sounding functions in here too https://ziglang.org/documentation/master/std/#std.Build.Step.Run
+
+1740683190
+grayhatter!~grayhatte@user/grayhatter
+addOutputDirecotryArg
+
+1740683203
+tsmanner!~tsmanner@mkmvpn.amd.com
+I can ask verilator to produce a library, but I have no clue what compiler it will invoke under the covers, probably some random system installed one
+
+1740683295
+tsmanner!~tsmanner@mkmvpn.amd.com
+I've gotten as far as the directory being produced from a sv source file, and put into the .zig-cache/ dir.  The next build step uses `addCSourceFiles` to build the contents of that directory, but there are 4 files in there with names that include some random hash
+
+1740683366
+tsmanner!~tsmanner@mkmvpn.amd.com
+Zig understands the dependence on that generated directory through the addCSourceFiles({.root = generated_dir, ...}), so we're SOOOO CLOSE!
+
+1740683508
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.Build.LazyPath.addStepDependencies
+
+1740683614
+grayhatter!~grayhatte@user/grayhatter
+you just gotta create a step, and that step finds and then outputs a list the compiled files, and have that finder step, depend on the command that generates the files
+
+1740683619
+grayhatter!~grayhatte@user/grayhatter
+I assume that'll work?
+
+1740683770
+tsmanner!~tsmanner@mkmvpn.amd.com
+Yeah if that "finder" is basically a Compile step that gets it's files list at the start of the make() function instead of preconfigured in, I bet it would work
+
+1740688933
+grayhatter!~grayhatte@user/grayhatter
+> src/websocket.zig:130:36: error: TODO: implement @ptrCast between slices changing the length
+
+1740688944
+grayhatter!~grayhatte@user/grayhatter
+I finally beat the compiler :D
+
