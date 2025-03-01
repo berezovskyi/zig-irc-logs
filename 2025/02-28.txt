@@ -1,0 +1,444 @@
+1740707286
+ismael!~ismael@sourcemage/ismael
+I need some help making zig usable on a lean code base: https://www.reddit.com/r/Zig/comments/1iztf1j/integrating_in_classic_c_code_base/
+
+1740707322
+ismael!~ismael@sourcemage/ismael
+does the runtime have to be inherently that heavy for native interfaces?
+
+1740707904
+torque!~tachyon@user/torque
+no, but there's also not a runtime
+
+1740707930
+torque!~tachyon@user/torque
+not sure how build-obj works, you may be getting the panic handler built in, which is pretty big
+
+1740708141
+ismael!~ismael@sourcemage/ismael
+seems so
+
+1740708202
+ismael!~ismael@sourcemage/ismael
+any trick to restrict function sizes at compile time?
+
+1740734239
+nagitsu!e8e753ada7@2a03:6000:1812:100::dce
+hello! I understand the following doesn't work because `Inner {}` is a literal and in read-only memory... but is there a way to do an initialization such as this without going through an intermediate mutable variable? https://zigbin.io/5d7700/run
+
+1740734282
+sp2!uid197664@user/meow/sp2
+You can put a fixed-size array on the stack, and then convert that into a slice
+
+1740734364
+sp2!uid197664@user/meow/sp2
+wait nvm i misread entirely
+
+1740734381
+nagitsu!e8e753ada7@2a03:6000:1812:100::dce
+I'm initializing a deeply nested struct (a widget tree) and I'd need to initialize every internal array in the stack, so I was looking for a more ergonomic shortcut
+
+1740734451
+nagitsu!e8e753ada7@2a03:6000:1812:100::dce
+no, I mean, your solution works, but I'd need to define e.g. `var children1` through `var children10` to create my top-most struct
+
+1740734479
+sp2!uid197664@user/meow/sp2
+yeah but I missed the part where you said "without going through an intermediate mutable variable", haha
+
+1740735986
+blurrycat!~blurrycat@user/blurrycat
+nagitsu: afaik you can't, either allocate on the heap or cast a var array into a slice
+
+1740736051
+ifreund!2940d10f8b@user/ifreund
+(and make sure that you aren't leaving danging pointers to stack variables if you choose to use a mutable array on the stack)
+
+1740736455
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+when needs one to use @cDefine? https://github.com/david-vanderson/podcast/blob/main/podcast.zig#L8
+
+1740736471
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+when importing c header files?
+
+1740736848
+ifreund!2940d10f8b@user/ifreund
+it's useful if the C header files change their behavior based on preprocessor variables
+
+1740736862
+ifreund!2940d10f8b@user/ifreund
+it's equivalent to #define in C
+
+1740736999
+nagitsu!e8e753ada7@2a03:6000:1812:100::dce
+got it, thanks all! :)
+
+1740738366
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1740740876
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+as a matter of exercise I thought to rewrite a c program I wrote based on someone else code into zig, as I'm not a real c coder, but maybe it's better to just start with plain zig first ... hm
+
+1740742084
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Some functions in c libraries require a callback to be set. That can be just a zig function?
+
+1740742201
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, it must be callconv(.C)
+
+1740742383
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok: https://zig.guide/working-with-c/calling-conventions/
+
+1740755197
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can you get cpu/gup temp info just using zig or does those info only come from sensor driver/software? 
+
+1740756865
+blurrycat!~blurrycat@user/blurrycat
+stealth_: for CPU, on Linux, you can usually read the temperature its sensors report in `/sys`, see https://www.kernel.org/doc/Documentation/hwmon/sysfs-interface
+
+1740756921
+blurrycat!~blurrycat@user/blurrycat
+for GPUs it's usually a bit more complicated. In any case there is nothing language-specific here
+
+1740756977
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, i see. nvidia gpu and that, can you only access those info through their api? 
+
+1740757059
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i got it working in python, it was easy enough to download couple of library and access it, wondering how it would in zig (since i am learning, might be a good exercise) 
+
+1740757149
+blurrycat!~blurrycat@user/blurrycat
+stealth_: I don't have any nvidia GPU so I can't help you there. I would recommend reading how the libraries you used in Python did their thing and try to port that to Zig
+
+1740757277
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, for nvidia you can through their api. maybe these info already exists in /sys/class/hwmon/
+
+1740757295
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, maybe not for nvidia. 
+
+1740757330
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+doesn't zig have pypi like library? 
+
+1740757333
+blurrycat!~blurrycat@user/blurrycat
+For AMD this exists but I don't know for nvidia, as I don't have any nvidia GPU
+
+1740757342
+blurrycat!~blurrycat@user/blurrycat
+No Zig does not have a central package repository
+
+1740757410
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes since amd is open source friendly its easy to access,(i have integrated amd chip also, i can access that)
+
+1740757444
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't zig going to provide that service?
+
+1740757486
+blurrycat!~blurrycat@user/blurrycat
+not to my knowledge
+
+1740757668
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, thats one of the way for language to get popular since everyone ports over their api. 
+
+1740757703
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even rust got one https://docs.rs/nvapi/latest/nvapi/ i get confused reading their docs. 
+
+1740757971
+blurrycat!~blurrycat@user/blurrycat
+Go doesn't have a central package registry and it's doing alright, I don't see the argument here. Rust is also a decade older than Zig so it seems logical that there are a lot more bindings and libraries in Rust than Zig.
+
+1740758049
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Go is promoted by its creator big corp company, they put a lot of $ behind it. I am not dishing on zig i am just saying it would be better.
+
+1740758141
+blurrycat!~blurrycat@user/blurrycat
+Better for what?
+
+1740758197
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for zig and users ... to access pre-built library, rather then reinvent it over and over.
+
+1740758333
+blurrycat!~blurrycat@user/blurrycat
+There's package management facilities in Zig, just no central package registry. You can already consume libraries as dependencies without issues and it's pretty simple already. You can find libraries on GitHub for example.
+
+1740758403
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+suppose that's a good start. 
+
+1740758495
+blurrycat!~blurrycat@user/blurrycat
+And contrary to Python, you can link and use C libraries directly from Zig, so there's already a pretty big ecosystem of libraries available if you include those in there.
+
+1740758578
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true, true
+
+1740775161
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+darn, I was reinventing the zig wheel, did a search on github and found what I was working on! (without all the C errors)
+
+1740775943
+grayhatter!~grayhatte@user/grayhatter
+a centralized package repo is a weakness, not a strength
+
+1740776005
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+whats the strength then?
+
+1740776109
+grayhatter!~grayhatte@user/grayhatter
+as blurrycat already mentioned, zig already has dependency management built in, and it works with whatever host you want
+
+1740776213
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I see it as a current solution, not really a good one, its easy to do something like `pip install pkg` vs hunting the net for hours and hours. 
+
+1740776225
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think go having centralized mirrors is a strength
+
+1740776276
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+stealth_: I would checkout ziglist.org if you need to search for more
+
+1740776293
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It's opt in based on github tags
+
+1740776300
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+And I think codeberg is supported as well
+
+1740776343
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, thanks, that's at least a viable solution  
+
+1740776355
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+there's another but I can't remember the name of it
+
+1740776363
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i will bookmark it.
+
+1740776372
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+zigistry.dev
+
+1740776413
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I had to do a search on github "language: zig ..." to find it. After i wasted a lot of time on the net searching. Also search engines have gotten real bad.
+
+1740776439
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I did a search for "zig" and it found results for "zed" like wtf.
+
+1740776467
+grayhatter!~grayhatte@user/grayhatter
+I think a central package repo abstracts away a lot of the details of dependency managment, which **both** directly, and indirectly encourages developers to give up intellecutal control
+
+1740776501
+grayhatter!~grayhatte@user/grayhatter
+encouraging people to be careless is often a mistake that you don't see until much later
+
+1740776509
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, thanks, bookmarked both.
+
+1740776541
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I don't think its a good idea to depend on sites like GitHub, never know when they will backstab
+
+1740776612
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+normally with python ppl upload their well tested software on pypi.org and this can be installed directly through pip and they use sites like github to upload current working on fixes/new feature
+
+1740776618
+grayhatter!~grayhatte@user/grayhatter
+stealth_: how do you reconcile the idea of github is a bad idea because they might backstab you, while also saying `pip install` is good and zig should have a single repo (that could also backstab you)
+
+1740776704
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, a company for profit is most likely to backstab you if it means they are loosing $ or want to make more $. not the same with nonprofit business.
+
+1740776840
+grayhatter!~grayhatte@user/grayhatter
+what happens when that non-profit sells out because it can't afford the hosting costs? What's to stop them from doing that, the same way github might?
+
+1740776888
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that doesn't make any sense, who will buy non-profit? 
+
+1740776930
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+none the less... if they don't have $ they can either cut back on services of fund raise or if someone is willing to sponsor... 
+
+1740777189
+grayhatter!~grayhatte@user/grayhatter
+anyone who thinks they can make money off the system/service would buy a non-profit. But let's pretend the thing that's happened before is impossible... The alternitive is the system starts to fail, because it can't afford to maintain it's services, and no one wants to sponsor it, or was sponsoring and decided to stop (freedesktop). How is having a single service like that better than having multiple
+
+1740777191
+grayhatter!~grayhatte@user/grayhatter
+services, where if one fails, the others keep working?
+
+1740777286
+grayhatter!~grayhatte@user/grayhatter
+just because it's requires less thought from the people who want to use it? I'm sure that's fine for some people, but I already mentioned above why I think that's a misake from an engineering context/pov. Are there other reasons a single centralized service is better?
+
+1740777335
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+from your scenario those are likely to fail faster then if zig had an official repo. Who even if funding those services? 
+
+1740777397
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*is funding
+
+1740777399
+grayhatter!~grayhatte@user/grayhatter
+stealth_: https://kristoff.it/blog/python-training-wheels/ https://www.phoronix.com/news/X.Org-Cloud-CI-Cost-Sponsors
+
+1740777465
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+python has a sponsor with aws, so they are not worried. If they lose those sponsor, then they can worry about it.
+
+1740777600
+grayhatter!~grayhatte@user/grayhatter
+so they're beholden to AWS, and if that large corp sponsorship drys up, or AWS tries to attach strings, they have a huge problem? Isn't a for profit corporation why you don't trust github?
+
+1740777686
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its up to PSF to figure out the next move, and python gest million+ $ /year, i am sure they can figure it out.
+
+1740777710
+grayhatter!~grayhatte@user/grayhatter
+I think your heuristics for trust and reliability are too loose for me to use to make predictions... I'd rather have multiple options so that if something goes awry, there's already a working backup ready to go :)
+
+1740777777
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also its not hard to host 100TB server, sure using AWS they might be "paying" $400k whatever, but thats mostly cause aws is expensive, in reality they can probably do the same for 10-20k/month
+
+1740777870
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you should reach out to the freedesktop board, and explain to them how they can actually do what python does for just 10k/mo... I'm sure they'd love to heard your solution
+
+1740777920
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I use to run a small datacenter back in the day. created something that would cost a million for < 50k
+
+1740777923
+gog!~ada@user/meow/gog
+i think zig's way of an expected distribution format and the ability to have multiple sources is the right way. you get the one potential benefit of a central service (consistent packaging, build system, dependency management) and all the benefits of an open ecosystem
+
+1740778052
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I don't know much about x.org to comment about their situation.
+
+1740778059
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yeah, you should help out freedesktop then
+
+1740778166
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Of course "The gitlab.freedesktop.org hosting is done within the Google Cloud." x.org just like python is doing right now, depending on big corp and I guess google isn't sponsoring them? and they want full rip off $$$ payment. 
+
+1740778258
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+people don't get how "cloud" system works, it only benefits big corp, and they heavily pushed this idea to the point people believe thats the only to get hosting.
+
+1740778278
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that's why I used it as the example for why a central repo is bad... but some of your details are off, there's more details on phoronix, you should read more of the articles if you wanna understand
+
+1740778331
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, what does central repo have to do with big corp? x.org/python are going with those services because they got sponsored!
+
+1740778368
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+see now that x.org has no more sponsor they are asking for ppl for help. that exactly what python will do if they are in that situation. 
+
+1740778409
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Doesn't mean zig having a repo is a bad thing. x.org/python can easily manage their own servers... but they are lazy since they got sponsored.
+
+1740778532
+grayhatter!~grayhatte@user/grayhatter
+I don't agree lazy is a reasonable characterization of the python foundation
+
+1740778538
+grayhatter!~grayhatte@user/grayhatter
+brb
+
+1740782082
+reykjalin!7e28cf3a41@user/reykjalin
+I think what’s being lost in this discussion is that what you’re really asking for stealth_ sounds to me like a search for packages. zig doesn’t, and will lot, provide that. but it does provide very easy installation of packages via zig fetch
+
+1740782111
+reykjalin!7e28cf3a41@user/reykjalin
+it doesn’t matter whether that package is hosted on GitHub, Codeberg, or some random website, it’ll work the same for any of those
+
+1740782147
+reykjalin!7e28cf3a41@user/reykjalin
+so distribution and easy installation is a solved problem. searching is not, and zig (the language) will not be solving that problem.
+
+1740782164
+reykjalin!7e28cf3a41@user/reykjalin
+s/and will lot/and will not/
+
+1740782262
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+reykjalin, good point, didn't know about fetch till you mentioned it. Where does it install the pkg?
+
+1740782348
+reykjalin!7e28cf3a41@user/reykjalin
+in .zig-cache I believe 
+
+1740782362
+reykjalin!7e28cf3a41@user/reykjalin
+in the same directory as your build.zig
+
+1740782386
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, so its local to your project? thats neat. 
+
+1740782488
+reykjalin!7e28cf3a41@user/reykjalin
+yup. and it’s not limited to zig packages, you could fetch anything through this system. eg TigerBeetle uses it to fetch a pandoc binary to build their docs website using the zig build system: https://tigerbeetle.com/blog/2025-02-27-why-we-designed-tigerbeetles-docs-from-scratch/
+
+1740782954
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+reykjalin, thanks, i will bookmarked it, will check it out later, got too much on the plate of learning :)
+
+1740783880
+andrewrk!~andrewrk@mail.ziglang.org
+here's a nice project: https://zigistry.dev/
+
+1740783961
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, too slow :p someone already linked it, got it bookmarked. 
+
+1740786983
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can't find anything to connect to usb using vendor/product id.
+
+1740787050
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+anything like this in zig? https://github.com/pyusb/pyusb/blob/master/docs/tutorial.rst#lets-get-it-started
+
