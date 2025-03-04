@@ -1,0 +1,228 @@
+1741003640
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+zig build fails on a C++ project with 'incomplete type' errors; waf succeeds though; can I ignore those errors somehow for now?
+
+1741004577
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm wait it builds now
+
+1741007321
+viscous24!c57c638cd7@user/viscous24
+how can I open file and append data to it? I see no flag in .mode or .append field?
+
+1741008439
+blurrycat!~blurrycat@user/blurrycat
+viscous24: open the file with .write or .read_write and use https://ziglang.org/documentation/master/std/#std.fs.File.seekFromEnd to seek to the end, then append your data? I'm not sure tbh I've never had to do that yet in Zig.
+
+1741009899
+viscous24!c57c638cd7@user/viscous24
+```zig
+
+1741009901
+viscous24!c57c638cd7@user/viscous24
+var file = try std.fs.cwd().openFile(path, .{ .mode = .read_write });var stat = try file.stat();try file.seekTo(stat.size);try file.writer().writeAll(); // this will happen at the end of the file
+
+1741009906
+viscous24!c57c638cd7@user/viscous24
+```
+
+1741010350
+viscous24!c57c638cd7@user/viscous24
+but try file.seekFromEnd(0); seems better option
+
+1741017603
+blurrycat!~blurrycat@user/blurrycat
+Is there a way to compile build.zig using the self-hosted backend instead of LLVM? I found .use_llvm for my exe but I don't know where to look for the build.zig file itself
+
+1741018006
+ifreund!2940d10f8b@user/ifreund
+you can build the zig compiler without -Denable-llvm
+
+1741018037
+ifreund!2940d10f8b@user/ifreund
+I don't think there's a way to override the default for that if the compiler is build with the llvm backend enabled
+
+1741018059
+ifreund!2940d10f8b@user/ifreund
+eventually it will use the self-hosted backend by default, but it's not 100% ready yet
+
+1741018147
+blurrycat!~blurrycat@user/blurrycat
+Alright thanks, will hold off on that for now then, I can still use it for the rest of my debug builds anyway so it's still pretty usefull anyway
+
+1741019976
+PDawgs!~PDawgs@user/PDawgs
+is there a way to create a custom step and pass function arguments? something similar to this     const build_step: *std.Build.Step = try b.allocator.create(std.Build.Step);
+
+1741019976
+PDawgs!~PDawgs@user/PDawgs
+    build_step.* = std.Build.Step.init(.{
+
+1741019976
+PDawgs!~PDawgs@user/PDawgs
+        .id = std.Build.Step.Id.custom,
+
+1741019977
+PDawgs!~PDawgs@user/PDawgs
+        .name = "build assets",
+
+1741019977
+PDawgs!~PDawgs@user/PDawgs
+        .owner = exe.step.owner,
+
+1741019978
+PDawgs!~PDawgs@user/PDawgs
+        .makeFn = buildAssets(,
+
+1741019979
+PDawgs!~PDawgs@user/PDawgs
+    });fn buildAssets(step: *std.Build.Step, node: *std.Progress.Node) anyerror!void {
+
+1741019979
+PDawgs!~PDawgs@user/PDawgs
+    _ = node; // autofix
+
+1741019979
+PDawgs!~PDawgs@user/PDawgs
+    _ = step; // autofix
+
+1741019980
+PDawgs!~PDawgs@user/PDawgs
+    std.log.debug("build", .{});
+
+1741019981
+PDawgs!~PDawgs@user/PDawgs
+}
+
+1741020004
+PDawgs!~PDawgs@user/PDawgs
+where buildAssets can take additional input
+
+1741020064
+grayhatter!~grayhatte@user/grayhatter
+PDawgs: generally, you want to paste sections of code more than 2 lines into a pastebin... for a lot of reasons
+
+1741020091
+PDawgs!~PDawgs@user/PDawgs
+sorry I'll remember this for next time
+
+1741020100
+grayhatter!~grayhatte@user/grayhatter
+but yes, you can create any kind of function you want in the build.zig. The build.zig file is completely functional zig code
+
+1741020137
+PDawgs!~PDawgs@user/PDawgs
+what would makeFn look like in this case? buildAssets(input a, input b)?
+
+1741020184
+grayhatter!~grayhatte@user/grayhatter
+it would look like whatever you want it to look like
+
+1741020245
+grayhatter!~grayhatte@user/grayhatter
+how much of the docs for std.Build.Step have you read yet? https://ziglang.org/documentation/master/std/#std.Build.Step
+
+1741020438
+PDawgs!~PDawgs@user/PDawgs
+admittedly i'm new to zig. I do have this document and i'm browsing through it whenever i need it. But adding custom steps are confusing and the document isn
+
+1741020451
+PDawgs!~PDawgs@user/PDawgs
+*isn't helping me understand
+
+1741020591
+grayhatter!~grayhatte@user/grayhatter
+you'll define your `fn functionName(...) !*std.Build.Step { ... }` and then the function body will create and return the build step you want. You'll have to provide the MakeFn which will actually do the specific compliation step you're looking to create. If that doesn't get you closer to the anwser you're looking for, I think you've fallen into the trap of asking how to do [something] when what you
+
+1741020593
+grayhatter!~grayhatte@user/grayhatter
+really should do is describe the problem you're faceing and ask for suggestions for a solution, without attempting to provide your own solution
+
+1741021052
+grayhatter!~grayhatte@user/grayhatter
+about creating a custom step, I find myself referencing the source in std.Build.Step.* e.g. Step/InstallArtifact.zig or Step/Run.zig
+
+1741021896
+PDawgs!~PDawgs@user/PDawgs
+I'm trying to run a tool called verilator that is transcompiling verilog code into c++. I want to be able to add this generated code into my CSourceFiles. We can say that the path is known but the file names are unknown.
+
+1741022471
+grayhatter!~grayhatte@user/grayhatter
+someone else was working on this exact thing recently, I wonder how far into working it got
+
+1741022618
+grayhatter!~grayhatte@user/grayhatter
+tsmanner is unfortuntantly not connected
+
+1741023408
+grayhatter!~grayhatte@user/grayhatter
+I might email tsmanner to see if he was able to get anything working that he could share.. if I was doing this myself, I'd probably drop down to a 2 step build process, and use addUpdateSourceFiles(), and then collect the filenames, to add to source at "comptime" using a build.zig function
+
+1741023455
+grayhatter!~grayhatte@user/grayhatter
+from the very little I understand verilator is very resistant to behaving the way zig's build system expects source to behave
+
+1741025115
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+just out of curiosity, not to put pressure on anyone, is the 0.14 release still planned for today?
+
+1741025599
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Looks like they did reach 100% Milestones https://github.com/ziglang/zig/milestones
+
+1741027370
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+does the author of zine spend any time in this channel?
+
+1741027405
+phaleth!~phaleth@user/phaleth
+nope
+
+1741027420
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'll just post a bug to the gh repo
+
+1741028487
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ezzieyguywuf: loris is on discord if you use that
+
+1741029154
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+IS 0.14 suppose to have custom llvm created in zig? 
+
+1741029336
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the news post mentioned work on the x86_64 backend for debug builds, but it didn't make it in time afaik
+
+1741030166
+viscous24!c57c638cd7@user/viscous24
+is 0.14 released?
+
+1741030215
+grayhatter!~grayhatte@user/grayhatter
+not yet, no. when it is, it'll be listed here https://github.com/ziglang/zig/releases
+
+1741030583
+mortmann!~mortmann@p5dcb2c4f.dip0.t-ipconnect.de
+i expect "myOrder == .lt" (like used within std.mem.lessThan()) would compile to the same code as "myOrder.compare(.lt)". but it compiles to less optimal code. see https://godbolt.org/z/GY6d8ffcW. is this a compiler issue?
+
+1741031014
+grayhatter!~grayhatte@user/grayhatter
+mortmann: that's really interesting. I don't think this is a zig compiler bug, but I still think it's worth opening an issue on gh for someone smarter than me to take a look at
+
+1741032294
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is it just the 1 core dev working on zig? 
+
+1741032404
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+stealth_: no, https://github.com/orgs/ziglang/people
+
+1741032449
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, there are a lot work, that's good.
+
+1741032596
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*lot more
+
