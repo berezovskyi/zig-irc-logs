@@ -1,0 +1,1036 @@
+1741134149
+SultansOfCode!~SultansOf@user/SultansOfCode
+I am passing an []const u8 to a struct .init method and want to store it inside the struct. But, after that, if I check the field inside the struct, it is all zero filled. What can I be doing wrong?
+
+1741134177
+SultansOfCode!~SultansOf@user/SultansOfCode
+At this line I set it when opening a file: https://github.com/SultansOfCode/Stardust/blob/main/src/main.zig#L211
+
+1741134198
+SultansOfCode!~SultansOf@user/SultansOfCode
+And at this line, it is all zeroes: https://github.com/SultansOfCode/Stardust/blob/main/src/main.zig#L733
+
+1741134306
+SultansOfCode!~SultansOf@user/SultansOfCode
+At line 1393 I pass a string to it and it works well. But when it comes from line 836, the .init works, but I get the zeroes behavior
+
+1741134369
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you aren't allocating it...what happens to commandHandler.buffer after the scope of processCommandKeyboard?
+
+1741134440
+SultansOfCode!~SultansOf@user/SultansOfCode
+rockorager: I reset the buffer. There is no copy on assign on zig?
+
+1741134441
+grayhatter!~grayhatte@user/grayhatter
+protip... if you don't make **EVERYTHING** a global, it'd be much easier to find these bugs
+
+1741134474
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: and should I keep passing rom around as argument, since it is a singleton?
+
+1741134523
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+no hidden allocations. you need to allocate that string or store it in a buffer in rom or something
+
+1741134562
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I'm assuming it's zero because you set it to zeros on line 248. Because everything is a global, I'd have to read and understand the whole codebase to be able to identify the bug... and I don't have time for that... so yes, passing around everything as a var singleton would probably work. But there's a lot of other options too
+
+1741134584
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+fwiw you don’t need to zero out a buffer
+
+1741134614
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+in debug mode, zig will fill it with 0xa, which then is a telltale sign you are accessing an undefined buffer 
+
+1741134645
+grayhatter!~grayhatte@user/grayhatter
+rockorager: std.mem.zeros warns explicitly not to do this, so I'm assuming there's a reason for that
+
+1741134684
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I have the strange feeling that you already asked this exact question before, no?
+
+1741134813
+SultansOfCode!~SultansOf@user/SultansOfCode
+I asked before if structs were zero initialized
+
+1741134839
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: no, on line 732 you have { .ptr = rom.filename.ptr, .len = rom.filename.len };
+
+1741134869
+grayhatter!~grayhatte@user/grayhatter
+then on line 734 you wipe out that data... if you want to copy the bytes inside the slice, you have to copy the bytes
+
+1741134886
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: this was me testing if slicing it would create a copy
+
+1741134887
+grayhatter!~grayhatte@user/grayhatter
+you're just coping the slice details, not the bytes
+
+1741134928
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: I'm confused about what the real question is then?
+
+1741134980
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: maybe a c++ brain thinking that using = would copy stuff around and allocate them for me
+
+1741135061
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: you thought that zig would allocate for you, even though it's very verbose about passing around allocators? 
+
+1741135120
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: yep, string are a very common use case
+
+1741135145
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: you might wanna take some time to read through the zig docs
+
+1741135148
+grayhatter!~grayhatte@user/grayhatter
+zig doesn't have strings
+
+1741135360
+SultansOfCode!~SultansOf@user/SultansOfCode
+Too much to remind after reading
+
+1741135389
+torque!~tachyon@user/torque
+has anyone said "slices are pointers" yet
+
+1741135514
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: thats' what code comments are for then
+
+1741135649
+andrewrk!~andrewrk@mail.ziglang.org
+torque: how about the official langref, all the way back to 0.4.0 (see the "Pointers" section)
+
+1741135975
+torque!~tachyon@user/torque
+I'm a fan of that document
+
+1741136368
+andrewrk!~andrewrk@mail.ziglang.org
+0.14.0 is tagged. it should finish being built by the CI in about 6 hours, which is about how much time I need to finish the release notes too
+
+1741136624
+reykjalin!7e28cf3a41@user/reykjalin
+thank you for your hard work 🙏 
+
+1741136635
+flowerinthenight!~flowerint@user/flowerinthenight
+Yay! Thank you for the hard work.
+
+1741136639
+hanna!4f7baf9d56@user/hanna
+looking forward to all the changes
+
+1741136650
+Turicas!~Turicas@user/Turicas
+andrewrk thanks! Is there anything the community could help on this process? Or maybe automating some stuff for the next ones... (note: I'm new to Zig, still learning, can't help that much right now writing Zig code I think - but I can help automating infrastructure or Web things using Python and/or bash)
+
+1741136745
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+congrats!
+
+1741136917
+tusf!cb6c78d75e@user/TUSF
+> [...] opaque cannot have fields and declarations with the same names.
+
+1741136924
+tusf!cb6c78d75e@user/TUSF
+Wait, opaque can have fields?
+
+1741137072
+hanna!4f7baf9d56@user/hanna
+yes, tusf.
+
+1741137077
+SultansOfCode!~SultansOf@user/SultansOfCode
+Sexy
+
+1741137198
+tusf!cb6c78d75e@user/TUSF
+afaik, opaque is mostly used for pointers where you don't know the underlying size, fields and such?
+
+1741137243
+SultansOfCode!~SultansOf@user/SultansOfCode
+Using @embedFile inside src/main.zig is relative to src folder, right? But @embedFile("../resources/file") is saying that file is outside of package path
+
+1741137302
+tusf!cb6c78d75e@user/TUSF
+Can't import a module/file outside of the root directory of your module's root source file. Need to use the build system to pass in files outside of that.
+
+1741137434
+SultansOfCode!~SultansOf@user/SultansOfCode
+tusf: so what's the purpose of @embedFile? You're supposed to use it mainly with assets, otherwise, if it is code, you can just @import it o.0
+
+1741137446
+torque!~tachyon@user/torque
+opaque cannot have fields, it's opaque
+
+1741137456
+hanna!4f7baf9d56@user/hanna
+it can torque
+
+1741137465
+torque!~tachyon@user/torque
+example.zig:7:5: error: opaque types cannot have fields
+
+1741137470
+torque!~tachyon@user/torque
+the compiler disagrees with you
+
+1741137480
+hanna!4f7baf9d56@user/hanna
+well not fields but it can have declarations
+
+1741137481
+hanna!4f7baf9d56@user/hanna
+https://sourcegraph.com/github.com/chung-leong/zigar/-/blob/zigar-compiler/test/integration/iterator/opaque-iterator.zig?L16-19
+
+1741137487
+torque!~tachyon@user/torque
+yes, declarations are different than fields
+
+1741137508
+hanna!4f7baf9d56@user/hanna
+not sure why it mentions fields
+
+1741137530
+torque!~tachyon@user/torque
+probably a copy paste oversight, since that limitation was added by decl literals
+
+1741137546
+torque!~tachyon@user/torque
+and applies to pretty much all the other aggregate types
+
+1741137546
+hanna!4f7baf9d56@user/hanna
+SultansOfCode: an example ive used it for is when making a CLI i have a "help.txt" which contains the actual help message which i then parse and render in a seperate .zig file.
+
+1741137596
+tusf!cb6c78d75e@user/TUSF
+SultansOfCode: @embedFile will import the file as a file of data. @import only works on Zig/Zon files to be imported as modules. But in both cases, you can pass in a file from the build system as an import.
+
+1741137638
+tusf!cb6c78d75e@user/TUSF
+hanna: Yeah, opaques can't have fields, so just pointing out that it seems like a type to include in the release notes that opques can't have fields and decls with the same name.
+
+1741137659
+hanna!4f7baf9d56@user/hanna
+yeah that seems like a mistake
+
+1741159869
+vedant-pandey!~vedant-pa@user/vedant-pandey
+Hi, I'm seeing that we have closed all issues under 0.14, I just wished to know when do we plan to release 0.14 version?
+
+1741160016
+Affliction!affliction@idlerpg/player/affliction
+"0.14.0 is tagged. it should finish being built by the CI in about 6 hours, which is about how much time I need to finish the release notes too" - Andrew, about 7 hours ago.
+
+1741160071
+Affliction!affliction@idlerpg/player/affliction
+So, I'd guess, Soon™
+
+1741162613
+GreaseMonkey!greaser@user/greasemonkey
+i think there's still a few more hours to go on the CI
+
+1741163679
+andrewrk!~andrewrk@mail.ziglang.org
+it's up
+
+1741163720
+ifreund!2940d10f8b@user/ifreund
+\o/
+
+1741163755
+Ayo!~Ayo@45.142.232.203
+\o/
+
+1741164281
+flowerinthenight!~flowerint@user/flowerinthenight
+Oh, sweet heavens! Porting time. \o/
+
+1741167082
+blurrycat!~blurrycat@user/blurrycat
+So the release notes say "Sentinel values are now forbidden from being aggregate types.", is it expected that we can use packed structs as sentinels?
+
+1741168482
+ifreund!2940d10f8b@user/ifreund
+blurrycat: packed structs support ==, so they should be allowed unless I'm missing somethg
+
+1741168577
+blurrycat!~blurrycat@user/blurrycat
+Yeah that's how I came up to the conclusion that they were allowed (also tested it), but I guess packed structs are both scalar and aggregate types
+
+1741168617
+blurrycat!~blurrycat@user/blurrycat
+I just found it weird that a section says "packed structs now support ==" and another one that says "aggregate types are forbidden, the type must support ==" whereas we now have an aggregate type that supports == 
+
+1741168664
+blurrycat!~blurrycat@user/blurrycat
+If it's expected then good, I was just confused by it for a moment
+
+1741179240
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+about building: .static is a struct field? So can one set the library to build both as static library and shared library?
+
+1741186430
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I try to make a zig build for a package that builds as static and shared (dynamic) library using waf
+
+1741186574
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+addLibrary function expects just one value .static or .dynamic
+
+1741187146
+ifreund!2940d10f8b@user/ifreund
+flower_: sounds like you need to call it twice then
+
+1741187255
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ifreund: ok, will look into it. Would be handy if you could pass both though.
+
+1741187762
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Woo congrats on the 0.14 release 🥳
+
+1741188182
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Hm, so I have a dep (zg) which hasn't update the build.zig.zon to use an enum literal for the name...but that doesn't affect *my* building and usage of it. Is that expected?
+
+1741188976
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Reading through the 0.14 changelog instead of working right now 
+
+1741188978
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+oops
+
+1741189166
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+works sucks, update zig projects instead
+
+1741189250
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+;) 
+
+1741189461
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://ziglang.org/download/0.14.0/release-notes.html#Embracing-Unmanaged-Style-Containers can someone explain this? Like I understand the unmanaged containers, I just don't understand what makes them better
+
+1741189666
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think it's just that you have to pass in an allocator to functions that might allocate
+
+1741189672
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So it's more explicit where things can allocate
+
+1741189685
+meidam!~meidam@user/meidam
+Looks like I will go back to using the stable version again, now that 0.14.0 is out. I recently made a short bash script for myself to download the latest master version though. Since Andrew said that it might be a good idea to try out the master version in the "What to Expect from Release Month" news. It's still gonna be good to have for next time ;)
+
+1741189736
+meidam!~meidam@user/meidam
+And I could put a flag to get the latest stable version instead of master
+
+1741189761
+ifreund!2940d10f8b@user/ifreund
+bwbuhse: the benefits become apparent when you start nesting datastructures
+
+1741189779
+ifreund!2940d10f8b@user/ifreund
+being able to statically initialize them is also very convenient
+
+1741189795
+blurrycat!~blurrycat@user/blurrycat
+meidam: I use zigup for that and it's pretty helpful
+
+1741189802
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+ rockorager ifreund thanks :) 
+
+1741189819
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ah yeah static initialization is nice also
+
+1741189831
+meidam!~meidam@user/meidam
+blurrycat: Ah okay
+
+1741189851
+meidam!~meidam@user/meidam
+I had fun making a lil script myself though
+
+1741190036
+blurrycat!~blurrycat@user/blurrycat
+No harm in that (actually the opposite, making shit ourselves is how we learn), just sharing in case you prefer zigup
+
+1741190117
+meidam!~meidam@user/meidam
+Thanks for the tip ;)
+
+1741190149
+meidam!~meidam@user/meidam
+Is it this one? https://github.com/marler8997/zigup
+
+1741190154
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yeah
+
+1741190182
+meidam!~meidam@user/meidam
+Cool
+
+1741190235
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there was a typo in "planned 0.14.0 release date is moved to Monday, March 3rd" should be "5th" :D 
+
+1741190246
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Pretty smooth upgrade, in about an hour I updated my libraries I care about and my irc client 💪
+
+1741190269
+blurrycat!~blurrycat@user/blurrycat
+stealth_: "planned" does not mean "definitive and hard deadline"
+
+1741190293
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, just joking 
+
+1741190375
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looks like they added "-fno-llvm, or use_llvm = false" flags. 
+
+1741190423
+ifreund!2940d10f8b@user/ifreund
+those have been around for a while
+
+1741190433
+ifreund!2940d10f8b@user/ifreund
+they are just gettting more and more useful every release
+
+1741190448
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww i see.
+
+1741190449
+ifreund!2940d10f8b@user/ifreund
+still only relevant for x86_64 debug builds on ELF targets
+
+1741190455
+bblack!~bblack@wikimedia/bblack-WMF
+The release notes are just amazing.  I really appreciate the effort that goes into those.
+
+1741190461
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+not having 0.14 stable looked like a good reason to postpone diving deeply into zig yet ...
+
+1741190560
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+stealth_: how do you use such vars in a build script? use_llvm = false;
+
+1741190599
+meidam!~meidam@user/meidam
+rockorager: Whick IRC client is that?
+
+1741190610
+meidam!~meidam@user/meidam
+s/Whick/Which
+
+1741190622
+blurrycat!~blurrycat@user/blurrycat
+flower_: b.addExecutable(.{ .use_llvm = false, ... })
+
+1741190636
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+flower_, i haven't tried it yet, https://ziglang.org/download/0.14.0/release-notes.html#x86-Backend
+
+1741190653
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: ah  in that part
+
+1741190686
+blurrycat!~blurrycat@user/blurrycat
+flower_: same goes for addLibrary too
+
+1741190698
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1741190705
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+meidam: https://github.com/rockorager/comlink
+
+1741190787
+meidam!~meidam@user/meidam
+rockorager: Nice. I currently use weechat. So that being a tui irc client written in zig, could be quite appealing to me
+
+1741190832
+meidam!~meidam@user/meidam
+I see you writing that it's an experimental irc client in you readme. So I guess it's still really early days for it
+
+1741190883
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yeah, it's a playground for my TUI lib (and also very targeted toward IRCv3 servers)
+
+1741190970
+meidam!~meidam@user/meidam
+You have a TUI lib? Nice. Could it be a viable alternative to ncurses, if I were to make a TUI application in zig at some point?
+
+1741190977
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+flower_, you can refer to `zig build-exe --help` looks like its `zig build-exe -fno-llvm`
+
+1741191066
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+meidam: IMO, it's far better than ncurses
+
+1741191067
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+My new internet is going to drive me crazy
+
+1741191074
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+meidam: https://github.com/rockorager/libvaxis
+
+1741191076
+blurrycat!~blurrycat@user/blurrycat
+stealth_: that works for `build-exe` but not for `build` through a build.zig file
+
+1741191118
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, isn't that what i said? 
+
+1741191139
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, i am not sure what else it works for actually, i just checked the build-exe --help for it.
+
+1741191197
+meidam!~meidam@user/meidam
+rockorager: I guess I'll check it out then. I have a lil zig project that I haven't made an interesting commit to since february last year, that I might add TUI to instead of it being just a CLI with and infinite loop input waiter
+
+1741191211
+blurrycat!~blurrycat@user/blurrycat
+yeah but the initial question was about `use_llvm` which is used elsewhere and does apply to `zig build` through a build.zig file
+
+1741191229
+meidam!~meidam@user/meidam
+Was considering using ncurses for it. But if I can use something written in zig instead, then that's pretty cool
+
+1741191233
+blurrycat!~blurrycat@user/blurrycat
+meidam: I can recommend libvaxis, it's awesome
+
+1741191243
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
++1
+
+1741191263
+blurrycat!~blurrycat@user/blurrycat
+(and I'm not the author so I don't have a horse in that race if that helps you :p)
+
+1741191267
+meidam!~meidam@user/meidam
+blurrycat: Nice, I'll check it out
+
+1741191288
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+arch linux hasn't upgrade zig yet? ouch. ;)
+
+1741191294
+meidam!~meidam@user/meidam
+Yeah, pretty nice to hear it from someone other than the author as well, blurrycat 
+
+1741191493
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`zig build --help` is weird, first it want you to be in directory with build.zig is located then it builds the project, later it shows the help info!
+
+1741191503
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+seems the std docs havent been properly generated? some things in builtin.Type arent right, like there's still the sentinel fields in Pointer/Array, instead of helper methods
+
+1741191529
+ifreund!2940d10f8b@user/ifreund
+it doesn't build the project, it builds the build.zig script then runs it to generate the help output
+
+1741191609
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't that weird when you are just wanting to see to help info. 
+
+1741191646
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+might go faster without llvm?
+
+1741191688
+ifreund!2940d10f8b@user/ifreund
+stealth_: the build.zig script defines options that should show up in --help
+
+1741191722
+ifreund!2940d10f8b@user/ifreund
+flower_: yes, it should be more or less instant eventually with non-llvm backends and incremental compilation
+
+1741191809
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ifreund, hmm... not even sure what to make of it.  
+
+1741192188
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't there a plan to make zig download size smaller? something to do with wasm?
+
+1741192755
+mortmann!~mortmann@p5dcb2d66.dip0.t-ipconnect.de
+stealth: it bundles a whole libc with its header files. some header files like d3d12.h are more than 1 MB. if you dont need those, you can remove some libc stuff after download.
+
+1741193179
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mortmann, i see. is there a plan to drop libc altogether?
+
+1741193304
+grayhatter!~grayhatte@user/grayhatter
+47 mib is a lot? :thinking:
+
+1741193389
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nowadays is it not, but its still better to have small file size, lets say you use zig as a build system and a project gets tons of downloads/install per day, it can add up.
+
+1741193445
+grayhatter!~grayhatte@user/grayhatter
+*sigh* I'd forgotten people do that... that's so disappointing 
+
+1741193603
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why is it disappointing? for example there is https://pypi.org/project/ziglang/ you can use zig to build python project (i am actually considering it), this will solve a lot of compatibility issues and weird hoop you have to jump through to get something working.
+
+1741193888
+grayhatter!~grayhatte@user/grayhatter
+the most common ci/build scripts don't cache resources
+
+1741193944
+grayhatter!~grayhatte@user/grayhatter
+a package getting popular doesn't often overload services such that it matters... a package with a malfunctioning build system often overloads services
+
+1741193974
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you talking about github downloading vs caching what was already downloaded once?
+
+1741194028
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't get what you are thinking, if 100 people download, how is caching going to help with bandwidth usage? 
+
+1741194176
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I'm thinking of something like https://pypi.org/project/boto3/
+
+1741194184
+grayhatter!~grayhatte@user/grayhatter
+how many downloads per day do you think this sees?
+
+1741194252
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, https://pypistats.org/packages/boto3
+
+1741194284
+grayhatter!~grayhatte@user/grayhatter
+yeah, that's cheating... but that's what I meant
+
+1741194346
+grayhatter!~grayhatte@user/grayhatter
+43M downloads every day is only possible when something is unfathomably broken
+
+1741194380
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its places like github that keep downloading vs using the cache of what was already downloaded.
+
+1741194402
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+every time someone runs a test bot, it downloads everything fresh. 
+
+1741194404
+grayhatter!~grayhatte@user/grayhatter
+but 47MiB * 100s of downloads a day is a rounding error
+
+1741194436
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I know **why** it's broken, I'm using it as an example after all... it just makes me really sad 
+
+1741194473
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well it might be good if that project did use 47mb file, it will make all these big crop rethink their abuse of resources.
+
+1741194474
+grayhatter!~grayhatte@user/grayhatter
+47MiB * 48M downloads a day is... a problem 
+
+1741194745
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe what we are seeing isn't actual facts! like we are thinking in terms of downloading but since all these services are connected, they use internal/local bandwidth.
+
+1741194802
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I also considered that, that's still unfathomably broken
+
+1741194978
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, na, locally you can be sending/receiving max bandwidth without issues, its how cluster servers works. on a larger/network scale vs what your computer does locally with file system.
+
+1741195245
+grayhatter!~grayhatte@user/grayhatter
+stealth_: so if I copy a package from my NAS on my home network to my laptop, it's ok for me to report that download back to the main python package repos?
+
+1741195325
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, it might not be in your case, but thats might be whats happening with aws / github / pypi servers.
+
+1741195884
+grayhatter!~grayhatte@user/grayhatter
+I feel like you're missing my point, if you're hitting a custom/local cache, it shouldn't be reported to pypi... if you're hitting some magic cache that would go to pypi but it's intercepted before it gets there (possibly worthy of a report) that's still horribly broken. But even if it's some magic inbetween that I might be able to convinced is not insane. The exact behavior I'm bothered by has
+
+1741195886
+grayhatter!~grayhatte@user/grayhatter
+already happened to zig, where uncached packages were pulled directly from zig's root server. People do that all the time
+
+1741196119
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lets say you are using cloud service, lets say there are 10servers around the world. you upload 1mb file to server-1, within a minute that file is in all 10servers. Now i download your file, i will be downloading from server close to me servers-10. What happens if server-10 reports back to all the server that 1 file was downloaded, get it? it just sends count info.
+
+1741196201
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+now if i build (ci) something on server-10 it doesn't have to download again, it already has your file. but it will say to other server +1 file has been downloaded again!
+
+1741196298
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I do understand, I just don't agree with you. I think that's obviouvly unreasonable.
+
+1741196417
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, unreasonable or not, its how big corp can "show off" how awesome their network/servers are but in reality they cheat. You don't really need expensive cloud services, you can do just fine with local servers.
+
+1741196444
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+everything has its + and -
+
+1741206742
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: not sure if your question above got answered - dependencies are allowed to be unchanged, with the caveat in https://ziglang.org/download/0.14.0/release-notes.html#New-Package-Hash-Format
+
+1741206813
+fleischie!~fleischie@vm069.de
+Ey, not sure if on time or not, but: Happy 0.14 release. Time to update to 0.15 I guess. :)
+
+1741206829
+andrewrk!~andrewrk@mail.ziglang.org
+cheers fleischie
+
+1741206849
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: ack, thanks. That is helpful so I don't have to update that tiny thing in all my deps :)
+
+1741208152
+fleischie!~fleischie@vm069.de
+Super small typo in the release notes "`fingeprint` is an important concept to understand:" without the first 'r' in "fingerprint".
+
+1741208268
+fleischie!~fleischie@vm069.de
+Apart from that: Good stuff. Exciting times replacing the "ArrayList" and "ArrayHashMap" containers. :)
+
+1741208613
+andrewrk!~andrewrk@mail.ziglang.org
+tbh I'll never look at those release notes again. two full days was enough
+
+1741208638
+andrewrk!~andrewrk@mail.ziglang.org
+maybe you can convince ifreund to land your typo fix ;)
+
+1741208693
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: tbh, you shouldn't look at them again
+
+1741208739
+grayhatter!~grayhatte@user/grayhatter
+you have plenty of people happy to help, especially for docs and stuff, be liberal with the trust, so that you don't have to waste your time on it
+
+1741208751
+grayhatter!~grayhatte@user/grayhatter
+you have more important things to do.... like comment on my PR :P
+
+1741208969
+andrewrk!~andrewrk@mail.ziglang.org
+good point, lots of PRs waiting for attention
+
+1741209024
+andrewrk!~andrewrk@mail.ziglang.org
+delegation is important but it's also a delicate instrument, a lot of PRs would actually take code in a bad direction that could then calcify, creating more work than if the PR was simply closed or ignored
+
+1741209034
+drakonis!drakonis@user/meow/drakonis
+hot damn, that's a big release.
+
+1741209383
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i sympathize with the tedium of writing release notes by hand, but has anyone looked into the generated std docs? they seem to be generated for the wrong zig snapshot, things like ArrayList.pop() appear wrong/taken out of the previous version
+
+1741209465
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: then (with many implied preconditions, that may or may not exist) you're not delegating well enough yet. Maybe zig is big enough that it's time to start assigning some maintainers, then instead of having to teach everyone what code is, or isn't ok. You can just teach a smaller group of maintainers what changes they can "approve" themselves, vs what they need to send to your inbox. I've
+
+1741209467
+grayhatter!~grayhatte@user/grayhatter
+*never* run anything on the scale of zig, so it could be this is trash advice, but I've never regretted giving people "write" access. I don't mean that they should be allowed to commit to master, but when they see a change, they review it for correctness, and know if it's something they should "approve" or say maybe, and ask for your input. Once you get to a point where they've proven they know when
+
+1741209469
+grayhatter!~grayhatte@user/grayhatter
+to ask, you can trust and merge PRs without needing to do a deep reading.
+
+1741209488
+andrewrk!~andrewrk@mail.ziglang.org
+even if it's a perfect PR, if I'm a maintainer of the relevant code (which is almost always true) then I need to take the time to fully understand the PR so that I can continue to be an effective maintainer 
+
+1741209498
+grayhatter!~grayhatte@user/grayhatter
+I share the concerns that you don't want a bad design to ossify, because... that's obviously worse. but... I don't have a conclusion for that yet
+
+1741209590
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I assume, at some point, you're gonna have to give up "maintainership" of huge sections of stdlib. Have you tried to decide when that's gonna be?
+
+1741209594
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Playing with the new fast allocator now :)
+
+1741209625
+andrewrk!~andrewrk@mail.ziglang.org
+tranzystorekk: oh, nice find. now that you mention it I think I recall incorrectly copying from 0.13.0 rather than master 
+
+1741209626
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I don't think anything i've written is limited by the allocator but oh well
+
+1741209648
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: I think the coolesting thing about that is that the implementation is fully grokkable in a matter of minutes
+
+1741209658
+andrewrk!~andrewrk@mail.ziglang.org
+it's an insane amount of bang for buck in terms of complexity
+
+1741209666
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+200 LOC is pretty nuts
+
+1741209779
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+lmk if you could use some reminder like an issue in the website repo
+
+1741209903
+andrewrk!~andrewrk@mail.ziglang.org
+I found the command in bash history: cp -r 0.13.0/std/ 0.14.0/std
+
+1741209904
+andrewrk!~andrewrk@mail.ziglang.org
+oops!
+
+1741209953
+grayhatter!~grayhatte@user/grayhatter
+It's quite possible the context I'm thinking from is totally broken, but also #15548 Opened May 2nd, 2023, or #19998 Opened May 18th 2024. for me even a "closed, this implentation isn't good enough", or a "this code is frozen for now. Please resubmit the PR if you're still interested on [date]" would be helpful so I could cache evict the outstanding thing from my mental cache
+
+1741210083
+grayhatter!~grayhatte@user/grayhatter
+oh, wow; I love decl literals so much
+
+1741210245
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+There was one change i had to make in zzdoc in a test...I was mistakenly creating a fixedBufferStream in a function, passing it's reader to parser, and returning the parser...tests that called this code pass every time in 0.13.0 but not at all in 0.14.0
+
+1741210251
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Did the test stack size change or something?
+
+1741210287
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+(The tests should have failed...that stream went out of scope, just surprised they passed in 0.13.0)
+
+1741210363
+andrewrk!~andrewrk@mail.ziglang.org
+tranzystorekk: fixed
+
+1741210374
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+<3
+
+1741210389
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+thank you!
+
+1741210395
+andrewrk!~andrewrk@mail.ziglang.org
+thanks for mentioning it
+
+1741212484
+grayhatter!~grayhatte@user/grayhatter
+> This move comes from unanimous agreement among veteran Zig users who have converged on the "unmanaged" container variants. 
+
+1741212496
+grayhatter!~grayhatte@user/grayhatter
+any of them not compiler devlopers?
+
+1741212542
+bblack!~bblack@wikimedia/bblack-WMF
+I'm not a compiler developer, but I think I like this direction.  I'll know for sure once I've ingested it in some of my code and tried the pattern for myself I guess.
+
+1741212571
+ifreund!2940d10f8b@user/ifreund
+grayhatter:me
+
+1741212605
+bblack!~bblack@wikimedia/bblack-WMF
+but one of the Zig selling points was that it's easy to trace where allocation does and doesn't happen, and when the standard pattern is "stick an allocator reference in every non-trivial struct, and then use it where you need from inside the struct's functions", that selling point is pretty watered down.
+
+1741212610
+ifreund!2940d10f8b@user/ifreund
+i mean I have landed my share of commits in the compiler but mostly I write non compiler code
+
+1741212659
+bblack!~bblack@wikimedia/bblack-WMF
+while it mean mean more typing, I think I like the idea of the opposite pattern: every func/method call that can allocate takes an explicit allocator argument, and don't go stuffing "alloc: std.mem.Allocator" at the top of all your non-trivial structs anymore.
+
+1741212667
+bblack!~bblack@wikimedia/bblack-WMF
+s/mean mean/may mean/
+
+1741212681
+grayhatter!~grayhatte@user/grayhatter
+ifreund: that's what I meant though. Anyone that isn't interested and knowledgable in compiler level semantics 
+
+1741212808
+grayhatter!~grayhatte@user/grayhatter
+I think this is a bad change, but it's in the correct direction
+
+1741212863
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, Hope you and your team take time off after 0.14 release ;) Awesome Work.
+
+1741212901
+grayhatter!~grayhatte@user/grayhatter
+I'm glad we've escaped the local maximum; but engineers that enjoy writing compiler code can feel how this is better, but actively can not understand, understand meaning feel, how this is actually worse. 
+
+1741212961
+grayhatter!~grayhatte@user/grayhatter
+The problem with this change, is now the people best positioned to create something better, feel everything is right with the implementation.
+
+1741212985
+grayhatter!~grayhatte@user/grayhatter
+where as I disagree the current implementation is the best option
+
+1741213005
+grayhatter!~grayhatte@user/grayhatter
+¯\_(ツ)_/¯
+
+1741213284
+ifreund!2940d10f8b@user/ifreund
+I dont understand what alternative you are proposing
+
+1741213681
+grayhatter!~grayhatte@user/grayhatter
+ifreund: I don't know how to articulate the idea I have, it a way I'd be confident in. I'm imagining something akin to python's mixin, where you would write your own struct, and could attach all the ArrayList functions to that struct. so instead of being stuck with something like `custom_thing.unmanaged_list.append(custom_thing.allocator, char)` you could have `custom_thing.append(char)` 
+
+1741213711
+grayhatter!~grayhatte@user/grayhatter
+> "you can do that already, just write `pub fn append(ct: CustomThing) [code continues]`
+
+1741213753
+grayhatter!~grayhatte@user/grayhatter
+right, then you have `for (custom_thing.unmanaged_list.items) |each|` which is equally bad
+
+1741213923
+grayhatter!~grayhatte@user/grayhatter
+and that's the limit of what I'm able to articulate without giving it a lot more thought; but if you think I'm making a big deal out of nothing, or that [this new way] is the way you **should** write code. That helps proves my point that compiler devs don't interact with code the way most people do.
+
+1741214135
+EwwNasty!~EwwNasty@user/EwwNasty
+ /quit
+
+1741214324
+grayhatter!~grayhatte@user/grayhatter
+I enjoy zig, I want to write more zig. I'm fine doing literally everything all on my own most of the time. But there are times that it would help to be able to work with other people. If I can't get them to agree to work in zig, because it's ergonomics are painful. I don't get to use zig. Decl literals are a perfect example of this same meme, `const thing: T = .default;` is a fantastic change because
+
+1741214326
+grayhatter!~grayhatte@user/grayhatter
+it makes it easier to write high quality zig code for many reasons. Where it's easier to be more explicit it's super obvious what the behavior will be.
+
+1741214384
+grayhatter!~grayhatte@user/grayhatter
+the ArrayListUnmanaged is better because it's more explicit, but it's also now much harder to use it a way that compiler devs don't notice the same way that "normal users" do
+
+1741214407
+grayhatter!~grayhatte@user/grayhatter
+~ fin ~ (thank you for coming to my ted talk, I'll save the remainder for some kinda blog post)
+
+1741214454
+andrewrk!~andrewrk@mail.ziglang.org
+I write a lot of non compiler code too
+
+1741214486
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: my point being, because you *can* write compiler code, your brain works in a way that most people's don't or can't
+
+1741214620
+mortmann!~mortmann@p5dcb2d66.dip0.t-ipconnect.de
+think more in terms of "dont _yet_"
+
+1741214620
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you include C function and it takes int, and you pass float from Zig, will zig catch that ?
+
+1741214640
+grayhatter!~grayhatte@user/grayhatter
+there are a lot of mental operations that you don't even notice that are effectively free actions for you, but those same operations are exausting for most people
+
+1741214919
+grayhatter!~grayhatte@user/grayhatter
+mortmann: I agree, I'm convinced that nearly anyone can learn nearly any skill given the desire to do it. I used can't above because if you're still learning to walk, you can't jump. Yet is only true if they don't give up before getting there
+
+1741215246
+grayhatter!~grayhatte@user/grayhatter
+y'all are ultra marathon runners, I'm here trying to convince my friend to take up running with me, but y'all also just canceled the 2k because the 5k is better, and the 2k track had a bunch of cracks
+
+1741215293
+grayhatter!~grayhatte@user/grayhatter
+y'all aren't even warmed up yet after a 5k
+
+1741215340
+grayhatter!~grayhatte@user/grayhatter
+(yes that analogy has a number of issues... don't @ me)
+
+1741215590
+mortmann!~mortmann@p5dcb2d66.dip0.t-ipconnect.de
+dont compare with others. run 2k today and maybe 3k tomorrow, just beat yourself again and again.
+
+1741215915
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that sounds like good way to kill yourself.
+
+1741215969
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe its ok if you are a super saiyan 
+
+1741216348
+grayhatter!~grayhatte@user/grayhatter
+stealth_: sorry, got distracted. Yes, if you define the C type correctly, zig won't let you pass a float to a c function that needs an int
+
+1741216382
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, thanks.
+
