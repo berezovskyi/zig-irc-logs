@@ -214,3 +214,127 @@ classic example of banging my head against a wall, asking for help, then immedia
 SultansOfCode!~SultansOf@user/SultansOfCode
 I have a function that expects an argument of type [][*:0]const u8, how to pass an argument to it? It is an array of strings, no?
 
+1741461366
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+do you control the signature?
+
+1741461405
+grayhatter!~grayhatte@user/grayhatter
+&[_][:0]const u8{"string", "other string"};
+
+1741461415
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you probably want []const []const u8, or maybe []const [:0]const u8
+
+1741461511
+SultansOfCode!~SultansOf@user/SultansOfCode
+No, its from raygui lib
+
+1741461522
+SultansOfCode!~SultansOf@user/SultansOfCode
+const tabs = &[_][:0]u8{ "TAB1", "TAB2", "TAB3" }; gives me src\main.zig:27:34: error: expected type '[:0]u8', found '*const [4:0]u8'
+
+1741461576
+SultansOfCode!~SultansOf@user/SultansOfCode
+This is the signature pub fn guiTabBar(bounds: Rectangle, text: [][*:0]const u8, active: *i32) i32 {
+
+1741461620
+grayhatter!~grayhatte@user/grayhatter
+var tabs = 
+
+1741461643
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you need a const before {
+
+1741461672
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it’s complaining that TAB1 is const (string literals are always const)
+
+1741461674
+grayhatter!~grayhatte@user/grayhatter
+oh, rockorager is right too [:0] const u8
+
+1741461729
+SultansOfCode!~SultansOf@user/SultansOfCode
+Added const and got: src\main.zig:29:79: error: expected type '[][*:0]const u8', found '*const [3][:0]const u8'
+
+1741461750
+SultansOfCode!~SultansOf@user/SultansOfCode
+const tabs = &[_][:0]const u8{ "TAB1", "TAB2", "TAB3" }; _ = rg.guiTabBar(.{ .x = 50, .y = 300, .width = 200, .height = 200 }, tabs, &active);
+
+1741461755
+SultansOfCode!~SultansOf@user/SultansOfCode
+This is the code
+
+1741461796
+grayhatter!~grayhatte@user/grayhatter
+bruteforce code generation is often much slower than thinking through the problem you're trying to solve
+
+1741461832
+grayhatter!~grayhatte@user/grayhatter
+take a minute, to try to understand both the errors, your code, and then the code snipets rockorager and I have given you
+
+1741461864
+SultansOfCode!~SultansOf@user/SultansOfCode
+Zig's [] [_] [*] [:0] [*:0] & are the most difficult thing to learn until now... Never know when it is an array, when struct, etc.
+
+1741461878
+SultansOfCode!~SultansOf@user/SultansOfCode
+But both code snippets also does not work
+
+1741461900
+grayhatter!~grayhatte@user/grayhatter
+it's not that hard if you stop to think about it, you have to think about what const means if you want to understand it
+
+1741461937
+SultansOfCode!~SultansOf@user/SultansOfCode
+But the will always be const and never mutades inside the called function (even the signature not having const on it)
+
+1741461953
+SultansOfCode!~SultansOf@user/SultansOfCode
+they*
+
+1741461954
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: that's incorrect
+
+1741461968
+grayhatter!~grayhatte@user/grayhatter
+that's why rockorager asked if you can change the function signature 
+
+1741461991
+grayhatter!~grayhatte@user/grayhatter
+because that function *could* replace "TAB1" with a different `const u8` string if it wanted
+
+1741462016
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yeah, from the signature looks like it can. But looking at the C source of it, it will not
+
+1741462052
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But even if it doesn’t it could in the future without changing its promise to you
+
+1741462056
+grayhatter!~grayhatte@user/grayhatter
+does or dosen't doesn't matter that much in this case. 
+
+1741462068
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The signature says it can
+
+1741462071
+grayhatter!~grayhatte@user/grayhatter
+^ this
+
+1741462083
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So you need to pass a type that can have the strings changed
+
+1741462088
+grayhatter!~grayhatte@user/grayhatter
+> Never know when it is an array, when struct, etc.
+
+1741462113
+grayhatter!~grayhatte@user/grayhatter
+it's actually really easy... you just haven't spent enough time studying, trying to understand, and proving your understanding yet
+
