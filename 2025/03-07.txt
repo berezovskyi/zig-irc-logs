@@ -1,0 +1,548 @@
+1741308502
+dumbmf!~dumbmf@syn-104-034-072-172.res.spectrum.com
+Okay, the fuzzing is really fun. I always wanted to do it, but I found other tools to be a bit complicated, but the current fuzzer in Zig is pretty easy to use.
+
+1741308515
+dumbmf!~dumbmf@syn-104-034-072-172.res.spectrum.com
+I'm considering trying to @cImport some functions and trying it with Zig lol
+
+1741309381
+torque!~tachyon@user/torque
+re: `@import` at the bottom of the file, I started doing it recently and I think it makes sense for imports that do not get re-exported. Since top-level declarations are unordered regardless of whether or not they are imports, you can't read most zig files from top to bottom anyway in my experience
+
+1741309491
+torque!~tachyon@user/torque
+this is offset by the fact that looking up any identifier in a zig file is trivial because it's either `const <name>`, `fn <name>(` or `var name`
+
+1741309514
+torque!~tachyon@user/torque
+and always in the same file
+
+1741310215
+grayhatter!~grayhatte@user/grayhatter
+so many of my files are contaiers with fields, the order that makes the most sense to me is fields, decls, functions, imports. Once you don't put imports at the top, (to give priority to fields). It just feels nicer to be consistent throughout
+
+1741310547
+torque!~tachyon@user/torque
+yeah when it is an instantiable file-struct, making it obvious by putting the fields at the top makes a lot of sense to me
+
+1741310587
+torque!~tachyon@user/torque
+I would say I normally order `pub` stuff at the top above private stuff tho
+
+1741311234
+grayhatter!~grayhatte@user/grayhatter
+fields, pub structs (enum, etc), fs (ordered logically, pub or not), imports.... if I'm gonna import a file and re-pub whatever I import, that'll go above the rest of the structs, but I also try to avoid doing that. If I'm gonna do it, it'll have a doc comment. Which is another guideline, if it gets a comment, it goes nearer to the top
+
+1741314584
+fortruce_!~joseph@user/fortruce
+Is there a more idiomatic solution than `@ptrCast` here: const v = std.mem.readInt(u16, @ptrCast(state.ram[state.pc..state.pc+2]), .big);
+
+1741314738
+sp2!uid197664@user/meow/sp2
+I've used `state.ram[state.pc..][0..2]` before, and a quick grep shows this pattern is used pretty often in the standard library
+
+1741314932
+fortruce_!~joseph@user/fortruce
+sp2: thanks, that looks cleaner, but I'm not sure I'm following how it works
+
+1741314992
+sp2!uid197664@user/meow/sp2
+slicing with comptime-known bounds gives a pointer to a comptime-known-size array
+
+1741315031
+fortruce_!~joseph@user/fortruce
+ah okay, was getting confused by the double slice, but I see it now, thanks
+
+1741315064
+torque!~tachyon@user/torque
+that is the "slice by length" pattern in zig
+
+1741321566
+daurnimator!~daurnimat@vultr.daurnimator.com
+Has anyone else had test failures with 0.14.0? First error I get: https://gist.github.com/daurnimator/cc1cc4caaf52cc5e4c18e898eff714c8
+
+1741326064
+yataro!~yataro@user/yataro
+daurnimator: I had something like this when I run tests with old pre 0.14.0 cache
+
+1741349643
+mountaingoat!~mountaing@user/mountaingoat
+interesting... it seems that std.DynLib.open() works in 0.14.0 without libc but the symbols from lookup() are not callable, whereas std.DynLib.open() returns error.FileNotFound in 0.13.0 without libc
+
+1741349973
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: what do you mean by "not callable" exactly?
+
+1741350153
+ifreund!2940d10f8b@user/ifreund
+in general, dlopen() without linking libc is kinda sus, unless the dynamic library you are loading also does not link libc, you are going to have issues
+
+1741350799
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: segfault
+
+1741350942
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: my code was relying on std.DynLib.open() failing, followed by std.DynLib.lookup() returning null, in the case the dynamic library isn't available (including that dlopen() is unavailable). neither of these happen in 0.14.0 so it gets pretty far (maybe too far)
+
+1741350972
+mountaingoat!~mountaing@user/mountaingoat
+s/followed by/or
+
+1741351125
+mountaingoat!~mountaing@user/mountaingoat
+i think it's this new ElfDynLib thing
+
+1741351422
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: yeah, the segfault is probably the dynamically linked thing you are dlopen()ing trying to access global state it expects to have been provided by libc
+
+1741351741
+daurnimator!~daurnimat@vultr.daurnimator.com
+yataro: this was in a fresh chroot
+
+1741352012
+Earnestly!~earnest@user/earnestly
+mountaingoat: Is there a way to test more directly for what you need rather than using .open()/.lookup() as proxy conditions?
+
+1741352058
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: i don't think there is a dlopen() in this case, since it's using the ElfDynLib impl... but maybe the library has some other dependencies like you said
+
+1741352061
+Earnestly!~earnest@user/earnestly
+(Although .open() for "is available" is not bad, iff you use the result)
+
+1741352164
+mountaingoat!~mountaing@user/mountaingoat
+Earnestly: i'm not sure. for 0.13.0, i'd been requiring libc because i needed dlopen(). i had just forgot -lc when running zig test and was surprised by the fault
+
+1741352206
+mountaingoat!~mountaing@user/mountaingoat
+Earnestly: i just want to opportunistically load a library if the platform is capable of loading libraries dynamically and the library is available
+
+1741352253
+Earnestly!~earnest@user/earnestly
+Hm, but is there a way to more directly check if dlopen is unavailable than using the failure of something related as sentinel for the thing you actually want to check?
+
+1741352359
+mountaingoat!~mountaing@user/mountaingoat
+well, dlopen() is an implementation detail. i just want to open a dynamic library, lookup a symbol for a function, and call it. apparently ElfDynLib should be able to do that too? otherwise open and lookup would fail
+
+1741352575
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: I was using "dlopen()" to describe the action of loading a dynamic library at runtime rather than to describe a particular implementation
+
+1741352583
+ifreund!2940d10f8b@user/ifreund
+I see how that was unclear
+
+1741352622
+mountaingoat!~mountaing@user/mountaingoat
+i think i'm seeing one instance of https://github.com/ziglang/zig/issues/21196
+
+1741352664
+mountaingoat!~mountaing@user/mountaingoat
+and the other fault is a little more unclear
+
+1741352712
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: you probably just want to add a comptime check that skips this call if libc is not linked
+
+1741352722
+ifreund!2940d10f8b@user/ifreund
+that issue will not be the only problem with doing this
+
+1741352919
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: yeah, that's fine for now, pretty much was the status quo for me anyway
+
+1741356265
+viscous24!c57c638cd7@user/viscous24
+sometimes TRY is ugly )))
+
+1741356269
+viscous24!c57c638cd7@user/viscous24
+const file_size = (try fh.stat()).size;
+
+1741356363
+blurrycat!~blurrycat@user/blurrycat
+How can I ensure that tests in my library that are no in `src/root.zig` are correctly run? My `src/root.zig` currently only does public imports of the other files in the library, and nothing else, and it seems that tests for my other files won't run with `zig build run`
+
+1741356402
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+blurrycat: at the bottom of the tests you want to be sure are running, put `return error.Fail`
+
+1741356434
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+viscous24: imo that's pretty tame for ugly code
+
+1741356458
+blurrycat!~blurrycat@user/blurrycat
+rockorager: doesn't seem to be working, my build summary doesn't mention tests failing/passing at all :/
+
+1741356476
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+To test that code, you need a test directive in root.zig: test { ... }, and that block can do a refAllDecls, or import the files you want to test specifically
+
+1741356540
+blurrycat!~blurrycat@user/blurrycat
+ah this is perfect I knew I was missing something, thanks a lot rockorager 
+
+1741360066
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+anyone know if there is a numeric pretty printer in std?
+
+1741360074
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+1000 -> 1,000
+
+1741360376
+ifreund!2940d10f8b@user/ifreund
+rockorager: it would be in std.fmt if it existed, but I'm pretty sure it doesn't
+
+1741360470
+blurrycat!~blurrycat@user/blurrycat
+If I'm using https://github.com/allyourcodebase/libgit2 as a dependency in my project, is there a way to import the `git2.h` header from this dependency? Currently it seems to import the one installed system-wide by my package manager but this is not great, and when I uninstall my libgit2-dev package Zig doesn't find the header anymore
+
+1741360529
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ifreund: thanks
+
+1741360765
+blurrycat!~blurrycat@user/blurrycat
+Or do I need to also add libgit2 (the upstream) as a dependency and do some `installHeadersDirectory` on my module?
+
+1741360799
+blurrycat!~blurrycat@user/blurrycat
+or rather `addIncludePath`, I'm not exactly sure
+
+1741360907
+torque!~tachyon@user/torque
+<rockorager> anyone know if there is a numeric pretty printer in std?
+
+1741360916
+torque!~tachyon@user/torque
+part of the problem with this is pretty-printing is locale specific
+
+1741360931
+torque!~tachyon@user/torque
+both in terms of separator characters as well as digit groupings
+
+1741361205
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yeah, I was just hoping there was a common case where I could specifier separator (',', '.', '_')
+
+1741363596
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+woohoo, I got antialiasing to  work on my lil renderer https://github.com/ezzieyguywuf/zcad/blob/main/README.md#demo
+
+1741363635
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+looks awesome
+
+1741363724
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, looking nice
+
+1741363907
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🎉
+
+1741368976
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+including liburing was easy, but python on the other hand seems to be pain `error: error: unable to find dynamic system library 'python' using strategy 'paths_first'. searched paths: ...`
+
+1741369586
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+system python is located in "/usr/include/python3.13/Python.h"
+
+1741369705
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig not search inside "/usr/include/" folder ? 
+
+1741369774
+grayhatter!~grayhatte@user/grayhatter
+stealth__: libs don't normally live in /usr/include they live in /usr/lib
+
+1741369793
+grayhatter!~grayhatte@user/grayhatter
+.../Python.h is a header file, not a dynamic system library
+
+1741369839
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i use something like `@cInclude("Python.h");` how would it know where to find that? 
+
+1741369978
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, i feel cheated, it wanted `exe.linkSystemLibrary("python3");` not `exe.linkSystemLibrary("python");` lol
+
+1741370009
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose it goes and finds libpython3.so 
+
+1741370144
+grayhatter!~grayhatte@user/grayhatter
+stealth__: so, you answered it for yourself already?
+
+1741370182
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya but thanks to your input was able to figure it out by searching the /usr/lib folder ;)
+
+1741376454
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can you import from root ? 
+
+1741378214
+andrewrk!~andrewrk@mail.ziglang.org
+try it and see
+
+1741378233
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+doesn't seem like it was working
+
+1741378300
+andrewrk!~andrewrk@mail.ziglang.org
+cool demo ezzieyguywuf
+
+1741378352
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so the lib goes in root.zig and exe goes in main.zig, what about obj ? 
+
+1741379151
+ifreund!2940d10f8b@user/ifreund
+you can call your root source file whatever you like regardless of what kind of artifact you are building
+
+1741379271
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it might be that you need to have lib.linkLibC(), ... and such as well with exe.linkLibC() as well.
+
+1741379364
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not sure why lib/exe exists if compiler can work with both and obj as well, just adds to confusion. maybe there is a good reason for it? 
+
+1741380959
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+executables, libs and object files are distinct things. I don't see which you think aren't necessary
+
+1741381074
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am asking whats the point of separating them if compiler can work with all of them together or separate.
+
+1741381162
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when it says "lib" is it talking about zig based library that use `export` or does it mean you bringing in C and other library as library? 
+
+1741381172
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+or to be used in this root.zig as library. 
+
+1741381223
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's talking about an .a or .so
+
+1741381262
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+root.zig is just an example of a zig lib compiled to a static library
+
+1741381292
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the reason to separate them is.. because they are separate things?
+
+1741381420
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, i suppose i just need more experience working with zig to distinguish things. this root must be a new thing, there isn't much coverage on it online.
+
+1741381589
+ifreund!2940d10f8b@user/ifreund
+"root" here means the root file of your zig module, i.e. the one that gets passed to `zig build-exe` or similar
+
+1741381606
+ifreund!2940d10f8b@user/ifreund
+if you do `zig build-exe foo.zig` foo.zig is the root file
+
+1741381612
+ifreund!2940d10f8b@user/ifreund
+that's all there is to it
+
+1741381776
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am using build.zig to handle all the build process. in root time it says you can delete this file and when you do, you get an error. you also have to remove the info from build.zig as well. 
+
+1741381800
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth__: the root.zig is there as an example of a static library, that's all. If you don't want/need a static library in your project, you can remove all that stuff
+
+1741381847
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, well i am writing a wrapper for python using zig, so i feel like i should be using the root/lib 
+
+1741381869
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I expect you want a .so then
+
+1741381897
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since its mostly going to be wrapping to C library.
+
+1741381898
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a shared library
+
+1741381899
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya
+
+1741381954
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you would use b.addSharedLibrary instead
+
+1741382004
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, i was wondering why `.linkage = .shared,` wasn't working.
+
+1741382157
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, "addSharedLibrary Deprecated: use `b.addLibrary(.{ ..., .linkage = .dynamic })` instead."
+
+1741382184
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, there you go
+
+1741382192
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+:)
+
+1741382194
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I've never made a shared lib in zig
+
+1741382236
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have made 0 lib in zig, only been trying to learn for around a week now 
+
+1741384912
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can i get main.zig to use the static library i created through root.zig? 
+
+1741384935
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+* static/dynamic
+
+1741385033
+blurrycat!~blurrycat@user/blurrycat
+stealth__: default build.zig when you `zig init` has an example of that yes
+
+1741385227
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have used `lib.linkSystemLibrary("python3");` so that library is accessible in the root.zig, now i get an error when main.zig gets run `error: C import failed` the way to fix this is to enable `exe.linkSystemLibrary("python3");` as well, now it is creating 2 separate compiles?
+
+1741385239
+SultansOfCode!~SultansOf@user/SultansOfCode
+I am using raylib-zig to be able to use raylib. But I wanna use a modified version of raylib with the changes I made locally (I am awaiting for the PR). Seems that I can modify the raylib-zig at will to include the new function prototypes and such, but I can not find from where it is getting the raylib.lib when linking and I need to use my updated
+
+1741385240
+SultansOfCode!~SultansOf@user/SultansOfCode
+version
+
+1741385306
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth__: are you still building main.zig into an executable and why?
+
+1741385332
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, just trying to understand/learn what it does. 
+
+1741385349
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's an example of building an executable, which you don't want
+
+1741385361
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so you are either suppose to use either root.zig or main.zig ? 
+
+1741385372
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you are supposed to do whatever you want to do
+
+1741385408
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the example project is an example project
+
+1741385422
+andrewrk!~andrewrk@mail.ziglang.org
+the idea of a template is that it has too much stuff in it, but it also has the thing you want to do, and so you delete what you don't need
+
+1741385450
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so remove the main.zig/exe stuff
+
+1741385479
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+see people wont get that right off the bat, for a while i thought that root.zig loads main.zig after since its "root" file.
+
+1741385514
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think someone online said the same thing. 
+
+1741387144
+blurrycat!~blurrycat@user/blurrycat
+in the build.zig if you look carefully you see that a library is created for root.zig, then an executable for main.zig, and that executable imports the library created from root.zig
+
+1741387310
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if someone new comes to zig like me they will think you need both the files/features cause you can't just delete the "main.zig" you also have to remove that info from build.zig as well.
+
+1741387341
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+at first i did delete the file and it gave me bunch of error so i was like crap better re-init it again and not delete it!
+
+1741387437
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, what line?
+
+1741387528
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's many lines
+
+1741387550
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+new users have to read build.zig eventually
+
+1741387563
+blurrycat!~blurrycat@user/blurrycat
+stealth__: it's not one specific line, lib stuff is called `lib_mod` and `lib`, exe stuff `exe_mod` and `exe`
+
+1741387597
+blurrycat!~blurrycat@user/blurrycat
+and other related lines that use that stuff down the line
+
+1741387605
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+build.zig also has a lot of comments
+
+1741387610
+blurrycat!~blurrycat@user/blurrycat
+the default build.zig is pretty well commented too
+
+1741387616
+blurrycat!~blurrycat@user/blurrycat
+ha Gliptic was faster :p
+
+1741387645
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I am speed
+
+1741387651
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would have been better if `build()` function ran two other function called `lib_loader()` and `exe_loader()` or something like that so ppl can go, o ya they are not the same.
+
+1741387952
+blurrycat!~blurrycat@user/blurrycat
+also the three lines at the top of main.zig and root.zig explain their respective roles 
+
+1741389148
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nice, so deleting the main.zig and commenting out, now it create a .so file in lib folder
+
