@@ -1,0 +1,800 @@
+1741393174
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+weird `clear && zig build -fincremental --watch --summary all test` you have to run twice to get the test to pass?
+
+1741393221
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like save twice?
+
+1741393625
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looks like its the `--watch` that's causing the issue.
+
+1741394081
+grayhatter!~grayhatte@user/grayhatter
+stealth__: sounds like you've written a non-deterministic test
+
+1741394171
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, its just a simple https://bpa.st/IOIQ
+
+1741395208
+torque!~tachyon@user/torque
+that function gives me hives. thanks for posting it again
+
+1741395331
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol, why? 
+
+1741395336
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+am i doing something wrong?
+
+1741395659
+torque!~tachyon@user/torque
+it is a very strange way to store a version number
+
+1741395705
+torque!~tachyon@user/torque
+also, there's no actual way you could get 2.91 out of that
+
+1741395768
+grayhatter!~grayhatte@user/grayhatter
+lol torque, I didn't even notice that the first time
+
+1741395803
+grayhatter!~grayhatte@user/grayhatter
+I saw the string being coerced to a float, and stopped reading at that bug
+
+1741396125
+torque!~tachyon@user/torque
+anyway, for why it's bad: f16 is a bizarro type to begin with. converting a major-minor version scheme to a single floating point value is not good in the first place, since you can't guarantee the mapping works both ways (ask yourself: what happens when version 2.10 is released?)
+
+1741397333
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww... its just a dummy function... its just a way for me to test to whole import from C to wrapping with zig to make accessible to Python
+
+1741397349
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the 2.91 is an error, for test to fail so zig test will give me error.
+
+1741397424
+torque!~tachyon@user/torque
+you could just as easily package the two versions into a struct or tuple and return that to test
+
+1741397476
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thats `liburing_version()` i am going to try and call it from python. thats why its a dummy function.
+
+1741397535
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+getting version info is easy, vs getting io_uring events, once the whole thing is working i can get serious coding
+
+1741397719
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i try to import .so file produced by zig into python i already get "ImportError: dynamic module does not define module export function (PyInit_liburing)" this is huge!!! normally you have to compile using a FFI library, then deal with setuptools and its bs. Zig just skipped all the middle man.
+
+1741398246
+elusivenode76!~hamish.ma@user/elusivenode76
+Hi all.  Has anybody been using the x86_64 self-hosted backend?
+
+1741401186
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what exactly are you referring too?
+
+1741432955
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Why was BoundedArray.pop() changed to return an optional? Now if the backing slice is empty it returns null (instead of that being an error) and for my use case (using BoundedArray as a stack) this means I need to add two additional checks at all ~55 (and counting) callsites 
+
+1741433040
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Along that line though this might be an opportunity to move to a custom stack (for a VM im implementing) datastructure. Is it correct that every access to BoundedArray results in a _copy_ of that value? That has to be the case right since it doesn't take an allocator?
+
+1741433729
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+cant you emulate old behavior with orelse undefined?
+
+1741433820
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+s/undefined/unreachable/
+
+1741433946
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+maybe, but this makes every callsite more obtuse and the returning of a null value will break the VM as implemented so given I have a TODO about exploring other data structures for the VM stack instead of a BoundedArray this feels like a smei-decent time to try
+
+1741433960
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+rather than add orelse undefined or other stuff everywhere
+
+1741433967
+Earnestly!~earnest@user/earnestly
+Check the impl. code
+
+1741433994
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+What do you mean check the implementation code? Wrt to what, the optional stuff or the copy question I had?
+
+1741434027
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+(I've already checked the code) but if your comment is wrt the copy question it's so I can confirm my understanding
+
+1741434049
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ACTION quietly glides over how he just forgot orelse undefined is .?
+
+1741434165
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ACTION ...and how he keeps mislabelling unreachable as undefined for brain fart reasons
+
+1741434172
+ifreund!2940d10f8b@user/ifreund
+tsujp: calling pop when the backing slice was empty used to be illegal
+
+1741434179
+ifreund!2940d10f8b@user/ifreund
+if your code ever did that it was broken
+
+1741434206
+ifreund!2940d10f8b@user/ifreund
+BoundedArray.pop().? in 0.14 has the exact same semantics as pop() did in 0.13
+
+1741434301
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: yes correct, and that runtime crash was desireable here. The context is for a VM. User provides bytecode, if they provide bad bytecode (like trying to pop something off the stack which doesn't exist) then a crash is expected/desired
+
+1741434336
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm the same semantics.. but it says it returns null if the slice is empty
+
+1741434450
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+did you mean same semantics as popOrNull ?
+
+1741434479
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah, pop().?, gotcha
+
+1741434489
+ifreund!2940d10f8b@user/ifreund
+tsujp: no, that crash is illegal and your code should never reach it
+
+1741434502
+ifreund!2940d10f8b@user/ifreund
+it's undefined behavior in release fast for example
+
+1741434518
+ifreund!2940d10f8b@user/ifreund
+illegal behavior in debug/release safe
+
+1741434547
+ifreund!2940d10f8b@user/ifreund
+the fact that your code implements a VM doesn't change whether or not this is UB
+
+1741435956
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: i think i see what you're saying now, you're talking about using the null value which is illegal, right? in that case yes i agree but also just being given back a null value should also be an error, in the latter case it seems like an extra check at each callsite will be required yes?
+
+1741436056
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: example, imagine this VM has an instruction POP which does just this _ = self.bounded_array.pop();   well a user passing bytecode that executes FOO over and over again when bounded_array has nothing in it _isn't_ an error anymore, only if you try and use that value will it become on but the POP opcode doesn't _use_ the value it just pops it
+
+1741436102
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ugh right as I type this I realised I didn't use .? there and now _ = self.bounded_array.pop().?;   fails as expected
+
+1741436120
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+my bad ifreund once again on IRC when im very tired, making mistakes
+
+1741436180
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+onto the other thing though.. access to an element in a bounded array beit get or pop returns a _copy_ of the thing at that index right? if said bounded array is an array of u256 elements this copy is essentially free however?
+
+1741438548
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if you had a very large switch-case statement and wanted to add logging for each of the cases is there a nice approach that isn't literally adding "logStuff(...);" within every single prong? It's not in a while loop so hoisting it up isn't an option
+
+1741453369
+grayhatter!~grayhatte@user/grayhatter
+are the stdlib docs hanging for anyone else when you hit `s` from a source view?
+
+1741453868
+fortruce_!~joseph@user/fortruce
+I'm trying to add raylib_zig to my build.zig as a dep but its failing to find some dynamic system libraries e.g. "unable to find dynamic system library 'wayland-client'" it looks for `/usr/lib64/libwayland-client.so` but I have `/usr/lib64/libwayland-client.so.0` -- how can I fix these to find the system library versions I have?
+
+1741454038
+fortruce_!~joseph@user/fortruce
+Here is a gist of my output and build.zig https://gist.github.com/josephmr/a87c1a32aa808c6cf7a0fb69446176b7
+
+1741454256
+fortruce_!~joseph@user/fortruce
+classic example of banging my head against a wall, asking for help, then immediately finding the solution -- I needed a few extra packages: mesa-libEGL-devel wayland-devel libxkbcommon-devel
+
+1741461249
+SultansOfCode!~SultansOf@user/SultansOfCode
+I have a function that expects an argument of type [][*:0]const u8, how to pass an argument to it? It is an array of strings, no?
+
+1741461366
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+do you control the signature?
+
+1741461405
+grayhatter!~grayhatte@user/grayhatter
+&[_][:0]const u8{"string", "other string"};
+
+1741461415
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you probably want []const []const u8, or maybe []const [:0]const u8
+
+1741461511
+SultansOfCode!~SultansOf@user/SultansOfCode
+No, its from raygui lib
+
+1741461522
+SultansOfCode!~SultansOf@user/SultansOfCode
+const tabs = &[_][:0]u8{ "TAB1", "TAB2", "TAB3" }; gives me src\main.zig:27:34: error: expected type '[:0]u8', found '*const [4:0]u8'
+
+1741461576
+SultansOfCode!~SultansOf@user/SultansOfCode
+This is the signature pub fn guiTabBar(bounds: Rectangle, text: [][*:0]const u8, active: *i32) i32 {
+
+1741461620
+grayhatter!~grayhatte@user/grayhatter
+var tabs = 
+
+1741461643
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you need a const before {
+
+1741461672
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it’s complaining that TAB1 is const (string literals are always const)
+
+1741461674
+grayhatter!~grayhatte@user/grayhatter
+oh, rockorager is right too [:0] const u8
+
+1741461729
+SultansOfCode!~SultansOf@user/SultansOfCode
+Added const and got: src\main.zig:29:79: error: expected type '[][*:0]const u8', found '*const [3][:0]const u8'
+
+1741461750
+SultansOfCode!~SultansOf@user/SultansOfCode
+const tabs = &[_][:0]const u8{ "TAB1", "TAB2", "TAB3" }; _ = rg.guiTabBar(.{ .x = 50, .y = 300, .width = 200, .height = 200 }, tabs, &active);
+
+1741461755
+SultansOfCode!~SultansOf@user/SultansOfCode
+This is the code
+
+1741461796
+grayhatter!~grayhatte@user/grayhatter
+bruteforce code generation is often much slower than thinking through the problem you're trying to solve
+
+1741461832
+grayhatter!~grayhatte@user/grayhatter
+take a minute, to try to understand both the errors, your code, and then the code snipets rockorager and I have given you
+
+1741461864
+SultansOfCode!~SultansOf@user/SultansOfCode
+Zig's [] [_] [*] [:0] [*:0] & are the most difficult thing to learn until now... Never know when it is an array, when struct, etc.
+
+1741461878
+SultansOfCode!~SultansOf@user/SultansOfCode
+But both code snippets also does not work
+
+1741461900
+grayhatter!~grayhatte@user/grayhatter
+it's not that hard if you stop to think about it, you have to think about what const means if you want to understand it
+
+1741461937
+SultansOfCode!~SultansOf@user/SultansOfCode
+But the will always be const and never mutades inside the called function (even the signature not having const on it)
+
+1741461953
+SultansOfCode!~SultansOf@user/SultansOfCode
+they*
+
+1741461954
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: that's incorrect
+
+1741461968
+grayhatter!~grayhatte@user/grayhatter
+that's why rockorager asked if you can change the function signature 
+
+1741461991
+grayhatter!~grayhatte@user/grayhatter
+because that function *could* replace "TAB1" with a different `const u8` string if it wanted
+
+1741462016
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yeah, from the signature looks like it can. But looking at the C source of it, it will not
+
+1741462052
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But even if it doesn’t it could in the future without changing its promise to you
+
+1741462056
+grayhatter!~grayhatte@user/grayhatter
+does or dosen't doesn't matter that much in this case. 
+
+1741462068
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The signature says it can
+
+1741462071
+grayhatter!~grayhatte@user/grayhatter
+^ this
+
+1741462083
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So you need to pass a type that can have the strings changed
+
+1741462088
+grayhatter!~grayhatte@user/grayhatter
+> Never know when it is an array, when struct, etc.
+
+1741462113
+grayhatter!~grayhatte@user/grayhatter
+it's actually really easy... you just haven't spent enough time studying, trying to understand, and proving your understanding yet
+
+1741462194
+grayhatter!~grayhatte@user/grayhatter
+I did the same thing, until I got sick of all the compile errors, and stopped and took the time... for me it was how `[4]u8` and `[]u8` are different, and what that means for where the compiler will put or find the bytes
+
+1741462213
+grayhatter!~grayhatte@user/grayhatter
+then [*:0]u8 is easy, beacuse it's just [:0] but without a length
+
+1741462270
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+TIL 
+
+1741462308
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I haven’t used that type of slice very much, and generally have no clue what’s happened when there is a * in [] haha
+
+1741463918
+torque!~tachyon@user/torque
+that's not techincally a slice, it's a many pointer
+
+1741463977
+torque!~tachyon@user/torque
+not often something you need to use unless interfacing with C, since slices are normally the better option in zig-zig code
+
+1741464034
+torque!~tachyon@user/torque
+though it is also useful for low-level slice manipulation
+
+1741464048
+grayhatter!~grayhatte@user/grayhatter
+DNS packets are packed in a way that it's actually nicer to use [*]slice, instead of []slice
+
+1741464130
+grayhatter!~grayhatte@user/grayhatter
+I'm still using []u8, becuase it's more idiomatic, but I spent half a day until I gave up and did it the zig way
+
+1741464819
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yeah, no success yet hahahahaha
+
+1741465143
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+damn.. this is so cool, was able to get the demo working to import C liburing all the way to python from zig using cpython api with single compile run
+
+1741465272
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+and yes run that stupid version function, end results `2.900390625` lol
+
+1741465348
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*ran
+
+1741466910
+torque!~tachyon@user/torque
+re: DNS packets that doesn't really make any sense to me but I don't know the details
+
+1741467261
+grayhatter!~grayhatte@user/grayhatter
+the answer section comes after the question section, but is allowed to refer to domain strings from previous sections. I wanted to just pass the answer sections bytes to the parser, but it needs to be able to look backwards before it's own start
+
+1741468407
+GreaseMonkey!greaser@user/greasemonkey
+oh right [] [_] [*] [:0] [*:0] and your bonus ball [*c]... they can be a little tricky at first, in general you mostly want [], [_] and maybe [:0] unless you're interfacing C code in which case you'll have to work out whether it's [*] or [*:0]
+
+1741468472
+GreaseMonkey!greaser@user/greasemonkey
+C strings are [*:0], C arrays are [*] paired with a length and you can convert this by doing e.g. if you have (buf_ptr: [*]u32, buf_len: usize) you can do const buf = buf_ptr[0..buf_len];
+
+1741468484
+GreaseMonkey!greaser@user/greasemonkey
+the sooner a "many" pointer is turned into a slice, the better
+
+1741468511
+GreaseMonkey!greaser@user/greasemonkey
+...oh right also * is a thing, that's a pointer to one thing and one thing only (unless you insist on casting things), and also ? is used for nullable pointers
+
+1741468529
+GreaseMonkey!greaser@user/greasemonkey
+so typically a nullable string ends up being ?[*:0]u8
+
+1741468800
+GreaseMonkey!greaser@user/greasemonkey
+(erm... a nullable C string that is). anyway, [_] is an array, [] and [:0] are slices of which the latter is typically an annoying form of it, and [*] and [*:0] and * are pointers
+
+1741469230
+tusf!cb6c78d75e@user/TUSF
+[*] is also useful if you're already storing the length somewhere else. I think it makes more sense for a struct-of-arrays to use it, for example.
+
+1741469257
+tusf!cb6c78d75e@user/TUSF
+Otherwise you're storing the same length N times.
+
+1741469374
+tusf!cb6c78d75e@user/TUSF
+(Although, in the case of a SoA, Zig has MultiArrayList, which handles that for you)
+
+1741469792
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig have anything like a wrapper function? or do you need to create one?
+
+1741469942
+SultansOfCode!~SultansOf@user/SultansOfCode
+GreaseMonkey, thanks. So, basically, everything has ptr and len, unless specified? [_] and [N] are the same thing? On explicit and the other says to the compiler "f*ck you, figure it out yourself"?
+
+1741469978
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I have no idea how or what you'd define a wrapper function as, so I'm gonna assume you have to create it
+
+1741470034
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, like `@warp(); def my_function():...` in python
+
+1741470037
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wrap*
+
+1741470050
+blurrycat!~blurrycat@user/blurrycat
+you mean decorators?
+
+1741470051
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: no, and yes but your ordered them backwards
+
+1741470070
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well decorators are used for wrapping a function
+
+1741470095
+blurrycat!~blurrycat@user/blurrycat
+decorators wrap a function, but "wrapper functions" are not all decorators
+
+1741470105
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would be same as `wrap(my_function())`
+
+1741470140
+grayhatter!~grayhatte@user/grayhatter
+stealth_: decorators arguably don't wrap functions. That's just the way that most people use python's sugar
+
+1741470141
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is the idiom in zig to use come kind of compile time function/feature to do the same.
+
+1741470186
+grayhatter!~grayhatte@user/grayhatter
+stealth_: the idiom in zig is to write your own code, instead of using external magic
+
+1741470208
+grayhatter!~grayhatte@user/grayhatter
+anything remotely like a python decorator is not idiomatic zig
+
+1741470250
+blurrycat!~blurrycat@user/blurrycat
+stealth_: decorators in python are used for all kinds of shit, there no single equivalent idiom in zig
+
+1741470269
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have to write 1 cpython wrapper function + struct for every zig function i write, so i figure it might be good to just automate (maybe) it.
+
+1741470297
+blurrycat!~blurrycat@user/blurrycat
+write a shell script?
+
+1741470324
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why?
+
+1741470372
+GreaseMonkey!greaser@user/greasemonkey
+you could think of it this way: []T = struct { ptr: [*]T, len: usize }
+
+1741470400
+blurrycat!~blurrycat@user/blurrycat
+to automate writing repetitive code. I don't see how decorators would help in this case 
+
+1741470403
+GreaseMonkey!greaser@user/greasemonkey
+&[_]T = []T and the same for &[N]T
+
+1741470412
+grayhatter!~grayhatte@user/grayhatter
+stealth_: for (@typeInfo(T).@"struct".decls) |decl| emit_cpydef(decl)
+
+1741470421
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, last thing i wana do is write shell script. 
+
+1741470463
+blurrycat!~blurrycat@user/blurrycat
+anyway listen to grayhatter, he's the knowledgeable one here
+
+1741470505
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya, well maybe when i get a bit better at coding zig. i already jumped a lot going from writing hello world function to wrapping 2 rd part library. 
+
+1741470509
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: nah, I think you just described python decorators better than I did, so if anything, we're equal here
+
+1741470554
+blurrycat!~blurrycat@user/blurrycat
+flattery accepted
+
+1741470570
+grayhatter!~grayhatte@user/grayhatter
+stealth_: if figure out how @typeInfo(Type) works, you'll have a way to generate your cdef's without any dark magic. If you were really smart, you could write a custom build function that does that too
+
+1741470584
+grayhatter!~grayhatte@user/grayhatter
+but, I mention this because you *can* not because you should
+
+1741470620
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, why i would want to wait till i get a bit better... 
+
+1741470634
+grayhatter!~grayhatte@user/grayhatter
+if it's easier to write code to generate your API shim, than it is to copy/paste, and write it by hand (given it would be malpractice not to review it after generating it)... that's a sign that your API is bad, and you should feel bad
+
+1741470662
+grayhatter!~grayhatte@user/grayhatter
+so, forcing yourself to write it by hand encourages you not to build a trash API that people hate
+
+1741470688
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't want to write something and 0.15 i have to rewrite everything, like those zig-pydust guys, they can't upgrade from 0.11 or something cause of new features and they have to redo their whole code structure
+
+1741470691
+blurrycat!~blurrycat@user/blurrycat
+>given it would be malpractice not to review it after generating it
+
+1741470700
+blurrycat!~blurrycat@user/blurrycat
+never seen anyone review anything that has been codegen'd
+
+1741470712
+blurrycat!~blurrycat@user/blurrycat
+(not to say that it's a good thing, on the contrary)
+
+1741470749
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: I've seen bots do codegen/translations that were rubberstamped, which has taken the whole site down before
+
+1741470767
+blurrycat!~blurrycat@user/blurrycat
+stealth_: You don't have to rewrite _everything_ between each version of Zig
+
+1741470791
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true, i don't really know what the API will entail yet.
+
+1741470816
+grayhatter!~grayhatte@user/grayhatter
+every change to source code should be reviewed, by 2 agents... I was gonna say 2 humans, for 1 author, and 1 reviewer, but there's some wiggle room there
+
+1741470840
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: yeah we have something like that at work too, every two weeks something breaks because someone updated their protobuf, the bot codegen'd the world, and nobody reviewed anything 
+
+1741470911
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: see, you already agree... or maybe you don't agree, and like shipping code that breaks stuff. But that would be to embarrasing for me to tollerate. I like taking pride in my code and don't like shipping garbage 
+
+1741470922
+blurrycat!~blurrycat@user/blurrycat
+stealth_: no but I mean each new version breaks less and less things, upgrading from 0.13 to 
+
+1741470930
+blurrycat!~blurrycat@user/blurrycat
+0.14 was relatively minor changes all around
+
+1741470975
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, i am already rewriting 2 different library using zig now.
+
+1741470993
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: I try not to break things, I take pride in shipping correct code too, we already have JavaScripts developers for sloppy work :o)
+
+1741471010
+grayhatter!~grayhatte@user/grayhatter
+stealth_: generally, you should only solve problems you *do* have, and instead religate problems you might have to just thinking hard about them
+
+1741471043
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: lol ❤️‍🔥
+
+1741471103
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i dono, you are talking about "if its not broken, don't fix it" mentality, why C people never fixed C! cause they where all suffering from stockholm syndrome
+
+1741471138
+blurrycat!~blurrycat@user/blurrycat
+C works perfectly well, it's just an absolute minefield
+
+1741471185
+blurrycat!~blurrycat@user/blurrycat
+Also, the fact that Zig exists is proof that people are trying to fix C :p
+
+1741471242
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well thank goodness Andrew figured out whats wrong with C and now we have Zig. Now i can use C library without coding in C and still get the full (if not better) speed.
+
+1741471343
+grayhatter!~grayhatte@user/grayhatter
+stealth_: no, that's not at all what I said. I said if it's broken fix it, if it's not broken, save your time an attention for stuff that is broken. But there's nothing wrong with C, all of the changes that would improve C would likely break existing code, and the c committee would do nothing than improve the language in a non-backwards compatable way.
+
+1741471361
+grayhatter!~grayhatte@user/grayhatter
+would rather do nothing
+
+1741471448
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, well i will get back to coding :)
+
+1741471471
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thanks for input you guys really do help clear things up 
+
+1741471494
+grayhatter!~grayhatte@user/grayhatter
+you can spend 4hours trying to solve a problem you imagine but haven't seen yet, or you spend 1 hour writing code and then +2 hours rewriting all that code because now you actually see that problem. The best way to understand some problem is to run head first into it
+
+1741471595
+grayhatter!~grayhatte@user/grayhatter
+Took me a while to figure out how to be willing to throw away a lot of code and start over, and I'm still bad at doing it. But it's so much faster, and results in much higher quality code... you just have to be willing to throw away hours-days of work and start over...
+
+1741471620
+grayhatter!~grayhatte@user/grayhatter
+that's easy, right?
+
+1741471623
+blurrycat!~blurrycat@user/blurrycat
+99% code churn gang unite
+
+1741471648
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what i was saying is i don't know what to write yet! since i am so new to the language. recoding stuff wouldn't be that much of a problem.
+
+1741471745
+blurrycat!~blurrycat@user/blurrycat
+stealth_: writing code to solve problems _you_ have is a good way to find what to write
+
+1741471820
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true, but i will also waste a lot of time i don't have 
+
+1741471845
+blurrycat!~blurrycat@user/blurrycat
+Is it really a waste of time if you've learned something in the process?
+
+1741472010
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am not a full-time coder though, i only code as a hobby now. i have to get back to other stuff i do.
+
+1741472470
+SultansOfCode!~SultansOf@user/SultansOfCode
+A function expects *f32, inside my struct I am calling it and passing &self.value, value is f32, why is it saying it is a const?
+
+1741472615
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+SultansOfCode, all function argument are const by default
+
+1741472766
+SultansOfCode!~SultansOf@user/SultansOfCode
+_ = rg.guiSliderBar(self.scrollbar, "", "", &self.value, 0, 1); and value is a f32 field inside the struct. But the compiler says: src\main.zig:44:53: error: expected type '*f32', found '*const f32'
+
+1741472794
+SultansOfCode!~SultansOf@user/SultansOfCode
+It does not happen if, beffore calling this function, I create a var v: f32 = 0; and pass &v
+
+1741472883
+blurrycat!~blurrycat@user/blurrycat
+Is there a way to do something like `if (@enumFromInt(value) == ._)`? Compiler is unhappy with that unfortunately
+
+1741472885
+SultansOfCode!~SultansOf@user/SultansOfCode
+And it fixes itself if instead of self: MyType I pass self: *MyType and access it as: &self.*.value
+
+1741472913
+SultansOfCode!~SultansOf@user/SultansOfCode
+blurrycat: cast the @enumFromInt to the desired type
+
+1741472943
+blurrycat!~blurrycat@user/blurrycat
+Yeah my sample is shortened but I actually do `var foo: MyEnum = @enumFromInt(value);` first
+
+1741472984
+blurrycat!~blurrycat@user/blurrycat
+Rather I think my question really is: is there a way to check if a non-exhaustive enum is `_`?
+
+1741472987
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+SultansOfCode: is `self` const?
+
+1741473489
+blurrycat!~blurrycat@user/blurrycat
+Hm I guess `std.enums.tagName()` could do what I want
+
+1741473641
+SultansOfCode!~SultansOf@user/SultansOfCode
+rockorager: in the parameters, no. It is: pub fn draw(self: MyType) void {}
+
+1741473656
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Parameters are always const
+
+1741473686
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you need it to be a pointer: pub fn draw(self: *MyType)
+
+1741473702
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Then when you do &self.value, you will get a *f32
+
+1741475733
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i get this `error: ld.lld: undefined symbol: PyModule_Create2` only when i run `zig build test` but the build part works normally and the .so itself works, 
+
+1741475813
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+code: https://bpa.st/A7WQ#1L36-L36
+
+1741476361
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: you need to understand where the bytes are. If you don't, you'll be unable to determine if your code is correct.
+
+1741476417
+grayhatter!~grayhatte@user/grayhatter
+`*f32` is not a number, which is why the const of it matters
+
+1741476495
+Earnestly!~earnest@user/earnestly
+(*Technically is a number, which is how a haskell lib managed to make quite a lot of general data structures sortable in O(n) time using counting sort)
+
+1741476557
+grayhatter!~grayhatte@user/grayhatter
+lol, Earnestly funny... but that level of pedantry is too much even for me. 
+
+1741476563
+grayhatter!~grayhatte@user/grayhatter
+`*f32` is not a float, which is why the const of it matters
+
+1741476566
+grayhatter!~grayhatte@user/grayhatter
+better?
+
+1741476569
+Earnestly!~earnest@user/earnestly
+I keep forgetting the library name
+
+1741476660
+Earnestly!~earnest@user/earnestly
+https://hackage.haskell.org/package/discrimination
+
+1741476719
+Earnestly!~earnest@user/earnestly
+This seems so obviously clever but I'm not sure about the construction costs 
+
