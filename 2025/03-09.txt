@@ -1,0 +1,1340 @@
+1741490354
+SultansOfCode!~SultansOf@user/SultansOfCode
+Still with problems with my struct. It has a function that handles itself: pub fn update(self: MyType) {}, when I do self.property = true; it says I am trying to change a constant
+
+1741490520
+SultansOfCode!~SultansOf@user/SultansOfCode
+It sounds weird to always need to pass as *MyType and use everytime self.*.property inside the function
+
+1741490921
+sp2!uid197664@user/meow/sp2
+Zig will allow field access through a pointer
+
+1741490944
+sp2!uid197664@user/meow/sp2
+(if `self: *MyType`, `self.property` will still work)
+
+1741491682
+SultansOfCode!~SultansOf@user/SultansOfCode
+sp2, thanks :D
+
+1741491927
+SultansOfCode!~SultansOf@user/SultansOfCode
+And what is the best way to create an array of structs?
+
+1741491959
+SultansOfCode!~SultansOf@user/SultansOfCode
+I did: const WindowList: type = std.MultiArrayList(FloatWindow); var windows: WindowList = WindowList{}; defer windows.deinit(gpa.allocator()); try windows.append(gpa.allocator(), FloatWindow.init(50, 50, 200, 100, "Window 1", true));
+
+1741491973
+SultansOfCode!~SultansOf@user/SultansOfCode
+Seems to be working fine, but dunno if it is the best way to achieve it
+
+1741492021
+SultansOfCode!~SultansOf@user/SultansOfCode
+And dunno how to iterate over it calling functions from the structs
+
+1741492131
+sp2!uid197664@user/meow/sp2
+MultiArrayList is a special-case data structure for struct-of-arrays (SOA); ArrayList is probably what you want
+
+1741492195
+sp2!uid197664@user/meow/sp2
+you can iterate over an ArrayList's `.items` field, and capture each item as a pointer by adding a `*` to the capture: `for (array_list.items) |*item| {}`
+
+1741492381
+SultansOfCode!~SultansOf@user/SultansOfCode
+Way sexier. Thanks again :D
+
+1741492696
+SultansOfCode!~SultansOf@user/SultansOfCode
+No reverse for loop? o.0
+
+1741492801
+sp2!uid197664@user/meow/sp2
+nope. to the `while` you go, haha
+
+1741523231
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Hi! I've got a bit of time to kill on this nice sunday and decided to finally learn me some Zig. I'm currently setting up my environment, and I'm wondering if there's a "typical" kind of setup that most folks use (like are people mainly using released versions or is it more common to use prereleases?), and if https://github.com/zigtools/zls is a good choice for an LSP or if there's a better option
+
+1741523247
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+If any of y'all fine folk have pointers for a Zig newbie, I'd be happy to hear them :)
+
+1741523416
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+... and I just now found the "Getting Started" guide in the docs that seems to answer most of my questions, so uh, probably disregard what I said before :D
+
+1741523578
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+farhaven: most stick to last release which is now 0.14.0
+
+1741523584
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+zls is good
+
+1741523598
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+and ziglings is a pretty good intro
+
+1741530267
+janvhs!8d8fee6549@user/janvhs
+depending on your experience with programming in general, it might be a good idea to have the docs and stdlib docs open in the browser and just start to write the program you want to write. For me that’s the best way to pick up a language and doing things the “zig way” will come with time and reading others code
+
+1741532883
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Yeah, I think that's what I'll end up doing. I wouldn't say I'm an expert programmer or anything like it but I do have a few years of experience with some variety of languages :)
+
+1741535940
+txdv!~txdv@78.58.158.251
+When I add         .flags = &[_][]const u8{ "-include", "utils/s2n_prelude.h" }, my artifact fails starts failing to compile with FilesNotFound,  /tls/s2n_record_read_cbc.c:1:1: error: FileNotFound :/
+
+1741537022
+grayhatter!~grayhatte@user/grayhatter
+txdv: sounds like the file isn't found
+
+1741537120
+grayhatter!~grayhatte@user/grayhatter
+hard to be more helpful without more information
+
+1741539663
+txdv!~txdv@78.58.158.251
+https://github.com/txdv/aws-sdk-zig/blob/master/build.zig#L81
+
+1741539757
+txdv!~txdv@78.58.158.251
+The file is not missing, adding that flag changes the compilation command from `/home/bentkus/Projects/zig/binary/zig-linux-x86_64-0.13.0/zig build-lib /home/bentkus/.cache/zig/p/122089841a40548044ce304ee8ef09423d84082a5cda76a88c775a6580281555a9eb/stuffer/s2n_stuffer.c ...` to `/home/bentkus/Projects/zig/binary/zig-linux-x86_64-0.13.0/zig build-lib -cflags -include utils/s2n_prelude.h --
+
+1741539760
+txdv!~txdv@78.58.158.251
+/home/bentkus/.cache/zig/p/122089841a40548044ce304ee8ef09423d84082a5cda76a88c775a6580281555a9eb/stuffer/s2n_stuffer.c` which makes it fail for some reason
+
+1741539870
+txdv!~txdv@78.58.158.251
+all of the files are compiled with -include utils/s2n_prelude.h by the original compilation script, but here it behaves so weirdly when you add those flags
+
+1741539909
+grayhatter!~grayhatte@user/grayhatter
+why did you list that header as a source flag there, bet add other paths using addIncludePath?
+
+1741539980
+txdv!~txdv@78.58.158.251
+Its what they do in the original library https://github.com/aws/s2n-tls/blob/main/CMakeLists.txt#L195
+
+1741540088
+grayhatter!~grayhatte@user/grayhatter
+CMake is more of a warning of what not to do, rather than an example to emulate
+
+1741540785
+txdv!~txdv@78.58.158.251
+wat
+
+1741541304
+txdv!~txdv@78.58.158.251
+cmake generates in the end this command `cc .... -Wuninitialized -Wunused -Wwrite-strings -Wa,--noexecstack -Wno-deprecated-declarations -Wno-missing-braces -Wno-strict-prototypes -Wno-unknown-pragmas -Werror -fvisibility=hidden -DS2N_EXPORTS=1 -f
+
+1741541307
+txdv!~txdv@78.58.158.251
+PIC -include /home/bentkus/Projects/c/s2n-tls/utils/s2n_prelude.h -MD -MT CMakeFiles/s2n.dir/crypto/s2n_aead_cipher_aes_gcm.c.o -MF CMakeFiles/s2n.dir/crypto/s2n_aead_cipher_aes_gcm.c.o.d -o CMakeFiles/s2n.dir/crypto/s2n_aead_cipher_aes_gcm.c.o -c /home/
+
+1741541309
+txdv!~txdv@78.58.158.251
+bentkus/Projects/c/s2n-tls/crypto/s2n_aead_cipher_aes_gcm.c` but I don't say in the source code that there is a way to add -include in the zig build system https://github.com/ziglang/zig/blob/master/lib/std/Build/Module.zig#L540
+
+1741541755
+txdv!~txdv@78.58.158.251
+https://github.com/ziglang/zig/blame/17b40b1d6843b4038c7e187ba95184971b2a5456/lib/std/Build/Step/Compile.zig#L1297 this is where its adding the -- :/
+
+1741542289
+txdv!~txdv@78.58.158.251
+after adding -- it doesn't find files that exist :/
+
+1741542457
+torque!~tachyon@user/torque
+ask yourself, where is it trying to find "utils/s2n_prelude.h"
+
+1741542498
+txdv!~txdv@78.58.158.251
+torque: omg thanks
+
+1741542573
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it looks like when i run the `build test` https://bpa.st/A7WQ#1L35-L35 the `export` function gets triggered? and its trying to load/run that function, maybe since its "export" is run regardless? 
+
+1741542613
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+test is only for zig based function
+
+1741542782
+torque!~tachyon@user/torque
+what do you mean by "trying to run it"
+
+1741542821
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it executes line:35 and tries to return line:36, even if i am just running the test
+
+1741542846
+torque!~tachyon@user/torque
+export functions are always analyzed (they have to be, because the keyword means "someone in an external codebase will use this function through the library boundary")
+
+1741542858
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i run build everything compiles ok with no problems 
+
+1741542917
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i run test i get `error: ld.lld: undefined symbol: PyModule_Create2` meaning that export function being run
+
+1741542917
+torque!~tachyon@user/torque
+what is "it" and how are you determining that "it" is executing line 35
+
+1741542928
+torque!~tachyon@user/torque
+no, it is not being run
+
+1741542940
+torque!~tachyon@user/torque
+it is being generated into code and failing to link
+
+1741542949
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well whatever you wana call it, there is no reason it that error to happen when i run test. 
+
+1741542969
+torque!~tachyon@user/torque
+it has to because it is an export function
+
+1741542995
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a condition i can use to not export when testing ?
+
+1741542997
+torque!~tachyon@user/torque
+your options are to either link python in your test correctly (probably the better option) or to stub out that function specifically if you are compiling for test
+
+1741543008
+grayhatter!~grayhatte@user/grayhatter
+stealth_: just fix your code
+
+1741543050
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+stub out? 
+
+1741543063
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am trying to fix the code, why i am asking here, so i know how to fix it. 
+
+1741543108
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is how the build.zig looks https://bpa.st/CGLA
+
+1741543131
+torque!~tachyon@user/torque
+you can use `builtin.is_test` (with `const builtin = import("bultin");`) to determine at comptime if the code is being built for test
+
+1741543139
+torque!~tachyon@user/torque
+the rest I leave as an exercise to the reader
+
+1741543146
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have already linked the `lib` not sure what you mean by `link python in your test`
+
+1741543185
+torque!~tachyon@user/torque
+you are not linking them to your "lib_unit_tests" which is a separate target
+
+1741543186
+grayhatter!~grayhatte@user/grayhatter
+torque: major + minor * 0.1 :P
+
+1741543210
+torque!~tachyon@user/torque
+im being triggered
+
+1741543223
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you should spend more time thinking, you already have the answers you're looking for, you just need to put the peices together
+
+1741543234
+grayhatter!~grayhatte@user/grayhatter
+you don't need people from IRC to do that for you
+
+1741543249
+grayhatter!~grayhatte@user/grayhatter
+> why is my code being run 
+
+1741543259
+grayhatter!~grayhatte@user/grayhatter
+is the worst way to ask about the part that you're confused about
+
+1741543311
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, not linking them? you mean adding `lib_unit_tests.linkSystemLibrary("python3");`, ...?
+
+1741543317
+torque!~tachyon@user/torque
+yes
+
+1741543326
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i get the same error
+
+1741543350
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i had already tried that before as  well. 
+
+1741543358
+grayhatter!~grayhatte@user/grayhatter
+which, is a duplicate error that I've seen you solve already
+
+1741543410
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that trick worked for `lib.linkSystemLibrary("python3");` not for `lib_unit_tests.linkSystemLibrary("python3");`
+
+1741543430
+torque!~tachyon@user/torque
+this may be a weird interaction of the build api. I think the better way would probably to add those link library calls to the module rather than the lib
+
+1741543450
+torque!~tachyon@user/torque
+and calling it a "trick" is a very odd way to describe "properly compiling your program"
+
+1741543499
+grayhatter!~grayhatte@user/grayhatter
+CMake developers hate this one weird trick!
+
+1741543559
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+anyways, so you are saying not to use the `lib` but to use the `exe` to build? I have already tried that and got the same error, but i had both lib/exe enabled. 
+
+1741543566
+grayhatter!~grayhatte@user/grayhatter
+remember this one weird trick that zig builders don't want you to know about!
+
+1741543729
+torque!~tachyon@user/torque
+i'm suggesting something like https://zigbin.io/2ff151
+
+1741543742
+torque!~tachyon@user/torque
+can't test it since I don't have your code and I'm not on linux
+
+1741543801
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, thanks, i will try it out
+
+1741543883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+:( same issue
+
+1741543885
+torque!~tachyon@user/torque
+in theory that's what was happening previously. I'm not sure why the test executable would be failing to link python while the library works, except maybe the linker is being less careful around the library for some reason
+
+1741543901
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya! i don't get it either.
+
+1741543952
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i did narrow it down to that "export" keyword, if not for that test works, but then python c api doesn't work. 
+
+1741544553
+torque!~tachyon@user/torque
+yes because without `export` that function doesn't get analyzed or generated into code
+
+1741544579
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mhmm
+
+1741544582
+torque!~tachyon@user/torque
+you should try to build verbosely and look at the actual compiler command lines getting emitted and see if anything looks like it is missing
+
+1741544609
+torque!~tachyon@user/torque
+this could be `build-exe` acting weird, but I think that's pretty unlikely
+
+1741544642
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+as you can see, i m not using the build-exe, build would be running build-lib internally? 
+
+1741544722
+torque!~tachyon@user/torque
+since the tests get compiled to an executable, i believe `zig build` will emit a `zig build-exe` call internally for that
+
+1741544805
+torque!~tachyon@user/torque
+it may do it differently for tests, not sure
+
+1741544875
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://bpa.st/QZCA its what i get with --verbose
+
+1741544934
+torque!~tachyon@user/torque
+sure doesn't look like python3 is getting linked
+
+1741544966
+torque!~tachyon@user/torque
+the pkg-config call isn't returning a library link flag, it seems
+
+1741544983
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, (new to me)
+
+1741544985
+torque!~tachyon@user/torque
+(you'd expect there to be a `-lpython3` or similar flag on the CLI and I don't see it
+
+1741545010
+torque!~tachyon@user/torque
+linking python is weird, there may be some specific way to do it
+
+1741545068
+torque!~tachyon@user/torque
+if you run `pkg-config python3 --cflags --libs`, what does it print?
+
+1741545131
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://bpa.st/ULCQ added both output 
+
+1741545162
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+-I/usr/include/python3.13
+
+1741545281
+torque!~tachyon@user/torque
+this is probably the wrong fix but https://github.com/mesonbuild/meson/issues/5629 indicates that linking `python3-embed` might work
+
+1741545349
+torque!~tachyon@user/torque
+however, I do not know when python extensions should or shouldn't actually link against libpython
+
+1741545486
+torque!~tachyon@user/torque
+yeah this is a mess because when the extension module is loaded by python, it gets the libpython symbols implicitly because they've already been loaded into the main python process
+
+1741545544
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is the problem being `test` does not include the `uring -dynamic` libraries? 
+
+1741545548
+torque!~tachyon@user/torque
+so maybe the better fix is actually to stub it out. I'm not exactly sure why creating your dynamic library is ok with the missing symbols, since I thought the linker was typically strict about that
+
+1741545567
+torque!~tachyon@user/torque
+no, the problem is entirely on the python side
+
+1741545595
+torque!~tachyon@user/torque
+https://peps.python.org/pep-0513/#libpythonx-y-so-1
+
+1741545596
+grayhatter!~grayhatte@user/grayhatter
+you could look at what groovebasin does, IIRC it embeds it's own python runtime
+
+1741545600
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, i would rather not have to deal with cpython problems.
+
+1741545676
+torque!~tachyon@user/torque
+this is the opposite of groovebasin: since it's a python extension, you do not want to embed the python runtime, since that can cause problems
+
+1741545729
+torque!~tachyon@user/torque
+the extremely lazy fix is to stub out the `PyModule_Create` call inside the `export fn` when building for test
+
+1741545734
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well that might cause problems with using the library itself, the goal is for users to use their own python and pip install this library and use it, if i create my own python! thats more for embedding devices and such.
+
+1741545736
+torque!~tachyon@user/torque
+there is probably a more elegant fix but idk what it is
+
+1741545786
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, moving `PyModule_Create` from being run is a better option. 
+
+1741545814
+grayhatter!~grayhatte@user/grayhatter
+I have to admit, I'm not paying attention... but the whole idea of altering the behavior of the program specificaly so tests can pass... feels like a mistake
+
+1741545897
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you have deal with some mess when it comes to working with multiple languages, they are not really designed to work together. with zig it is so easy! with other languages i ahve used, cffi, cython, ctypes,... its a mess
+
+1741546170
+torque!~tachyon@user/torque
+anwyay you probably wnat to look at this https://ziglang.org/documentation/0.14.0/#export
+
+1741546230
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, there was such a way!
+
+1741546301
+torque!~tachyon@user/torque
+if you combine that with `builtin.is_test` mentioned earlier you can conditionally export that function, so it shouldn't interfere with the tests
+
+1741546328
+grayhatter!~grayhatte@user/grayhatter
+wait... correct me if I'm wrong, but are you wrapping the c iouring api with zig, so that you can use it in python?
+
+1741546342
+torque!~tachyon@user/torque
+yes lol
+
+1741546358
+torque!~tachyon@user/torque
+thinking about it I think the cleaner way to do this would be to break your build into more than one module
+
+1741546374
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i tried that `if (!builtin.is_test){return py.py.PyModule_Create(&py.module);` and it works for `run build` but i have to figure out how to return empty struct back.
+
+1741546378
+grayhatter!~grayhatte@user/grayhatter
+<torque> im being triggered <- big same
+
+1741546381
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for else 
+
+1741546382
+torque!~tachyon@user/torque
+so you'd have a module that was just the wrapper functions and then a module that was the actually python boundary layer
+
+1741546394
+torque!~tachyon@user/torque
+and the tests would use the base wrapper function module
+
+1741546417
+torque!~tachyon@user/torque
+and the python module would be what is used to make the actual library
+
+1741546443
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, you should also be able to use the liburing library with zig as well! or least thats the goal, will figure that part later. 
+
+1741546502
+torque!~tachyon@user/torque
+I'm suggesting https://zigbin.io/59d6d4 though as i just mentioned the correct fix would be to address this at the build system layer
+
+1741546520
+torque!~tachyon@user/torque
+especially if you want to support multiple languages
+
+1741546564
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww, let me try
+
+1741546567
+torque!~tachyon@user/torque
+this would be a pretty bad hack, and it would prevent your other use cases from working so you might want to put some thought into fixing the build
+
+1741546659
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/75780e
+
+1741546693
+grayhatter!~grayhatte@user/grayhatter
+the fact that stdlib has iouring already suggests that I can already use it in zig
+
+1741546712
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+good news is now the test works :D but the run build fails with that error.
+
+1741546717
+grayhatter!~grayhatte@user/grayhatter
+I try to avoid linking libc if I don't have to
+
+1741546752
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, yes, zig io_uring would be better option. I might actually use that directly from one of my project as well.
+
+1741546777
+torque!~tachyon@user/torque
+you missed that i added `callconv(.c)` to PyInit in my paste
+
+1741546778
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the liburing is a bit different though they do the same thing in the end.
+
+1741546789
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o did
+
+1741546791
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i
+
+1741546860
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nice this is pro stuff, both the problems fixed and working :D thank you very much you guys. 
+
+1741546866
+torque!~tachyon@user/torque
+lol
+
+1741546885
+torque!~tachyon@user/torque
+I encourage you to replace the duct tape asap 
+
+1741546899
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its a language feature now! :p
+
+1741546936
+torque!~tachyon@user/torque
+we have a whiteboard at work with "nothing is more permanent than a temporary solution" written on it, and frankly it's damn right
+
+1741546965
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol wise words. 
+
+1741547030
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you like i can add your name on a comment and leave it under that fix ;)
+
+1741547993
+torque!~tachyon@user/torque
+no thank you
+
+1741548863
+txdv!~txdv@78.58.158.251
+using the full path for utils/s2n_prelude.h works, but can I get it by using something like dep.path("utils/s2n_prelude.h") ?
+
+1741549041
+txdv!~txdv@78.58.158.251
+dep.path("...").getPath(b) is the answer :)
+
+1741550125
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+How do I use `std.posix`' sigaction stuff? I've got https://zigbin.io/ae16d4, but the compiler's yelling at me. I'm not quite sure where I went wrong there.
+
+1741550216
+torque!~tachyon@user/torque
+normally it helps to also post the error you're getting
+
+1741550260
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Oh I thought that was included in the paste, sorry. The compiler error is: error: expected type 'os.linux.Sigaction__union_6820', found '?*const fn (i32) callconv(.c) void' at the line where I try to assign `std.posix.SIG.IGN`.
+
+1741550406
+andrewrk!~andrewrk@mail.ziglang.org
+how sweet would it be if: 1. we got to the point where people regularly used zig build --watch -ftorrent
+
+1741550418
+andrewrk!~andrewrk@mail.ziglang.org
+2. people started using number of seeders as popularity measure of packages in the ecosystem
+
+1741550637
+torque!~tachyon@user/torque
+lol
+
+1741550754
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+people already do that for anime 
+
+1741550907
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if makes sense if the file size you are downloading is large for small file its not that useful, maybe if such a system was build into package managers? again bandwidth is getting cheap and systems are getting faster... its better for someone to just setup a server vs asking to share.
+
+1741550917
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also have you heard "future if offline"
+
+1741550924
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*is
+
+1741551102
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: number of people "seeding" a package would be a pretty flawless metric of popularity 
+
+1741551244
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, # of downloads seems more reasonable to me. since seeding comes down to ppl's choice. 
+
+1741551304
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+than there are bots! that's going to ruin all your metrics
+
+1741551351
+grayhatter!~grayhatte@user/grayhatter
+do you actually think number of downloads would be harder to game than number of seeders?
+
+1741551390
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no downloads would be easy to game vs seeding since download bandwidth is cheaper vs up load. 
+
+1741551431
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+again with software, if yo release a new version every week, you will get way more download releasing once a year! that might be more of a problem. 
+
+1741551445
+torque!~tachyon@user/torque
+farhaven, you need `.handler = .{.handler = std.posix.SIG.IGN}` since the union is nested
+
+1741551573
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Oh, that makes sense! Thank you very much
+
+1741551920
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+seeding metric only tells you what is popular at the moment though! like those viral videos or searches, tomorrow or a week from now wont be the same case.
+
+1741551979
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for software this will go hand in hand with their release
+
+1741552025
+grayhatter!~grayhatte@user/grayhatter
+you're just describing popularity
+
+1741552047
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes thats also how seeding works
+
+1741552110
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://nyaa.si/?s=seeders&o=desc see whats most seeded are the power show that came out recently cause lots of people downloaded it and they also see it at same time.
+
+1741552162
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+popular show*
+
+1741552183
+grayhatter!~grayhatte@user/grayhatter
+and?
+
+1741552209
+torque!~tachyon@user/torque
+please dont link piracy websites on the programming language chat. thanks you
+
+1741552226
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you release your software every week, your software will be on top/trending vs releasing once a year.
+
+1741552250
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its for research purpose
+
+1741552307
+grayhatter!~grayhatte@user/grayhatter
+that's not how it works, if 100 people use package X, and 20 people use package Y, it doesnt' matter if Y releases monthly, it'll still never be more popular than the 100 people using package X
+
+1741552415
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you end up with 20people using version1.0, 20 using version1.1, ... so the software y will rank higher than x
+
+1741552456
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+remember you are looking at how many ppl seed, it would be different case if you know how many people have "installed" the software.
+
+1741552468
+grayhatter!~grayhatte@user/grayhatter
+20 + 20 = 40, not 20... where are you getting the extra 20?
+
+1741552515
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its a compounding value.
+
+1741552551
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Can I keep debug symbols in an optimized build?
+
+1741552552
+grayhatter!~grayhatte@user/grayhatter
+why would it compounding? 
+
+1741552572
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cause they are releasing every week vs year.
+
+1741552602
+Maarrk!~Maarrk@user/Maarrk
+idk, I wouldn't say that torrents' biggest advantage would be the popularity contest
+
+1741552668
+Maarrk!~Maarrk@user/Maarrk
+for me the radical independence is the nicest part
+
+1741552686
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that doesn't mean it's compounding... there are 20 people using package Y... you can't make that number bigger by releasing more often... no matter how many releases, there's only 20 people. If you want it to be 21, someone else needs to start using & building with it
+
+1741552741
+grayhatter!~grayhatte@user/grayhatter
+bwbuhse: have you tried https://ziglang.org/documentation/master/std/#std.Build.Module with `strip = false`?
+
+1741552764
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+grayhatter: ty
+
+1741552765
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I have'nt
+
+1741552766
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, that 20 people might have copy of version1.0, 1.1, 1.2, ... and the might be seeding all of those copies
+
+1741552786
+grayhatter!~grayhatte@user/grayhatter
+Maarrk: yeah, I love the idea that it would prevent servers from getting overloaded 
+
+1741552819
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yeah... I understand that... what is your point? does having more versions numbers change the number of seeders?
+
+1741552827
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes
+
+1741552837
+grayhatter!~grayhatte@user/grayhatter
+no, it wouldn't
+
+1741552855
+grayhatter!~grayhatte@user/grayhatter
+you seed version 1 and 2, are there now 2 of you?
+
+1741552864
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are looking at software that seed, not users that are seeding 
+
+1741552896
+grayhatter!~grayhatte@user/grayhatter
+I'm not considering either, I'm considering unique peers in a DHT network
+
+1741552930
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what does that have to do with software popularity?
+
+1741552937
+grayhatter!~grayhatte@user/grayhatter
+wow
+
+1741552948
+grayhatter!~grayhatte@user/grayhatter
+lol, nevermind
+
+1741552974
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"2. people started using number of seeders as popularity measure of packages in the ecosystem"'
+
+1741552984
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+did i miss something?
+
+1741552984
+torque!~tachyon@user/torque
+there are some technical problems with having the build system interact with torrents directly. Most people would probably need a NAT traversal system
+
+1741553045
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+now you need tracking servers
+
+1741553045
+grayhatter!~grayhatte@user/grayhatter
+NAT hole punching isn't hard
+
+1741553060
+grayhatter!~grayhatte@user/grayhatter
+your right though, it's a non-trivial problem to solve
+
+1741553267
+torque!~tachyon@user/torque
+i wonder if it would work if you added a github CDN link as a webseed to a torrent
+
+1741553346
+torque!~tachyon@user/torque
+I don't think webseeds need any special support in the http server, but the anti-botnet layer might get in the way or something
+
+1741553377
+grayhatter!~grayhatte@user/grayhatter
+github's bot detection is really weak
+
+1741553391
+grayhatter!~grayhatte@user/grayhatter
+^ but I'm not currently taking any questions about this statement
+
+1741553459
+torque!~tachyon@user/torque
+thankfully, though I still hit 403s pretty often while browsing not logged in
+
+1741553463
+Maarrk!~Maarrk@user/Maarrk
+maybe codeberg would be open to this, since it could lower the load on them and fits the mission
+
+1741553497
+grayhatter!~grayhatte@user/grayhatter
+I also don't think that's required... the more use torrent network gets, the more robust, you'd just need *any* webseed
+
+1741553514
+Maarrk!~Maarrk@user/Maarrk
+ad github: someone in my university must be scraping them or getting datasets, because this week it's been 50/50 to get any blame to load
+
+1741553524
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not just you its github, they want you to login, so they can collect better data :p
+
+1741553530
+grayhatter!~grayhatte@user/grayhatter
+torque: the fact that I only see 403's from my browser is a big part of why I call it weak
+
+1741553558
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+farhaven: oh I bet you emailed the ML too :)
+
+1741553565
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I just responded to you there
+
+1741553577
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Heh, yeah, a minute before torque hit me with the clue bat here
+
+1741553584
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Thank you!
+
+1741553656
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you guys do know main problem with torrent is connections right vs bandwidth
+
+1741553690
+grayhatter!~grayhatte@user/grayhatter
+stealth_: windows user?
+
+1741553695
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+all github has to do is limit you to 1 online connection.
+
+1741553722
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no, you need to keep peer to peer connection live to send/receive
+
+1741553725
+grayhatter!~grayhatte@user/grayhatter
+oh, you mean sessions, not connections... yeah that's not how the internet actually works
+
+1741554097
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is zig having some kind of bandwidth/server issues? 
+
+1741554230
+torque!~tachyon@user/torque
+no, but also packages aren't hosted by the zsf anyway
+
+1741554397
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am sure zsf can do that once they are setup a system for it and funded, maybe it will in the future. you don't have to try and do everyone from the start.
+
+1741554433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+everything*
+
+1741554498
+grayhatter!~grayhatte@user/grayhatter
+uh... the ZSF is funded... this conversation is so wild to me... I can't tell if I'm talking to an LLM
+
+1741554646
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its better use the $ on developers to actually develop zig vs nice to have features that isn't needed right now.
+
+1741554654
+torque!~tachyon@user/torque
+the question of whether or not the zsf should ever even bother trying to make a central index is an interesting one. afaik right now there are no plans to do so, and I think that's a reasonable choice because it is a ton of work. on the other hand, effectively right now the ecosystem is leaning on basically microsoft's goodwill vis a vis github providing more or less unlimited hosting for free
+
+1741554716
+torque!~tachyon@user/torque
+a ton of work is not referring to the NRE, which is negligible compared to the ongoing maintenance costs of such a service
+
+1741554908
+Maarrk!~Maarrk@user/Maarrk
+torque: I'd say that while a lot of packages are indeed downloaded from GitHub now, Zig packages are really well prepared to jump anywhere else, due to hashes already being there
+
+1741554918
+grayhatter!~grayhatte@user/grayhatter
+cold take: I actually like that the focus is exclusively on what would make the language better, and I like it almost as much the parts that I think are important are meekly crawling along. The language is the most important thing, and everyone seems to already understand that
+
+1741554935
+grayhatter!~grayhatte@user/grayhatter
+plus, I do enjoy getting to complain about my pet feature not being done yet
+
+1741555025
+torque!~tachyon@user/torque
+Maarrk, the question is where do you go? Alternative services like sourcehut and codeberg are not set up to serve as a CDN at the volume that github is, so unless you expect to just be niche forever, you probably need someone with a huge bandwidth pipe and too much cash to throw around
+
+1741555080
+grayhatter!~grayhatte@user/grayhatter
+torque: how do you figure linux package repos work then? e.g. alpine linux?
+
+1741555134
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can setup servers anywhere, most of the datacenter do colocation, you can setup your servers there.
+
+1741555135
+torque!~tachyon@user/torque
+they are hosted by alpine, which presumably can afford the infrastructure through donations, which is how it would work if e.g. zsf were to host a central index
+
+1741555164
+torque!~tachyon@user/torque
+but also running a linux distribution is... focused on, well, distributing packages, so basically the package repos are the product
+
+1741555237
+torque!~tachyon@user/torque
+but the more direct answer being that companies would maybe be more likely to sponsor a zsf index (a la the psf's pypi) than pumping money into a third party service that happens to be useful to the same ends
+
+1741555260
+grayhatter!~grayhatte@user/grayhatter
+torque: my question wasn't how do you do it, the question was, why is alpine able to, but sourcehut or codeberg isn't?
+
+1741555264
+Maarrk!~Maarrk@user/Maarrk
+Actually, alpine is not hosting *all* the mirrors. When you setup alpine, it tries a list of few tens of mirrors to see which ones have the best connection to you specifically.
+
+1741555314
+torque!~tachyon@user/torque
+I did intend "donations" to include such things as mirrors (which are often hosted by universities? idk in alpine's case)
+
+1741555314
+Maarrk!~Maarrk@user/Maarrk
+The same thing happens in even Ubuntu for some packages. When I look at the specific URLs of downloads, there are for example universities
+
+1741555366
+torque!~tachyon@user/torque
+I don't think npm or pypi work that way though
+
+1741555392
+torque!~tachyon@user/torque
+either way, this is all hypothetical and I don't think there's really any problem with the ecosystem as it stands right now
+
+1741555433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just setup few servers in a datacenter, and slowly setup other servers in other data center and you cloud infrastructure
+
+1741555438
+Maarrk!~Maarrk@user/Maarrk
+I agree, they don't. But I'd say it's as much a cultural as technical question. Just want to drop at the end of discussion, that if you run CI using mlugg's action, it also uses a list of mirrors: https://github.com/mlugg/setup-zig
+
+1741555497
+torque!~tachyon@user/torque
+just setup a few servers and now you're paying thousands of dollars per month on servers + storage + bandwidth + people to keep them from falling over
+
+1741555522
+torque!~tachyon@user/torque
+a bit of an exaggeration but there are a lot of costs associated with web infrastructure
+
+1741555526
+Maarrk!~Maarrk@user/Maarrk
+The fact that using zig packages exposes you to the package infrastructure is a nice parallel to the language itself, I doubt it should/would be changed :)
+
+1741555563
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well you have to pay some $ but at least this way it will be cheaper vs big corp service that seems fee/cheap at first later you are hooked and too expensive.
+
+1741555621
+Maarrk!~Maarrk@user/Maarrk
+"there's no free lunch"
+
+1741555743
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have few servers i am not using, could help get the ball rolling...
+
+1741555852
+Maarrk!~Maarrk@user/Maarrk
+and since I know the hash of the content I want, I'd even be comfortable downloading it from stealth_'s suspiciousrustywhitevan.net
+
+1741555935
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+man... i can setup the servers and give andrew root access, he can figure out the rest.
+
+1741555946
+torque!~tachyon@user/torque
+I'd probably wait until the package stuff (particularly archive extraction) had been more robustly tested before I'd be willing to do that
+
+1741555992
+Maarrk!~Maarrk@user/Maarrk
+torque: valid point, zip is surprisingly scary
+
+1741556067
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that doesn't actually increase the security at all
+
+1741556083
+grayhatter!~grayhatte@user/grayhatter
+tl;dr: trust is complicated 
+
+1741556094
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ghostty mirrors some of it's deps directly, just swapping out urls is very nice
+
+1741556104
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+many who is going to give you thousands of $ worth of hardware to use?
+
+1741556131
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/ghostty-org/ghostty/blob/843cc83f42a9677bb998b8b16a00aac68e6f53aa/build.zig.zon#L24-L57
+
+1741556229
+grayhatter!~grayhatte@user/grayhatter
+ghostty.build.zig.zon I don't like this... I have no better solution... but I don't like it
+
+1741556254
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+?
+
+1741556305
+grayhatter!~grayhatte@user/grayhatter
+supply chain attacks are complicated
+
+1741556406
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+No I mean, what don't you like? And what is ghostty.build.zig.zon?
+
+1741556436
+grayhatter!~grayhatte@user/grayhatter
+it was a short hand reference to the link you just posted
+
+1741556441
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+oh
+
+1741556551
+grayhatter!~grayhatte@user/grayhatter
+can you prove all those build sources are the same as upstream? what if one day, someone adds a patch that doesn't get upstreamed? and then rebases when upstream moves? can you prove that every dep doesn't have some security defect?
+
+1741556571
+grayhatter!~grayhatte@user/grayhatter
+yes, you just have to [...]! yeah no one is going to do that
+
+1741556581
+grayhatter!~grayhatte@user/grayhatter
+but, like I said, I have no better suggestion
+
+1741556630
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+These are mirrors, not repos that get patched
+
+1741556644
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+And it's less about security, more about reliability
+
+1741556702
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+CI failures due to not being able to fetch a package (IE when codeberg was facing all the DDOS) is very annoying
+
+1741556823
+grayhatter!~grayhatte@user/grayhatter
+does build.zig not support multiple URIs?
+
+1741556826
+torque!~tachyon@user/torque
+<rockorager> ghostty mirrors some of it's deps directly, just swapping out urls is very nice
+
+1741556837
+torque!~tachyon@user/torque
+yeah this is very nice but it does not work with transitive dependencies, unfortunately
+
+1741556847
+grayhatter!~grayhatte@user/grayhatter
+you'll notice I accounted for the fact that they're just mirrors *today*
+
+1741556932
+torque!~tachyon@user/torque
+i mean, presuming the mirror is under control of the people running the project, you're generally trusting them not to ship you malicious code
+
+1741556948
+torque!~tachyon@user/torque
+at least the deps are tirival to swap to some other canonical url and verify the hash is the same
+
+1741557023
+grayhatter!~grayhatte@user/grayhatter
+torque: I already accounted for that as well because one day a dep might need a patch
+
+1741557130
+Maarrk!~Maarrk@user/Maarrk
+(off-topic) the link from 0.14.0 language documentation points to master of std documentation (I expect 0.14.0 there as well)
+
+1741557157
+grayhatter!~grayhatte@user/grayhatter
+Maarrk: that's definitely on topic
+
+1741557215
+grayhatter!~grayhatte@user/grayhatter
+I guess, technically it could be true? but that's still probably a bug
+
+1741557221
+torque!~tachyon@user/torque
+grayhatter, then it's trivial to find out it isn't a mirror, and someone can make a fuss about it
+
+1741557305
+grayhatter!~grayhatte@user/grayhatter
+torque: there are a lot of trivial things that will never happen
+
+1741557320
+grayhatter!~grayhatte@user/grayhatter
+this is in that category 
+
+1741557322
+torque!~tachyon@user/torque
+if nobody is auditing the dependencies anyway they can just put rootkit.tar.gz as a separate line in the deps
+
+1741557473
+grayhatter!~grayhatte@user/grayhatter
+that's why I'd rather it use git repos with a public web interface, to enable such a thing to be discovered through idle curiosity
+
+1741557514
+torque!~tachyon@user/torque
+the point is that it can be discovered by idle curiousity already. since build.zig.zon is under vc, it's easy to check every change anyway
+
+1741557574
+grayhatter!~grayhatte@user/grayhatter
+torque: lol, I already accounted for that, see my rebase comment above
+
+1741557601
+grayhatter!~grayhatte@user/grayhatter
+people will do it once, the idle curisoity goes away after the first check
+
+1741557618
+torque!~tachyon@user/torque
+i don't see how a "web interface" protects against any of this stuff
+
+1741557657
+grayhatter!~grayhatte@user/grayhatter
+to be fair though, most of this is because I've spent too much time talking with a friend who's working on preventing supply chain attacks similar to thoes this enables
+
+1741557697
+torque!~tachyon@user/torque
+anwyay just use fossil since it doesn't let you rewrite history
+
+1741557707
+grayhatter!~grayhatte@user/grayhatter
+torque: use a public repo, with a hash that maps to that public repo is how you prevent that. using a private repo does the same, but only if the hash always matches the public one 
+
+1741557747
+grayhatter!~grayhatte@user/grayhatter
+what a strange non-sequitor, git also doesn't allow rewriting history btw, that would change the hash
+
+1741557780
+ifreund!2940d10f8b@user/ifreund
+I think a good solution could be to allow specifying multiple URLs/sources for the same dependency hash in build.zig.zon
+
+1741557813
+grayhatter!~grayhatte@user/grayhatter
+<grayhatter> does build.zig not support multiple URIs?
+
+1741557819
+grayhatter!~grayhatte@user/grayhatter
+yeah, would be cool if it did!
+
+1741557844
+ifreund!2940d10f8b@user/ifreund
+heh, I didnt read the full backlog
+
+1741557864
+torque!~tachyon@user/torque
+since the hash is the source of truth, it really should
+
+1741557903
+torque!~tachyon@user/torque
+grayhatter, generally speaking I don't think that having a "public repo" solved anything because there's no way to prove a particular public repo is the canonical one
+
+1741557935
+torque!~tachyon@user/torque
+in a distributed system
+
+1741557980
+torque!~tachyon@user/torque
+it goes back to "what if you need a non-upstreamed patch"
+
+1741558028
+torque!~tachyon@user/torque
+now your canonical upstream isn't the same repo other people use
+
+1741558059
+torque!~tachyon@user/torque
+just because someone can browse the source through a web interface vs on their computer doesn't really change the discoverability imo
+
+1741558070
+ifreund!2940d10f8b@user/ifreund
+I think if you need a non-uptstreamed patch you need to use a different fingerprint for your fork with the patch and fetch from there
+
+1741558100
+torque!~tachyon@user/torque
+people actually respecting that entirely unenforcable mechanism is its own problem
+
+1741558125
+ifreund!2940d10f8b@user/ifreund
+fair
+
+1741559055
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: tracking issue for your suggestion: https://github.com/ziglang/zig/issues/14292
+
+1741559070
+andrewrk!~andrewrk@mail.ziglang.org
+oops, meant to link to https://github.com/ziglang/zig/issues/14291
+
+1741561907
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there any function/feature in zig that can give me a list of define/function_name from .h 
+
+1741563230
+SultansOfCode!~SultansOf@user/SultansOfCode
+Is it possible to have "event listeners" with function pointers?
+
+1741563719
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you mean a callback function?
+
+1741563783
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+SultansOfCode, https://gencmurat.com/en/posts/mastering-functions-in-zig/#7-function-pointers-and-callbacks
+
+1741563945
+SultansOfCode!~SultansOf@user/SultansOfCode
+stealth_: yeah, but more like a hashmap of events with array of callbacks
+
+1741563972
+SultansOfCode!~SultansOf@user/SultansOfCode
+Something like std.ArrayHashMap(MyTypeEvents, std.ArrayList(MyTypeCallback))
+
+1741564008
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+SultansOfCode, i don't know off hand, i am new to zig. well ya you just create one, when event happens you just call that function
+
+1741564023
+SultansOfCode!~SultansOf@user/SultansOfCode
+So, when the event triggers, MyType will call emit(MyTypeEvent) and inside emit it will traverse the callback array calling them
+
+1741564173
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can use `switch` to figure out what even to call and call back that function. are you coming from C?
+
+1741564200
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+they have multiple listeners per event
+
+1741564208
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But yes, definitely possible
+
+1741564733
+SultansOfCode!~SultansOf@user/SultansOfCode
+stealth_: yep
+
+1741564758
+SultansOfCode!~SultansOf@user/SultansOfCode
+rockorager: the hashmap complains that it doesn't know the size of fn () void
+
