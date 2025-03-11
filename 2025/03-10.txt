@@ -1,0 +1,832 @@
+1741565157
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+*const fn void
+
+1741566975
+SultansOfCode!~SultansOf@user/SultansOfCode
+https://zigbin.io/c0d960 from line 35 onward
+
+1741567048
+SultansOfCode!~SultansOf@user/SultansOfCode
+Making eventListeners as const, it gives me: src\FloatWindow.zig:90:26: error: expected type 'array_hash_map.ArrayHashMap(FloatWindow.FloatWindowEvent,array_list.ArrayListAligned(*const fn () void,null),array_hash_map.AutoContext(FloatWindow.FloatWindowEvent),false)', found
+
+1741567048
+SultansOfCode!~SultansOf@user/SultansOfCode
+'hash_map.HashMap(FloatWindow.FloatWindowEvent,array_list.ArrayListAligned(*const fn () void,null),hash_map.AutoContext(FloatWindow.FloatWindowEvent),80)'
+
+1741567056
+SultansOfCode!~SultansOf@user/SultansOfCode
+And I have no idea of what I am doing wrong here
+
+1741567267
+SultansOfCode!~SultansOf@user/SultansOfCode
+My bad, typed wrong in the struct
+
+1741567925
+SultansOfCode!~SultansOf@user/SultansOfCode
+If I uncomment line 99 it crashes with segfault. Anyone knows why? https://zigbin.io/58b626
+
+1741570546
+torque!~tachyon@user/torque
+are you building in debug mode? you should get a traceback if so
+
+1741571118
+SultansOfCode!~SultansOf@user/SultansOfCode
+Not useful, but here it is: https://zigbin.io/bc31d2
+
+1741571173
+SultansOfCode!~SultansOf@user/SultansOfCode
+But the crash is random, sometimes the app just stop answering
+
+1741571716
+SultansOfCode!~SultansOf@user/SultansOfCode
+Also it crashes when I try to insert a listener
+
+1741571720
+SultansOfCode!~SultansOf@user/SultansOfCode
+But is another thing
+
+1741572050
+SultansOfCode!~SultansOf@user/SultansOfCode
+When trying to insert, it crashes and keeps dumping forever on the console
+
+1741572989
+grayhatter!~grayhatte@user/grayhatter
+you're using gpa wrong
+
+1741573041
+grayhatter!~grayhatte@user/grayhatter
+like, **super** wrong
+
+1741573075
+grayhatter!~grayhatte@user/grayhatter
+init should accept an allocator as an arg, not create one itself in a loop
+
+1741579259
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't get this error: https://zigbin.io/66b765
+
+1741579338
+grayhatter!~grayhatte@user/grayhatter
+I'll do my best not to get that error
+
+1741579386
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure, do you know whats its saying? i don't geti t
+
+1741579976
+grayhatter!~grayhatte@user/grayhatter
+did you read the error?
+
+1741580122
+grayhatter!~grayhatte@user/grayhatter
+ask a more specific question about the error message your getting
+
+1741580124
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya its confusing, but nm go it
+
+1741580131
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1741580142
+grayhatter!~grayhatte@user/grayhatter
+good luck stealth_ 
+
+1741580210
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its the classic ask the question and answer it yourself.
+
+1741580448
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also this `const con: [*c]PyObject = py.PyModule_Create(&module);` working is weird, sure its a `const` but here C function is modifying it, so since zig doesn't know about it, thats ok?
+
+1741580507
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`_ = py.PyModule_AddIntConstant(con, "TEST", 123);`
+
+1741580784
+torque!~tachyon@user/torque
+the value inside the pointer isnt const, so modifying that is fine
+
+1741580803
+torque!~tachyon@user/torque
+only the pointer itself is const, not what it points to
+
+1741580851
+torque!~tachyon@user/torque
+also you shouldn't use [*c] in your code, it's there for the convenience of c-translation, which cannot know better due to c pointers being ambiguous in zig's type system
+
+1741580865
+torque!~tachyon@user/torque
+the appropriate type is probably ?*PyObject
+
+1741580924
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm... 
+
+1741580944
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+everywhere [*c] is used you can switch it to ?* ? 
+
+1741580957
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i will try it
+
+1741581011
+torque!~tachyon@user/torque
+no, sometimes you need a different type, like ?[*]. You have to use your knowledge of the c code to choose the correct type
+
+1741581037
+torque!~tachyon@user/torque
+largely: can the pointer be null (usually yes for C pointers) and does it point to a single object or does it point to more than one object?
+
+1741581091
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i only have very basic C knowledge, i didn't want to learn it. 
+
+1741581111
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wouldn't zig catch it? 
+
+1741581113
+torque!~tachyon@user/torque
+not really that optional if you're interacting with c code
+
+1741581144
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+zig does catch the different if you use ?* vs ?[*]
+
+1741581168
+torque!~tachyon@user/torque
+<grayhatter> you're using gpa wrong
+
+1741581173
+torque!~tachyon@user/torque
+lol i didn't even notice this
+
+1741581196
+torque!~tachyon@user/torque
+incredible way to create horribly broken code
+
+1741581198
+grayhatter!~grayhatte@user/grayhatter
+>  its the classic ask the question and answer it yourself.
+
+1741581214
+grayhatter!~grayhatte@user/grayhatter
+yeah, it's hard to resist the urge to ask someone instead of thinking it through
+
+1741581252
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm no, it would have been if someone did answer, i hard to do a search online and found some hit somewhere. 
+
+1741581255
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hint*
+
+1741581301
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that error message and the arrow it was pointing too wasn't helpful at all.
+
+1741581326
+grayhatter!~grayhatte@user/grayhatter
+yeah, it's a weird place for the arrow to be
+
+1741581355
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+omg, my typing is so bad
+
+1741581382
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i code its fine! but when i use irc, its like horror show.
+
+1741581393
+grayhatter!~grayhatte@user/grayhatter
+but you didn't ask why the arrow was pointing to the opening paren. If you did, I would have told you because that's where the compiler sees the function actuall get called. And would have mentioned it might be easier to think of the arrow at the left most ~ because that's where you'd place the 2nd hint
+
+1741581471
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+calling function at the ( makes sense but the error was actually at `_ = ` not being assigned, which is at the start of the function.
+
+1741581509
+grayhatter!~grayhatte@user/grayhatter
+no, the error is that you're not using the return value, in this case it's the c_int 
+
+1741581545
+grayhatter!~grayhatte@user/grayhatter
+the python docs say > Return -1 with an exception set on error, 0 on success.
+
+1741581564
+grayhatter!~grayhatte@user/grayhatter
+so if you don't check if it's == -1; that's a bug you wrote
+
+1741581573
+grayhatter!~grayhatte@user/grayhatter
+which the compiler tried to help you prevent
+
+1741581598
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww, well i come from coding python, not c, so easy to miss stuff like that. 
+
+1741581610
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why i wanted to use zig so it would catch all that stupid stuff i ignore. 
+
+1741581629
+grayhatter!~grayhatte@user/grayhatter
+stealth_: it's easy to miss stuff like that no matter what language you're using. That's why it's a compiler error in zig, it's easy to miss in zig too
+
+1741581667
+grayhatter!~grayhatte@user/grayhatter
+I wonder if there's a way to annotate a c function as `c_error!void`
+
+1741581708
+grayhatter!~grayhatte@user/grayhatter
+I know there's not, what I meant was, I wonder if the language would ever adopt such a thing
+
+1741581736
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can't i just write an assert? 
+
+1741581742
+torque!~tachyon@user/torque
+it's very easy to write a wrapper function to check C function calls and promote them to zig errors if you're using a reasonably written library that has consistent error semantics
+
+1741581743
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+assert ... == 0
+
+1741581749
+torque!~tachyon@user/torque
+no
+
+1741581754
+torque!~tachyon@user/torque
+asserts are not error handling
+
+1741581764
+torque!~tachyon@user/torque
+in fact they are the opposite
+
+1741581790
+torque!~tachyon@user/torque
+even in python you can run your code with asserts disabled, and if you are using asserts for logic checking this will break everything
+
+1741581812
+grayhatter!~grayhatte@user/grayhatter
+yeah, using assert there would be bad
+
+1741581843
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+normally in python assert is same as raise AssertionError
+
+1741581861
+grayhatter!~grayhatte@user/grayhatter
+stealth if(PyModule_AddIntConstant() < 0) return error.SomeError; or @panic("python error");
+
+1741581901
+grayhatter!~grayhatte@user/grayhatter
+python does a lot of things "wrong" from the perspective of zig
+
+1741581905
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+probably MemoryError ? 
+
+1741581915
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya its going to be confusing. 
+
+1741581916
+grayhatter!~grayhatte@user/grayhatter
+MemoryError seems legit
+
+1741581931
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+plus now i also have to learn this Python C API at same time!
+
+1741582009
+grayhatter!~grayhatte@user/grayhatter
+you'll learn a lot about the inner workings of python doing so. I enjoyed learning it, was fun to actually figure out how the internals work
+
+1741582083
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true, python C api doesn't seem that bad actually, compared to other ffi languages i had to learn.
+
+1741582178
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+question is, should i raise python error or zig error? 
+
+1741582281
+grayhatter!~grayhatte@user/grayhatter
+if that function returns an error, the python exception will be set for you (IIUC, I didn't verify), so there, I think the only thing that makes sense is returning a zig error
+
+1741582413
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true, i was leaning towards zig as well, well the program is going to crash anyways and memory will be freed.
+
+1741582590
+grayhatter!~grayhatte@user/grayhatter
+just a heads up, libraries I'm willing to use don't panic. The first time a library I use panics, if it's not obviously my fault; straight into the trash it goes.
+
+1741582638
+grayhatter!~grayhatte@user/grayhatter
+this is an understanding I've picked up from friends too, so there's a lot of people who expect their libraries never to panic
+
+1741582639
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well this will only happen if you run out of memory! and you have other problems to worry about if it does. 
+
+1741582656
+grayhatter!~grayhatte@user/grayhatter
+stealth_: no, you don't know that. 
+
+1741582692
+grayhatter!~grayhatte@user/grayhatter
+it's possible that my program can recover from lack of memory, and even if I can't I might be able to save important data that I can't if the library panics
+
+1741582700
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what if you made some mistake and it panics ? 
+
+1741582706
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its good thing, no? 
+
+1741582722
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm
+
+1741582734
+grayhatter!~grayhatte@user/grayhatter
+no, a library that panics is a bad library
+
+1741582763
+grayhatter!~grayhatte@user/grayhatter
+I can't think of a single exception to this rule
+
+1741582818
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"Return -1 with an exception set on error, 0 on success."
+
+1741582858
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also this function runs at the start of your program, since its load defines
+
+1741582944
+grayhatter!~grayhatte@user/grayhatter
+again, you don't actually know that, because you're not in charge of my code... but you should write your library how ever you'd like. I'm only mentioning it because I suggested @panic(), before I remembered you're writing a library. I felt it would be rude to not mention if you use that advice, I'd never willingly use your lib
+
+1741583037
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i don't know whats a good solution is, i could wait for a bit and try again! but all that will lead to more complexity 
+
+1741583082
+grayhatter!~grayhatte@user/grayhatter
+returning a zig error is fine. Then if it crashes, it's my fault
+
+1741583153
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for now it will have to do :) can be improved later when i know more about zig
+
+1741583162
+grayhatter!~grayhatte@user/grayhatter
+I'm also thinking more about the zig code than the python code, so it might be that the python exception is already done for you? I don't know
+
+1741583170
+torque!~tachyon@user/torque
+in python, assert raises an AssertionError which can be handled by the caller (as long as you're not running with `python -O` in which case the assert is completely skipped by the interpreter, which is why `assert` is a keyword)
+
+1741583211
+torque!~tachyon@user/torque
+in zig, assert crashes the program immediately, except for unsafe modes, where it gets skipped by the compiler
+
+1741583224
+grayhatter!~grayhatte@user/grayhatter
+it doesn't get skipped by the compiler
+
+1741583254
+torque!~tachyon@user/torque
+you're right, I worded that poorly
+
+1741583260
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, from what the docs says python will already set to -1 and errono will be set to whatever error, so i would have to catch that python error and find a solution as well, then deal with it in zig.
+
+1741583264
+torque!~tachyon@user/torque
+however, it allows the compiler to assume that the assert condition is never violated
+
+1741583283
+torque!~tachyon@user/torque
+so if it is, your program can perform unchecked illegal behavior, which is bad
+
+1741583289
+grayhatter!~grayhatte@user/grayhatter
+assert in releasefast or releasesmall is used to optimize the code, so actually reaching an assert in releasefast is unchecked illegal behavior 
+
+1741583302
+grayhatter!~grayhatte@user/grayhatter
+jinx
+
+1741583321
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no worries on that assert, wont use it.
+
+1741583573
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+darn it zig panic creates coredump file!
+
+1741583692
+grayhatter!~grayhatte@user/grayhatter
+TIL, calling arena.deinit() when it's not in the current stack will cause it to kill itself before it's deinit'd
+
+1741583714
+grayhatter!~grayhatte@user/grayhatter
+that explains a bug I couldn't figure out before... it also feels like it probably shouldn't do that...
+
+1741583746
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you working on a game? 
+
+1741583841
+grayhatter!~grayhatte@user/grayhatter
+authentication example for a web framework
+
+1741583908
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i created one in python few years ago. 
+
+1741600318
+rubin55!sid666180@id-666180.ilkley.irccloud.com
+ /set awl_sort refnum
+
+1741600325
+rubin55!sid666180@id-666180.ilkley.irccloud.com
+sigh.
+
+1741608473
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+OT: just tried to search for Zig jobs on LI and all i got is a bunch of people with Zig Ziglar quotes in bio.... :'-( ... :-D
+
+1741608565
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+zig jobs are a thing?
+
+1741609775
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+well... apparently we're not here yet :D
+
+1741611338
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://ziglang.org/news/
+
+1741611341
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+release missing?
+
+1741611645
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://ziglang.org/documentation/master/std/#std.Build.Module.linkSystemLibrary
+
+1741611660
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+does it accept one or two args?
+
+1741611691
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the doc says two, but the compiler says one
+
+1741611695
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+0.14.0
+
+1741611792
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to add a system library with additional (pkg-config?) args like how it is done in waf like this: https://paste.debian.net/1362284/
+
+1741619472
+blurrycat!~blurrycat@user/blurrycat
+flower_: linkSystemLibrary on std.Build.Module has two args but the one on std.Build.Step.Compile has only one, you might be using the wrong one
+
+1741619537
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: yeah saw it, a bit confusing isn't it?
+
+1741619648
+blurrycat!~blurrycat@user/blurrycat
+Yeah a bit... I don't know why std.Build.Step.Compile.linkSystemLibrary only accepts one arg, in the end it's calling the other version of function with empty options 
+
+1741619833
+meidam!~meidam@user/meidam
+That's some path
+
+1741627111
+tusf!cb6c78d75e@user/TUSF
+blurrycat: I assume it's for backwards compatibility. the Build.Step.Compile API is likely going to be deprecated, but for now, it's still there.
+
+1741628091
+bblack!~bblack@wikimedia/bblack-WMF
+TIL (and felt like an idiot for not realizing it sooner): when you find yourself seeming to need to do something like somedata[cursor .. cursor + X] (or worse)... you can just do multiple slicings in a row make everything look nicer, e.g. something[cursor..][0..X]
+
+1741628096
+qball!7791bf95c0@user/qball
+I just had one of the most weirdest remarks from somebody... saying that zig was a rewrite of sieg..   anybody knows what the hell this means?
+
+1741628147
+grayhatter!~grayhatte@user/grayhatter
+qball: sieg? or C? 
+
+1741628168
+qball!7791bf95c0@user/qball
+the word zig is sieg 'rewritten' is the claim
+
+1741628184
+grayhatter!~grayhatte@user/grayhatter
+otherwise; people just be saying wild stuff because they like pretending
+
+1741628192
+qball!7791bf95c0@user/qball
+he complained I've added ghostty to the rofi-sensible-terminal list..  
+
+1741628211
+qball!7791bf95c0@user/qball
+I had no idea what he was talking about, then he started calling me a nazi.. 
+
+1741628220
+qball!7791bf95c0@user/qball
+so seriously confused
+
+1741628252
+grayhatter!~grayhatte@user/grayhatter
+yeah, that description sounds like he's having a break from reality... I'd discard it as someone having a bad day
+
+1741628286
+qball!7791bf95c0@user/qball
+I was thinking for a bit I was loosing my mind when he started talking about a library heil and the stuff.
+
+1741628706
+bblack!~bblack@wikimedia/bblack-WMF
+I've always assumed (or did I read somewhere?) that the Zig name was probably at least partly inspired by https://en.wikipedia.org/wiki/All_your_base_are_belong_to_us -> https://en.wikipedia.org/wiki/Zero_Wing
+
+1741629020
+bblack!~bblack@wikimedia/bblack-WMF
+ah https://en.wikipedia.org/wiki/Zig_(programming_language)#History says not
+
+1741629184
+qball!7791bf95c0@user/qball
+thx
+
+1741629305
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+qball: even if the name were inspired by the German word, it'd be a particularly bad inspiration because the "ie" in "Sieg" is pronounced like the "ee" in the English word "seek"
+
+1741629333
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+And to my knowledge, the "i" in "zig" is a short "e". So it doesn't make any sense phonetically.
+
+1741629413
+qball!7791bf95c0@user/qball
+yeah, had german for years, checked with a german friend and my dad who was born during german occupation..  me and them where all confused as hell. 
+
+1741630478
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does official 0.14 version not support nollvm ? 
+
+1741630613
+ifreund!2940d10f8b@user/ifreund
+qball: sounds like kiwi farms FUD...
+
+1741630635
+ifreund!2940d10f8b@user/ifreund
+anyone who actually speaks german knows it's bs
+
+1741630677
+ifreund!2940d10f8b@user/ifreund
+in any case, this is kinda off topic
+
+1741630693
+ifreund!2940d10f8b@user/ifreund
+stealth_: -fno-llvm
+
+1741630727
+ifreund!2940d10f8b@user/ifreund
+don't expect it to be equivalent to llvm though, there's a reason it's not the default yet
+
+1741630749
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well that flag doesn't work, why i am asking
+
+1741630769
+ifreund!2940d10f8b@user/ifreund
+it works if you use the subset of stuff it supports
+
+1741630773
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+unrecognized argument: '-fno-llvm' 
+
+1741630825
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so my code doesn't work without llvm? 
+
+1741631030
+bblack!~bblack@wikimedia/bblack-WMF
+stealth_: it's not an argument for e.g. "zig build", just things like "zig build-exe".  For a whole build, you'd do the "use_llvm = false" in the right places in your build script
+
+1741631067
+bblack!~bblack@wikimedia/bblack-WMF
+(I did that for a moderately complex project though, and got strange compile errors.  It's not fully baked yet!)
+
+1741631099
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aww, i will not bother with it for now
+
+1741631151
+bblack!~bblack@wikimedia/bblack-WMF
+err actually I don't think it was compile errors, I think it was inexplicable runtime crashes.  either way :)
+
+1741631234
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/issues/22257
+
+1741631280
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a better way to go about getting this result? https://zigbin.io/dc854e i have bunch of C defines i want to store it in temp enum/struct/... holder and pass it to for loop later discard it. needs to be in global scope 
+
+1741631308
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+with enum seems like it needs specific u8, u16,... that value can be as high as u64
+
+1741631372
+qball!7791bf95c0@user/qball
+19:27:35 <nick87720z> Exactly it's two moments: 1 - phonetical and 2 - ark-like symbol, looking like reference to said ark-shaped 'S' (sometimes used for modern neo-nazi).
+
+1741631374
+qball!7791bf95c0@user/qball
+ugh.
+
+1741631392
+qball!7791bf95c0@user/qball
+been a long time since I got to kick and ban somebody
+
+1741631410
+qball!7791bf95c0@user/qball
+lets see in how many places I am now announced to be a nazi.
+
+1741631455
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sounds paranoid 
+
+1741631462
+bblack!~bblack@wikimedia/bblack-WMF
+yeah that kind of thing is just sad.  there's plenty of actually-terrible people to worry about without making stuff up.
+
+1741631498
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also Andrew Kelley sounds like Irish name
+
+1741631541
+qball!7791bf95c0@user/qball
+well, it seems to be a general talking point in his country to claim everybody is nazi  as a reason to invade other country.. 
+
+1741631729
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://www.theirishrose.com/help-desk/name-histories-coat-of-arms/kelley-name-history/
+
+1741631778
+qball!7791bf95c0@user/qball
+I've drunk Kelly's cider in NI
+
+1741631848
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nice
+
+1741632258
+bblack!~bblack@wikimedia/bblack-WMF
+If you sum the u8 values of the string 'Zig&zig' you get 666, so this software must be evil, too.
+
+1741632268
+qball!7791bf95c0@user/qball
+ha
+
+1741632385
+qball!7791bf95c0@user/qball
+let me actually store the chat..  nobody would believe me.
+
+1741632755
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't get why ppl are so scared of this 666 thing, its just 6+6+6 = 18, 1+8 = 9. its all 3, 6 & 9, if you want to understand how things works (think telsa even said that)
+
+1741634561
+Maarrk!~Maarrk@user/Maarrk
+Do you have a way to get the version from build.zig.zon into the executable? (for example for the --version argument)
+
+1741634590
+Maarrk!~Maarrk@user/Maarrk
+Using the ZON import I managed to get it like this: https://zigbin.io/43bd00 but it really feels against the grain
+
+1741634882
+grayhatter!~grayhatte@user/grayhatter
+Maarrk: I don't *think* you need to define the struct that way, but I might be wrong about that. If I'm not, I'd just @import("build.zig.zon").version, inline in the one place you're using it
+
+1741634921
+grayhatter!~grayhatte@user/grayhatter
+but also, I don't store the cannon version number in build.zig.zon, I pull the exact version from git so I can get a build string that matches the exact commit
+
+1741635143
+ifreund!2940d10f8b@user/ifreund
+Maarrk: this was the best I found: https://codeberg.org/river/river/commit/60f954c2b076a4670432167c51f43d2cdd361e7d
+
+1741635158
+ifreund!2940d10f8b@user/ifreund
+related: https://github.com/ziglang/zig/issues/22775
+
+1741635342
+ifreund!2940d10f8b@user/ifreund
+grayhatter: I support building river from a tarball, not just from a checkout of the git repo, so I can't do that
+
+1741635348
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i duplicate the version in build.zig and build.zig.zon and set it with a script that seds it out
+
+1741635386
+ifreund!2940d10f8b@user/ifreund
+I used to duplicate them, but I messed up and only updated one of them for river 0.3.8 :/
+
+1741635464
+grayhatter!~grayhatte@user/grayhatter
+ifreund: sounds like you need a env test script in your build.zig
+
+1741635483
+grayhatter!~grayhatte@user/grayhatter
+which I can say, because now I'm thinking I need one too, I'm sure my .zon is out of sync
+
+1741635548
+ifreund!2940d10f8b@user/ifreund
+grayhatter: not sure what you mean, I now only have a single source of truth in the build.zig.zon
+
+1741635592
+ifreund!2940d10f8b@user/ifreund
+also I do put a commit hash in the version string for -dev versions if git is available
+
+1741635615
+grayhatter!~grayhatte@user/grayhatter
+fair point, I was mistakenly assuming the case where you'd pull a ver string from source control as well
+
+1741635720
+ifreund!2940d10f8b@user/ifreund
+I could add code checking that the version string in build.zig.zon matches the git tag as a fail safe
+
+1741636089
+blurrycat!~blurrycat@user/blurrycat
+tusf: thanks, I did not know that :)
+
+1741636190
+grayhatter!~grayhatte@user/grayhatter
+ifreund: if you make git commit depend on a successful, zig build test you could then assert that if version doesn't end with -dev, then the current commit must be tagged
+
+1741636204
+grayhatter!~grayhatte@user/grayhatter
+that way you can't forget to reappend -dev for the next commit
+
+1741636706
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: can you `@import("build.zig.zon").version`? I get "error: '@import' of ZON must have a known result type" when assigning that to a `[]const u8`
+
+1741636920
+Maarrk!~Maarrk@user/Maarrk
+I have a similar case to ifreund, I don't want to depend on Git, and I know that I mess up the versions even with just one definition :)
+
+1741637026
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: yeah, the issue ifreund linked corrected my misunderstanding. it is required... which is lame
+
+1741637503
+Maarrk!~Maarrk@user/Maarrk
+agree to disagree. I managed to get the version from a single place, and I can understand how it works, so it's cool in my book
+
+1741637532
+Maarrk!~Maarrk@user/Maarrk
+just wanted to make sure that I didn't miss some obvious solution
+
+1741640873
+grayhatter!~grayhatte@user/grayhatter
+so, previously I thought `comptime unreachable` was peek zig... but now I have a new definition... `errdefer comptime unreachable`
+
+1741641022
+ifreund!2940d10f8b@user/ifreund
+indeed
+
+1741641633
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+typo: mod.linkLibrary(dep_foor_bar.artifact("foo_bar"));, https://ziglang.org/download/0.14.0/release-notes.html#Build-System
+
+1741641689
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+dep_foor_bar should be dep_foo_bar probably
+
+1741641701
+grayhatter!~grayhatte@user/grayhatter
+flower_: submit a PR to the repo?
+
