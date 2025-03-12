@@ -1,0 +1,456 @@
+1741666195
+SultansOfCode!~SultansOf@user/SultansOfCode
+Zig extension for vscode is refusing to install on mac :/
+
+1741666501
+SultansOfCode!~SultansOf@user/SultansOfCode
+Even disabilng signature check and trying old versions
+
+1741671499
+daurnimator!~daurnimat@vultr.daurnimator.com
+grayhatter / ifreund: you can use .gitattributes and $Id to get best of both worlds
+
+1741671545
+daurnimator!~daurnimat@vultr.daurnimator.com
+or you want the tag name rather than the commit id?
+
+1741671575
+daurnimator!~daurnimat@vultr.daurnimator.com
+it's nice (especially in a corporate setting!) if you can do a new release/tag without pushing new commits
+
+1741671648
+daurnimator!~daurnimat@vultr.daurnimator.com
+FYI I'm still not having zig 0.14.0's tests pass. If anyone has time later to look into it, that would be helpful. https://gist.github.com/daurnimator/cc1cc4caaf52cc5e4c18e898eff714c8
+
+1741685478
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm a system library can't find a header file:
+
+1741685479
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+/usr/include/X11/Xft/Xft.h:40:10: error: 'ft2build.h' file not found
+
+1741685487
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+#include <ft2build.h>
+
+1741685640
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it's in /usr/include/freetype2
+
+1741685655
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+(arch linux)
+
+1741686599
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah my bad probably
+
+1741688371
+blurrycat!~blurrycat@user/blurrycat
+flower_: #include <freetype2/ft2build.h>?
+
+1741688386
+blurrycat!~blurrycat@user/blurrycat
+ah my bad I can't read, you said a system library 
+
+1741688584
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: thx anyway
+
+1741688888
+blurrycat!~blurrycat@user/blurrycat
+flower_: it's likely that /usr/include/freetype2 is not in the include path when compiling
+
+1741688948
+blurrycat!~blurrycat@user/blurrycat
+I've a few C projects using pkg-config for that but if you're going through the Zig build system I don't think pkg-config is used at all
+
+1741688950
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: I was linking to another library I compiled and that one missed a few system dependencies, adding them solved it
+
+1741688953
+blurrycat!~blurrycat@user/blurrycat
+I've seen*
+
+1741688976
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: I think pkg-config is set to true by default
+
+1741688978
+ifreund!2940d10f8b@user/ifreund
+blurrycat: that's incorrect, zig build invokes pkg-config on linux
+
+1741688990
+blurrycat!~blurrycat@user/blurrycat
+oh nice happy to be corrected!
+
+1741689004
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and you can set it to .force it seems
+
+1741689085
+blurrycat!~blurrycat@user/blurrycat
+I should read docs more thoroughly
+
+1741710947
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: why am I using gpa super wrongly? What I want is really to create a new list for each entry
+
+1741712299
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: the GPA has state, right?
+
+1741712365
+grayhatter!~grayhatte@user/grayhatter
+where does that state live?
+
+1741712539
+grayhatter!~grayhatte@user/grayhatter
+how long is that GPA state valid?
+
+1741712637
+grayhatter!~grayhatte@user/grayhatter
+does anyone know why is the data pointer of HashMap is such deep dark magic?
+
+1741712647
+grayhatter!~grayhatte@user/grayhatter
+s/data/key,value
+
+1741713827
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: who knows. I even tried "saving" the gpa to the structure, same results
+
+1741713908
+grayhatter!~grayhatte@user/grayhatter
+> who knows
+
+1741713917
+grayhatter!~grayhatte@user/grayhatter
+well... I do... and you kinda need to as well
+
+1741714015
+grayhatter!~grayhatte@user/grayhatter
+the state is created on line 35, which means, unless you move it somewhere else, the state gets destroyed on line 44
+
+1741714049
+grayhatter!~grayhatte@user/grayhatter
+but once you move it, every allocator() you created before you move it is still pointing to the old location, so all of them are invalid now too
+
+1741714102
+grayhatter!~grayhatte@user/grayhatter
+if you create the gpa in main() and add `gpa_allocator: Allocator` to your init, and use that. It should work
+
+1741715235
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: but the hashmap and the arraylist holds the allocator, no?
+
+1741715271
+grayhatter!~grayhatte@user/grayhatter
+no
+
+1741715282
+grayhatter!~grayhatte@user/grayhatter
+they hold a pointer to the original location
+
+1741715295
+grayhatter!~grayhatte@user/grayhatter
+they don't hold any of the state themselves, the allocator state lives in another castle 
+
+1741715566
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: so, even saving it on line 92, it still getting destroyed? https://zigbin.io/dc775f
+
+1741715567
+grayhatter!~grayhatte@user/grayhatter
+you can tell they don't because 1) it crashes, and 2) https://ziglang.org/documentation/master/std/#std.heap.debug_allocator.DebugAllocator.allocator the source shows `.ptr = self`, where self is a pointer, so because it's a pointer, it has to live somewhere else
+
+1741715623
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: that's making a copy, which means every call to allocator() prior to that copy is now invalid
+
+1741715662
+grayhatter!~grayhatte@user/grayhatter
+also, the compiler might optimize this out, but returning that struct might also be a copy, so you've copied it twice
+
+1741715670
+SultansOfCode!~SultansOf@user/SultansOfCode
+It makes no sense... So am I forced to create it in main and pass it around?
+
+1741715683
+grayhatter!~grayhatte@user/grayhatter
+it makes no sense *why*?
+
+1741715699
+SultansOfCode!~SultansOf@user/SultansOfCode
+Why have the gpa on main, if it is the struct that uses it?
+
+1741715715
+grayhatter!~grayhatte@user/grayhatter
+I'm happy to explain it until it makes sense, but it does make sense to me, so I don't know how to help without more questions
+
+1741715756
+SultansOfCode!~SultansOf@user/SultansOfCode
+OK, it makes sense to have a "global" gpa instead of each "instance" having its own
+
+1741715763
+grayhatter!~grayhatte@user/grayhatter
+so on line 36, the state for the GPA is "created" and it lives in ram at memory addr 0x1234_5678
+
+1741715764
+SultansOfCode!~SultansOf@user/SultansOfCode
+But also sounds weird to keep passing it around
+
+1741715792
+SultansOfCode!~SultansOf@user/SultansOfCode
+So, on line 36 it is strack created and not heap created?
+
+1741715796
+SultansOfCode!~SultansOf@user/SultansOfCode
+Stack*
+
+1741715811
+grayhatter!~grayhatte@user/grayhatter
+then on line 37, you create an allocator() [I'll call this allocator_1] which knows the state at 0x1234_5678
+
+1741715836
+grayhatter!~grayhatte@user/grayhatter
+then on line 92, you copy the state to memory 0x1234_1234
+
+1741715849
+SultansOfCode!~SultansOf@user/SultansOfCode
+Wait... .allocator() creates a new one every call, instead of gpa having its internal allocator and just returning it? (As a const function in C)
+
+1741715857
+grayhatter!~grayhatte@user/grayhatter
+then on line 46, you return, so the gpa state is copied to 0x1234_1111
+
+1741715868
+grayhatter!~grayhatte@user/grayhatter
+but allocator_1 is going to read the state from 0x1234_5678
+
+1741715887
+grayhatter!~grayhatte@user/grayhatter
+that memory address used to be the stack, but the function returned, so that address is given to something else
+
+1741715972
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: no, allocator() returns a pointer to the address of the gpa state, it's not duplicated, it's only a pointer to the memory location of original
+
+1741716098
+grayhatter!~grayhatte@user/grayhatter
+but directly: no,  you're not forced to create it and pass it around. But you are requried to ensure the state is valid, and exists at the same memory address
+
+1741716150
+grayhatter!~grayhatte@user/grayhatter
+you could return the gpa within the struct, and then loop through each item in the listeners map, and update their allocator to the new location after it returns
+
+1741716235
+grayhatter!~grayhatte@user/grayhatter
+but then you also have to make sure that your FloatWindow struct lives somewhere that doesn't move. i.e. all the listerners will know the memory address of the FloatWindow struct, but if you copy that struct into another List, or another Map, then that address might change, and all the listeners will need to be updated again
+
+1741716272
+grayhatter!~grayhatte@user/grayhatter
+there are some dark magic ways around this, but it's eaiser to have a root allocator, and pass that as an argument, then you waste less time, and less memory with copies
+
+1741716356
+SultansOfCode!~SultansOf@user/SultansOfCode
+OK, I created it on main and set it with fw.FloatWindow.setAllocator(gpa_allocator);
+
+1741716366
+SultansOfCode!~SultansOf@user/SultansOfCode
+Now the pointer lives inside the struct
+
+1741716380
+SultansOfCode!~SultansOf@user/SultansOfCode
+Stopped crashing, but still not working (another problem that I will look now)
+
+1741716751
+SultansOfCode!~SultansOf@user/SultansOfCode
+https://zigbin.io/4128aa Line 108 and 114. The logs are called. On the addEventListener it shows me the function and its address with the event name. But when it is emited, it says the event name and says that the listeners count is 0
+
+1741716776
+SultansOfCode!~SultansOf@user/SultansOfCode
+Even with the try on 111 not failing
+
+1741716809
+SultansOfCode!~SultansOf@user/SultansOfCode
+info: ADDING LISTENER fn () void@c64100 FOR EVENT FloatWindow.FloatWindowEvent.scroll_vertical | info: EMIT FOR FloatWindow.FloatWindowEvent.scroll_vertical HAS 0 LISTENERS
+
+1741717046
+SultansOfCode!~SultansOf@user/SultansOfCode
+I really doubt that .get is returning a copy here
+
+1741719306
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+are there any good ways to garbage collect a hash map? Looks like rehash doesn't necessarily shrink the map...is my only option to copy and readd the current entries?
+
+1741719450
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: ArrayHashMap has reinit(). given that you're presumably iterating over the entries to do GC, ArrayHashMap might be a good fit. would be curious to see your results
+
+1741719516
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yeah, iterating. I'll try it out - thanks
+
+1741719517
+grayhatter!~grayhatte@user/grayhatter
+unreachable in stdlib is crashing on valid inputs
+
+1741719531
+grayhatter!~grayhatte@user/grayhatter
+std.posix.recvfrom this time
+
+1741719599
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: it's not available in the public API (yet?) but looking at the implementation - it would be possible to build up a std.MultiArrayList of GC'd keys and values, and then swap that into the ArrayHashMap, and then call reIndex. that would skip a memcpy of the keys and values 
+
+1741719706
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: alright
+
+1741719729
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I'm having fun making a toy IRC server with libxev...10k connections and sitting around ~30mb ram
+
+1741719754
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But then they all disconnect and I'm left up there instead of ever freeing it down
+
+1741720529
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Hm, yeah that's a lot bette
+
+1741720601
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+100k connections on 12mb, not too bad!
+
+1741720694
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter no success figuring out the problem now
+
+1741721124
+grayhatter!~grayhatte@user/grayhatter
+109: const eventListeners = &self.listeners.get(event).?;
+
+1741721293
+grayhatter!~grayhatte@user/grayhatter
+oh, right, you're using a hashmap instead of a list for some reason... it's probably getPtr() 
+
+1741721336
+Xe!~Xe@perl/impostor/xe
+I'm trying to do something kinda cursed, but how would I export C malloc as a webassembly export in zig?
+
+1741721400
+grayhatter!~grayhatte@user/grayhatter
+Xe: wow, that is cursed
+
+1741721426
+Xe!~Xe@perl/impostor/xe
+i have a reason for this
+
+1741721438
+grayhatter!~grayhatte@user/grayhatter
+you'd just use libc malloc, and linkLibC() in your build... but I doubt that's what you're actually asking
+
+1741721447
+grayhatter!~grayhatte@user/grayhatter
+Xe: that's what everyone says :P
+
+1741721475
+grayhatter!~grayhatte@user/grayhatter
+the reason almost always reduces to "well, it seemed like a good idea at the time"
+
+1741721478
+Xe!~Xe@perl/impostor/xe
+andrewrk can back me up, sometimes I do actually have things go according to keikaku
+
+1741721484
+Xe!~Xe@perl/impostor/xe
+(TN: keikaku means plan)
+
+1741721538
+Xe!~Xe@perl/impostor/xe
+do you want a spoiler or would you rather remain in ignorance until everyone gets to witness the terror?
+
+1741721570
+grayhatter!~grayhatte@user/grayhatter
+I always enjoy collecting code gore
+
+1741723416
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter: hashmap to map a list of functions to each event type
+
+1741723798
+SultansOfCode!~SultansOf@user/SultansOfCode
+The eventListeners is always empty no matter what
+
+1741723867
+SultansOfCode!~SultansOf@user/SultansOfCode
+If I replicate it in a main function it works like a charm: https://zigbin.io/6c0564 You can run this code in browser and get the expected result
+
+1741723923
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: did you try getPtr() instead of get()?
+
+1741724084
+SultansOfCode!~SultansOf@user/SultansOfCode
+grayhatter tryed now and it worked, but why? Was it being a copy too?
+
+1741724092
+grayhatter!~grayhatte@user/grayhatter
+yes
+
+1741724098
+grayhatter!~grayhatte@user/grayhatter
+you can tell because it wasn't a pointer
+
+1741724221
+SultansOfCode!~SultansOf@user/SultansOfCode
+It is the second time you tell me it is copying stuff... What about that "no hidden allocations" thing?
+
+1741724231
+SultansOfCode!~SultansOf@user/SultansOfCode
+"Oh, it is not allocation, it is a pointer pushed onto stack"
+
+1741724273
+grayhatter!~grayhatte@user/grayhatter
+you're using the word allocation incorrectly
+
+1741724299
+grayhatter!~grayhatte@user/grayhatter
+but it's not hidden, that's why you had to use a var or const keyword
+
+1741724335
+grayhatter!~grayhatte@user/grayhatter
+var and const exist for a reason, and it's not just to make the code look pretty
+
+1741724802
+SultansOfCode!~SultansOf@user/SultansOfCode
+OK, now I am f*cked up... I need the callback to use self, but inside init I have no "self" yet
+
+1741724838
+SultansOfCode!~SultansOf@user/SultansOfCode
+FloatWindow.init: create scrollbar; scrollbar.addlistener(.scroll, &self.scrollbarchanged)
+
+1741725152
+SultansOfCode!~SultansOf@user/SultansOfCode
+And there is no lambdas/anonymous functions x.x
+
+1741725376
+SultansOfCode!~SultansOf@user/SultansOfCode
+Time for @call?
+
+1741726805
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yeah, stuck again ahuhauahuahu
+
+1741737057
+torque!~tachyon@user/torque
+unless you allocate self on the heap, the `self` created in init is on the stack so trying to attach it as a pointer to a callback is asking for trouble
+
+1741737069
+torque!~tachyon@user/torque
+either make the caller pass in a pointer you can reuse, or allocate it
+
