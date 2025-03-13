@@ -1,0 +1,840 @@
+1741742472
+andrewrk!~andrewrk@mail.ziglang.org
+motiejus: do you remember where your comments are on the issue tracker when you explored storing zig packages in compressed form?
+
+1741743377
+andrewrk!~andrewrk@mail.ziglang.org
+never mind - found it on https://github.com/ziglang/zig/issues/14283
+
+1741746465
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque, interesting. So what do you suggest?
+
+1741746511
+SultansOfCode!~SultansOf@user/SultansOfCode
+I can create with the allocator.create
+
+1741746804
+torque!~tachyon@user/torque
+depends on the use case
+
+1741746837
+torque!~tachyon@user/torque
+you can always implement both, with the allocating version just passing the allocated pointer to the function that takes the pointer
+
+1741746862
+torque!~tachyon@user/torque
+some codebases want to avoid allocation, so having that option when possible is nice. but if this isn't library code or jsut your own thing then do whatever
+
+1741747008
+SultansOfCode!~SultansOf@user/SultansOfCode
+Basically pass the "parent" pointer to the child that will call the callback?
+
+1741747448
+SultansOfCode!~SultansOf@user/SultansOfCode
+And how to dispose the memory created with allocator.create?
+
+1741747867
+SultansOfCode!~SultansOf@user/SultansOfCode
+.destroy, was trying free. Free is for alloc
+
+1741748628
+SultansOfCode!~SultansOf@user/SultansOfCode
+As soon as I changed the callback from *const fn() void; to *const fn (arguments: anytype) void;, compiler complains about the size
+
+1741748655
+SultansOfCode!~SultansOf@user/SultansOfCode
+And I want the callbacks to be variadic
+
+1741748677
+SultansOfCode!~SultansOf@user/SultansOfCode
+So a mouse event, for example, can pass the x,y. A scroll event can pass the scroll value, etc.
+
+1741748783
+SultansOfCode!~SultansOf@user/SultansOfCode
+Tried *anyopaque, but it has no fields
+
+1741749115
+SultansOfCode!~SultansOf@user/SultansOfCode
+torque: any thoughts?
+
+1741749601
+torque!~tachyon@user/torque
+you can't have callbacks that take anytype because that's not how that works
+
+1741749612
+torque!~tachyon@user/torque
+your best bet is probably to make it take a tagged union
+
+1741749706
+torque!~tachyon@user/torque
+basically, functions with `anytype` as an argument type are generic, i.e. they are only turned into actual code by the compiler when they're called; you can't get a pointer to a generic function
+
+1741749985
+SultansOfCode!~SultansOf@user/SultansOfCode
+Can't pass a .{} with any fields to it?
+
+1741749990
+SultansOfCode!~SultansOf@user/SultansOfCode
+Even as a pointer?
+
+1741749997
+SultansOfCode!~SultansOf@user/SultansOfCode
+If it is a pointer, it knows the size at compile time
+
+1741750008
+SultansOfCode!~SultansOf@user/SultansOfCode
+Then the callbacks take care of the rest
+
+1741759745
+dsal!sid13060@id-13060.lymington.irccloud.com
+How do I write a function that takes some comptype T and @abs of that value?
+
+1741759778
+dsal!sid13060@id-13060.lymington.irccloud.com
+I can just use i32/u32 for my use case.
+
+1741773319
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do you link to a system library and require at least version x.x?
+
+1741773366
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I assume the build will fail if the system library is needed but not available?
+
+1741773416
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L94
+
+1741773449
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+How do I check for header files in zig, like it's done with waf here? https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L98
+
+1741773487
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L127
+
+1741773640
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+And checks for setting sizes of short, long etc.: https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L173
+
+1741779234
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+waf generates a config.h file in it's build dir. 
+
+1741779279
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm trying to do it in zig build, but the sources can't find config.h 
+
+1741779296
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+do I need to make sure the config.h file is saved somewhere?
+
+1741779340
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I use:
+
+1741779343
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+lib.addConfigHeader(config_h); lib.installConfigHeader(config_h);
+
+1741780656
+Earnestly!~earnest@user/earnestly
+flower_: Ideally you'd use pkg-config and --modversion, I'm not sure if build.zig has abstractions for this
+
+1741780679
+Earnestly!~earnest@user/earnestly
+(Ideally because not every lib uses pkg-config, yet)
+
+1741780714
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Earnestly: I think zig uses pkg-config by default on linux right?
+
+1741780780
+Earnestly!~earnest@user/earnestly
+It's not whether zig uses it or not, but whether build.zig provides an abstraction for it. Otherwise you're calling subprocs
+
+1741780781
+ifreund!2940d10f8b@user/ifreund
+I don't think anyone's taught std.Build about either pkg-config versions or even soversions yet :/
+
+1741780808
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+If I copy the build/config.h file generated by waf to src/config.h, my project builds
+
+1741780812
+Earnestly!~earnest@user/earnestly
+ifreund: Is there a reasonably "portable" way to determine soversions btw?
+
+1741780860
+Earnestly!~earnest@user/earnestly
+(Iow, is soname gnu specific)
+
+1741780866
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but I'd like to fix that with zig build. 
+
+1741780899
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+should installConfigHeader actually install a file somewhere? And how to determine that path?
+
+1741781155
+ifreund!2940d10f8b@user/ifreund
+Earnestly: look at the file name?
+
+1741781229
+ifreund!2940d10f8b@user/ifreund
+I don't know anything about windows if that's what you're getting at
+
+1741781335
+Earnestly!~earnest@user/earnestly
+ifreund: This kind of thing: objdump -p /usr/lib/*.so.* | awk '$1 == "SONAME" && $0 = $NF {print substr($0, 1, index($0, ".so.") - 1), substr($0, index($0, ".so.") + 4)}'
+
+1741781442
+ifreund!2940d10f8b@user/ifreund
+ah, you are referring to the SONAME in the elf header
+
+1741781454
+ifreund!2940d10f8b@user/ifreund
+DT_SONAME definitely isn't GNU specific
+
+1741781464
+Earnestly!~earnest@user/earnestly
+Yeah, well at least I'm not sure what else is reliable
+
+1741781480
+ifreund!2940d10f8b@user/ifreund
+I don't know if compiler/linker toolchains reliably put the version suffix there though
+
+1741781488
+Earnestly!~earnest@user/earnestly
+Slightly more useful output: awk '$1 == "SONAME" && $0 = $NF {i = index($0, ".so."); print substr($0, i + 4), substr($0, 1, i - 1) ".so"}' | column -t | less
+
+1741781526
+Earnestly!~earnest@user/earnestly
+(Would need to impl "rindex()" for this to be actually reliable)
+
+1741781570
+Earnestly!~earnest@user/earnestly
+But afaik soname versions are convention. Gnome iirc bakes the version into the lib name and doesn't use soname versioning
+
+1741781616
+ifreund!2940d10f8b@user/ifreund
+Earnestly: I was under the impression that the "soname" versioning system works by linking to libfoo.so.1 rather than libfoo.so
+
+1741781639
+ifreund!2940d10f8b@user/ifreund
+where libfoo.so is a symlink to libfoo.so.1 and libfoo.so.1 is a symlink to libfoo.so.1.1 or whatever
+
+1741781640
+Earnestly!~earnest@user/earnestly
+aiui that's done by ldconfig
+
+1741781662
+Earnestly!~earnest@user/earnestly
+But yes, that's right
+
+1741781774
+Earnestly!~earnest@user/earnestly
+ifreund: So you'd suggest that basically readlink'ing a libfoo.so and then parsing the filename itself is the most reasonable way of determining its version? (I can agree with this, rather than reading elf headers)
+
+1741781784
+ifreund!2940d10f8b@user/ifreund
+Earnestly: from looking at the elf files on my system, e.g. libfoo.so.1 is directly in the DT_NEEDED entries in the ELF files
+
+1741781791
+Earnestly!~earnest@user/earnestly
+(or sections)
+
+1741781819
+ifreund!2940d10f8b@user/ifreund
+whatever compiles the ELF file decides at build time which soversion to link against
+
+1741781842
+Earnestly!~earnest@user/earnestly
+If only that 'whatever' could be queried about what version it would pick
+
+1741781855
+ifreund!2940d10f8b@user/ifreund
+Earnestly: no, I'm suggesting the zig user that wants to link a specific soversion of a library asks the zig build system to link against that soversion
+
+1741781873
+Earnestly!~earnest@user/earnestly
+Ah fair point, yes
+
+1741781957
+Earnestly!~earnest@user/earnestly
+I was thinking more about determining the version, whereas of course the build could just directly request it
+
+1741782157
+ifreund!2940d10f8b@user/ifreund
+Thinking a bit deeper, soversion is not sufficient for a zig project knowing if the shared library provided by the system is a compatible version
+
+1741782186
+ifreund!2940d10f8b@user/ifreund
+the zig project may require a newish feature of the library that was added more recently than the latest soversion bump
+
+1741782218
+ifreund!2940d10f8b@user/ifreund
+which means that the zig build system should probably ignore the soversion stuff and only expose the pkg-config version
+
+1741782681
+bw!sid2730@user/betawaffle
+hmmmm weird... is anyone else getting 404s when vscode tries to install zig 0.14.0?
+
+1741782705
+bw!sid2730@user/betawaffle
+it seemed to work if i set it to use 0.13.0 instead
+
+1741782715
+bw!sid2730@user/betawaffle
+but obviously i want 14
+
+1741782886
+meidam!~meidam@user/meidam
+You can get vscode to install zig for you? huh
+
+1741782894
+meidam!~meidam@user/meidam
+Not that I use vscode anymore
+
+1741782951
+bw!sid2730@user/betawaffle
+it seems to want to install it even if i have it installed already :/
+
+1741782981
+bw!sid2730@user/betawaffle
+i'm using cursor, but it has the same issue in vscode
+
+1741782998
+bw!sid2730@user/betawaffle
+and it definitely works for other versions
+
+1741783064
+meidam!~meidam@user/meidam
+Can't you just install zig 0.14.0 manually?
+
+1741783087
+meidam!~meidam@user/meidam
+Or maybe you already have...
+
+1741783107
+bw!sid2730@user/betawaffle
+yeah, i have no issue with that, but the extension barfs every time i open a zig project/file trying to install it even if i have it installed
+
+1741783129
+meidam!~meidam@user/meidam
+Sounds annoying
+
+1741783136
+bw!sid2730@user/betawaffle
+yes, definitely
+
+1741783220
+Affliction!affliction@idlerpg/player/affliction
+bw: There's a setting to tell it where zig is installed (or just entering "zig" has it use what's in $PATH). It should stop it from doing that.
+
+1741783235
+bw!sid2730@user/betawaffle
+ok lemme try that
+
+1741783272
+bw!sid2730@user/betawaffle
+ahhhh, ok now it says "Failed to run '/opt/homebrew/bin/zig version'!"
+
+1741783324
+Affliction!affliction@idlerpg/player/affliction
+hm, if the binary is indeed there, not sure where to go from there
+
+1741783324
+bw!sid2730@user/betawaffle
+and if i run that, it says "error: Zig was built/linked incorrectly: LLVM and Clang have separate copies of libc++ If you are dynamically linking LLVM, make sure you dynamically link libc++ too"
+
+1741783353
+bw!sid2730@user/betawaffle
+sooo... is homebrew wrong?
+
+1741783353
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Ok I am lost on how multithreaded allocations work
+
+1741783358
+Affliction!affliction@idlerpg/player/affliction
+I'd guess so
+
+1741783380
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://zigbin.io/f0ae76
+
+1741783392
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+^^ when I run main2, memory stays constant for each fetch
+
+1741783403
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+When i run main, it continually increases with each request
+
+1741783414
+bw!sid2730@user/betawaffle
+lol ok: https://github.com/Homebrew/homebrew-core/issues/210073
+
+1741783504
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I'm guessing that the memory allocated in teh thread isn't freed...but I'm not really sure how to handle allocations in a thread pool like that
+
+1741783717
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ok same thing happens on 0.13.0, so at least it's not a regression :)
+
+1741783808
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The only thing that allocates in the thread that wouldn't be freed in the thread is the bundle, afaikt
+
+1741783818
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+s/afaikt/afaict
+
+1741783850
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The first fetch would scan the bundles, but maybe that is threadlocal? I didn't see anythign like that in the source...
+
+1741784496
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Oh, it's the threadpool
+
+1741784514
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If I just spawn a thread each iteration I don't get the same issue
+
+1741785589
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I am lost on why the threadpool is increasing in memory though 🤔
+
+1741787557
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah ok the config.h file is generated in zig-out/config.h
+
+1741787570
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+now I've to make sure the source files will find it ...
+
+1741787647
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+addIncludePath(b.path("zig-out")); ?
+
+1741788096
+ifreund!2940d10f8b@user/ifreund
+flower_: installConfigHeader() is not what you are looking for
+
+1741788184
+ifreund!2940d10f8b@user/ifreund
+The ConfigHeader Step has an output_file field
+
+1741788204
+ifreund!2940d10f8b@user/ifreund
+this is the file you need to include when compiling your C code
+
+1741788247
+ifreund!2940d10f8b@user/ifreund
+(note the GeneratedFile.getPath() function)
+
+1741789450
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ifreund: the return value of addConfigHeader has that method? e.g. GeneratedFile.getPath() ?
+
+1741789682
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+.root_module.addIncludePath(b.path(config_h.output_file.getPath()));
+
+1741790111
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+thread 1014141 panic: getPath() was called on a GeneratedFile that wasn't built yet. Is there a missing Step dependency on step 'configure blank header to config.h'?
+
+1741790135
+ifreund!2940d10f8b@user/ifreund
+.root_module.addIncludePath(config_h.output_file)
+
+1741790180
+ifreund!2940d10f8b@user/ifreund
+or maybe you need output_file.dirname(), I didn't check
+
+1741790272
+ifreund!2940d10f8b@user/ifreund
+I actually read the code now, try config_h.getOutput().dirname()
+
+1741790273
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+should be the directory afaik
+
+1741790285
+ifreund!2940d10f8b@user/ifreund
+apologies for the half-assed help
+
+1741791987
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+brings me a step closer
+
+1741792045
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but I'm not use if I understand addConfigHeader correctly. I thought with style .blank, you could generate a config.h file
+
+1741792057
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+without a template
+
+1741792124
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but what is include_path then in the ConfigHeader struct
+
+1741792198
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+If I copy the waf generated config.h to src/ , it seems it's been used to generate the config.h file in zig-out/include/
+
+1741792330
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+how to get an old version of zig (aside from building it?) eg. uscope requires `0.14.0-dev.2577+271452d22` precisely, which is 3 months old and not available on ziglang.o/download
+
+1741793814
+blurrycat!~blurrycat@user/blurrycat
+Is there a way to have valgrind massif capture allocations properly with Zig? I'm using the DebugAllocator and it doesn't seem to register on the massif trace at all, should I force use the C allocator everywhere for this?
+
+1741793999
+ifreund!2940d10f8b@user/ifreund
+blurrycat: yes, valgrind only sees allocations created through the libc allocator
+
+1741794038
+blurrycat!~blurrycat@user/blurrycat
+Thanks, I'll try forcing the c_allocator for this then
+
+1741794059
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+(btw i tried zigup and they must be kidding me; it ran `mkdir $HOME/zig` and `rm -rf $HOME/zig/0.13.0`  (no, not ~/.zig, or ~/.zigup, ~/zig)
+
+1741794063
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+)
+
+1741794084
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+(i guess that's why we should not run random scripts from the internet)
+
+1741794148
+ifreund!2940d10f8b@user/ifreund
+rip :/
+
+1741794167
+ifreund!2940d10f8b@user/ifreund
+I guess it does say that it uses $HOME/zig in the readme but it would be better if it had some safety rails
+
+1741794175
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+i did not have any files there, but it does give me a ton of anxiety.  that is WAAY too close
+
+1741794221
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+it would only take not properly evaluating the version name and it's `rm -rf ~/zig` -- and that can be a disaster for some
+
+1741794271
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+i actually thought it uses ~/.zig so i just opened issue few minutes ago, proposing to use `~/.zigup` or `~/.config/zigup`, etc.  but i did NOT expect this
+
+1741794342
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why exactly was it removing anything at all
+
+1741794505
+blurrycat!~blurrycat@user/blurrycat
+netvor: what command did you run?
+
+1741794515
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+zigup fetch 0.13.0
+
+1741794574
+blurrycat!~blurrycat@user/blurrycat
+It does not rm -rf ~/zig/0.13.0 for me but ~/zig/0.13.0.installing
+
+1741794580
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+i have to assume it would `rm -rf ~/zig`if i said `zigup fetch ""` (which is an easy mistake in scripts)
+
+1741794598
+blurrycat!~blurrycat@user/blurrycat
+No it would error saying fetch needs an argument
+
+1741794608
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+"" is an argument
+
+1741794627
+blurrycat!~blurrycat@user/blurrycat
+ha yes did not see those my bad :D
+
+1741794650
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+i mean i'm speculating, of course, but i've wrote enough scripts to know how easy it is to make these mistakes
+
+1741794652
+blurrycat!~blurrycat@user/blurrycat
+but not there's a safety guard, it doesn't delete ~/zig
+
+1741794680
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+surely it will fail not finding a version called ""
+
+1741794692
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+to be fair, though if you needed to read the source code it's too late :)
+
+1741794706
+blurrycat!~blurrycat@user/blurrycat
+nah it just tells you "~/zig" is already installed which doesn't make sense but it doesn't delete it at least
+
+1741794719
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, actually not at that point, but indeed, mine only does rm -rf on that .installing file
+
+1741794723
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+i'm not willing to experiment, though.. to me `mkdir ~/zig` is already a red flag
+
+1741794743
+blurrycat!~blurrycat@user/blurrycat
+netvor: if you run a random script on the internet without reading the source code you will have issues one day or another
+
+1741794743
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+mkdir doesn't overwrite
+
+1741794750
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+it's true i missed the `.installing` part
+
+1741794782
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+flower_: my point is that scripts/apps should not mess my $HOME (nobody should)
+
+1741794816
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+it's enough that one can't get rid of `~/Downloads` nowadays
+
+1741794843
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+netvor: ah that XDG story
+
+1741794845
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+all that a `fooapp` is allowed to touch is `~/.fooapp` and similar
+
+1741794860
+blurrycat!~blurrycat@user/blurrycat
+I don't really see the difference between .zig and zig
+
+1741794900
+blurrycat!~blurrycat@user/blurrycat
+(yes obviously one is "hidden" but they are both in your $HOME so in that regard they're the same thing)
+
+1741794903
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+it can't be hard to see if you don't maintain order in your home dir
+
+1741794904
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you could easily be keeping zig code in ~/zig
+
+1741794915
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you don't want zigup stuff in there
+
+1741794937
+blurrycat!~blurrycat@user/blurrycat
+but then zigup tells you in the readme that there's an option for that
+
+1741794944
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+rustup keeps its stuff in ~/.rustup
+
+1741794956
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+yeah that namespace just belongs to user, `zig` could mean absolutely anything, even unrelated to the programming language
+
+1741794968
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+dotfiles are the only exception
+
+1741794989
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+it's just basic decency at this point
+
+1741794993
+blurrycat!~blurrycat@user/blurrycat
+what if I have another software called "zig" that used the ~/.zig directory?
+
+1741794998
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+actually, that made me realize I'm backing up all these zig binaries for no reason
+
+1741795020
+blurrycat!~blurrycat@user/blurrycat
+This is an endless problem, any solution you choose here will end up upsetting someone 
+
+1741795042
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.zig will upset fewer people
+
+1741795050
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or .zigup rather
+
+1741795066
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+blurrycat: yes it depends on the apps following that convention.  as any convention/standard it only *really* works if both apps are aware of it
+
+1741795098
+blurrycat!~blurrycat@user/blurrycat
+netvor: but if I have two apps named the same, following the same convention, there's a conflict
+
+1741795113
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+you kinda can't have two apps named the same
+
+1741795151
+blurrycat!~blurrycat@user/blurrycat
+you absolutely can, I don't see why that's not possible
+
+1741795157
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+at the very least they would already conflict on command name, and they would have it figured out
+
+1741795161
+blurrycat!~blurrycat@user/blurrycat
+but anyway I think this is a discussion for elsewhere :D
+
+1741795251
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+IIRC this issue was a big and pointless flame for nodejs on Debian, since there was alredy an unrelated `node` command, and nodejs folks just wanted it sooo much
+
+1741795264
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+yeah it is OT here :)
+
+1741805068
+flower_!~archie@46.244.61.4
+.U16 = "unsigned short", this should go into a config.h file as #define U16 unsigned short, without quotes. How can I do that?
+
+1741806523
+bblack!~bblack@wikimedia/bblack-WMF
+flower_: missing a lot of context here, but are you aware of build.zig's support for generating config.h-like files?
+
+1741806567
+bblack!~bblack@wikimedia/bblack-WMF
+flower_: https://ziglang.org/documentation/master/std/#std.Build.addConfigHeader
+
+1741806583
+flower_!~archie@46.244.61.4
+bblack: I'm aware and I'm wondering how to enter a unquoted string in it :)
+
+1741806653
+flower_!~archie@46.244.61.4
+ .U16 = "unsigned short",
+
+1741806669
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm nothing in my config.h uses that
+
+1741806706
+flower_!~archie@46.244.61.4
+https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L176
+
+1741806980
+bblack!~bblack@wikimedia/bblack-WMF
+trying a local experiment about this...
+
+1741807068
+bblack!~bblack@wikimedia/bblack-WMF
+got it.  I mean, I don't know about hooking up the rest of your context, but in general I got it.
+
+1741807120
+bblack!~bblack@wikimedia/bblack-WMF
+if the value is an enum or enum-literal, it will put the @tagName as the right hand side of the define, unquoted
+
+1741807136
+bblack!~bblack@wikimedia/bblack-WMF
+and enum literals can be just about anything
+
+1741807145
+bblack!~bblack@wikimedia/bblack-WMF
+so e.g. in my addConfigHeader(...), I can do:
+
+1741807155
+bblack!~bblack@wikimedia/bblack-WMF
+.U16 = .@"unsigned short",
+
+1741807163
+bblack!~bblack@wikimedia/bblack-WMF
+or .U16 = .asdfxyz1230qhgiaor,
+
+1741807168
+bblack!~bblack@wikimedia/bblack-WMF
+or whatever, and it will put that in unquoted
+
+1741807255
+flower_!~archie@46.244.61.4
+ok, yeah I thought about something like that but ... I thought it would be a bit too optimistic
+
+1741807617
+flower_!~archie@46.244.61.4
+yep, works, thx
+
+1741814281
+Snetry!~snetry@87.122.105.84
+hey, quick question
+
+1741814293
+Snetry!~snetry@87.122.105.84
+why does zig 0.14.0 output warnings during builds?
+
+1741814367
+ifreund!2940d10f8b@user/ifreund
+Snetry: you're going to have to be more specific and probably need to share the exact output you are seeing to get an answer
+
+1741814434
+Snetry!~snetry@87.122.105.84
+well, there are a few places where this happens but one of them is addLibDirectoryWarn2 in main.zig
+
+1741814490
+Snetry!~snetry@87.122.105.84
+Its been a source of confusion in at least 2 instances now because it outputs "error: warning: blabla" making people believe something went wrong with the compilation
+
+1741814512
+Snetry!~snetry@87.122.105.84
+with ghostty's 0.14.0 migration its printing "error: warning: unable to open library directory '/usr/lib/x86_64-linux-gnu': FileNotFound"
+
+1741814530
+Snetry!~snetry@87.122.105.84
+https://github.com/ghostty-org/ghostty/issues/5744#issuecomment-2719065740
+
+1741814553
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+2 in 1? error and a warning? 
+
+1741814675
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Snetry: did you try the latest ghostty 0.14 branch?
+
+1741814684
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Coincidentally mitchell was just working on that issue
+
+1741814701
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/ghostty-org/ghostty/tree/zig0.14
+
+1741814701
+Snetry!~snetry@87.122.105.84
+I am referencing mitchell running into that issue specifically
+
+1741814767
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Ah I see
+
