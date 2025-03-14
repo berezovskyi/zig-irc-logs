@@ -1,0 +1,1348 @@
+1741824462
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is ok right? `const con: ?*PyObject = py.PyModule_Create(&module) orelse return null;`
+
+1741824505
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if ` py.PyModule_Create` returns null it should return null
+
+1741824568
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+or does `py.PyModule_Create` has to return true/false for `orelse` to kick in?
+
+1741824608
+torque!~tachyon@user/torque
+orelse operates on optionals, not booleans
+
+1741824629
+torque!~tachyon@user/torque
+however the result of that expression will never be null so you probably want `const con: *PyObject`
+
+1741824731
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm so confusing before it was `const con: [c*]PyObject =` now it should be `const con: *PyObject`?
+
+1741824780
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is what i actually wanted but short hand `const con: ?*PyObject = py.PyModule_Create(&module); if (con == null) { return null; }`
+
+1741824840
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, `?` denotes optional, since i have `orelse` its not needed 
+
+1741824917
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would have been better if i have `?` and used `orelse` the compiler would give an error 
+
+1741824974
+torque!~tachyon@user/torque
+that doesn't really make sense to be a compile error
+
+1741824983
+torque!~tachyon@user/torque
+its up to you to be precise with your type usage
+
+1741825034
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't this how bugs are created? figure zig would be more strict 
+
+1741825651
+torque!~tachyon@user/torque
+why would that create a bug?
+
+1741825700
+torque!~tachyon@user/torque
+`sometype` coerces to `?sometype` just fine and the compiler will not let you access the value without unwrapping the optional
+
+1741825904
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/5bd5d1 line:3 would have been `con = null` and it would pass that null to `PyModule_AddIntConstant` not sure how that function would handle null but it might return -1 in this case it would panic out of memory error.
+
+1741826151
+torque!~tachyon@user/torque
+it would only have been null if `PyModule_Create` actually returned null, so no, you wouldn't see that. Also if your bindings were typed strictly, `PyModule_AddIntConstant` would not take an optional pointer at all, so you'd get a compile error
+
+1741826227
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig have a way to handle `errno` ?
+
+1741826301
+torque!~tachyon@user/torque
+you could check the std docs
+
+1741826368
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok
+
+1741826560
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+found it in https://ziglang.org/documentation/0.14.0/std/#std.posix.errno but doesn't really tell you how to handle it in zig. 
+
+1741826619
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+do you just pass it to @panic(errno.number, "comment")
+
+1741826722
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+k thats shitty code i just wrote. in python you can do `raise OSError(errno_number)` and it will raise error depending on int value you give it.
+
+1741826883
+torque!~tachyon@user/torque
+you probably want to not ever use @panic
+
+1741826932
+torque!~tachyon@user/torque
+you should return an appropriate error instead
+
+1741826957
+torque!~tachyon@user/torque
+that errno wrapper wraps the errno integer in an enum for you so you can switch on specific errors and take appropriate action
+
+1741826989
+grayhatter!~grayhatte@user/grayhatter
+stealth_: what is setting errno that's not the kernel?
+
+1741827110
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, make sense if i just the errno itself. on python side i can just raise error. 
+
+1741827136
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, what?
+
+1741827283
+grayhatter!~grayhatte@user/grayhatter
+you should never be setting errno
+
+1741827286
+grayhatter!~grayhatte@user/grayhatter
+why are you?
+
+1741827380
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/5bd5d1 how would you guys handle line: 5 ? 
+
+1741828453
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i just changed it to return null; anyways is struct in zig unordered ???
+
+1741828820
+grayhatter!~grayhatte@user/grayhatter
+stealth_: the zig language docs describe structs, did you read that yet?
+
+1741828855
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, "Zig gives no guarantees about the in-memory order of fields in a struct or its size." got it from zig.guide
+
+1741829037
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+zig docs adds "Zig gives no guarantees about the order of fields and the size of the struct but the fields are guaranteed to be ABI-aligned." what does ABI-aligned mean?
+
+1741829319
+grayhatter!~grayhatte@user/grayhatter
+has anyone seen a hang in 0.14?
+
+1741829423
+grayhatter!~grayhatte@user/grayhatter
+stealth_: ABI aligned means they'll match the target ISA alignment (for the targeted ABI)
+
+1741829500
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, let me guess ISA alignment matches ... alignment
+
+1741829503
+grayhatter!~grayhatte@user/grayhatter
+if you don't know what that means, you can ignore that part for now, it only matters if you're building something, e.g. a compiler, that will emit assembly, or modify
+
+1741829520
+grayhatter!~grayhatte@user/grayhatter
+registers, or something else sufficently virtual machine based
+
+1741829602
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well my current goal is to hold all the defines+enum value in a struct of some kind and use the for loop to replace `PyModule_AddIntConstant(object, "TEST", 123)`
+
+1741829605
+grayhatter!~grayhatte@user/grayhatter
+stealth_: if you want to copy 4 byte from memory, and put it in an 8 byte register, the memory address matters, because it will determine which bits get changed in the register
+
+1741829630
+grayhatter!~grayhatte@user/grayhatter
+everyone else don't @ me, I know that's pedantically insufficent
+
+1741829724
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was going to use enum but seems you have to be very specific type with it, the type can be anything so... 
+
+1741829753
+grayhatter!~grayhatte@user/grayhatter
+stealth_: a matching ABI alignment is what **everything** expects, so that's what you want, and as long as you don't cast between sizes incorrectly, you shouldn't trip over it yet
+
+1741829859
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright.
+
+1741840662
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there any advantage/disadvantage in splitting .so file?
+
+1741860927
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+A couple of minutes ago, I've discovered Bolin, yet another programming language, which seems to have been around for not too long, but interestingly lean on compilation performance, having made the statement they can do 3M lines in one second.
+
+1741861151
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+lazy dependency, lazy path; What does lazy exactly mean in this context? Somehow that word doesn't fit in this context in my brain. 
+
+1741861207
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+same as artifact actually, but that seems to be a term in computer science related to that graph
+
+1741861219
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+It may not have much relevance to Zig otherwise, but some shared spirit seems to be there. (bolinlang.com) You'll (quite weirdly) have to agree to an EULA to download it; they don't want to offer it under any open-source licenses yet to prevent fracturing the commpunity, they say.
+
+1741862807
+ifreund!2940d10f8b@user/ifreund
+flower_: lazy dependency = not fetch eagerly before running build.zig, rather fetched only if required by the build.zig script
+
+1741862862
+ifreund!2940d10f8b@user/ifreund
+flower_: lazy path = not known during the build() function, only determined when needed during execution of the build graph
+
+1741862909
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ifreund: I see thx
+
+1741863026
+ifreund!2940d10f8b@user/ifreund
+StopNGo: looks very immature as a project, I would be curious to see an explanation of how their "automatic memory management with no gc or rc" works
+
+1741863031
+ifreund!2940d10f8b@user/ifreund
+but I didn't find that on the website
+
+1741863038
+ifreund!2940d10f8b@user/ifreund
+and it doesn't seem to be open source
+
+1741863332
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+ifreund: Well, I've read through the materials (except the 35-stage mini-game) and I think, what they're referring to, is that they don't have a heap and stack distinction (I mean, as we know C and C++ technically don't call it that either) and they do scope-based management on everything? They probably optimize copies into moves when it works.
+
+1741863454
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+One bit on the Highlights page is that they have mandatory bounds checking (Though it could have been elided in that very example using Inter-Procedural Optimization, could it not have been?), you're only allowed to index into an array after establishing your index is within its confines. That suitable checks have been performed seems to be statically asserted at compile time.
+
+1741863649
+tusf!cb6c78d75e@user/TUSF
+Looks like Go-inspired syntax, with a bit of Zig (mostly in error handling)
+
+1741863675
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+But yes, it's immature, structs already make it fall apart (?) and their classes stuff is odd. Let's see how that pans out ... They've had templates at one point, switched to generics, then cut them out again. Another area of to-be-decided. Kinda neat, though, with its more minimal syntax in the examples.
+
+1741868812
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Earnestly: the project I try to convert from waf to zig (partly just as exercise and challenge) uses specific pkg-config in files it seems 
+
+1741868815
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Display all 148 possibilities? (y or n)
+
+1741868829
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/Stazed/ntk-unofficial/blob/master/ntk.pc.in
+
+1741868889
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L454
+
+1741868924
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+are they strictly needed? What do they exactly?
+
+1741868933
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+will do some searching
+
+1741869015
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and it does some ldconfig stuff https://github.com/Stazed/ntk-unofficial/blob/master/wscript#L557
+
+1741869047
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+which I don't know much about
+
+1741869580
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, probably wise to add those files and try to generate them with zig build
+
+1741871987
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so far so good
+
+1741872019
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+zig build uninstall crashes though: 
+
+1741872019
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Display all 148 possibilities? (y or n)
+
+1741872025
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://paste.debian.net/1362840/
+
+1741872062
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+my middle mouse pasting isn't optimal either, lol 
+
+1741877808
+Maarrk!~Maarrk@user/Maarrk
+A side effect of this channel is seeing ever more paste services I wouldn't guess exist xD
+
+1741892696
+jbowen!sid512234@user/jbowen
+Sorry, I'm getting a bit confused with documentation; I'm building 0.14.0 from source on Linux; the build was successful, but when I ran make install I was surprised to see: -- Install configuration: "Debug"
+
+1741892743
+jbowen!sid512234@user/jbowen
+Does that mean that there are debug symbols/extra asserts/instrumentation/etc that will slow things down? Is there a "Release" mode I should have specified when building?
+
+1741892767
+jbowen!sid512234@user/jbowen
+I was just following the instructions from the README, which also seem to be the same steps here: https://github.com/ziglang/zig/wiki/Building-Zig-From-Source#instructions
+
+1741892785
+jbowen!sid512234@user/jbowen
+mkdir build && cd build && cmake .. && make install
+
+1741893526
+phaleth!~phaleth@user/phaleth
+in case the doc doesn't tell as much you might wanna look into CMakeLists.txt
+
+1741893552
+phaleth!~phaleth@user/phaleth
+actually the config is listed there at the top
+
+1741893591
+phaleth!~phaleth@user/phaleth
+something like `cmake -DCMAKE_BUILD_TYPE=Release ..` should set the build to Release
+
+1741893798
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+jbowen, why are you building from source? it takes few seconds to download and run zig
+
+1741896679
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how to get line:16 working? https://zigbin.io/d026b1
+
+1741896746
+grayhatter!~grayhatte@user/grayhatter
+stealth_: the error says wanted `Type` found `*const Type` 
+
+1741896756
+grayhatter!~grayhatte@user/grayhatter
+so wanted Type but found pointer to Type instead
+
+1741896762
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if i have just `B[0]` it works, but i want to include all the struct in B array
+
+1741896779
+grayhatter!~grayhatte@user/grayhatter
+how would you access any pointer?
+
+1741896821
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is the error i am getting: error: expected type '_.main.A', found '*const [2]_.main.A'
+
+1741896889
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I know... read what I wrote, then read it again until you understand it, or can ask a question about it
+
+1741896991
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, no clue
+
+1741897049
+grayhatter!~grayhatte@user/grayhatter
+then you need to read the zig docs on pointers, slices, and accessing pointer values
+
+1741897081
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, well i have already tried everything i know. 
+
+1741897093
+grayhatter!~grayhatte@user/grayhatter
+the section on destructing arrays might also give you a clue
+
+1741897134
+grayhatter!~grayhatte@user/grayhatter
+stealth_: then you should try to learn something new, then you'll know more things to try
+
+1741897164
+grayhatter!~grayhatte@user/grayhatter
+or, if nothing else, then you'll be able to ask a more specific question, other than "someone help fix my code"
+
+1741897197
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+are you talking about using a for loop?
+
+1741897456
+grayhatter!~grayhatte@user/grayhatter
+just to be sure, I read though them all again, and there are a few different examples of what you're trying to do in the array, pointer, slices sections of the zig docs
+
+1741898024
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+is there urlencode somewhere in the stdlib?   i haven't found it by that name.   what i mean is the URI "percent encoding", eg. "foo bar" => "foo%20bar"
+
+1741898112
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+netvor: there is not
+
+1741898132
+blurrycat!~blurrycat@user/blurrycat
+there is this: https://ziglang.org/documentation/master/std/#std.Uri.Component.percentEncode
+
+1741898138
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Well i'll be damned
+
+1741898181
+blurrycat!~blurrycat@user/blurrycat
+I like that the docs show the implementation, I've never thought about how simple something like this is before :')
+
+1741898257
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+thanks!  i was thinking of writing my own but reading the rfc makes me yaaaawn :D
+
+1741898401
+blurrycat!~blurrycat@user/blurrycat
+stealth_: you can concatenate arrays at comptime, if you search for that you should find what you need
+
+1741898518
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+but it does not seem very useful; it needs caller to pass a function to decide whether a char should be encoded or not, soo...  but it's a good start
+
+1741898530
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, you are talking about using ++ ? i have tried all that. 
+
+1741898559
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+searching anything when it comes to zig online is bad.
+
+1741898627
+blurrycat!~blurrycat@user/blurrycat
+stealth_: what have you tried with ++?
+
+1741898682
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, making var C and ++ to add B into it. 
+
+1741898699
+blurrycat!~blurrycat@user/blurrycat
+well that works for me
+
+1741898716
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm...
+
+1741898718
+blurrycat!~blurrycat@user/blurrycat
+wait no you don't need to make C a var it can still be a const
+
+1741898772
+blurrycat!~blurrycat@user/blurrycat
+++ is not modifying the first operand, it returns a new concatenated array of the two operands
+
+1741898781
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, maybe its something i haven't learnt yet,
+
+1741898791
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are talking about C = C ++ B; ? 
+
+1741898834
+blurrycat!~blurrycat@user/blurrycat
+const C = [_]A{ ... } ++ B;
+
+1741898897
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can appending to end of the struct like that? i haven't seen that anywhere, that seems to work.
+
+1741898914
+blurrycat!~blurrycat@user/blurrycat
+it's not a struct it's an array
+
+1741898928
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+but `C += B` `C = C ++ B`, stuff like that doesn't work. 
+
+1741898948
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am saying i wasn't aware of that syntax style of coding. 
+
+1741898995
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+stealth_: https://zigbin.io/8dafab
+
+1741899010
+blurrycat!~blurrycat@user/blurrycat
+and what grayhatter was saying is that this is shown in multiple places in the docs
+
+1741899021
+blurrycat!~blurrycat@user/blurrycat
+which are a really great way to learn about the language features
+
+1741899079
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am coming from Python so all this is new. 
+
+1741899126
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+yeah it takes time (and soome pain resistance) to get used to so many things now having to be explicit
+
+1741899173
+GreaseMonkey!greaser@user/greasemonkey
+`C = C ++ B` might work if `C` is declared as `comptime var`?
+
+1741899188
+GreaseMonkey!greaser@user/greasemonkey
+`++` is comptime-only
+
+1741899208
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, thats a new concept as well
+
+1741899214
+grayhatter!~grayhatte@user/grayhatter
+coming from another language sucks pretty hard, until you set aside your ego, and actually learn as if you don't understand the language you haven't learned yet
+
+1741899218
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+note that most of the time, you don't know beforehand how long your slices will be, so arrays (and `++` and `[_]`) are almost never used in runtime code
+
+1741899259
+grayhatter!~grayhatte@user/grayhatter
+[_] is also comptime only, so you can safely say it's never used in runtime code
+
+1741899315
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it has nothing to do with ego, i just don't know the syntax to do what, its hard to grasp that by just read/watching you need hand on experience
+
+1741899337
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i been using [_] so got that.
+
+1741899359
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/verse/blob/src/template/page.zig#L348 https://srctree.gr.ht/repo/verse/blob/src/template/page.zig#L385 and it becoming const in https://srctree.gr.ht/repo/verse/blob/src/template/page.zig#L397
+
+1741899420
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thats the other problem, most of the docs you find online are outdated for zig. 
+
+1741899435
+grayhatter!~grayhatte@user/grayhatter
+stealth_: ego doesn't just mean the common understanding, like, lack of humility
+
+1741899450
+GreaseMonkey!greaser@user/greasemonkey
+the zig std module does have up-to-date code you can look at to get a feel for how things work
+
+1741899502
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+(i suppose if ego was the problem stealth_ would have already given up on learning zig :D)
+
+1741899510
+GreaseMonkey!greaser@user/greasemonkey
+it's under `${zig_root}/lib/std` for standalone versions, or typically `/usr/lib/zig/std` for package-manager-managed versions
+
+1741899515
+grayhatter!~grayhatte@user/grayhatter
+ego is also awareness, I could also have said you have to set aside your assumptions, but that's misleading, because here I assume you'r not making assumptions, you've just become accustom to python magicing things up for you
+
+1741899590
+grayhatter!~grayhatte@user/grayhatter
+if you try to learn zig, as if you've never done programming before, you would have arrived at a better question which is "why can't I include B here", where your question had the assumption that what you were doing should work
+
+1741899628
+grayhatter!~grayhatte@user/grayhatter
+stealth_: none of the docs I find are outdated. I read the stdlib docs, or example code directly from github
+
+1741899668
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+something that takes seconds in Python has taken hrs in zig, well that just learning curve but i figure it still take more time for experts as well but thats ok, low level languages aren't suppose to be pretty or quick. I like the explicit aspect of zig.
+
+1741899693
+GreaseMonkey!greaser@user/greasemonkey
+i'm at the point where i prefer using Zig over Python largely because of the strict typing
+
+1741899720
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yeah, over the last year writing code in zig takes about 2x as long as it would take in python
+
+1741899735
+GreaseMonkey!greaser@user/greasemonkey
+and yeah the seconds vs hours thing is just the learning curve
+
+1741899736
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
++1, for me the strict typing makes it pretty addictive as well
+
+1741899736
+grayhatter!~grayhatte@user/grayhatter
+some sections I can get that down to 1.2x as long
+
+1741899782
+grayhatter!~grayhatte@user/grayhatter
+the trade off is fixing bugs when adding features is *way* faster, and I'm measuring response times in nanoseconds, instead of miliseconds
+
+1741899789
+GreaseMonkey!greaser@user/greasemonkey
+or more specifically, being at the start of the learning curve
+
+1741899812
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+the moment the last compile error disappears, i get a rush like i've completed a line in Tetris :D
+
+1741899813
+grayhatter!~grayhatte@user/grayhatter
+oh, also, I don't hate writing code anymore... which is probably undervalued as a metric
+
+1741899826
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sometimes i am surprised at how easy zig is at certain things, just wow, mostly when it comes to using C
+
+1741899832
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+with FFI it was hell. 
+
+1741899858
+GreaseMonkey!greaser@user/greasemonkey
+oh yeah if you think Python's ctypes is hell... try making a module in C for Python's C API
+
+1741899870
+GreaseMonkey!greaser@user/greasemonkey
+...and then decide never to do that again and use ctypes from then on
+
+1741899894
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cython is must hard then ctypes 
+
+1741899898
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+than*
+
+1741899914
+GreaseMonkey!greaser@user/greasemonkey
+and yeah, having slices and foreach in a modern low-level language, that makes C feel painful
+
+1741899979
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya why i never wanted to learn C and kept away from cpython i just didn't want to deal with debugging, then it still happened with cython as well... why i am using zig now
+
+1741900004
+grayhatter!~grayhatte@user/grayhatter
+stealth_: did you get your answer, other than what netvor linked?
+
+1741900011
+GreaseMonkey!greaser@user/greasemonkey
+oh yeah you can hit some nasty nasty bugs in Python code with the power of typos
+
+1741900019
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ffi is ok for simple everyday use but anything advance it craps out.
+
+1741900133
+grayhatter!~grayhatte@user/grayhatter
+that suggestion does work, but ++ is a much better way
+
+1741900157
+GreaseMonkey!greaser@user/greasemonkey
+yeah for advanced stuff you'd use and/or make a binding generator... which is something Zig provides out of the box and integrated into the language
+
+1741900216
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i did try the for loop as well but i was `C += B[i];` which is me mixing python thinking. should have been `C[2+i] = B[i];`
+
+1741900336
+grayhatter!~grayhatte@user/grayhatter
+stealth_: C: [4]A = .{ A{}, A{} } ++ B;
+
+1741900382
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I think `const C: [_]A{ .{}, .{} } ++ B;` works too?
+
+1741900392
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: already gave the answer earlier :p
+
+1741900402
+grayhatter!~grayhatte@user/grayhatter
+err, the 2nd should be C = [_]
+
+1741900418
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+gives me ` expected 4 array elements; found 2`
+
+1741900432
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+without the ++B; 
+
+1741900447
+blurrycat!~blurrycat@user/blurrycat
+well yeah without the ++ B it doesn't have the 4 elements it expects
+
+1741900448
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: I know, I just wanted to make sure that stealth_ got the answer that didn't use undefined
+
+1741900454
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am just not aware of these syntax 
+
+1741900468
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: oh yeah I didn't see that one :')
+
+1741900485
+blurrycat!~blurrycat@user/blurrycat
+stealth_: the arrays and slices sections of the docs are a great help for that
+
+1741900497
+grayhatter!~grayhatte@user/grayhatter
+stealth_: this syntax is well documented in the array section
+
+1741900508
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i looked at https://ziglang.org/documentation/0.14.0/#Arrays couldn't find anything you guys are saying with new syntax 
+
+1741900570
+grayhatter!~grayhatte@user/grayhatter
+that's why I said ego; because the answer exists, you're just not looking for it... I assume because you're pattern matching looking for something you already know/understand... that's the ego part of it
+
+1741900571
+blurrycat!~blurrycat@user/blurrycat
+there are multiple uses of ++ in that section
+
+1741900602
+grayhatter!~grayhatte@user/grayhatter
+stealth_: ctrl + f `all_of_it`
+
+1741900608
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, you mean const all_of_it = part_one ++ part_two; 
+
+1741900620
+blurrycat!~blurrycat@user/blurrycat
+that, also hello ++ " " ++ world
+
+1741900629
+grayhatter!~grayhatte@user/grayhatter
+lol, blurrycat beat me to that pointer as well
+
+1741900670
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i had already learned to use ++ in the ziglings exercise 
+
+1741900712
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that can't be true, because if you really learned it... you would have used it here
+
+1741900721
+grayhatter!~grayhatte@user/grayhatter
+seeing it before, isn't learning it
+
+1741900723
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o well, at least i learned something new and thanks everyone for your input :)
+
+1741900740
+grayhatter!~grayhatte@user/grayhatter
+stealth_: good luck :)
+
+1741901271
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
++1, don't despair, sometimes it just takes a walk, shower, etc.., and then it clicks.. :D
+
+1741901347
+grayhatter!~grayhatte@user/grayhatter
+I've been writing zig code for over a year now, I only learned ++ a few months ago
+
+1741901359
+grayhatter!~grayhatte@user/grayhatter
+sometimes it takes even longer :D
+
+1741901417
+meidam!~meidam@user/meidam
+I guess you haven't been through ziglings, grayhatter :P
+
+1741901507
+blurrycat!~blurrycat@user/blurrycat
+the issue with ziglings is that you're exposed to an enormous amount of new information in a relatively short time (depending how you go through the exercises), so it's pretty hard for everything to stick
+
+1741901557
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true, its not good to learn fast, you just get overwhelmed and forget everything. 
+
+1741901590
+grayhatter!~grayhatte@user/grayhatter
+meidam: well... I read the zig docs top to bottom before I even started, so I knew about it. But I'm using learned, as in, the first time I used it correctly without needing to look it up. Which is also not even the first time I tried to use it... but no, I don't like pretend problems like ziglings, I'd rather write code I'll use
+
+1741901591
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why i stopped learning and started coding midway. so i start having hands on experience and actual use the code or else i will be forgotten 
+
+1741901595
+blurrycat!~blurrycat@user/blurrycat
+but having said that, it might be a good reference to keep on the side and to come back to when you're wondering about something that you know you've done there
+
+1741901621
+blurrycat!~blurrycat@user/blurrycat
+and same goes for the reference, Zig's one is actually pretty nice I think
+
+1741901623
+grayhatter!~grayhatte@user/grayhatter
+stealth_: IMO, that's really the only way to learn
+
+1741901631
+meidam!~meidam@user/meidam
+grayhatter: Ah okay, I get it
+
+1741901637
+grayhatter!~grayhatte@user/grayhatter
+can do something != understands how it works
+
+1741901652
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, its time to put your ego aside and finish ziglings :p to to see how much you have learned so far. 
+
+1741901690
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I would, but I have more important things to do
+
+1741901694
+grayhatter!~grayhatte@user/grayhatter
+I just don't care
+
+1741901703
+blurrycat!~blurrycat@user/blurrycat
+I mean the guy just linked you code on a website he developed himself in Zig, I don't think ziglings are relevant anymore at this point :D
+
+1741901706
+grayhatter!~grayhatte@user/grayhatter
+but also, I like my ego, so I don't wanna :P
+
+1741901871
+jbowen!sid512234@user/jbowen
+Thank you, phaleth!
+
+1741901881
+jbowen!sid512234@user/jbowen
+Ah, looks like he left
+
+1741902097
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/a44d49 hmm
+
+1741902159
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+++ B; works, i just wanted to see if for loop worked as well, which is giving me error. 
+
+1741902274
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_, your array is 2 elements, assigning to an element doesn't change the length of the array
+
+1741902322
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, if i set `var C = [4]A{` `error: expected 4 array elements; found 2`
+
+1741902356
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, because you need to provide all the elements
+
+1741902377
+blurrycat!~blurrycat@user/blurrycat
+which is why netvor first assigned undefined to the array, then manually filled it
+
+1741902377
+grayhatter!~grayhatte@user/grayhatter
+stealth_: what does [_] do?
+
+1741902390
+blurrycat!~blurrycat@user/blurrycat
+but... don't do that here, use ++
+
+1741902395
+grayhatter!~grayhatte@user/grayhatter
+^ this 
+
+1741902408
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, https://zigbin.io/a44d49
+
+1741902428
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that's the same link
+
+1741902430
+blurrycat!~blurrycat@user/blurrycat
+no reason to do at runtime something you can trivially do at comptime (I say at runtime but I don't know if the compiler would optimize all of this away)
+
+1741902434
+grayhatter!~grayhatte@user/grayhatter
+what does [_] do?
+
+1741902489
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, are you saying not to use the for loop? i am just trying it out to learn. 
+
+1741902523
+blurrycat!~blurrycat@user/blurrycat
+yeah don't use it in real code, experimenting is fine but don't use that elsewhere :D
+
+1741902524
+grayhatter!~grayhatte@user/grayhatter
+stealth_: are you intentionally ignoring my question?
+
+1741902562
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, it initializes the struct 
+
+1741902568
+grayhatter!~grayhatte@user/grayhatter
+that's incorrect
+
+1741902571
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what struct?
+
+1741902601
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well A is struct
+
+1741902616
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does [_] have to do with A?
+
+1741902628
+grayhatter!~grayhatte@user/grayhatter
+yes it is. That doesn't change that your answer and understanding of what [_] is incorrect
+
+1741902657
+grayhatter!~grayhatte@user/grayhatter
+there's a reason I'm asking you to explain what [_] does
+
+1741902683
+grayhatter!~grayhatte@user/grayhatter
+because if you knew what it does, it'd be obvious why your code isn't working
+
+1741902754
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, it assigns the memory for the struct build up 
+
+1741902779
+grayhatter!~grayhatte@user/grayhatter
+no, it doesn't do any assigning
+
+1741902794
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what is [_]A { ... }?
+
+1741902804
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what kind of thing is it
+
+1741902888
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+https://ziglang.org/documentation/0.14.0/#toc-Slices
+
+1741902901
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not a slice
+
+1741902903
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+that's an array initialization syntax
+
+1741902921
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+mentioned in slice section example code in the reference
+
+1741902954
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I want stealth_ to answer
+
+1741902957
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you saying its sentinel terminated slice? 
+
+1741902963
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1741902971
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i though those only ended with [:0]
+
+1741902979
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah sorry
+
+1741903187
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you talking about _ auto assigns the size? 
+
+1741903199
+blurrycat!~blurrycat@user/blurrycat
+the size of what
+
+1741903216
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+array, i suppose in this case struct? 
+
+1741903230
+blurrycat!~blurrycat@user/blurrycat
+array or struct? can't be both
+
+1741903248
+grayhatter!~grayhatte@user/grayhatter
+stealth_: kinda... it computes the size for you, so what's the size of C?
+
+1741903252
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have learned it works for array...
+
+1741903261
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it is indeed an array
+
+1741903271
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+`[123]A` is an array type which will hold exactly 123 of A's, right?
+
+1741903279
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how is it working for struct as well? 
+
+1741903283
+grayhatter!~grayhatte@user/grayhatter
+netvor: that's correct
+
+1741903291
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not working for struct
+
+1741903301
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's working for array, and this is an array
+
+1741903303
+blurrycat!~blurrycat@user/blurrycat
+stealth_: what is [_]A?
+
+1741903316
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+so `[_]` is exactly the same, except that instead of writing the number you let the compiler figure it out from the surrounding code
+
+1741903317
+blurrycat!~blurrycat@user/blurrycat
+forget about the _, what is [2]A?
+
+1741903328
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: `[_]A` is invalid syntax :P
+
+1741903341
+blurrycat!~blurrycat@user/blurrycat
+true :D
+
+1741903343
+grayhatter!~grayhatte@user/grayhatter
+netvor: it's not exactly the same
+
+1741903375
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+ok, sort of the same.  and i meant `[_]A`
+
+1741903391
+grayhatter!~grayhatte@user/grayhatter
+but the question is
+
+1741903399
+grayhatter!~grayhatte@user/grayhatter
+stealth_: what's the size of C?
+
+1741903400
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since A is struct [_]A doesn't work, so what I am using even though I am combining strcut its an array i am dealing with? 
+
+1741903418
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth, it doesn't matter what A is
+
+1741903421
+blurrycat!~blurrycat@user/blurrycat
+what is [5]u8?
+
+1741903445
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+as it stands, `[_]A` is not enough but it's because there's not enough useful "surreounding code" for the compiler to figure out the number
+
+1741903451
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well these syntax are so smiler can get confusing  
+
+1741903499
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yeah, `[]A` vs `[_]A` can easily get confusing
+
+1741903517
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+but if you say, eg. `const array_of_as: [_]A { undefined, undefined};`  then it can count the things on the right
+
+1741903535
+grayhatter!~grayhatte@user/grayhatter
+even more so when people like to do stuff like `const slice: []A = &[_]A{};`
+
+1741903556
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is for loop not meant to work with [_] at all? since you are adding more to the array later? 
+
+1741903589
+grayhatter!~grayhatte@user/grayhatter
+stealth_: there you go
+
+1741903596
+grayhatter!~grayhatte@user/grayhatter
+you **can not** add more later
+
+1741903620
+grayhatter!~grayhatte@user/grayhatter
+in your code, `[_]A` becomes `[2]A` an the end of the line with the ;
+
+1741903639
+grayhatter!~grayhatte@user/grayhatter
+because that's when the compiler knows the size.
+
+1741903651
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+stealth_: it works the same but is much  easier to understand with  simpler types, such as u8:   `const nums: [2]u8 = .{ 22, 33};` is equivalent to `const nums: [_]u8 = .{22, 33}`
+
+1741903688
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+all that `_` does is saves you the bother of having to update the number if you happen to add/remove the elements later
+
+1741903692
+blurrycat!~blurrycat@user/blurrycat
+stealth_: and so [2]A is and array with 2 elements of type A
+
+1741903694
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so this works https://zigbin.io/869e58
+
+1741903700
+blurrycat!~blurrycat@user/blurrycat
+an*
+
+1741903744
+blurrycat!~blurrycat@user/blurrycat
+stealth_: yes, but don't do that either :D
+
+1741903754
+grayhatter!~grayhatte@user/grayhatter
+stealth_: everytime you write undefined, the world gets a little bit darker
+
+1741903763
+grayhatter!~grayhatte@user/grayhatter
+exactly what blurrycat said
+
+1741903774
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+:D
+
+1741903803
+blurrycat!~blurrycat@user/blurrycat
+undefined is useful, but like all good things, must not be abused
+
+1741903812
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ahh, i wasn't planning on using it, since ++B; is what i wanted.
+
+1741903812
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+baby steps, folks, baby steps... :)
+
+1741903828
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am too old to be a baby 
+
+1741903848
+blurrycat!~blurrycat@user/blurrycat
+stealth_: so now you understand why the ++ B at the end of the declaration just works?
+
+1741903849
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: s/ab//
+
+1741903854
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+anyone can make baby steps (i do them all the time :D)
+
+1741903867
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: that's a fair take too I won't argue with that :)
+
+1741903870
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, true. 
+
+1741903878
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when you are learning you are baby anyways. 
+
+1741903886
+grayhatter!~grayhatte@user/grayhatter
+side bar: any one unable to build -OReleaseSafe with 0.14.0?
+
+1741903899
+grayhatter!~grayhatte@user/grayhatter
+follow up question, how do I debug this?
+
+1741903919
+blurrycat!~blurrycat@user/blurrycat
+grayhatter: you mean building something in --release=safe or something else?
+
+1741903937
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+(but it's true that babies usually make the world nicer, not darker, so soon enough we'll tell you the rule #1:  don't use undefined unless you have to)
+
+1741903941
+grayhatter!~grayhatte@user/grayhatter
+https://gist.github.com/GrayHatter/b7ae47d3fee029914d4969bfdffbf57d
+
+1741903954
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have ReleaseSafe enabled in build.zig had no issues building.
+
+1741903974
+blurrycat!~blurrycat@user/blurrycat
+I built my prompt an hour ago on 0.14.0 in ReleaseSafe just fine
+
+1741904015
+blurrycat!~blurrycat@user/blurrycat
+yup can confirm works for me
+
+1741904048
+grayhatter!~grayhatte@user/grayhatter
+while useful information... I am aware that 0.14.0 **can** build in ReleaseSafe
+
+1741904060
+grayhatter!~grayhatte@user/grayhatter
+I'm looking for places to start debugging the failure I'm seeing
+
+1741904072
+grayhatter!~grayhatte@user/grayhatter
+so strictly speaking, "works for me" is less than helpful
+
+1741904120
+blurrycat!~blurrycat@user/blurrycat
+I know, sorry I can't help more
+
+1741904339
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+have you tried turning it off and..  i mean, deleting the cache?
+
+1741904405
+grayhatter!~grayhatte@user/grayhatter
+netvor: yes, twice
+
+1741904422
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+sorry, can't actually help more :/
+
+1741904437
+grayhatter!~grayhatte@user/grayhatter
+currently assuming it's an LLVM linking issue, gonna try downloading the build from ziglang
+
+1741904481
+grayhatter!~grayhatte@user/grayhatter
+netvor: that's actually really helpful, that did fix one of the bugs I had, and it did take me a few things first before trying that
+
+1741904487
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+remove shit until it starts working, as is tradition
+
+1741904546
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or doesn't even an empty main work
+
+1741904674
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how did you install zig? just delete and redowload and try again
+
+1741904758
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for anyone these are really good videos https://www.youtube.com/@dudethebuilder/videos
+
+1741904805
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+first zig video, how to install: https://www.youtube.com/watch?v=MMtvGA1YhW4 very good. 
+
+1741904955
+netvor!~netvor@2a00:ca8:a1f:cd0:e564:58b3:3095:d92b
+that's a good point, even in tests.  Always start with "", no matter how sunny you think is outside
+
+1741905949
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I really like zig source formatter, write bunch of messy code and run format.  
+
+1741905977
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+isn't that how all formatters are supposed to work
+
+1741906009
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you normally have to install external plugin for those
+
+1741906049
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah but that's just a detail inherent to a language's toolchain/ecosystem
+
+1741906171
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+stuff like this is nice to have, also my editor uses zig's ast-check to find error, so its neat as well vs using zig-lsp
+
+1741906198
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also works as linter. 
+
+1741909938
+Maarrk!~Maarrk@user/Maarrk
+I think that Zig's formatter is a particularly elegant solution because it does both:
+
+1741909949
+Maarrk!~Maarrk@user/Maarrk
+1 there is one formatter to rule them all with zero configuration
+
+1741909975
+Maarrk!~Maarrk@user/Maarrk
+2 the configuration most often fought about / not always applicable is the line length which is controlled by the source code itself
+
+1741910197
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+to say something bad, fmt does have some issue with // multi-line had to do my_var = \ next-line //
+
+1741910228
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+\\
+
+1741910328
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/8d2941 would get formatted in single line if i didn't add `= //`
+
