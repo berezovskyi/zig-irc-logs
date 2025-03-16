@@ -1,0 +1,712 @@
+1741998810
+grayhatter!~grayhatte@user/grayhatter
+is it intentional that `// zig fmt: on` has no effect if it's indentation isn't aligned?
+
+1742021176
+ifreund!2940d10f8b@user/ifreund
+grayhatter: no, that sounds like a regression
+
+1742026028
+LAC-Tech!~lewis@granite-phrase.bnr.la
+liking the new watch mode. are there planes for a flag such that it clears the output afterwards? (I'm almost afraid to ask, I feel like this might be one of those Zig lines in the sand; "clearing console output is bad and programmers shouldn't do it" or something)
+
+1742034504
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+Heeeyyy, so much love for ... stuff like this!! :D : "// the operand was runtime-known, but since the array length was zero, the result is comptime-known" (splat with a sentinel-terminated array)
+
+1742034566
+StopNGo!~StopNGo@p200300dbdf3d5b00625718fffe07f94a.dip0.t-ipconnect.de
+Not just throwing your arms in the air and saying "dunno, can't do" is what I feel sets Zig apart in many regards.
+
+1742038198
+Maarrk!~Maarrk@user/Maarrk
+LAC-Tech, the build script's progress output already does that, so it's definitely not a heresy xD
+
+1742038240
+Maarrk!~Maarrk@user/Maarrk
+I'd guess it's a mix between both features being fairly new, and having relatively low priority
+
+1742038635
+Maarrk!~Maarrk@user/Maarrk
+If you want to make that happen, you'd probably need to pass the current output through something that counts its lines, so you know how much to remove. There's a post by Andrew Kelley about how the build progress works that would probably be useful: https://andrewkelley.me/post/zig-new-cli-progress-bar-explained.html
+
+1742039549
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+how to iterate over sub-dirs?  i'm using Dir.iterate() and `if (entry.kind != .directory) continue;`  but then symlinks to dirs are skipped
+
+1742039651
+ifreund!2940d10f8b@user/ifreund
+netvor: perhaps you're looking for Dir.walk()?
+
+1742039659
+ifreund!2940d10f8b@user/ifreund
+I don't recall how it handles symlinks though
+
+1742039693
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+walk is recursive, iirc
+
+1742039751
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+i just allowed .sym_link and somehow it works (even though there's a file later, my openDir does not fail on that somehow -- i'm looking at it now :D)
+
+1742039814
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+i think i'll be fine with `if (entry.kind != .directory and entry.kind != .sym_link) continue;`  and then dealing with the openDir fallout
+
+1742039984
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+ok so then just openDir() .. catch and `if (e == error.NotDir) return;`
+
+1742042217
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+any idea why `?ref=mybranch` does not work with zig fetch and git.sr.ht?   `zig fetch --debug --save git+https://git.sr.ht/~netvor/zig-clapp?ref=egg` apparently gives me HEAD  (with broken build.zig.zon)
+
+1742042271
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+i suppose or it could be git.sr.ht issue, implementing git protocol incorrectly
+
+1742042379
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+(without the --debug, of course, copy-paste error :D)
+
+1742042834
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+ok so `git+https://git.sr.ht/~netvor/zig-clapp#egg` works
+
+1742046519
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+looking into dependencies, how does that work with updates? Do you have to set the git commit of the dependency in the build.zig.zon file? What if you always want to fetch the latest version of the dependency?
+
+1742046552
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+any good docs available on how dependencies work? 
+
+1742046576
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+It doesn't matter if the dependency is zig vs C code? As long as it has a zig build system with a build.zig.zon file?
+
+1742048019
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+afaik build.zig.zon is the main file.  i do updates just by calling the same fetch --save command again, eg.:  `zig fetch --save git+https://git.sr.ht/~netvor/zig-inigrep#latest`
+
+1742048081
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+the `#latest` part is important, it is the branch name i'm tracking; the zig-inigrep project is also mine, and i know that the latest is always pointing to the latest tag
+
+1742048117
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+so the fetch command will always just resolve the branch name annd in build.zig.zon you will see the commit hash
+
+1742048121
+blurrycat!~blurrycat@user/blurrycat
+yeah update your deps with zig fetch --save, I don't know if you can tell zig to do what you want and fetch the latest revision each time, but it is rarely a good idea
+
+1742048162
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+it does save the branch name into the url in the .zon file, so there might be (planned) way to do "update"
+
+1742048251
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+but to me just calling the same command again is fine, and even better.   imho the idea of continuity of updates on a project (ie. update being somehow differennt from removing and re-adding) is worth getting rid of
+
+1742048299
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+(i mean it is really important in practice, but it entirely relies on the expectations of how a particular project is maintained)
+
+1742048378
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+(but that's my rambling which is OT here, sorry :D)
+
+1742052476
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+Under what circumstances would you typically want to use undefined over an Option?
+
+1742052488
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+Both seem to do the same: there is no useful value yet
+
+1742052500
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+I guess the Option is the way to go when it's relatively "normal" not to have a value
+
+1742053368
+ifreund!2940d10f8b@user/ifreund
+jemius: the semantics are completely different, there is no way to check if a value is undefined
+
+1742053402
+ifreund!2940d10f8b@user/ifreund
+undefined literally means "these bytes of memory have undefined value, they could be anything"
+
+1742053428
+ifreund!2940d10f8b@user/ifreund
+while an optional is an extra bit of state that stores whether the value is null or not
+
+1742053442
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+ifreund: yup, understood. It's basically just C-Mode. But why is it even allowed to exist?
+
+1742053455
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+There must be a reason, because you could just force people to use Options for everything
+
+1742053502
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because using options has a cost
+
+1742053531
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+both in memory, performance and syntax
+
+1742053616
+ifreund!2940d10f8b@user/ifreund
+jemius: "communicate intent precisely"
+
+1742053867
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+I see
+
+1742054277
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+If I use one the exotic integers, like u7 or i65, does that come with a performance panlty? I suppose for u7 the machine will simply perform a LOAD on a byte / word (ultimately: cache line) to access it, but will those types sometimes cause awkward shift operations?
+
+1742054302
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+I suppose u1 fields will behave like bitfields in C and the compiler will shift the bit out from the shared byte for you
+
+1742054891
+ifreund!2940d10f8b@user/ifreund
+a u7 is pretty much the same as a u8 as far as the CPU is concerned
+
+1742054932
+ifreund!2940d10f8b@user/ifreund
+as for bit packing, only if in a packed struct
+
+1742055003
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+can i get a return type of a function without specifying the arguments?  i tried `@TypeOf(inigrep.Ini.section_kvs_itr())`  but the section_kvs_itr needs arguments, but those are not known in comptime.   i thought `@TypeOf` would just magically ignore the fact that args are needed in this case
+
+1742055048
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+i know probably a better alternative would be to just pub the itrerator type, though, but i'm still curious if it can be done
+
+1742055087
+ifreund!2940d10f8b@user/ifreund
+netvor: get rid of the (), just @TypeOf(function).@"fn".return_type
+
+1742055097
+ifreund!2940d10f8b@user/ifreund
+see std.builtin.Type
+
+1742055121
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+aaah thanks!  (i recall now i saw this somewhere)
+
+1742055173
+ifreund!2940d10f8b@user/ifreund
+sorry, @typeInfo(@TypeOf(function)), but I assume you got the idea
+
+1742055184
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+yep, thanks
+
+1742055213
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+wouldn't @TypeOf(function(undefined, ...)) work too, speaking of undefined
+
+1742055225
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(not that you should do that)
+
+1742055241
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+(at this point the only thing that bothers me about Zig is the lack of Zig jobs :D)
+
+1742055297
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+(yeah i thought of undefined for a millisecond :D)
+
+1742055320
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(sorry, I didn't mean to make everything parenthetical)
+
+1742055408
+ifreund!2940d10f8b@user/ifreund
+(it's ok (but probably don't use undefined that way :D))
+
+1742055410
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+(it's ok :D)
+
+1742055510
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(whatever you do, terminate your parens
+
+1742055557
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+otherwise people can inject stuff into what you said)
+
+1742055664
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there was a related thing I was thinking of the other day, how would you get a pointer to an instance of a generic function? couldn't figure it out
+
+1742055826
+ifreund!2940d10f8b@user/ifreund
+its not possible, intentionally so
+
+1742055851
+ifreund!2940d10f8b@user/ifreund
+if you really need one, you can't use anytype
+
+1742055888
+ifreund!2940d10f8b@user/ifreund
+you'd need something like *Foo(T).bar_fn where bar_fn is a function type based on T
+
+1742055908
+ifreund!2940d10f8b@user/ifreund
+s/*/* const/
+
+1742055909
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not sure why it would be intentionally so
+
+1742055926
+ifreund!2940d10f8b@user/ifreund
+*const fn (anytype) void, doesn't make any sense
+
+1742055930
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1742055934
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and that's not what I want
+
+1742055949
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I want e.g. *const fn (u32) from a fn(anytype)
+
+1742055970
+ifreund!2940d10f8b@user/ifreund
+yeah, that's not possible
+
+1742055972
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(well, I didn't really need it, but it seemed like a gap)
+
+1742055990
+ifreund!2940d10f8b@user/ifreund
+I don't think it would be worth the extra language complexity to support it
+
+1742056086
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+ifreund: so if I have a huge struct that stores a ton of boolean flags, I might just store them all as bools?
+
+1742056095
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+In C it is common to use bit fields for that and store 1 or 0
+
+1742056118
+Maarrk!~Maarrk@user/Maarrk
+I think it's planned to optimize it but we're not there yet
+
+1742056179
+Maarrk!~Maarrk@user/Maarrk
+sorry
+
+1742056194
+Maarrk!~Maarrk@user/Maarrk
+You can, if you make it a packed struct, then bools will be 1 bit
+
+1742056216
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+u1's will be 1 bit you mean. Or bools, too?
+
+1742056219
+Maarrk!~Maarrk@user/Maarrk
+Details here: https://ziglang.org/documentation/0.14.0/#toc-packed-struct
+
+1742056236
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+there's also bitfield api somewhere in std , fwiw
+
+1742056272
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+jemius: bools too
+
+1742056275
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+I still don't really get why non-power-of-two integers exist if you can only rely on their memory layout under specific circumstances
+
+1742056355
+Maarrk!~Maarrk@user/Maarrk
+Because there's more reasons to make them, for example for wrapping math operations
+
+1742056390
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. bit shift amounts are log2(integer bits) bits
+
+1742056438
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and they are overflow checked in debug builds
+
+1742056530
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+yoah, but does the cost-benefit-ratio pay off?
+
+1742056577
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not just those integers that are padded in normal structs
+
+1742056608
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the layout isn't guaranteed at all in non-packed/extern structs
+
+1742056619
+Maarrk!~Maarrk@user/Maarrk
+This is a blessing for some embedded work, where a lot of protocols use them
+
+1742056629
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1742056638
+Maarrk!~Maarrk@user/Maarrk
+I can literally rewrite the datasheet in Zig code in case of comments
+
+1742056640
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it seems like a no-brainer feature in a systems language
+
+1742056650
+Maarrk!~Maarrk@user/Maarrk
+s/in case/instead/
+
+1742056714
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+if you want to describe memory registers with it or serialize data for network traffic, you have to put them into packed structs
+
+1742056734
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and you have to do that anyway
+
+1742056750
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+even if no such integers existed
+
+1742056764
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+packed/extern
+
+1742056805
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+hm, I think I could store flags as a packed struct in a non-packed struct, to combine the advantages of fast access and little memory footprint
+
+1742056817
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1742056820
+Maarrk!~Maarrk@user/Maarrk
+But now we can have the function send_message(id: u24, ... instead of putting assert(id < 0xFFFFFF every time
+
+1742057087
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Ada went a little further
+
+1742057147
+Maarrk!~Maarrk@user/Maarrk
+Ada went so far that I haven't heard of any use outside of flight critical avionics
+
+1742057410
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+they were at Fosdem. But I also don't know who uses that still. Good example for why language mandates don't work
+
+1742057581
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+Soo, regarding strings. Afair one of the more controversial things about Zigs is that zigs are just byte slices. Is there already a "de facto standard" library for dealing with utf8 strings? For splitting them between characters ä and ö for example
+
+1742057592
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+s/zigs/strings
+
+1742058008
+Maarrk!~Maarrk@user/Maarrk
+My bet for now is https://codeberg.org/atman/zg
+
+1742058011
+Maarrk!~Maarrk@user/Maarrk
+Maybe we won
+
+1742058036
+Maarrk!~Maarrk@user/Maarrk
+'t ever have just one
+
+1742058120
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there is std.unicode too I guess
+
+1742058164
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and nextCodepoint() of Utf8Iterator returns ?u21 ;)
+
+1742058274
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+Heresy!
+
+1742058317
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it doesn't handle combining characters I guess, which ä/ö is sometimes written with (stern look at macos)
+
+1742058355
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+ACTION ignores everything that isn't UTF-8
+
+1742058370
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's still UTF-8
+
+1742058379
+grayhatter!~grayhatte@user/grayhatter
+yeah, I was gonna say, the various encodings are pretty wrong
+
+1742058390
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+ACTION ignores everything that is crazy
+
+1742059538
+Maarrk!~Maarrk@user/Maarrk
+there are valid reasons to represent it both ways, I think you just get used to normalizing the representation before you do anything and thank <your deity of choice> we don't have to keep switching encodings anymore
+
+1742059670
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yeah if you want grapheme splitting you gotta use zg
+
+1742064089
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+https://codeberg.org/ziglings/exercises/src/branch/main/exercises/058_quiz7.zig#L252
+
+1742064112
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+What does "get the non-null value" even mean? I mean, I get it unwrapps the Option, but won't that potentially cause a fault?
+
+1742064356
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yes it will potentally cause a fault, you shoudl always somehow know it isn't non-null in some other way
+
+1742064369
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Here, maybe you only ever inserted non-null values so when you loop through, you know they are all non-null
+
+1742064392
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Or maybe you do a check before accessing, either iwth: if (optional) |non-null| {...}
+
+1742064402
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Or if (optional != null) { optional.? }...
+
+1742064696
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+that quiz is overkill
+
+1742065250
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+I now found the solution for that line in the quiz
+
+1742065254
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+            if (place == entry.*.?.place) return &entry.*.?;
+
+1742065287
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+but I am not sure if I fully get it. I take enttry, dereference the pointer, it points to an option, I unwrapp that – and then return the address of that
+
+1742065317
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+But why can't I just return entry? It is the desired pointer already, after all
+
+1742065463
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+1) wrong type, 2) the address of the unwrapped entry is not guaranteed to be the same (most likely isn't)
+
+1742065466
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You have to return a *NoteBookEntry
+
+1742065475
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+?*NotebookEntry
+
+1742065576
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a ?NotebookEntry is something like: struct { is_null: bool, value: NotebookEntry };
+
+1742065609
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and the address of one would have type *?NotebookEntry, not *NotebookEntry
+
+1742065682
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It all readys left to right: *?NotebookEntry is a pointer to an optional, which contains null or a NotebookEntry value
+
+1742065695
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+?*NotebookEntry is an optional which contains null or a pointer to a NotebookEntry
+
+1742065856
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+rockorager: you mean "enty" is a pointer to an optional
+
+1742065868
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+And we want to return an optional pointer, don't we?
+
+1742065874
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+right
+
+1742065889
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+Ok, I think I get it
+
+1742065890
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a pointer can be implicitly converted to an optional pointer
+
+1742065909
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+(though C just exploding into your face has its charme in comparison, too :)
+
+1742065921
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you can't convert pointers to different things implicitly (or explicitly, they don't have the same address)
+
+1742068146
+jemius!~jemius@2001:16b8:3d02:b000:5ece:95eb:a234:2edd
+Are there any news on the front of the future of async?
+
+1742068448
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you have to await for it
+
+1742069040
+grayhatter!~grayhatte@user/grayhatter
+rockorager: get /part
+
+1742070651
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+lol 
+
+1742071992
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+building a dependency and install it system wide and then linkSystemLibrary works. But that dependency add header files to /usr/include, how do I use that dependency (static) and also make sure my package has access to those header files?
+
+1742072034
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+e.g. having access to those header files of the dependency, without installing that dependency system wide
+
+1742079006
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't `.@"enum"` in `for (@typeInfo(define).@"enum".fields)` redundant? shouldn't typeInfo know what type define is?
+
+1742079609
+torque!~tachyon@user/torque
+it's not redundant, since that result is a tagged union
+
+1742079656
+torque!~tachyon@user/torque
+the compiler does know what the active tag is, as you will find you get a compile error if you try to access a different one
+
+1742079656
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am talking about syntax 
+
+1742079667
+torque!~tachyon@user/torque
+it's not redundant, it's consistent
+
+1742079699
+torque!~tachyon@user/torque
+it would be very odd if the compiler forced you to use different syntax to access tagged union fields depending on if things were comptime known or not
+
+1742079767
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+couldn't it just be `for (@typeInfo(define).fields)`
+
+1742079789
+torque!~tachyon@user/torque
+no, because not all types in the `std.builtin.Type` tagged union have a "fields" field
+
+1742079802
+grayhatter!~grayhatte@user/grayhatter
+no, it couldn't. Because you're not "opening" the union
+
+1742079883
+grayhatter!~grayhatte@user/grayhatter
+that's like saying the code is `A = struct { B: struct { C: field }; ` so `A.C` should work
+
+1742079883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't get it, since i don't really know what you people are actually talking about... don't worry about it i will get it over time.
+
+1742079972
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe `for @fields(@typeInfo(define))`
+
+1742079980
+grayhatter!~grayhatte@user/grayhatter
+stealth_: why would the compile insert B? and how do you prove that the use didn't mean `A.OTHER_B.C`?
+
+1742080106
+torque!~tachyon@user/torque
+if you haven't learned about tagged unions yet you will need to do this to understand how @typeInfo works
+
+1742080176
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose, i am just talking in terms of visual/syntax way of using, some of there syntax makes c++ looks good! https://www.youtube.com/shorts/2KoJmqYnnaY
+
+1742080211
+torque!~tachyon@user/torque
+disagree, but also epic "didn't click"
+
+1742080226
+grayhatter!~grayhatte@user/grayhatter
+torque: my understanding was not a lack of understanding about tagged unions. My understanding is he's asking why he has to be expilcit about which member is being accessed. 
+
+1742080242
+grayhatter!~grayhatte@user/grayhatter
+you're happier not clicking torque 
+
+1742080248
+grayhatter!~grayhatte@user/grayhatter
+I did, and I'm sure I'm dumber
+
+1742080753
+torque!~tachyon@user/torque
+I was not questioning your knowledge of tagged unions
+
+1742080781
+torque!~tachyon@user/torque
+the statement was directed at stealth_
+
+1742080796
+grayhatter!~grayhatte@user/grayhatter
+torque: I know...
+
+1742080808
+torque!~tachyon@user/torque
+oh, I misread what you wrote
+
+1742080845
+torque!~tachyon@user/torque
+I wasn't sure how else to interpret "I don't know what you people are actually talking about" besides a lack of understanding of how tagged unions work
+
+1742080852
+grayhatter!~grayhatte@user/grayhatter
+i.e. I parsed the original as, "I don't wanna, make the compiler do it" and less of "I don't think I need to"
+
+1742080883
+grayhatter!~grayhatte@user/grayhatter
+yeah... that's where I got lost too
+
