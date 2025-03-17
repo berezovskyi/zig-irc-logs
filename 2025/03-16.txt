@@ -1,0 +1,1240 @@
+1742091807
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i try to `return py.Py_RETURN_TRUE;` i get ``pub const Py_RETURN_TRUE = @compileError("unable to translate C expr: unexpected token 'return'");``
+
+1742091859
+grayhatter!~grayhatte@user/grayhatter
+lmao
+
+1742091865
+grayhatter!~grayhatte@user/grayhatter
+stealth_: `return true`
+
+1742091948
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+function return type is ``?*PyObject`` true/false isn't going to work
+
+1742091949
+grayhatter!~grayhatte@user/grayhatter
+oh, right, python makes them objects
+
+1742091966
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/python/cpython/blob/main/Include/boolobject.h
+
+1742091990
+grayhatter!~grayhatte@user/grayhatter
+the warning says not to use them directly, but then exposes macros that uses them directly... which is the dumbest thing I've seen today
+
+1742092005
+grayhatter!~grayhatte@user/grayhatter
+no, second dumbest, that yt short was today too
+
+1742092043
+grayhatter!~grayhatte@user/grayhatter
+`return py._PyObject_CAST(&py._Py_TrueStruct);` will probably work?
+
+1742092097
+grayhatter!~grayhatte@user/grayhatter
+`return py.Py_True;` is probably safer if that macro actually worked
+
+1742092135
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Py_RETURN_TRUE that's how you normally return true from other languages. 
+
+1742092165
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i tried that as well, no luck `return py.Py_True;`
+
+1742092189
+grayhatter!~grayhatte@user/grayhatter
+why didn't it like that one?
+
+1742092204
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no clue same error
+
+1742092221
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+zig knows about c_int but it doesn't know about `c_bool`
+
+1742092242
+grayhatter!~grayhatte@user/grayhatter
+c_bool doesn't exist
+
+1742092309
+grayhatter!~grayhatte@user/grayhatter
+IIRC the smallest value c understands is an octet
+
+1742092383
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you could try `return @ptrCast(&py._Py_TrueStruct);` but that'd require work to verify if it was correct or not
+
+1742092489
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I tried using https://docs.python.org/3/c-api/arg.html#numbers `p (bool) [int]` which compiles fine but it errors out when i run test at python side. 
+
+1742092509
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"SystemError: bad format char passed to Py_BuildValue"
+
+1742092771
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+your `return @ptrCast(&py._Py_TrueStruct);` code works
+
+1742092799
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it actually give me proper True/False in Python vs 1/0
+
+1742093015
+ashie!~ashie@user/ashie
+stealth_: try looking at how pydust does things (popylar zig/python project on github) I bet they have stuff like booleans figured out
+
+1742093067
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ashie, looks like they use https://docs.python.org/3/c-api/bool.html#c.PyBool_FromLong
+
+1742093326
+ashie!~ashie@user/ashie
+and does that work for you? or is there a reason why you wouldnt wanna use that?
+
+1742093404
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it works fine, there were few ways of doing things it seems. some work others don't in zig.
+
+1742093851
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a way to "set" `errno` in zig?
+
+1742093911
+grayhatter!~grayhatte@user/grayhatter
+stealth_: if you try to use errno in zig, the allocgator will eat you when you're sleeping
+
+1742093921
+grayhatter!~grayhatte@user/grayhatter
+and then will continue to haunt you into your next life
+
+1742093950
+grayhatter!~grayhatte@user/grayhatter
+s/use/set or write
+
+1742093961
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, place i live in cold as hell for any alligator to exist 
+
+1742094014
+grayhatter!~grayhatte@user/grayhatter
+that sound you heard wasn't a low flying plane, but the joke going over your head
+
+1742094026
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/news/carmen-the-allocgator/
+
+1742094036
+grayhatter!~grayhatte@user/grayhatter
+the allocgator
+
+1742094123
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i am coding i have my serious face on, no time for joking
+
+1742094167
+ashie!~ashie@user/ashie
+gotta always code wearing the business attire
+
+1742094181
+ashie!~ashie@user/ashie
+(skirt and fishnets)
+
+1742094247
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sound sexy. 
+
+1742094757
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fyi serious series https://www.youtube.com/watch?v=x0CJKvevs2M
+
+1742095026
+ashie!~ashie@user/ashie
+> sound sexy... no, its serious
+
+1742095108
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe its a good motivation to keep looking good
+
+1742104841
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lost on how to actually pass C struct to python from zig.
+
+1742117245
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+libfl_widgets.a: archive member '/lib64/libcairo.so' is neither ET_REL nor LLVM bitcode
+
+1742117268
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: warning(link): unexpected LLD stderr:
+
+1742117302
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+only builds with use_llvm = false (but segfaults)
+
+1742117425
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, that was some days fiddling with the zig build system. Some tools segfault and I don't know why. Will keep using waf for now. 
+
+1742117517
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+you've to know quite a bit about compiling probably. Also waf uses g++, while zig uses clang ... all these small changes makes it likely to fail if you're not exactly knowing what you're doing I suppose
+
+1742117540
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+everything builds though, but some tools segfault
+
+1742117715
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+not the most fun part building a project
+
+1742117719
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+time for something else
+
+1742121986
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+andrewrk: rob pike is retired, he might be searching for a new hobby ;) 
+
+1742122001
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I like his lectures on youtube
+
+1742127786
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+The compiler doesn't allow me to add a "break food;" here
+
+1742127788
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+https://codeberg.org/ziglings/exercises/src/branch/main/exercises/063_labels.zig#L131
+
+1742127817
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+I fail to see why. The "const meal" above should derive the type. Yet the compiler claims I try to assign to a variable of type "void"
+
+1742128008
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you sure you're not getting that error when you _don't_ add "break food;"
+
+1742128117
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+Yes
+
+1742128119
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+https://paste.debian.net/1363437/
+
+1742128476
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+the compiler seems to claim that the outer for-loop is of type void. Or could it be that 'food' is void?
+
+1742128478
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+https://codeberg.org/ziglings/exercises/src/branch/main/exercises/063_labels.zig#L106
+
+1742128491
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+jemius: problem is that "else" is missing
+
+1742128508
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if the for loop makes no iterations, what is it supposed to return?
+
+1742128576
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+So a loop-return thing without an else is always treated as type void?
+
+1742128586
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+ACTION doesn't like automatic type inference for precisely those reasons
+
+1742128637
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+this has nothing to do with type inference, you get the same error if you put a type for "meal"
+
+1742128655
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or rather, a similar error
+
+1742132702
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+shouldn't this work?  https://zigbin.io/ef01e8   i would expect `ni` to just go from 6 to 1, but i get `error: overflow of integer type 'usize' with value '-5'`  -- i can't see how it would get below zero
+
+1742132795
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for never counts down as far as I know, because that would involve more logic to figure out the direction
+
+1742132807
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't know where -5 is coming from though
+
+1742132828
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+ie. i'd expect this:  https://zigbin.io/fbe0d0 (admittedly it's a better way to write it anyway)
+
+1742132911
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+right, in the implementation of for, it's somewhere doing 1-chars.len
+
+1742132916
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+that makes sense, somehow i thought it does count down
+
+1742132919
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+1-6 = -5
+
+1742133029
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+i see.. maybe it would be better to just throw a compile errror to specifically say that we don't count down,  but i'm not sure if it would be worth it
+
+1742133087
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in this case the compiler has all the info to see that, but it wouldn't always
+
+1742133483
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+well just for fun i tried to pass the chars as envvar and i get `thread 1 panic: integer overflow`   https://zigbin.io/7d975a
+
+1742133824
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, and that's only for Debug or ReleaseSafe
+
+1742138210
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+can i easily create a File object from an in-memory slice? (ie. without actually touching io)
+
+1742138291
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+i want to send it to std.process.Child
+
+1742138414
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+oh, i see now i'm supposed to write into std.process.stdin, not set it.   https://ziggit.dev/t/provide-stdin-input-to-external-command/7436
+
+1742151728
+tsmanner!~tsmanner@pool-108-41-56-83.nycmny.fios.verizon.net
+driveby compliment incoming: I wasn't sure how much real utility I'd feel from zig build --watch, but it seemed neat at least.  I just spent a couple hours hacking on something, and watching it just do it's thing in basically a read-only terminal was awesome.  No alt-tab/alt-arrow-key, just moving my eyeballs a little bit was so good!
+
+1742154170
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how are you suppose to use `PyObject_HEAD` in zig? 
+
+1742154183
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for creating python object struct 
+
+1742154922
+torque!~tachyon@user/torque
+you don't
+
+1742154951
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how will python know the struct you created is python object? 
+
+1742154952
+torque!~tachyon@user/torque
+that's a weird macro for embedding a field in a struct which does not have a corresponding zig syntax
+
+1742155012
+torque!~tachyon@user/torque
+just put the PyObject field directly in your struct
+
+1742155102
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+something like this segfaults `pub const _io_uring = extern struct{obj: py.PyDictObject, ptr: *lib.io_uring,};`
+
+1742155244
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am trying out something like: https://zigbin.io/9e99db surprising it does compile, when i try to call `ring = liburing.io_uring()` it segfaults.
+
+1742155341
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+goal is to later pass `ring` into `io_uring_queue_init(1, ring)` and have io_uring assign it memory.
+
+1742155467
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+something like `lib.io_uring_queue_init(entries, &ring.ptr, flags)` under the hood. 
+
+1742155642
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the first field is supposed to be PyObject afaik?
+
+1742155683
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am just assuming that, normally you would provide PyObject_HEAD in C guessing this is how you do it in zig? 
+
+1742155717
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as PyObject_HEAD expands to a PyObject field, why wouldn't you do that?
+
+1742155766
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have tried that https://zigbin.io/9e99db since i don't know what i am doing, i am trying out bit of code here and there.
+
+1742155768
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but ok, PyDictObject contains that too
+
+1742155778
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have tried that as well. 
+
+1742155818
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe how i am handling `io_uring()` function isn't right? 
+
+1742155836
+grayhatter!~grayhatte@user/grayhatter
+stealth_: there's a lot of things not right here
+
+1742155871
+grayhatter!~grayhatte@user/grayhatter
+1) saying it seg faults, without mentioning where or why makes it hard to help
+
+1742155882
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+"O" format string means: `Pass a Python object untouched but create a new strong reference to it (i.e. its reference count is incremented by one).`
+
+1742155901
+grayhatter!~grayhatte@user/grayhatter
+2) you're using undefined, what did you expect to work?
+
+1742155912
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how is this undefined struct a Python object?
+
+1742155927
+grayhatter!~grayhatte@user/grayhatter
+3) I'm sure you're passing around stack memory assuming it lives longer than the stack
+
+1742155939
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+first of all, shouldn't it be a PyObject*
+
+1742155983
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why i am asking here, i am noob when it comes to zig and python api
+
+1742156057
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`obj: *py.PyObject,` give me a bit better error in python `SystemError: NULL object passed to Py_BuildValue` 
+
+1742156071
+grayhatter!~grayhatte@user/grayhatter
+this isn't really a zig issue unless zig is segv. If it is, then you should have a backtrace, and should link to the whole program, not just an insignificant slice
+
+1742156081
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean, "obj: *py.PyObject,"
+
+1742156083
+grayhatter!~grayhatte@user/grayhatter
+this code that you've linked twice can't sevg
+
+1742156085
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+who told you to do that?
+
+1742156112
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, didn't you just say PyObject*
+
+1742156132
+grayhatter!~grayhatte@user/grayhatter
+given you have to comply to the python API, they'd probably be better able to help you
+
+1742156133
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I said Py_BuildValue expects a PyObject*
+
+1742156146
+grayhatter!~grayhatte@user/grayhatter
+learning zig is easier than learning exactly what python wants
+
+1742156152
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+when you pass the "O" format string
+
+1742156161
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and it must be a PyObject* that is already a python object
+
+1742156162
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: yeah, I'm pretty sure this code can't compile 
+
+1742156184
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm pretty sure it does compile because C varargs just go whatever and accepts anything
+
+1742156185
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i would have just stuck with zig if it has a working async/await feature. not mess with the python. 
+
+1742156233
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya it just compiles so i don't get any errors till i try it out in python
+
+1742156266
+grayhatter!~grayhatte@user/grayhatter
+stealth_: so, you're wrapping all this zig code, with python, exclusively so you can use python's async/await?
+
+1742156289
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya, its a main thing i do/use/ 
+
+1742156292
+grayhatter!~grayhatte@user/grayhatter
+lmao
+
+1742156305
+grayhatter!~grayhatte@user/grayhatter
+good luck dude, I can't help you with that
+
+1742156307
+grayhatter!~grayhatte@user/grayhatter
+that's insane
+
+1742156342
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+by the looks of it might be years till zig implements proper async feature. 
+
+1742156526
+ashie!~ashie@user/ashie
+so you are wrapping zig in python to use io_uring which you can already use from zig anyway???
+
+1742156569
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not to mention, there already are python io_uring packages if you wanted that
+
+1742156576
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ashie, its also a way for me to learn zig. since i already have liburing/shakti library writting in python i figure i wrap it using zig. 
+
+1742156683
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you should consider learning C first, there seems to be some conceptual gaps
+
+1742156699
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am learning zig cause i don't want to learn C 
+
+1742156809
+jemius!~jemius@200116b82d0f91007c0543cea69c9457.dip.versatel-1u1.de
+Why is it that Zig has math stuff like sin and log as built in functions? Is that for comptime stuff?
+
+1742156811
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're trying to use no less than two different C libraries
+
+1742156856
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i know basic C to have done C wrap, i just don't want to code in it. 
+
+1742156903
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, not enough to understand the python API docs
+
+1742156911
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i even wrote the whole wrap in Cython, and it works! But there are few bug that i don't now cython can fix, and it shouldn't be a problem for Zig (i assume)
+
+1742156931
+ashie!~ashie@user/ashie
+I would argue that if you dont know how to write the code in pure C you are probably not gonna wrap it correctly
+
+1742156969
+ashie!~ashie@user/ashie
+since C depends on conventions and various assumptions when using various functions
+
+1742156972
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+anyways you guys are zig experts right, how would you do it? is why i am asking here... 
+
+1742157013
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+do what? this is an XY problem
+
+1742157034
+ashie!~ashie@user/ashie
+you are asking zig people how to use the python C API
+
+1742157044
+grayhatter!~grayhatte@user/grayhatter
+jemius: I assume because the compiler knows the target, and can emit better instructions when available. sin() isn't available on all ISA the way * or = is
+
+1742157074
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no, i am asking how are you suppose to write `typedef struct {PyObject_HEAD ...` code in zig 
+
+1742157102
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: that wasn't the wrong part of your code
+
+1742157121
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you're using the C FFI, you should be asking that question to python... really, you should be asking an LLM, given this is a very simple CS question it can probably describe
+
+1742157123
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, thats how you write it in C though!
+
+1742157134
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+?
+
+1742157153
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you've already written that part correctly as far as I can tell, it's the rest of the code that is wrong
+
+1742157194
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+like read the docs for Py_BuildValue
+
+1742157202
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, you could have just said so, you guys are confusing me with lots of learn C stuff. 
+
+1742157210
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+read what the docs mean when they say "python object"
+
+1742157249
+grayhatter!~grayhatte@user/grayhatter
+stealth_: we're not confusing you, we've all said pretty much the exact same thing in different ways
+
+1742157257
+grayhatter!~grayhatte@user/grayhatter
+you're just confused, and don't understand
+
+1742157291
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, ya trying doing what i am doing
+
+1742157318
+grayhatter!~grayhatte@user/grayhatter
+if you can get the python api working in c, we can trivially help you convert that C into idiomatic zig, but we can't help you understand python's C api
+
+1742157349
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: you do know python objects are heap-allocated right?
+
+1742157379
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so obviously you can't create one on the stack and think that would work
+
+1742157398
+grayhatter!~grayhatte@user/grayhatter
+stealth_: I would never write zig code to try to use python's async/await. But also, I've helped you solve a number of the python API isuses you've had; so what did you mean I should try doing what you're doing?
+
+1742157444
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, learn a new language and write an api you have never used before at same time, while wrapping a language you don't use/code in
+
+1742157461
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, why are you doing all that at once then
+
+1742157480
+grayhatter!~grayhatte@user/grayhatter
+^ this
+
+1742157488
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't have much time, i have to do other stuff soon. 
+
+1742157489
+grayhatter!~grayhatte@user/grayhatter
+also, I have done that
+
+1742157495
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't know what part you're going wrong with
+
+1742157498
+ashie!~ashie@user/ashie
+off topic but zig had await at some point, right? how did it work? as in what happens on the background when you await something?
+
+1742157512
+grayhatter!~grayhatte@user/grayhatter
+with python, and rust, and zig
+
+1742157534
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if i was write this in C i would be done by now, even though i don't really code in C since there are TONS of docs on how to write this in C 
+
+1742157535
+ashie!~ashie@user/ashie
+> i don't have much time... just use pure python then, that's what the language is for
+
+1742157539
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was wrapping fuse in rust without knowing either back then
+
+1742157557
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're not saving time by tackling all things at once
+
+1742157569
+grayhatter!~grayhatte@user/grayhatter
+ashie: nothing happens in the background, the way I think you're asking. It was more about where the memory would live, and how function calls would jump back and forth between them
+
+1742157590
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ashie, i already wrote the library in python though! see this is my library i wrote https://github.com/yostealth/liburing 
+
+1742157630
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig async was more a way to create finite state machines within one stack frame (that was reified)
+
+1742157645
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+currently library like tigerbeetle, they use CTypes and callback, so its not actually optimal  
+
+1742157705
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+their library is written in Zig but there python connection isn't much, i wonder how much speed they are actually loosing.
+
+1742157723
+grayhatter!~grayhatte@user/grayhatter
+I to have to admit, I'm pretty shocked that lib works at all given how unfamiliar your questions about both C and low level memory details are
+
+1742157774
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you don't need to know how to talk if you are a dancer.
+
+1742157812
+ashie!~ashie@user/ashie
+Gliptic: so if python has await could I understand it as a function with attached state and an async runtime just asks it in a loop to do some work, change to another state and then either return or contiune?
+
+1742157840
+grayhatter!~grayhatte@user/grayhatter
+I mean... you kinda do if you want to talk about dancing with other people
+
+1742157865
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya you wouldn't be so good at it, thus your assumption
+
+1742157884
+ashie!~ashie@user/ashie
+with multiple functions not running in parallel but just updating state in some order (depending on how the runtime decides to call them) until they get to the finished state when they return a value
+
+1742157892
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ashie: I don't know how python async works
+
+1742157915
+ashie!~ashie@user/ashie
+ffs, I meant zig, my brain just decided to write pythoe
+
+1742157920
+ashie!~ashie@user/ashie
+python*
+
+1742157973
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe i am using wrong words but its just context switching, if "blocking" call happen it switching to the next job on the list.
+
+1742158050
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since zig has iteration, it can use async/await using that, just need to have a way to keep track of what jobs are active/paused/done, ... 
+
+1742158067
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I only tried zig async once, but yeah, you had like @stackFrame(function) or something like that which was a type containing the state of an invoked zig function, and you could build a runtime out of those pieces
+
+1742158327
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+currently you can use callback with event loop in zig but you will soon run into callback hell and its not optimal for large project, its ok for tiny project like tigerbeetle 
+
+1742158391
+grayhatter!~grayhatte@user/grayhatter
+you could also write an epoll loop
+
+1742158412
+grayhatter!~grayhatte@user/grayhatter
+or unroll your blocking calls into generic tagged IO
+
+1742158443
+grayhatter!~grayhatte@user/grayhatter
+or create a thread pool
+
+1742158475
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+speaking of thread pool I still cannot figure out my threadpool issue
+
+1742158475
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+a project like https://github.com/YoSTEALTH/Shakti would be hell with callback, since a 3rd party (you) would use it, so a simple `await something` is better vs `callback.append(myfunc)`
+
+1742158487
+grayhatter!~grayhatte@user/grayhatter
+rockorager: link to issue/code?
+
+1742158511
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+epoll can't solve the issue though! its the same issue
+
+1742158534
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you use async/await with co-routine is the key.
+
+1742158560
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: I can't find my reproducer
+
+1742158605
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Basically, when I call http.Client.fetch in a threadpool, I can do in a way that I never report any leaks but the memory usage (as reported by btop) grows every single fetch call
+
+1742158623
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nowadays you use async/await to solve a lot of thread issues like deadlock
+
+1742158651
+grayhatter!~grayhatte@user/grayhatter
+there are no thread deadlock issues that are solved by async/await
+
+1742158657
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: https://zigbin.io/f0ae76
+
+1742158659
+grayhatter!~grayhatte@user/grayhatter
+^ please CMV
+
+1742158679
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, clearly you are not freeing memory somewhere. 
+
+1742158685
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+main doesn't leak but continues to grow in memory
+
+1742158689
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+That is not the case
+
+1742158691
+grayhatter!~grayhatte@user/grayhatter
+rockorager: line 9
+
+1742158711
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+line 9 is not the example that grows in memory
+
+1742158732
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, well you can't get deadlock when you are using async/await, so how can you get thread deadlock when its being manged by async? 
+
+1742158738
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+main2 is the single threaded example, which does not grow in memory
+
+1742158755
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm
+
+1742158757
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If you do another example with spawning a thread each iteration, instead of a threadpool, it also does not grow in memory
+
+1742158773
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I've looked through the threadpool code and it isn't leaking anywhere
+
+1742158849
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I even wrote a wrapping allocator to sum up the allocs and frees and indeed everything is freed as it should be
+
+1742158859
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yet in the threadpool, the memory grows
+
+1742158874
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+something with thread locals in the DebugAllocator?
+
+1742158909
+grayhatter!~grayhatte@user/grayhatter
+rockorager: what's growing in memory 
+
+1742158918
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the ram usage as reported by btop
+
+1742158944
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: i think it would be in http.Client. If you just alloc a bunch of memory, the you don't see the same issue
+
+1742158967
+grayhatter!~grayhatte@user/grayhatter
+which version of ram
+
+1742158975
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+huh?
+
+1742158985
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+DDR5
+
+1742159001
+grayhatter!~grayhatte@user/grayhatter
+vss or rss?
+
+1742159008
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Oh I don't know
+
+1742159049
+grayhatter!~grayhatte@user/grayhatter
+you need to
+
+1742159056
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does `efer storage.deinit();` also free the `gpa` memory? 
+
+1742159065
+grayhatter!~grayhatte@user/grayhatter
+also, I'm still pretty sure you're leaking because you're using the allocator wrong
+
+1742159074
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I am definitely not using the allocator wrong
+
+1742159086
+grayhatter!~grayhatte@user/grayhatter
+create a single *Allocator = GPA.allocator(), and pass that instead
+
+1742159125
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that wouldn't be any different
+
+1742159138
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+gpa.allocator() returns the same thing every time
+
+1742159147
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: does it not lock itself?, I thought it did
+
+1742159163
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, why?
+
+1742159170
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and when would it unlock then
+
+1742159178
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It doesn't, it returns it's ptr and a vtable
+
+1742159182
+grayhatter!~grayhatte@user/grayhatter
+if it's just vss that's growing, then maybe it's a btop bug
+
+1742159182
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's very simple
+
+1742159216
+grayhatter!~grayhatte@user/grayhatter
+if it's rss that's growing, then you're overwriting the free list, which is why it's not reporting the leaks
+
+1742159232
+grayhatter!~grayhatte@user/grayhatter
+not because it's not leaking, but because you're clobbering the list of memory allocations
+
+1742159254
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Why should calling the same function from a threapool vs a single thread make a difference there
+
+1742159256
+grayhatter!~grayhatte@user/grayhatter
+swap out GPA with SMP
+
+1742159264
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I did, smp behaves the same
+
+1742159300
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+As I mentioned, I tracked every single allocaiton made and summed them to be sure it was all being done properly
+
+1742159300
+grayhatter!~grayhatte@user/grayhatter
+unlikely... let me compile this myself
+
+1742159386
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yeah every fetch adds like 2Mb to reported usage
+
+1742159503
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+With SMP it adds about 0.3Mb per fetch
+
+1742159551
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what if you set n_jobs = 1
+
+1742159556
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+My solution on my server project was to just occasionally garbage collect the thread pool
+
+1742159569
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If I deinit the thread pool and re-init it, all memory is reclaimed
+
+1742159596
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+whats using 2MB ? 
+
+1742159607
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I have no idea
+
+1742159622
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is why ppl quit using threads 
+
+1742159640
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are like reinventing old apache server
+
+1742159673
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sounds like some thread local holds onto it
+
+1742159692
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: n_jobs = 1 does not show the same issue
+
+1742159784
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Huh, so it seems like it's just maxing out at some point - once every thread has done a request
+
+1742159786
+grayhatter!~grayhatte@user/grayhatter
+rockorager: you mean the thread pool grows?
+
+1742159793
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+rockorager: that was my theory
+
+1742159805
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+No, the thread pool is sized and spawned at init
+
+1742159805
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+every thread eats O(1)
+
+1742159808
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yeah
+
+1742159817
+grayhatter!~grayhatte@user/grayhatter
+so it grows, until it hit's your 8/12/24 CPUs/cores,
+
+1742159822
+grayhatter!~grayhatte@user/grayhatter
+then stops growing?
+
+1742159839
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+No
+
+1742159855
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+When you call it init, n_jobs threads are spawned (or n_cores if null)
+
+1742159860
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It does not grow after that
+
+1742159881
+grayhatter!~grayhatte@user/grayhatter
+I'm running it (0..1000), and it's now pinned at 20500 RSS, and it's not growing
+
+1742159894
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+how many threads did you spawn
+
+1742159908
+grayhatter!~grayhatte@user/grayhatter
+I assume 24
+
+1742159914
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So do less than 24 iterations
+
+1742159918
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it will grow each time
+
+1742159926
+grayhatter!~grayhatte@user/grayhatter
+yeah
+
+1742159928
+grayhatter!~grayhatte@user/grayhatter
+and?
+
+1742159930
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I think this is figured out - there is a threadlocal somewhere in http.Client.fetch
+
+1742159950
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So I probably don't need to garbage collect since it tops out
+
+1742159979
+grayhatter!~grayhatte@user/grayhatter
+you're surprised it'll grow everytime it spawns a new thread?
+
+1742160018
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: please read what i said
+
+1742160024
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+or read the code in threadpool.init
+
+1742160032
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It spawns the threads in init
+
+1742160038
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It doesn't spawn them when you call threadpool.spawn
+
+1742160051
+grayhatter!~grayhatte@user/grayhatter
+        const closure = try pool.allocator.create(Closure);
+
+1742160068
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yes, it allocates a closure and then frees it after your job is done
+
+1742160117
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If you replace the fetch call with a write to storage, you won't see the same issue (because there is no threadlocal involved then as I now know)
+
+1742160144
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Even though you are still allocating and using the threadpool
+
+1742160192
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I couldn't find the threadlocal in a cursory search, might be indirect
+
+1742160371
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, shouldn't line: 38 be `_ = &client.fetch(`
+
+1742160379
+grayhatter!~grayhatte@user/grayhatter
+if you wrap the threadpool in another set of braces, and sleep before, you'll see it deallocates everything correctly
+
+1742160456
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: no?
+
+1742160488
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+grayhatter: paste?
+
+1742160516
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+press X to doubt
+
+1742160517
+grayhatter!~grayhatte@user/grayhatter
+oh, I guess it doesn't, rss 4580 > 580
+
+1742160757
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+what’s an indirect thread local?
+
+1742160786
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, I just mean it might be in some code that http.Client is calling or something
+
+1742160793
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+oh I see
+
+1742160814
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or it's in the allocator itself
+
+1742160833
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which I find more likely
+
+1742160846
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you can allocate without the fetch call and it won’t grow
+
+1742160862
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it might depend on how you allocate
+
+1742160866
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+true
+
+1742160912
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+well, I’m considering my problem solved :)
+
+1742160918
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+and I’ve removed my gc 
+
+1742161201
+grayhatter!~grayhatte@user/grayhatter
+rockorager: you've solved your problem?
+
+1742161223
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yeah
+
+1742161252
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it stops growing at some point and I can stop worrying about it growing forever, so I don’t need to gc it
+
+1742161270
+grayhatter!~grayhatte@user/grayhatter
+if I call gpa.deinit(), rss drops to 192
+
+1742161297
+grayhatter!~grayhatte@user/grayhatter
+I don't think there's a leak anywhere, I assume that's just debug allocator state
+
+1742161319
+grayhatter!~grayhatte@user/grayhatter
+well, and a bunch of other alloc state, but you get the idea
+
+1742161327
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, per thread gpa state
+
+1742162375
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is `T` reserved keyword for comptime ? Or can it be used for other type like reference.
+
+1742162406
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it’s not reserved
+
