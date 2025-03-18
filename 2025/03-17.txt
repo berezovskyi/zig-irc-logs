@@ -1,0 +1,200 @@
+1742222865
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+how does one write a test to check that a function correctly panics when garbage input is given, without defining a custom error union and checking for that?
+
+1742223393
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I am essentially trying to write negative tests. It's all well and good to give valid input to a function and check it produces what is expected, but what about garbage input where it should fail. I suppose we _must_ use a custom error union for such cases?
+
+1742225011
+ifreund!2940d10f8b@user/ifreund
+you can run the test in a separate process and check the exit code/output
+
+1742225032
+ifreund!2940d10f8b@user/ifreund
+this is what zig does to test runtime safety checks and the like
+
+1742225678
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+I have a `const char foo[] = "Something";` in a piece of C that I'm linking against my Zig code. I use `extern "c" var foo: [*:0]u8;` to make it visible to Zig. This doesn't really become a slice of u8 though, the linker sets the address of `foo` in Zig to the _content_ of `foo` in C-land. How am I holding this wrong?
+
+1742226082
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+cheers ifreund
+
+1742226098
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+nvm, figured it out. @extern is my friend.
+
+1742226125
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+do you have any advice on "dynamic" instrumentation? I want to (optionally, depending on a compile or maybe even runtime flag) add tracing/logging output to a large number of functions
+
+1742226156
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'd like to avoid adding a literal maybeDoLogging() inside every one of them and perhaps do something a bit more dynamic.. somehow.. if appropriate
+
+1742226166
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is this possible/am I barking up the right tree in terms of idea?
+
+1742228872
+grayhatter!~grayhatte@user/grayhatter
+tsujp: writing a test "this should crash" is dumb, please don't do that
+
+1742228905
+grayhatter!~grayhatte@user/grayhatter
+tsujp: you should write code, and use the built in fuzzing to prove that code **never** panics
+
+1742228946
+grayhatter!~grayhatte@user/grayhatter
+but, if for some reason, you think you code **should** crash, you would write a custom test handler in your build.zig
+
+1742228980
+grayhatter!~grayhatte@user/grayhatter
+but again, something like that only makes sense in something like the compiler. where crashing is a safety feature
+
+1742229277
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter: gotcha
+
+1742229407
+grayhatter!~grayhatte@user/grayhatter
+tsujp: the built in std.log will do that, you can set the log level based on the build level, and even define your own logging function
+
+1742229434
+grayhatter!~grayhatte@user/grayhatter
+IIRC log.debug() is a noop in ReleaseFast
+
+1742229457
+grayhatter!~grayhatte@user/grayhatter
+where log.err() always prints (depending on your custom logging function)
+
+1742229543
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter: yes but what I mean is like here: https://github.com/tsujp/zevem/blob/master/src/evm.zig#L115-L142
+
+1742229578
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+every one of those prongs has the logging function called, I wonder if there's a nice way of doing this while still using a labelled switch such that the outcome is similar
+
+1742229753
+grayhatter!~grayhatte@user/grayhatter
+if you find one tag me, because I can't think of a way, (other than writing a wrapper function)
+
+1742229814
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter: i believe there is a way to get the source via @src or something, and then comptime add function calls to _stuff_ but that sounds mighty spaghetti-like versus just having the literal function there
+
+1742229825
+grayhatter!~grayhatte@user/grayhatter
+if I really had to write a function, I'd probably write `inline fn`
+
+1742229833
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+could also put it in the decodeOp part of the continue statement for each prong
+
+1742229849
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+well the logging function is defined as `inline fn`
+
+1742229880
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also im looking at tracy, perhaps that solves some of my wants here.. how to integrate tracy with zig is something I don't know yet
+
+1742229894
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+tracy is this btw: https://github.com/wolfpld/tracy
+
+1742229897
+grayhatter!~grayhatte@user/grayhatter
+oh
+
+1742229912
+grayhatter!~grayhatte@user/grayhatter
+I think I understand better now
+
+1742229934
+grayhatter!~grayhatte@user/grayhatter
+I think you're optimizing something unimportant
+
+1742229961
+grayhatter!~grayhatte@user/grayhatter
+which I only say, because that's the kinda thing I'd constantly have to remind myself, not because it's actually not worth it
+
+1742230009
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+concerning the literal logging function call inlined probably yes, regarding tracy that is something I want as I want to start benchmarking various things and doing some profiler-guided optimisation
+
+1742232538
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmmm, what's the general approach people are using for tracing/instrumenting their zig codebases for performance etc?
+
+1742234365
+grayhatter!~grayhatte@user/grayhatter
+I use `perf` but anything that works on c or c++ code will work on zig
+
+1742234902
+fkobi!~user@user/fkobi
+hello
+
+1742234927
+fkobi!~user@user/fkobi
+can I set the default --summary level in my project?
+
+1742242496
+jemius!~jemius@200116b82d349f00bb298c5d717680f7.dip.versatel-1u1.de
+https://ziglang.org/documentation/master/#toc-TypeOf
+
+1742242503
+jemius!~jemius@200116b82d349f00bb298c5d717680f7.dip.versatel-1u1.de
+why's that taking more than 1 parameter?
+
+1742242510
+jemius!~jemius@200116b82d349f00bb298c5d717680f7.dip.versatel-1u1.de
+What if the parameters have different types?
+
+1742242638
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean? it takes one parameter, the value
+
+1742242681
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah, you mean if you pass more than one, something I've never done
+
+1742242710
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but I guess it returns the union type
+
+1742242725
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or "peer type resolution" as it calls it
+
+1742242747
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I'm pretty sure it does some implicit promotion or whatever, or yeah maybe that ^ is the right term
+
+1742242765
+bblack!~bblack@wikimedia/bblack-WMF
+but you can do e.g. @TypeOf(some_u32, some_u64) and it will return u64, for example
+
+1742242780
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in that example the other day, for without else, you would get the peer type of "Food" and "void", which is "void"
+
+1742242831
+bblack!~bblack@wikimedia/bblack-WMF
+but if you put two things in there that are incompatible, then @TypeOf will generate a compile-time error
+
+1742242846
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. in my just-now-made-up example for myself:
+
+1742242849
+bblack!~bblack@wikimedia/bblack-WMF
+foo.zig:6:41: error: incompatible types: '[]u8' and 'f64' std.debug.print("Foobar {any}\n", .{@TypeOf(x, y)});
+
+1742243170
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in partially ordered sets, it's the "join" operation, not that that helps :P
+
