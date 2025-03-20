@@ -1,0 +1,764 @@
+1742342434
+SultansOfCode23!~SultansOf@user/SultansOfCode
+romFileName = try gpa_allocator.dupeZ(u8, std.mem.span(fileName)); says that zig fails to detect it is a pointer and uses slice.len
+
+1742342585
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so i narrowed down the bug to `fn io_uring_queue_init()` not exiting or crashing just after https://zigbin.io/31087e
+
+1742342588
+SultansOfCode23!~SultansOf@user/SultansOfCode
+¬¬
+
+1742342604
+SultansOfCode23!~SultansOf@user/SultansOfCode
+It was on the free
+
+1742342612
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode23: https://ziglang.org/documentation/0.13.0/std/#src/std/mem.zig 
+
+1742342622
+grayhatter!~grayhatte@user/grayhatter
+there's no length check
+
+1742342631
+grayhatter!~grayhatte@user/grayhatter
+lol, glad you found it SultansOfCode23 
+
+1742342649
+SultansOfCode23!~SultansOf@user/SultansOfCode
+Do I need to free the romFileName after allocating it? Or the allocator tracks it and deallocate itself?
+
+1742342697
+SultansOfCode23!~SultansOf@user/SultansOfCode
+grayhatter: compiled with -freference-trace and saw
+
+1742342759
+torque!~tachyon@user/torque
+you have to free it yourself unless you are using an arena allocator or a similar strategy
+
+1742342764
+grayhatter!~grayhatte@user/grayhatter
+you need to free `romFileName`
+
+1742342786
+grayhatter!~grayhatte@user/grayhatter
+you can not free `romFileName.ptr`, you need both
+
+1742342809
+grayhatter!~grayhatte@user/grayhatter
+I guess, technically you could use span on it... but that's the kinda code that makes me sad
+
+1742342862
+SultansOfCode23!~SultansOf@user/SultansOfCode
+How? Because var romFileName is ?[*:0]u8. So I am trying: gpa_allocator.free(romFileName.?); (after being sure it is not null). And it is giving that slice.len error
+
+1742342897
+torque!~tachyon@user/torque
+`free` requires a slice because that's how it knows how much memory to free
+
+1742342919
+torque!~tachyon@user/torque
+you have to store the slice when you dup, you can't just discard the length
+
+1742342950
+torque!~tachyon@user/torque
+<torque> romFileName should be `[:0]u8` not `[*:0]u8`. if you need the many pointer, access it with `romFileName.ptr`
+
+1742343277
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+as you can see i did the whole line by line debugging. not sure whats causing it to crash like that.
+
+1742343315
+SultansOfCode23!~SultansOf@user/SultansOfCode
+Niiiiice :D
+
+1742343317
+SultansOfCode23!~SultansOf@user/SultansOfCode
+Thnaks :D
+
+1742343930
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+and this is why i hate C in this case python being written in C, it just crashes and you have no way to know why!
+
+1742346141
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't wana say who but someone here gave me bad advice :( they also gave me good advice so ya ...
+
+1742346654
+grayhatter!~grayhatte@user/grayhatter
+lol stealth_ was it about zig, or about python?
+
+1742347858
+torque!~tachyon@user/torque
+i hope it was me
+
+1742349165
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it was me not knowing how to code in zig yet, also i am counting on you guys to give me pro tip ;)
+
+1742352048
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there something wrong with line:2 or the function its calling? https://zigbin.io/3c1a65 if i run it as is it will run but odd time it will glitch out, if i comment out line:2 i can run it 100's no glitch/error
+
+1742352161
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+note: its like a class `__init__` method, so it will be called even before `io_uring_queue_init()` is called
+
+1742357751
+grayhatter!~grayhatte@user/grayhatter
+anyone know what the semantics are for pass by ref, vs pass by value? for when zig will convert one to the other?
+
+1742357757
+grayhatter!~grayhatte@user/grayhatter
+i.e. is this valid? https://gist.github.com/GrayHatter/e8f67208b61fefdf1737ea48741acb3e
+
+1742358122
+torque!~tachyon@user/torque
+generally assume if you aren't explicitly passing by ref it will copy
+
+1742358135
+torque!~tachyon@user/torque
+I don't think the semantics have ever really been defined
+
+1742358173
+torque!~tachyon@user/torque
+at one point it was probably "whatever the hell llvm feels like" but idk how the self-hosted backends do this, so maybe it's decided at a higher level?
+
+1742360614
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is that suppose to be server request handler? would have been nice with couple of awaits vs sleep which just blocks.
+
+1742361207
+grayhatter!~grayhatte@user/grayhatter
+stealth_: lol, it's a local dns server, it'll never need more than 2 threads, and I *want* it to block on a network syscall
+
+1742361222
+grayhatter!~grayhatte@user/grayhatter
+but, even still, that was just a minimal example to convey the question I had
+
+1742361312
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why use 2 when you can do it all in 1?
+
+1742361351
+grayhatter!~grayhatte@user/grayhatter
+because blocking a single packet from a socket fd syscall is faster?
+
+1742361382
+grayhatter!~grayhatte@user/grayhatter
+why set up something way more complicated when I can do something really simple, hard to get wrong, and faster?
+
+1742361399
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+true
+
+1742376004
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter: yeah gonna look at perf, also valgrind and perhaps gprof. I see things like eBPF but they strike me as more important for syscalls and less so anything that is mostly occuring in userspace
+
+1742376061
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ashie: yeah just found this after looking at the tail end of that recent zig showtime stream where loris added tracy, he ended up just hardcoding the path to the tracy lib he installed via homebrew so lets see if falsepattern's thing works yet, not super hopeful as it's still on pre-release zig 0.14.0 however
+
+1742376086
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+then there's also poop or whatever it is from andrew kelly for some "basic"(?) benchmarking
+
+1742376669
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is loris in this irc? what's scripty for? something to do with superhtml/zine stuff it seems like? https://github.com/kristoff-it/scripty
+
+1742377046
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+just now starting to do non-trivial things with zig's build system, is it nice/sane to try and add a binary as a dependency to it? Specifically poop (https://github.com/andrewrk/poop) so I can have a benchmark command
+
+1742377059
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+loris should promote IRC more, agreed ;)
+
+1742384321
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm how does one translate this to the new .init decl literal form:    var gpa = std.heap.DebugAllocator(.{}){};
+
+1742384327
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+seems like it cannot be a one liner anymore no?
+
+1742384628
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+or is it meant to be this now:   var gpa = std.heap.DebugAllocator(.{}).init;
+
+1742386549
+bblack!~bblack@wikimedia/bblack-WMF
+tsujp: there's an example of debugallocator + smpallocator (conditionally) at the bottom of https://ziglang.org/download/0.14.0/release-notes.html#SmpAllocator
+
+1742386564
+bblack!~bblack@wikimedia/bblack-WMF
+basically:
+
+1742386566
+bblack!~bblack@wikimedia/bblack-WMF
+var debug_allocator: std.heap.DebugAllocator(.{}) = .init;
+
+1742386604
+ashie!~ashie@user/ashie
+tsujp: are you saying fp's tracy thing was in zig showtime? if so can you give me a link? I am sure fp would be happy to see it mentioned
+
+1742386645
+ashie!~ashie@user/ashie
+and also might be able to address the issues with it
+
+1742401172
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there another way to go about doing this? `@constCast(&zigfunction)` to pass to C. reading online says @constCast is unsafe.
+
+1742403436
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: why would you need this
+
+1742403521
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for some reason https://zigbin.io/3c1a65 will cause random errors, if i comment out line: 2 there is no error at all.
+
+1742403575
+blurrycat!~blurrycat@user/blurrycat
+errors are usually not "random"
+
+1742403589
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when it comes to python they can be
+
+1742403611
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mostly when you are dealing with external C function
+
+1742403685
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why do you do constCast
+
+1742403691
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+was my question
+
+1742403768
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, pfunc is void*
+
+1742403814
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/18cb7a full code, i am passing `ioUringInit` as a class __init__ method
+
+1742403848
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, needs a pointer there to zig function.
+
+1742404130
+blurrycat!~blurrycat@user/blurrycat
+I have a cursed idea and I'm not even sure it works but what about @ptrFromInt(@intFromPtr(&ioUringInit))
+
+1742404150
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i can try
+
+1742404155
+blurrycat!~blurrycat@user/blurrycat
+might need a @as(?*c_void, ...) but again I'm not really sure that would work
+
+1742404252
+blurrycat!~blurrycat@user/blurrycat
+or ?*anyopaque rather, I don't think c_void exists
+
+1742404279
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, https://zigbin.io/fcbafa running your first idea. 
+
+1742404463
+blurrycat!~blurrycat@user/blurrycat
+well I guess it won't work in that case then
+
+1742404592
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ i couldn't find anything for `c_void` so i tried `const f: ?*anyopaque = @constCast(&ioUringInit);` it does work but same glitch issue. 
+
+1742404805
+ifreund!2940d10f8b@user/ifreund
+anyopaque used to be called c_void
+
+1742404816
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see
+
+1742404822
+ifreund!2940d10f8b@user/ifreund
+ptrFromInt() is a bigger hammer than @constCast()
+
+1742404826
+blurrycat!~blurrycat@user/blurrycat
+ah so that's why I had some vague memory of it, thanks for the history :)
+
+1742404943
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/a39ba3 trying random stuff at this point. 
+
+1742405004
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so ya, its clearly the way that zig function ptr being sent over has some issue, or it could be that memory/reference is getting lost?
+
+1742405039
+bblack!~bblack@wikimedia/bblack-WMF
+if you're casting a pointer to a Zig function, to hand it off to something non-Zig (C, or python/C stuff?), does the function in question even have the C calling convention?
+
+1742405062
+bblack!~bblack@wikimedia/bblack-WMF
+(if not, and you can't change that fact, you may need to wrap it in a Zig function that does have C calling convention)
+
+1742405083
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, yes https://zigbin.io/18cb7a line:82
+
+1742405315
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I'm lost, this seems pretty nutso-complicated :)
+
+1742405374
+blurrycat!~blurrycat@user/blurrycat
+you never said what the error is when doing constCast
+
+1742405381
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no worries, when mixing multiple languages stuff like this is common
+
+1742405416
+bblack!~bblack@wikimedia/bblack-WMF
+is the goal to basically wrap Zig's IoUring implementation up as an extension module for Python code's use?
+
+1742405429
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, it happens on python side `[Finished in 69ms with exit code -11]` classic error code that mean nothing or way to debug. 
+
+1742405457
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, i am wrapping C liburing using Zig as a wrapper for Python
+
+1742405524
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+pretty much replacing cython with zig big-block engine https://github.com/yostealth/liburing
+
+1742405534
+bblack!~bblack@wikimedia/bblack-WMF
+so you're putting Zig in the middle as a translation layer, effectively, in what would otherwise be "write a python extension module in C that gives access to liburing"?
+
+1742405544
+blurrycat!~blurrycat@user/blurrycat
+yes
+
+1742405572
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yep, zig has been super nice to work with in that aspect.
+
+1742405631
+bblack!~bblack@wikimedia/bblack-WMF
+seems like it would be easier to either wrap Zig's existing std.os.linux.IoUring, or use https://pypi.org/project/liburing/ or something similar?
+
+1742405663
+blurrycat!~blurrycat@user/blurrycat
+that's... him already
+
+1742405666
+bblack!~bblack@wikimedia/bblack-WMF
+ij
+
+1742405669
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, that link is my project :p i am trying to improve it with zig.
+
+1742405670
+bblack!~bblack@wikimedia/bblack-WMF
+err, ok :)
+
+1742405726
+bblack!~bblack@wikimedia/bblack-WMF
+but what's the gain from putting Zig in the middle of python<->c-library in general?
+
+1742405761
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there are some segfault bug in cython, i just can't debug, i even had its core dev look at it and they couldn't figure it out either.
+
+1742407085
+grayhatter!~grayhatte@user/grayhatter
+stealth_: are you talking about the one you showed me?
+
+1742407172
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, the test? yes
+
+1742407181
+grayhatter!~grayhatte@user/grayhatter
+bruh
+
+1742407193
+grayhatter!~grayhatte@user/grayhatter
+who's the core dev who couldn't figure it out?
+
+1742407236
+grayhatter!~grayhatte@user/grayhatter
+I already told you what the bug was
+
+1742407237
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i just feel like those middleman wrapper make it super hard to actual utilize io_uring potential, u know... lots of speed is lost.
+
+1742407246
+grayhatter!~grayhatte@user/grayhatter
+you're passing a *ptr to something that needs a **ptr
+
+1742407247
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+u did? 
+
+1742407260
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, na thats not it. 
+
+1742407265
+grayhatter!~grayhatte@user/grayhatter
+how do you know?
+
+1742407274
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+u think i haven't tried that? 
+
+1742407295
+grayhatter!~grayhatte@user/grayhatter
+yes, I think you haven't tried that
+
+1742407324
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have, rewrote that library many times over. 
+
+1742407379
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+once i wrap that function using zig, we will find out if the same issues happens or not. plus we get to look at a error message vs a segfault on your face that can't be figured out.
+
+1742407386
+grayhatter!~grayhatte@user/grayhatter
+it's impossible for me to believe that you tried and and can tell me for sure that you passed the correct pointer type given how confused you are when it comes to basic pointers in zig, let alone translating between *ptr, which you use in one function and **ptr which you don't pass in the broken test
+
+1742407415
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you're mind is gonna be blown when you learn that debuggers exist
+
+1742407428
+grayhatter!~grayhatte@user/grayhatter
+both lldb and gdb would make debugging that segv trivial
+
+1742407433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i get confused cause i am dealing with new syntax
+
+1742407461
+grayhatter!~grayhatte@user/grayhatter
+zig's pointer syntax is nearly identical to C's so I have a hard time buying that
+
+1742407504
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think in terms of cython syntax since thats what i been coding 
+
+1742407521
+grayhatter!~grayhatte@user/grayhatter
+cython, or python's cdef?
+
+1742407536
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cdef is cython
+
+1742407548
+grayhatter!~grayhatte@user/grayhatter
+yeah, that's not C
+
+1742407558
+grayhatter!~grayhatte@user/grayhatter
+it's nothing like it
+
+1742407578
+grayhatter!~grayhatte@user/grayhatter
+brb
+
+1742407583
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+exactly its a mix of both C and python so its a whole new language almost. 
+
+1742408174
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have tried both lldb and gdb, try debugging crap that cpython puts out, its a mess. remember python/cpython creates function/class names dynamically, no one wants to debug that.
+
+1742409136
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+YES: pv.x
+
+1742409169
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+NO: pv.*.x
+
+1742409231
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I would think of pv.x.*
+
+1742409257
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I think this implicit stuff confused the hell out of me when trying C.
+
+1742409280
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+x.* helps me here I think
+
+1742409293
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+not sure about the struct though
+
+1742409372
+bblack!~bblack@wikimedia/bblack-WMF
+generally I've found I don't often need to reach for "pv.*.x" syntax, esp in pure Zig code.
+
+1742409390
+bblack!~bblack@wikimedia/bblack-WMF
+I do sometimes, but only in the context of interfacing with data structures out of a C header that are complex and have unions, etc.
+
+1742409483
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+why is it pv.*.x and not pv.x.* ?
+
+1742409586
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+they would mean 2 different things. 
+
+1742409652
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah I see
+
+1742409741
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Being implicit is really good for low level language, you want things to be as obvious as it can be. These syntax issues wont be an issue after you code enough zig.
+
+1742409790
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+explicit is obvious
+
+1742409804
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+implicit is magic
+
+1742409833
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+right, lol 
+
+1742410362
+bblack!~bblack@wikimedia/bblack-WMF
+flower_: my understanding of it, using this as an example: pub Foo = struct { x: u32, y: u32 };
+
+1742410400
+fkobi!~user@user/fkobi
+hello
+
+1742410407
+bblack!~bblack@wikimedia/bblack-WMF
+var a: Foo = undefined; x.a = 123; // obvious
+
+1742410414
+fkobi!~user@user/fkobi
+does a module only allow for making a single executable?
+
+1742410439
+bblack!~bblack@wikimedia/bblack-WMF
+var b: *Foo = undefined; x.*.a = 123; // explicit syntax to dereference the pointer
+
+1742410444
+bblack!~bblack@wikimedia/bblack-WMF
+or even:
+
+1742410476
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fkobi, you mean single .so file? 
+
+1742410477
+bblack!~bblack@wikimedia/bblack-WMF
+var b: *Foo = undefined; x.* = .{ .x = 123, .y = 456 }; // explicit syntax to deref the pointer before assigning the whole struct value through it
+
+1742410530
+bblack!~bblack@wikimedia/bblack-WMF
+but most of the time, anytime you could explicitly write "x.*.a", you can just write "x.a" and zig will see x is a pointer and infer the .* in the middle, because nothing else would make sense.
+
+1742410551
+fkobi!~user@user/fkobi
+stealth_: I have an executable that I run to generate files for the unit tests. When I try to access variables defined in it it says that it is out of module's scope. I think it would be the simplest to have the single module generate two executable files
+
+1742410563
+fkobi!~user@user/fkobi
+but I do not know if that is possible
+
+1742410610
+bblack!~bblack@wikimedia/bblack-WMF
+heh, brain-fried kind of day, all my x/y/a/b are all mixed up in those examples.  but hopefully the point was obvious.
+
+1742410646
+bblack!~bblack@wikimedia/bblack-WMF
+C: x.a becomes Zig: x.a
+
+1742410665
+bblack!~bblack@wikimedia/bblack-WMF
+C: x->a becomes Zig: x.*.a (but can often be written as x.a)
+
+1742410687
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fkobi, i wouldn't be the best to help you. just my though, what you mean by access variable? how exactly are you accessing it
+
+1742410728
+grayhatter!~grayhatte@user/grayhatter
+counter point... people who want to write code that works without segv do want to debug that
+
+1742410800
+grayhatter!~grayhatte@user/grayhatter
+fkobi: share a link to your build.zig
+
+1742410881
+grayhatter!~grayhatte@user/grayhatter
+fkobi: but to answer your question, no, you can generate as many exes as you wish
+
+1742410949
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fkobi, are you by any chance talking about accessing variable from one .zig file from another .zig file?
+
+1742411117
+fkobi!~user@user/fkobi
+yes, a variable between files
+
+1742411141
+fkobi!~user@user/fkobi
+in that case is it possible to access a variable from a file that is not stored in src/?
+
+1742411207
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fkobi, yes you just have to `pub const myvar = 1;` key being `pub` keyword
+
+1742411246
+grayhatter!~grayhatte@user/grayhatter
+fkobi: no, you can not access any files above the root of your source file
+
+1742411264
+fkobi!~user@user/fkobi
+https://pastebin.com/aA8E0BW1
+
+1742411271
+fkobi!~user@user/fkobi
+I think that was the problem then
+
+1742411319
+grayhatter!~grayhatte@user/grayhatter
+you can provide files outside your src tree, by creating an anonymous import https://ziglang.org/documentation/master/std/#std.Build.Module.addAnonymousImport and then using @import() within the root source file though
+
+1742411359
+grayhatter!~grayhatte@user/grayhatter
+but source files themselves can't import above the root file, only the build.zig can do that
+
+1742411425
+grayhatter!~grayhatte@user/grayhatter
+line 9 makes no sense
+
+1742411465
+fkobi!~user@user/fkobi
+grayhatter: why?
+
+1742411478
+grayhatter!~grayhatte@user/grayhatter
+you're telling the build system to use .root_source_file "gen-files.zig" to build the .root_module, and then telling it the .root_module is the original exe
+
+1742411516
+fkobi!~user@user/fkobi
+II see
+
+1742411519
+grayhatter!~grayhatte@user/grayhatter
+this mental abstraction breaks down a bit, but think of modules as code blocks, and the executiable as some "magic" that starts the code blocks you created
+
+1742411543
+fkobi!~user@user/fkobi
+my bad, it should be `.target = target` instead of the root_module
+
+1742411562
+grayhatter!~grayhatte@user/grayhatter
+in this case, line 8 get_mod should get the "gen-files.zig", which will collect all the code, and then line 9 should only have .root_module = gen_mod
+
+1742411587
+grayhatter!~grayhatte@user/grayhatter
+also, I doubt you wanna name your binary `zig`
+
+1742411615
+grayhatter!~grayhatte@user/grayhatter
+fkobi: did you get your build.zig file from running `zig init`?
+
+1742411731
+fkobi!~user@user/fkobi
+yes I did
+
+1742411747
+fkobi!~user@user/fkobi
+the project is still in it's infancy and I do not have a name for it
+
+1742411754
+fkobi!~user@user/fkobi
+I have just left it as the default
+
+1742411763
+fkobi!~user@user/fkobi
+it turned out that I do not need modules at all
+
+1742411847
+fkobi!~user@user/fkobi
+I have moved the gen-files to src/
+
+1742411899
+fkobi!~user@user/fkobi
+now, if someone has the time, could one explain how do modules differ in Zig from Java?
+
+1742411926
+grayhatter!~grayhatte@user/grayhatter
+if you want, you can create gen-files-src/ and then add `gen_mod` as a dependency that `exe_mod` needs. Then exe_mod can access gen-files-src/ too (some restrictions apply)
+
+1742411975
+grayhatter!~grayhatte@user/grayhatter
+fkobi: that's a very difficult thing to do via IRC
+
+1742411999
+fkobi!~user@user/fkobi
+I see
+
+1742412015
+grayhatter!~grayhatte@user/grayhatter
+java modules and zig modules aren't really compatable ideas. They're not used the same at all
+
+1742412045
+grayhatter!~grayhatte@user/grayhatter
+similar goals or uses, but that's about it
+
+1742412113
+fkobi!~user@user/fkobi
+hm, alright
+
+1742412120
+fkobi!~user@user/fkobi
+thanks for the help!
+
+1742415376
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how does naming work in zig? lowerTitle or TitleTitle 
+
+1742415540
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nm found https://nathancraddock.com/blog/zig-naming-conventions/
+
+1742423923
+soul-d!~soul-d@user/soul-d
+hello zig noob o/  here the example on learn/samples/  c-interop.zig <enter> build with `zig build-exe cimport.zig -lc -lraylib`   spot the problem :) my first zig bug solved ;P ( build with the filename  the line is double confusing cause it might make sense to a noob since were using @cImport ) 
+
