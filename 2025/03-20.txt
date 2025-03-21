@@ -1,0 +1,592 @@
+1742434311
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is it more typical to specify `fn foo() !bar`, or to be explicit about the error unions you expect your function to return? I noticed in https://www.youtube.com/watch?v=TvSeLgL4NNQ (nice video btw) that he explicitly specified the OutOfMemory that his function might return, and it got me thinking what's most typical
+
+1742434560
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also congrats on 0.14 release!
+
+1742434687
+torque!~tachyon@user/torque
+explicit error sets are more precise but also more verbose and less flexible so they're more work to maintain
+
+1742434715
+torque!~tachyon@user/torque
+if you're writing a function that is an interface someone else uses, it's better to have a specific error set
+
+1742434727
+torque!~tachyon@user/torque
+e.g. library code
+
+1742434879
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+😮 `Although this feature is not ready to be enabled by default, it can be opted into via the -fincremental flag passed to zig build` 🎉 I'm gonna try this
+
+1742434905
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: makes sense thanks for the thoughts
+
+1742445897
+dsal!sid13060@id-13060.lymington.irccloud.com
+Does anyone know how to use std.compress.gzip.decompressor ? 
+
+1742445910
+grayhatter!~grayhatte@user/grayhatter
+dsal: with the reader/writer interface?
+
+1742445928
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, it looks like I could just stick it inline with my file reader, but it's not happy about that.
+
+1742446031
+grayhatter!~grayhatte@user/grayhatter
+dsal: why not?
+
+1742446153
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm slightly confused.  I have some code that's opening a file with `openFile` which yields a `std.fs.File.Reader`.  I'm using that interface and calling `readUntilDelimiterOrEof` which is fine.  I'm trying to stick a `decompressor` in there which is documented to return the same type as its parameter, but it complains that I can't call `readUntilDelimiterOrEof`
+
+1742446487
+grayhatter!~grayhatte@user/grayhatter
+so... the file data is compressed right?
+
+1742446498
+dsal!sid13060@id-13060.lymington.irccloud.com
+I'm just trying to get the program to compile.
+
+1742446514
+dsal!sid13060@id-13060.lymington.irccloud.com
+It's working on uncompressed data.  I want to to have it work on compressed data.
+
+1742446515
+grayhatter!~grayhatte@user/grayhatter
+which means the delimiter may or may not exist in the file, becuase it could be compressed?
+
+1742446555
+grayhatter!~grayhatte@user/grayhatter
+you have to give the raw reader to the decompressor, and then get an AnyReader from the decompressor
+
+1742446599
+grayhatter!~grayhatte@user/grayhatter
+oh, the decompressor has that function. I need to see your code then
+
+1742446625
+dsal!sid13060@id-13060.lymington.irccloud.com
+OK, yeah.  I misread part of the signature.  The docs for Decompressor don't show any methods which is a little confusing.
+
+1742446649
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.compress.flate.inflate.Decompressor
+
+1742446671
+grayhatter!~grayhatte@user/grayhatter
+are you using the reader() fn there?
+
+1742446834
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, I forgot that.  But now that I have that, I'm getting an error that's not in any of my code so that's more confusing.  Trying to figure out what it's telling me.
+
+1742447093
+dsal!sid13060@id-13060.lymington.irccloud.com
+It's telling me:  /nix/store/rinia2aazl4ba2q9lvmbkzzvf3dx82k0-zig-0.14.0/lib/zig/std/compress/flate/bit_reader.zig:41:37: error: type '*io.GenericReader(fs.File,error{InputOutput,AccessDenied,BrokenPipe,SystemResources,OperationAborted,LockViolation,WouldBlock,ConnectionResetByPeer,ProcessNotFound,Unexpected,IsDir,ConnectionTimedOut,NotOpenForReading,SocketNotConnected,Canceled},(function 'read'))' has no members
+
+1742447127
+dsal!sid13060@id-13060.lymington.irccloud.com
+Which makes me think I'm calling it incorrectly.  I've opened a file and I'm passing it a pointer to `var fr = file.reader()`
+
+1742447156
+dsal!sid13060@id-13060.lymington.irccloud.com
+i.e.:      var fr = file.reader();    var reader = std.compress.gzip.decompressor(&fr).reader();
+
+1742447173
+dsal!sid13060@id-13060.lymington.irccloud.com
+Working code has `var reader = file.reader();`
+
+1742447346
+grayhatter!~grayhatte@user/grayhatter
+I need the full stack trace
+
+1742447374
+dsal!sid13060@id-13060.lymington.irccloud.com
+That's all it gave me.  I'll try making a toy program.
+
+1742447439
+grayhatter!~grayhatte@user/grayhatter
+it gave you that single line, and freference-trace had nothing?
+
+1742447444
+grayhatter!~grayhatte@user/grayhatter
+seems doubtful
+
+1742447456
+sp2!uid197664@user/meow/sp2
+it looks like you need to pass the reader by value instead of by pointer
+
+1742447531
+dsal!sid13060@id-13060.lymington.irccloud.com
+If I pass it by value, it complains differently:  src/root.zig:124:52: error: expected type '*compress.flate.inflate.Inflate(.gzip,u64,io.GenericReader(fs.File,error{InputOutput,AccessDenied,BrokenPipe,SystemResources,OperationAborted,LockViolation,WouldBlock,ConnectionResetByPeer,ProcessNotFound,Unexpected,IsDir,ConnectionTimedOut,NotOpenForReading,SocketNotConnected,Canceled},(function 'read')))', found '*const 
+
+1742447531
+dsal!sid13060@id-13060.lymington.irccloud.com
+compress.flate.inflate.Inflate(.gzip,u64,io.GenericReader(fs.File,error{InputOutput,AccessDenied,BrokenPipe,SystemResources,OperationAborted,LockViolation,WouldBlock,ConnectionResetByPeer,ProcessNotFound,Unexpected,IsDir,ConnectionTimedOut,NotOpenForReading,SocketNotConnected,Canceled},(function 'read')))'
+
+1742447553
+sp2!uid197664@user/meow/sp2
+huh, i '
+
+1742447556
+sp2!uid197664@user/meow/sp2
+i'm probably wrong then
+
+1742447600
+grayhatter!~grayhatte@user/grayhatter
+yeah because calling `decompressor().reader()` makes the `decompressor()` segment const
+
+1742447620
+grayhatter!~grayhatte@user/grayhatter
+if you want a var, it needs it's own var space
+
+1742447645
+grayhatter!~grayhatte@user/grayhatter
+`var decompressor = ....decompressor(file_reader);`
+
+1742447685
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh yeah, that did it.
+
+1742448234
+dsal!sid13060@id-13060.lymington.irccloud.com
+Cool.  Other than `aborting due to recursive panic` my code's working great.  :)
+
+1742450173
+dsal!sid13060@id-13060.lymington.irccloud.com
+I was segfaulting from storing the `d.reader().any()` and trying to use it later.
+
+1742473524
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+it's such a testament to The Zen of Zig, when after some experimentation, shaking apis around, i end up moving this last little function to a module .. and turns out there already is the same exact function, with only one difference being a newline after `while ... |v|` :D
+
+1742473553
+netvor!~netvor@2a00:ca8:a1f:cd0:ffd0:4958:433f:8228
+it's not even that i already wrote it before, but that i wrote it *exactly* the same way :D
+
+1742474697
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is this comment correct? https://codeberg.org/ziglings/exercises/src/branch/main/exercises/048_methods2.zig#L14
+
+1742474791
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+shouldn't it be "orelse null"
+
+1742474905
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+no. .? unwraps the optional
+
+1742474958
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is that optional always null?
+
+1742474982
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+no, if it’s null .? is runtime checked safety in Safe or debug builds 
+
+1742474994
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+if it’s null you’ll crash
+
+1742475271
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but "orelse unreachable" is not correct, right?
+
+1742475297
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+unreachable if for when a case can't happen isn't?
+
+1742475559
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+yeah, unreachable tells the compiler that branch can’t happen
+
+1742475591
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+if (maybe_foo == null) return;
+
+1742475610
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+const foo = maybe_foot orelse unreachable;
+
+1742475720
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, I'll try to let that sink in
+
+1742476165
+ifreund!2940d10f8b@user/ifreund
+orelse unreachable is the same as .?
+
+1742476247
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok
+
+1742476334
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so in that example it is used to tell the compiler that the method should not be called when the struct *Elephant is null
+
+1742476342
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+?
+
+1742476375
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+No, it’s saying “I, the programmer, know that this is not null. if I am wrong you may crash the program”
+
+1742476403
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1742476453
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but does that happen at runtime, or does the compiler catches it?
+
+1742476469
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+some sort of panic
+
+1742476476
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Runtime safety checked. Only in ReleaseSafe and Debug
+
+1742478699
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+meh no idea: https://codeberg.org/ziglings/exercises/src/branch/main/exercises/054_manypointers.zig#L36
+
+1742478715
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this is the part where you start to hate programming I guess :)
+
+1742479067
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+[]u8 = zen_manyptr[0..] probably
+
+1742479158
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but []const u8 = ... 
+
+1742479160
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pfff
+
+1742479184
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'll blame the course
+
+1742479229
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how large will that slice be?
+
+1742479248
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+21
+
+1742479281
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how large is zen_manyptr?
+
+1742479305
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is there a zen_manyptr.len?
+
+1742479413
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+probably not
+
+1742479424
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so how could zenmany_ptr[0..] be 21 items long? where would 21 come from?
+
+1742479594
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm can't test cause I already cheated
+
+1742479614
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so []const u8 = zen_manyptr[0..21];
+
+1742479619
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+?
+
+1742479621
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1742479645
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok thx
+
+1742479668
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so why do they introduce many-item pointers here
+
+1742479698
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it seems to add confusion, e.g. makes things extra complicated
+
+1742479729
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I have very, very rarely come across a many item ptr
+
+1742479736
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I suppose if you interface with C a lot you will see them more
+
+1742482378
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, obviously they're overcomplicated, they are exercises
+
+1742485115
+bw!sid2730@user/betawaffle
+does anyone know of a good article on how cache coherency and atomic reads/writes interact on modern cpus?
+
+1742485216
+bw!sid2730@user/betawaffle
+like for example, if one core is doing atomic writes to a cache line, and another core is doing atomic reads from that same address, is it always going to cause contention, and thus slow down the core doing the writing?
+
+1742486138
+bblack!~bblack@wikimedia/bblack-WMF
+bw: there's many, but this is my current favorite: https://research.swtch.com/mm (which I recently quoted in an HN thread in defense of Zig's decision to remove @fence for now)
+
+1742486172
+bblack!~bblack@wikimedia/bblack-WMF
+but it's more about the safety problems than the perf problems
+
+1742486230
+bblack!~bblack@wikimedia/bblack-WMF
+it does touch on the aspects that are important though, e.g. how x86 flushes cache writes
+
+1742486289
+bw!sid2730@user/betawaffle
+ty :)
+
+1742486445
+bblack!~bblack@wikimedia/bblack-WMF
+but the safety problems of course are what lead to the perf problems, there's an interplay.  e.g. unsafe "racy" writes on arm/power are pretty cheap even if they touch the same memory, .seq_cst ones are not because they need barriers to work sanely.
+
+1742499535
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how do you normally go about updating stdlib? you just create a github issue and submit pr?
+
+1742499570
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+stealth_: depending on the change, you may want to join the zulip chat to discuss details
+
+1742499628
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just stuff like updating struct and what not adding new features e.g: https://ziglang.org/documentation/0.14.0/std/#std.os.linux.Statx vs https://man7.org/linux/man-pages/man2/statx.2.html
+
+1742499645
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not that i need those features, but someone might!
+
+1742502187
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: re: many-item pointers - note that every time you use `slice.ptr` syntax, that's technically a many-item pointer type!
+
+1742503739
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there are so many allocators, is std.mem.allocator.create/destroy the one you use for extern struct? 
+
+1742504098
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+create/destroy is for allocating any single item of a type
+
+1742504150
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i want to give struct memory and free it later, something you would use melloc/calloc for 
+
+1742504242
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+create is the equivalent of malloc, alloc is the equivalent of calloc
+
+1742504327
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o ic
+
+1742504352
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+should i be looking at std.heap library? 
+
+1742504367
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you want to allocate things on the heap, yes
+
+1742504390
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what the std.mem for ? 
+
+1742504403
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't that heap as well?
+
+1742504419
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+std.mem.Allocator is the interface for the allocators in std.heap
+
+1742504425
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+std.heap is the implementations
+
+1742504429
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.mem is a lot of things
+
+1742504452
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its just confusing 
+
+1742504453
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: memory != heap
+
+1742504634
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+talking about this can get weird, since isn't everything stored in memory?
+
+1742504676
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this guy made some good videos about it https://www.youtube.com/@calder-ty/videos 
+
+1742504794
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but everything isn't stored on the heap
+
+1742504855
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(and technically everything isn't stored in memory)
+
+1742504947
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't really wana talk about it :p here is the struct i am working with https://zigbin.io/995398 i know python manages the `ob_base`, so i need to give `stat` memory on init, and free it later. 
+
+1742504995
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean "give `stat` memory"
+
+1742505000
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's in the same struct as ob_base
+
+1742505028
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they must be allocated together
+
+1742505038
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya! i am not really sure how python api manages memory 
+
+1742505151
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it allocates things on its heap
+
+1742505216
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well ya, i am not sure what it does with the struct field i gave it, like should i have done `stat: *x.statx` now i am saying its a pointer and manage the memory myself?
+
+1742505258
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's certainly what you need to do if you wanted to allocate x.statx separately from the python object
+
+1742505316
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if i don't do that you are saying python manages the memory? (that might be easy for me)
+
+1742505395
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you what you saying is true then i need to change `ring: c.io_uring` to `ring: *c.io_uring` since io_uring manages the memory. 
+
+1742505568
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not sure how you believe structs work if this is confusing
+
+1742505805
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not that, i am not sure what python capi is doing.
+
+1742505814
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it doesn't matter what it's doing
+
+1742505849
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+fields in a struct are allocated together
+
+1742506043
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+python objects can have custom alloc/free, see tp_alloc/tp_new/tp_free/tp_dealloc
+
+1742506071
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not sure why I'm googling things for you
+
+1742506124
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how am i suppose to know python does it automatically? we are writing C/zig here, you wouldn't assume they did that also... if it was python code you wouldn't have to worry about it. 
+
+1742506133
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+by reading docs
+
+1742506141
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+but thanks though your input does help
+
+1742506148
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya i am reading https://docs.python.org/3/c-api/memory.html
+
+1742506280
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+https://docs.python.org/3.0/c-api/typeobj.html
+
+1742506949
+grayhatter!~grayhatte@user/grayhatter
+Gliptic> not sure why I'm googling things for you <- ....neither am I... *glares*
+
+1742507301
+andrewrk!~andrewrk@mail.ziglang.org
+gonna stream a "Let's Play" of https://ziggit.dev/t/dungeon-wizard-action-roguelike-deckbuilder-in-zig/9153 in about 30 minutes at https://www.twitch.tv/andrewrok
+
+1742507511
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why do they not port the game to linux? https://nunodasneves.itch.io/dungeon-wizard
+
+1742507572
+grayhatter!~grayhatte@user/grayhatter
+TIL @import isn't case sensitive in windows
+
+1742507576
+grayhatter!~grayhatte@user/grayhatter
+I don't know how I feel about that :<
+
+1742507795
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I switched to unmanaged ArrayLists in a data structure in libvaxis and the amount of memory usage savings is embarrassing 
+
+1742507843
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The internal screen struct had a buffer of cells - one for each cell in your terminal. each of those had *three* ArrayLists
+
+1742508057
+grayhatter!~grayhatte@user/grayhatter
+so, having migrated to ArrayListUnmanaged, when a ignore the atrocious naming for the public methods, I now agree the unmanaged flavor results in better code... but the more I think about how to make it easier to adopt for people unfamiliar with allocations as having a cost. The more I think zig needs some kind of polymorphism
+
+1742508484
+grayhatter!~grayhatte@user/grayhatter
+std.mem.Allocator, std.io.AnyReader, an Auth api I've created, the list of things that behave alike, but lack some feature that makes using them as easy as a normal function is
+
+1742510665
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just tried `.use_llvm = false,` on my code, error, so not there yet :) can't comment on twitch, no login. 
+
+1742515076
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: can you share a link to a paste of the error?
+
