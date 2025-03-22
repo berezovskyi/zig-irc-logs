@@ -1,0 +1,1604 @@
+1742515383
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, it recursively goes on like this: https://zigbin.io/9a174a
+
+1742515468
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since i am only using lib and not exe, added in `const lib = b.addLibrary(.{..., .use_llvm = false});`
+
+1742516440
+andrewrk!~andrewrk@mail.ziglang.org
+which target? and have you tried the advice from the error message?
+
+1742517189
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not sure what you mean by "which target", normal build runs fine, no error, only happens when `.use_llvm = false` is used, i am too much of zig noob to know what the error is referring too.
+
+1742517353
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+p.s your live-stream volume might be low, i had to set my volume to 150% to hear normally.
+
+1742519644
+andrewrk!~andrewrk@mail.ziglang.org
+thanks
+
+1742519670
+andrewrk!~andrewrk@mail.ziglang.org
+by "target" I mean, windows, linux, macos, etc., and x86, aarch64, etc
+
+1742519686
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+It was a bit low - I couldn't tell until I switch to airpods where I had to max them out to get a reasonable level
+
+1742519754
+andrewrk!~andrewrk@mail.ziglang.org
+thanks for letting me know - I found the setting just now in pipewire and indeed it was set at 67% for some reason
+
+1742519938
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cool, linux 6.13.7-2-cachyos (64-bit)
+
+1742520347
+andrewrk!~andrewrk@mail.ziglang.org
+the advice in the error message is `.pic = true,`
+
+1742520389
+andrewrk!~andrewrk@mail.ziglang.org
+in the library
+
+1742520680
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is what my build.zig looks like (I set that .pic) and the bottom is error https://zigbin.io/8be0c8 
+
+1742520756
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would be nice if you could make it so same error message only outputs once vs it keeps on repeating. good way to kill a system.
+
+1742533877
+tusf!cb6c78d75e@user/TUSF
+andrewrk answered a question related to string storage during the stream earlier, and I kinda just decided to spend some time implementing a basic module from what I understood. Some feedback on how to improve it would be nice? https://git.sr.ht/~tusf/TextStore/tree/main/item/src/TextStore.zig
+
+1742534024
+tusf!cb6c78d75e@user/TUSF
+One issue (or is it an issue?) is that gc() needs to be called automatically. I imagine that it might be a good idea to call it every X number of times a certain operation is called, but dunno?
+
+1742534051
+tusf!cb6c78d75e@user/TUSF
+s/automatically/manually/
+
+1742534071
+tusf!cb6c78d75e@user/TUSF
+Or otherwise, leave it to the user of the module.
+
+1742534361
+grayhatter!~grayhatte@user/grayhatter
+jfc
+
+1742534413
+grayhatter!~grayhatte@user/grayhatter
+I'm gonna need to block sr.ht from running javascript
+
+1742534427
+grayhatter!~grayhatte@user/grayhatter
+tusf: to you have a link to a site that's not awful?
+
+1742534520
+grayhatter!~grayhatte@user/grayhatter
+github is honestly better than sr.ht now
+
+1742534539
+tusf!cb6c78d75e@user/TUSF
+Well, dunno what your metric is for an aweful site, so...
+
+1742534554
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just use https://zigbin.io/ but ya tust what was the goal to do this again?
+
+1742534586
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like to prevent duplicates?
+
+1742534640
+grayhatter!~grayhatte@user/grayhatter
+tusf: a site that doesn't need POW to view pages
+
+1742534790
+grayhatter!~grayhatte@user/grayhatter
+I run a git host, I'd never consider deploying anubis, it's an actually insane decision. It's meant to [the remainder of this rant redacted for topicalness]
+
+1742534853
+grayhatter!~grayhatte@user/grayhatter
+related in case you find crawlers becoming abusive https://srctree.gr.ht/repo/rules/blob/abusive.nft
+
+1742534856
+tusf!cb6c78d75e@user/TUSF
+Not sure what you mean by POW, but here I guess?: https://github.com/TUSF/TextStore/blob/main/src/TextStore.zig
+
+1742534927
+tusf!cb6c78d75e@user/TUSF
+stealth_: But yeah, one it prevents duplicate strings, and also keeps all string data together, so you could more easily free all your string data at once, if you need to, while still being able to only discard some of them as needed.
+
+1742534957
+grayhatter!~grayhatte@user/grayhatter
+tusf: for how to improve? doc comments first
+
+1742535076
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+tusf, i see, kinda cool to see to see a code in action after andrew was talking about it
+
+1742535203
+tusf!cb6c78d75e@user/TUSF
+most of the usage info is down in the test at the bottom
+
+1742535232
+grayhatter!~grayhatte@user/grayhatter
+tusf: I don't know what uses you're targeting, but if you make the strings \0 term, you don't need to store the length, which means you might also be able to pack the strings themselves into "less ideal" array locations
+
+1742535299
+grayhatter!~grayhatte@user/grayhatter
+I also kinda like the method I'm coping from groovebasin where a string "offset" is a non-exaustive enum(u32), instead of just a u32. if you haven't seen it, that's worth considering as well
+
+1742535377
+grayhatter!~grayhatte@user/grayhatter
+also, why are you storing the hash in StringData?
+
+1742535497
+tusf!cb6c78d75e@user/TUSF
+where else would I store it?
+
+1742535521
+grayhatter!~grayhatte@user/grayhatter
+no where?
+
+1742535532
+grayhatter!~grayhatte@user/grayhatter
+why did you decide to store it?
+
+1742535585
+tusf!cb6c78d75e@user/TUSF
+It's used to check if the string is already interned.
+
+1742535639
+grayhatter!~grayhatte@user/grayhatter
+that doesn't answer my question
+
+1742535651
+grayhatter!~grayhatte@user/grayhatter
+that's what you use a hash for... but why did you decide to store it?
+
+1742535697
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how else do you know that str already exists? you compare it from the hash you are adding with the one already in the list. 
+
+1742535743
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+suppose you can always run a str comparison with the string that already exists in the list!
+
+1742535744
+tusf!cb6c78d75e@user/TUSF
+because why would I check if each interned string matches the new, when I can instead hash them all ahead of time, check the hashes, and only check if the strings are equal if the hashes match?
+
+1742535745
+grayhatter!~grayhatte@user/grayhatter
+I have "string", how do I know if "string" is already in the ?
+
+1742535775
+grayhatter!~grayhatte@user/grayhatter
+already in the hash table?
+
+1742535814
+tusf!cb6c78d75e@user/TUSF
+I'm not using a std.HashMap (or similar) tho?
+
+1742535869
+tusf!cb6c78d75e@user/TUSF
+just reusing the same hash function out of laziness
+
+1742535871
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+const hash = std.array_hash_map.hashString;
+
+1742535937
+grayhatter!~grayhatte@user/grayhatter
+oh, so adding a string is always o(N)?
+
+1742535945
+grayhatter!~grayhatte@user/grayhatter
+wow, I would fix that
+
+1742535996
+grayhatter!~grayhatte@user/grayhatter
+err... that was supposed to be big O(n)
+
+1742536018
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there are so many duplicate function in https://ziglang.org/documentation/0.14.0/std/#src/std/c.zig do a search for e.g `ISLINK`
+
+1742536030
+tusf!cb6c78d75e@user/TUSF
+eh, it's gonna be like that, if I want to avoid duplicates. ArrayHashMap does basically the same thing
+
+1742536039
+grayhatter!~grayhatte@user/grayhatter
+yeah, I guess that storing a hash, is probably better if every insertion would mean you'd have to hash every single stored string
+
+1742536079
+grayhatter!~grayhatte@user/grayhatter
+array hash map compares the key hash, to every item in the hashmap?
+
+1742536091
+tusf!cb6c78d75e@user/TUSF
+Yep
+
+1742536100
+grayhatter!~grayhatte@user/grayhatter
+doesn't that... I don't know.... defeat the point of a hash map?
+
+1742536134
+tusf!cb6c78d75e@user/TUSF
+i mean, unless I misunderstood the code 
+
+1742536204
+grayhatter!~grayhatte@user/grayhatter
+what code were you looking at where you saw it iterate over the whole array?
+
+1742536209
+tusf!cb6c78d75e@user/TUSF
+https://github.com/ziglang/zig/blob/master/lib/std/array_hash_map.zig#L835
+
+1742536360
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/blob/master/lib/std/array_hash_map.zig#L542-L546
+
+1742536393
+grayhatter!~grayhatte@user/grayhatter
+that's a cute optimization
+
+1742536706
+grayhatter!~grayhatte@user/grayhatter
+tusf: 64 bytes in many cases 
+
+1742536708
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/blob/master/lib/std/atomic.zig#L411
+
+1742536798
+tusf!cb6c78d75e@user/TUSF
+Fun. well, might just end up adapting it to use StringArrayHashMap then.
+
+1742536816
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1742536852
+grayhatter!~grayhatte@user/grayhatter
+before you do, if you wanna play around with a brain melting design. I strongly suggest looking at how groovebasin handles and stores strings
+
+1742536887
+grayhatter!~grayhatte@user/grayhatter
+took me a few days to fully build the intuition to understand it
+
+1742537072
+tusf!cb6c78d75e@user/TUSF
+there a particular file of section I should take a look at?
+
+1742537084
+tusf!cb6c78d75e@user/TUSF
+s/of/or
+
+1742537244
+tusf!cb6c78d75e@user/TUSF
+ah, doing it, i think
+
+1742537258
+tusf!cb6c78d75e@user/TUSF
+s/doing/found 
+
+1742537266
+tusf!cb6c78d75e@user/TUSF
+(silly phone typos)
+
+1742537365
+squeek502!~squeek502@user/squeek502
+if you're talking about string_table and string_bytes from https://codeberg.org/andrewrk/groovebasin/src/branch/main/shared/Db.zig
+
+1742537377
+squeek502!~squeek502@user/squeek502
+then it looks like the same pattern described here: https://zig.news/andrewrk/how-to-use-hash-map-contexts-to-save-memory-when-doing-a-string-table-3l33
+
+1742537423
+squeek502!~squeek502@user/squeek502
+just with the enum(u32) type for the index (see https://www.hytradboi.com/2025/05c72e39-c07e-41bc-ac40-85e8308f2917-programming-without-pointers)
+
+1742537437
+tusf!cb6c78d75e@user/TUSF
+yeah, found it. that said, I think I'm going to look more into how hash maps work, to maybe make my utility actually useful and stuff 
+
+1742537491
+squeek502!~squeek502@user/squeek502
+he actually talks about this pattern in the programming without pointers talk
+
+1742537540
+tusf!cb6c78d75e@user/TUSF
+yeah, but he doesn't go into how you might handle situations where strings might be removed, and there might be churn there.
+
+1742537564
+squeek502!~squeek502@user/squeek502
+true
+
+1742538778
+tusf!cb6c78d75e@user/TUSF
+ok, so groovebasin directly stores the offset of the string, as an enum, which works for it, but off I want to be able to delete unused strings, then every gc cycle I'd have to update them everywhere they're stored.
+
+1742541708
+grayhatter!~grayhatte@user/grayhatter
+if you wanted to delete strings, you'd have to update everywhere they're stored every gc run?
+
+1742541718
+grayhatter!~grayhatte@user/grayhatter
+why are you deleting strings that still exist somewhere?
+
+1742541748
+grayhatter!~grayhatte@user/grayhatter
+you mean if you wanted to move existing strings so you could compact the memory usage?
+
+1742541808
+grayhatter!~grayhatte@user/grayhatter
+then you could return `*const Handle` instead, or create a "moved" marker for strings to point to the new location
+
+1742541863
+grayhatter!~grayhatte@user/grayhatter
+or you could say, `// any call to gc invalidates all exsiting string handles` which is a common solution for many different implementations
+
+1742543983
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or you can have a freelist of unused segments and never move strings
+
+1742544080
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+although that requires you to more or less implement a memory allocator
+
+1742546044
+torque!~tachyon@user/torque
+<grayhatter> github is honestly better than sr.ht now <-- this is probably not the place to talk about it, but i do find it very interesting how llm scrapers have driven sourcehut into a corner like this
+
+1742546081
+torque!~tachyon@user/torque
+not sure it actually is effective, but the proof of work stuff is better than half of the sr.ht links going directly into an anti-bot tarpit, which hopefully they've stopped doing now
+
+1742546121
+torque!~tachyon@user/torque
+I'm not really convinced that pow is an effective mitigation for crawling bots though. i suppose time will tell
+
+1742551643
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+self is already a pointer, so the address is passes to the method right? So why is it using (another) & when returning? https://codeberg.org/ziglings/exercises/src/branch/main/exercises/058_quiz7.zig#L294
+
+1742551815
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, it's &(self.entries...)
+
+1742551839
+meidam!~meidam@user/meidam
+My guess is that it's a reference to an entry of what the self pointer is pointing to
+
+1742551844
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+pointer to the entry
+
+1742551872
+meidam!~meidam@user/meidam
+Still find it weird for a function to return a pointer though. But what do I know
+
+1742551924
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+a entry has a different address then the struct itself, hm
+
+1742551934
+meidam!~meidam@user/meidam
+Ah, it's in ziglings. Then they probably know what they're doing
+
+1742551974
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+another thing, foo.?.* is different then foo.*.? I guess
+
+1742552039
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+of course, they are opposite orders
+
+1742552059
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it's a bit nitpicking/detailed/cluttered syntax to be honest
+
+1742552081
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+let me try to get my head around it
+
+1742552191
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so in the first, foo itself is checked for unreachable and in the second the value of foo? Nah not really getting it I think. 
+
+1742552237
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the first is unwrapping an optional, then dereferencing the pointer in that optional
+
+1742552254
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no "checked for unreachable"
+
+1742552300
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you would use the first on a ?*T and the second on a *?T
+
+1742552364
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+an optional pointer to T vs pointer to an optional T
+
+1742552455
+meidam!~meidam@user/meidam
+An optional pointer. What a consept. This could either point to something or just be null...
+
+1742552651
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the unreachable thing I got from https://codeberg.org/ziglings/exercises/src/branch/main/exercises/049_quiz6.zig#L20
+
+1742552891
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+makes me think of a talk by rob pike: https://www.youtube.com/live/SlasmhEcXDo?feature=shared&t=2108
+
+1742552905
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how readable is this syntax I'm wondering?
+
+1742552954
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ACTION goes on with ziglings while wondering about the difference between Go and Zig
+
+1742553714
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+meidam: as far as I understand, the variables are made in main (not in that function) to 'own' the memory. So therefor they can return a pointer from a function. 
+
+1742553820
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+This gets caught by the compiler at runtime (ReleaseSafe and Debug), it will crash: https://codeberg.org/ziglings/exercises/src/branch/main/exercises/049_quiz6.zig#L20 
+
+1742553860
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is that because the return value has no optional value? *Elephant vs ?*Elephant
+
+1742553891
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+e.g. crash if it's null
+
+1742553990
+meidam!~meidam@user/meidam
+I hope you have put your Elephant trunk methods in the place for it on line 30, where all the "???" are
+
+1742554006
+meidam!~meidam@user/meidam
+land deleted the "???"
+
+1742554166
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, it's because .? checks for null in ReleaseSafe/Debug
+
+1742554233
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I just try to understand the .?, it's unwrappes a optional value, and is some cases the zigling course states that it means 'orelse unreachable'. This makes it a bit confusing. I think they shouldn't use the work unreachable here, but use other wording. 
+
+1742554246
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+*word
+
+1742554252
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not in some cases, it always means that
+
+1742554264
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hmmm
+
+1742554276
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not "wording", it's literal code
+
+1742554282
+meidam!~meidam@user/meidam
+It's different syntax for the same thing
+
+1742554308
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+"unreachable" will panic in ReleaseSafe/Debug
+
+1742554333
+meidam!~meidam@user/meidam
+".?" and "orelse unreachable" are the same, one is just shorter to write than the other
+
+1742554342
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, but now there are two words being used. .? mean unwrapping; .? means orelse unreachable
+
+1742554353
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+"x orelse y" returns y if x is null
+
+1742554385
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, "unwrapping" is an English description of what it does
+
+1742554424
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: it checks if it is null, could I say it like this?
+
+1742554450
+ifreund!2940d10f8b@user/ifreund
+.? is syntatic sugar for orelse unreachable
+
+1742554461
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+orelse checks if it's null, yes, but it's not a complete description
+
+1742554474
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the "unreachable" is an important part
+
+1742554505
+ifreund!2940d10f8b@user/ifreund
+x orelse y is syntatic sugar for if (x) |value| value else y
+
+1742554619
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, I mapped unreachable strongly to a else that can't happen, but I should apply a broader I suppose: https://codeberg.org/ziglings/exercises/src/branch/main/exercises/032_unreachable.zig
+
+1742554669
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no contradiction, when you type .? you tell the compiler that the value cannot be null
+
+1742554711
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that this is checked in ReleaseSafe and Debug is a debugging courtesy, in ReleaseSafe the compiler assumes it is not null
+
+1742554712
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1742554730
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ehm, in ReleaseFast that is
+
+1742554747
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for the last part
+
+1742554894
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, the word "unwrapping" is used because you can consider ?T to be a box that may be empty (null) or contain a T
+
+1742554995
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1742555021
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so .? is like when you order something from amazon and they send you a package, you kinda assume it has the thing in it, and if you find it to be empty when unwrapping you panic
+
+1742555060
+meidam!~meidam@user/meidam
+So you unwrap a Schrödinger's cat box? Amusing
+
+1742555085
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's enum { alive_cat, dead_cat }
+
+1742555108
+meidam!~meidam@user/meidam
+hehe
+
+1742555155
+meidam!~meidam@user/meidam
+But couldn't you also see it as { some_value, no_value }? xD
+
+1742555181
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, that's how it works in Rust
+
+1742555196
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: lol
+
+1742555229
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I'd say it's more like "I ordered a pen, and I am using whatever is in this package as a pen even if they shipped the wrong thing"
+
+1742555231
+meidam!~meidam@user/meidam
+Gliptic: Nice amazon analogy btw
+
+1742555250
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I guess that's more like a union
+
+1742555279
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you could have a switch with else => unreachable and that would apply
+
+1742555317
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or .pen on a union I guess
+
+1742555429
+meidam!~meidam@user/meidam
+Peak content
+
+1742555523
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.? is kinda like ordering a parachute, getting nothing and still jumping out of the plane
+
+1742555590
+meidam!~meidam@user/meidam
+hmmmmmmm, hopefully the panic will prevent you from jumping though
+
+1742555733
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you Release[ the handles ]Fast you won't have time to think about it
+
+1742555815
+meidam!~meidam@user/meidam
+Oh no!
+
+1742555878
+meidam!~meidam@user/meidam
+And that's why you ReleaseSafe, when it's something as vital and potentially fatal as jumping out of a plane with or without a parachute xD
+
+1742555989
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, then at least the plane will just crash
+
+1742555998
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+with an error message
+
+1742556056
+meidam!~meidam@user/meidam
+lol
+
+1742558081
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+you can set a variable with a optional value to null or undefined as 'no value'? Or should a optional value be set to null in this case?
+
+1742558339
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I'm sure they exist but I don't know a use case for setting an optional to undefined vs null
+
+1742558344
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+So, null
+
+1742558854
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1742558886
+ifreund!2940d10f8b@user/ifreund
+Theres no way to check if a value is undefined 
+
+1742558930
+ifreund!2940d10f8b@user/ifreund
+setting a value to undefined is an assertion that you won't use it before setting it to a defined value
+
+1742559289
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1742562011
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+worrying, I can't solve this one: https://codeberg.org/ziglings/exercises/src/branch/main/exercises/062_loop_expressions.zig#L49
+
+1742562041
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yes it needs a else, but how do I create the right type? "Zig" or langs[4]; doesn't work
+
+1742563748
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+meh
+
+1742564109
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+else null, doesn't work either
+
+1742566310
+blurrycat!~blurrycat@user/blurrycat
+flower_: where did you put the `else null`?
+
+1742566371
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: on the same line: if (lang.len == 3) break lang else null;
+
+1742566411
+blurrycat!~blurrycat@user/blurrycat
+that's not where it should go :)
+
+1742566460
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1742566570
+blurrycat!~blurrycat@user/blurrycat
+the if checks if lang has 3 characters, and return it if it does, but that doesn't mean it should return null if the currently read lang isn't 3 chars long
+
+1742566603
+blurrycat!~blurrycat@user/blurrycat
+you want to iterate over all elements of the langs array, but only return null if you didn't find anything at the end of your iterations
+
+1742566706
+blurrycat!~blurrycat@user/blurrycat
+the way it's presented in the comments at the top of the file is pretty confusing, would have been a lot clearer with braces everywhere to clearly indicate where the else belong
+
+1742566755
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: ah unfamiliair syntax that is
+
+1742566859
+blurrycat!~blurrycat@user/blurrycat
+flower_: basically the loop itself can have an else branch
+
+1742566867
+blurrycat!~blurrycat@user/blurrycat
+while (condition) { ... } else { ... }
+
+1742566915
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: for while it's probably more obvious then for a for loop
+
+1742566960
+blurrycat!~blurrycat@user/blurrycat
+the syntax is the same though
+
+1742566969
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+argh this makes you really doubt yourself :)
+
+1742566981
+blurrycat!~blurrycat@user/blurrycat
+for (array) |elem| { ... } else { ... }
+
+1742567006
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+while is one condition
+
+1742567043
+meidam!~meidam@user/meidam
+Don't the comments in the ziglings files explain every new consept and syntax as they are introduced?
+
+1742567047
+blurrycat!~blurrycat@user/blurrycat
+in a for loop the else clause runs when there are no more elements to iterate over
+
+1742567063
+blurrycat!~blurrycat@user/blurrycat
+meidam: they do but sometimes they are not very clear
+
+1742567089
+meidam!~meidam@user/meidam
+okay
+
+1742567089
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm 
+
+1742567095
+blurrycat!~blurrycat@user/blurrycat
+in this particular case I think the code examples are unclear, but the rest of the explanation is pretty good
+
+1742567201
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+in a while loop it uses a condition, that condition is met or not. The else is less clear on a for loop. Can't we just agree on that :)
+
+1742567265
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+anyway, glad I can skip this one now
+
+1742567387
+meidam!~meidam@user/meidam
+Why skip it?
+
+1742567448
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+because it's solved
+
+1742567458
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+skipping is not the right wording I guess then
+
+1742567470
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+leave behind
+
+1742567561
+meidam!~meidam@user/meidam
+ah
+
+1742575526
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: looks like a linker issue - something I'll be looking into soon but not enough time to do it today unfortunately. recommend to stick with LLD for now
+
+1742575557
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, its cool
+
+1742575715
+grayhatter!~grayhatte@user/grayhatter
+torque: re LLM scrapers: (technology topics are 'on-topic' as long as they never get in the way of talking about zig) sr.ht is only forced into using anubus by incompentence. Like I said I run a git host (srctree, which is 100%[^1] zig, so now on-topic :D ) and it was super easy to identify the fingerprints of LLM abuse and I just drop traffic from the whole ASN. They aren't trying to be abusive,
+
+1742575717
+grayhatter!~grayhatte@user/grayhatter
+they're just equally incompentent, once crawling fails they move on. Serving any traffic even bot captcha is the wrongest solution. The sr.ht admin seems to be very angry lately so I attribute his choice of a user hostile solution as part of that, he's angry about LLM slop, and so everyone gets the stick. There are plenty of reasons I'm wrong, or just don't know enough about how hard it *really* is,
+
+1742575719
+grayhatter!~grayhatte@user/grayhatter
+but I haven't seen any evidence or rational for why dropping trafic from abusive ASN won't work.
+
+1742575862
+bblack!~bblack@wikimedia/bblack-WMF
+I don't want to like, deep-dive on the details, but I work in SRE @ Wikimedia Foundation (Wikipedia), and even with 10s of capable staff, thwarting LLM crawler traffic from overloading our infrastructure is fairly constant work for the team these days, without many easy answers.
+
+1742575871
+grayhatter!~grayhatte@user/grayhatter
+y'all definitions and descriptions of what .? is are *WILD*
+
+1742575890
+bblack!~bblack@wikimedia/bblack-WMF
+we're fortunate enough that we have the bandwidth/capacity headroom for normal operations that many cases just fly under our radar, but still
+
+1742575897
+grayhatter!~grayhatte@user/grayhatter
+but it's good to know I'm unwilling to ever go skydiving with Gliptic 
+
+1742575969
+bblack!~bblack@wikimedia/bblack-WMF
+we're working on more-robust solutions and policies, but it's not as simple as "block a few obvious abusive ASNs" (esp when you have global users in most legitimate-ish ASNs)
+
+1742575977
+grayhatter!~grayhatte@user/grayhatter
+bblack: wikimedia and sr.ht are very different targets
+
+1742576030
+bblack!~bblack@wikimedia/bblack-WMF
+fair, but the recent uprising about this resonate with us, too
+
+1742576031
+grayhatter!~grayhatte@user/grayhatter
+sr.ht can afford to drop traffic from wikimedia, and clearly he's willing to piss people off to make a point. Wikimedia believes that they can't really get away with blockinghuge sections of the internet.
+
+1742576060
+grayhatter!~grayhatte@user/grayhatter
+and as the person who doesn't have to make that decision... Wikimedia **should** drop traffic from abusive ASNs
+
+1742576104
+bblack!~bblack@wikimedia/bblack-WMF
+We do limit/block traffic from some sources, some of the time, depending on a lot of things.  But we have legit traffic from so many places, and have to actually care about CGNAT-like cases when looking at this by-IP, etc...
+
+1742576106
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: thanks for keeping wikipedia running :)
+
+1742576172
+grayhatter!~grayhatte@user/grayhatter
+many ISP will not force their users to behave unless you make them. If wikimedia were to block ASNs once abusive traffic became noticable, and published the reasons why. Those any real users behind thoes ASN would complain and suddently that ISP (the only one best able to identify the abuse) would clamp down on that behavior
+
+1742576194
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: thanks for making an awesome programming language.  Someday hopefully-soon, the open source authdns server that Wikipedia uses will be Zig-based.  I'm in the long slog of porting its legacy C code :)
+
+1742576207
+grayhatter!~grayhatte@user/grayhatter
+I'll double down on what andrewrk said, wikimedia is one of the last remaining sites that make the internet still a place to be proud of
+
+1742576309
+grayhatter!~grayhatte@user/grayhatter
+that said, wikimedia doesn't just have to deal with scrapers, but also abuse in the form of POST
+
+1742576341
+bblack!~bblack@wikimedia/bblack-WMF
+yes, we have lots of abuse to fight of all kinds.  it's a constant battle :)
+
+1742576362
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: very cool, let me know how it goes!
+
+1742576378
+bblack!~bblack@wikimedia/bblack-WMF
+we're working on some better tooling all the time.  We have our own little declarative DSL at this point for pushing layer7 filters to our CDN to block specific patterns based on source asn/ip, specific header regexes, etc.
+
+1742576435
+bblack!~bblack@wikimedia/bblack-WMF
+what I've been working on lately for the L7 defenses is actually a cookie-based solution to filter low-effort anonymous traffic, but it's contentious and not yet rolled out yet.
+
+1742576446
+grayhatter!~grayhatte@user/grayhatter
+bblack: former SRE in privacy, security, and integrity for [big tech], so I know how hard the problem really is
+
+1742576483
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it wouldn't be so bad if the crawler visited a site very few seconds or minute, but they hit too much at once, thats the problem
+
+1742576523
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, internally you should be able to make it so 1 connection is limited to visit every x seconds after initial load.
+
+1742576547
+bblack!~bblack@wikimedia/bblack-WMF
+in a nutshell: we're going to start sending out cookies to all our anonymous readers that we hope most default-users will just accept.. and they're cryptographically signed and carry some metadata about how long you've been exchanging cookies with us and keeping it alive, so we can allowlist people with decent cookie history when we blanket-deny a lot of other shady traffic.
+
+1742576596
+bblack!~bblack@wikimedia/bblack-WMF
+but from the outside world it looks a lot like an Evil Tracker Cookie, so we have to go to great lengths to explain how we're not abusing it that way and we care about user privacy, etc.
+
+1742576661
+grayhatter!~grayhatte@user/grayhatter
+bblack: that's disappointing
+
+1742576707
+grayhatter!~grayhatte@user/grayhatter
+is the egress traffic really that bad that it warrants tracking users like that?
+
+1742576721
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+keep solution simple, complexity will only backfire.
+
+1742576731
+bblack!~bblack@wikimedia/bblack-WMF
+well, we're not actually tracking them.  it looks like we are, but there's no database on our side of all the tokens.
+
+1742576758
+bblack!~bblack@wikimedia/bblack-WMF
+we generate them on the fly, we consume+validate them when they return, then we just throw it away internally after we've done any blocking/ratelimiting/etc.
+
+1742576759
+grayhatter!~grayhatte@user/grayhatter
+bblack: "carries metadata" uh.... you and I define tracking differently
+
+1742576763
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you can track connection internally to your server though!
+
+1742576800
+grayhatter!~grayhatte@user/grayhatter
+once it exists, other orgs will start to use/abuse it
+
+1742576838
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: the metadata lives only in the cookie, nowhere in our infra.  and the metadata is just literally "to 1-day resolution, when did we first issue this cookie" + "to 1-week resolution, when did we last refresh you with a new set-cookie" + "in how many distinct weeks in the past have we done this refresh dance"
+
+1742576878
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: the cookie private to us and the client.  it's first-party only, https-only, no JS access allowed, etc.
+
+1742576908
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it wont take long for ppl to figure out your pattern and abuse it.
+
+1742576919
+bblack!~bblack@wikimedia/bblack-WMF
+what do you mean by abuse it?
+
+1742576927
+grayhatter!~grayhatte@user/grayhatter
+stealth_: what you're describing is actually impossible 
+
+1742576967
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you said you are not keeping track internally, so can't someone just feed fake cookie data?
+
+1742576989
+bblack!~bblack@wikimedia/bblack-WMF
+because we cryptographically sign the cookie value on the way out, with a secret key only known to our infra, and we validate it on return.
+
+1742577005
+grayhatter!~grayhatte@user/grayhatter
+bblack: with this cookie, you'll know if they're an active user/viewer, or a rare user/viwer? Why wouldn't another team decide that's useful information to run an experment with?
+
+1742577007
+bblack!~bblack@wikimedia/bblack-WMF
+if it doesn't validate it, we toss it and treat it the same as a fresh cookie-less client
+
+1742577015
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ah, i missed that part. 
+
+1742577072
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: well, the design intent is nobody but our CDN has access to this metadata, and doesn't forward it and doesn't keep state.  The design and the code will be public, like all our stuff.
+
+1742577110
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wiki already has bad rep when it comes to info other than tech being manipulated, not sure how well this not taking will do, sure you will implement it and you wont track it, later someone will go, lets keep a record and sell the data.
+
+1742577119
+grayhatter!~grayhatte@user/grayhatter
+bblack: how are you gonna stop cookie re-use?
+
+1742577165
+bblack!~bblack@wikimedia/bblack-WMF
+we expect cookie re-use.  but if a botnet/crawler/whatever wants to play our game, it means they'll actually have to build real-wall-clock history with us over the long term.
+
+1742577177
+bblack!~bblack@wikimedia/bblack-WMF
+(with their own cookie storage on their side)
+
+1742577194
+grayhatter!~grayhatte@user/grayhatter
+it only updates weekly?
+
+1742577196
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how will search engine index wiki?
+
+1742577197
+bblack!~bblack@wikimedia/bblack-WMF
+we can limit by-cookie for cases of copying one legit cookie to a million agents
+
+1742577232
+grayhatter!~grayhatte@user/grayhatter
+I don't think it'll work, but I look forward to the blog post about how much traffic you were able to prevent using it
+
+1742577233
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: right, we update the metadata counters once a week, based on the existing metadata counters
+
+1742577267
+bblack!~bblack@wikimedia/bblack-WMF
+it won't be perfect, no defense is.  but it raises the effort bar, and we get a lot of traffic that won't rise to meet that new bar.
+
+1742577358
+grayhatter!~grayhatte@user/grayhatter
+in my professional opinion, it has an outsized negative cost to real users, more than the cost imposed on bots... $former_company has made this mistake a few times
+
+1742577389
+bblack!~bblack@wikimedia/bblack-WMF
+the negative cost to the average wikipedia reader is that a cookie gets set and they never realize or pay attention.
+
+1742577436
+bblack!~bblack@wikimedia/bblack-WMF
+our site output is grossly inefficient and already carries other cookies, so in that sense it's a drop in the bucket.
+
+1742577436
+grayhatter!~grayhatte@user/grayhatter
+if you can't tie the cookie in some way to an identity, it's very hard to get the value expected out of the cookie. So you'll either find it doesn't really work the way you hope, or you'll pack more data into the cookie, and then it's just a regular tracking cookie that everyone promises never to abuse, but somehow they always find a reason they actually need to eventually 
+
+1742577444
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not a bad idea, just there is potential for abuse, also try small scale first before world wide implementation
+
+1742577467
+grayhatter!~grayhatte@user/grayhatter
+> a cookie gets set and they never realize or pay attention. 
+
+1742577482
+grayhatter!~grayhatte@user/grayhatter
+that's a really bad argument
+
+1742577509
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when you "login" to a site a cookie gets set as well.
+
+1742577510
+bblack!~bblack@wikimedia/bblack-WMF
+it's the truth, though.  we can talk about technical costs, but it's ~invisible to the average human non-techie user.
+
+1742577540
+bblack!~bblack@wikimedia/bblack-WMF
+and for the techies, we have to make the case and show the code and our relatively-transparent operations, that nothing is up our sleeve.
+
+1742577546
+grayhatter!~grayhatte@user/grayhatter
+all of meta/google/amazon's tracking is invisable to users too
+
+1742577550
+grayhatter!~grayhatte@user/grayhatter
+most users*
+
+1742577587
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, your whole creating secret key, ... will cost server resource as well.
+
+1742577605
+bblack!~bblack@wikimedia/bblack-WMF
+yeah but we're pretty efficient at that kind of thing.  we have to be :)
+
+1742577636
+bblack!~bblack@wikimedia/bblack-WMF
+honestly, our edge infra couldn't affort the costs of trying to track this stuff in some CDN-attached data store.
+
+1742577654
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you never know, just to deal with 10 crawler having to deal with millions of key gen can get expensive
+
+1742577681
+bblack!~bblack@wikimedia/bblack-WMF
+yes, this was part of the design input.  it's very light/fast code, that we expect to have to run on every request when we get slammed by a botnet.
+
+1742577696
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wiki is suppose to be free, so all the sites data, anyone should be able to access/get even crawlers
+
+1742577698
+bblack!~bblack@wikimedia/bblack-WMF
+libsodium, blake2b hashes for the signing.  low-level code.
+
+1742577707
+grayhatter!~grayhatte@user/grayhatter
+I don't know enough about wiki's infra to be more helpful, or more specific... but I can tell you cookies alone, aren't identifying, and if this doesn't help identify traffic it doesn't help you. So while I don't know exactly what will happen, I can tell you this isn't going to work after the "shock and awe" of *anything* changing. bots will adapt quicker than you'd hope
+
+1742577753
+grayhatter!~grayhatte@user/grayhatter
+stealth_: yeah, that's what's shocking to me... wiki publishes changsets, why do scrapers even exist?
+
+1742577764
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: we'll see! we don't expect them to identify users.  in this sort of sense, they're more a discriminator of legitimate UAs behind NAT-pooling IPs.
+
+1742577803
+grayhatter!~grayhatte@user/grayhatter
+bblack: you **need** to punish nat-pooling ISPs
+
+1742577809
+bblack!~bblack@wikimedia/bblack-WMF
+so that we can clamp cookieless reqs by-IP harder, without caring as much about all the regular-humans behind those NATs
+
+1742577824
+bblack!~bblack@wikimedia/bblack-WMF
+they exist everywhere, and we have no hope of enumerating them and special-casing them.
+
+1742577871
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: re: scrapers: because they're stupid, I guess.
+
+1742577899
+grayhatter!~grayhatte@user/grayhatter
+bblack: if they're stupid, than tarpitting them will work
+
+1742577905
+bblack!~bblack@wikimedia/bblack-WMF
+but it's also just true attack traffic.  We get notable L7 DDoSes often, sometimes multiple per week.
+
+1742577911
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+too many reasons for why ppl do what they do. 
+
+1742577937
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: if we can discriminate them, sure :)
+
+1742577960
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it could also be done by these big tech companies itself to sell their server/software 
+
+1742577977
+bblack!~bblack@wikimedia/bblack-WMF
+but so far, discrimination is a cat and mouse game quite often.  Some SRE has to look at traffic and see why this new case doesn't fit our previous filters or whatever.
+
+1742577978
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"create demand" 
+
+1742577992
+grayhatter!~grayhatte@user/grayhatter
+bblack: last comment I'll make, avoid adopting the easy options
+
+1742577994
+bblack!~bblack@wikimedia/bblack-WMF
+and it comes from eyeball networks
+
+1742578009
+grayhatter!~grayhatte@user/grayhatter
+it's easier to doxx users, than it is to trick the bots into doxxing themselves 
+
+1742578020
+grayhatter!~grayhatte@user/grayhatter
+do the harder one anyways because it's the right thing to do
+
+1742578024
+bblack!~bblack@wikimedia/bblack-WMF
+this isn't the easy option, it's quite difficult :/
+
+1742578057
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why can't you limit connection usage based on time? like rather then a connection visiting 1000's of pages make it visit 1/second.
+
+1742578067
+grayhatter!~grayhatte@user/grayhatter
+uh... a tracking cookie is difficult?
+
+1742578088
+bblack!~bblack@wikimedia/bblack-WMF
+it's difficult for us to design it in this way.  not in application code: directly in our CDN and doing this stateless-signing-scheme.
+
+1742578093
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you need to know what a GC-NAT is to understand why
+
+1742578139
+bblack!~bblack@wikimedia/bblack-WMF
+and then get through the politics, and a hundred internal conversations like this one about why it won't work or users will hate it, and legal vetting and privacy-team vetting
+
+1742578152
+bblack!~bblack@wikimedia/bblack-WMF
+it's 9 months since we embarked on this, at this point.
+
+1742578177
+grayhatter!~grayhatte@user/grayhatter
+what I'm hearing, is never work for the wikimedia foundation, ever
+
+1742578184
+grayhatter!~grayhatte@user/grayhatter
+that's good advice, thank you
+
+1742578194
+bblack!~bblack@wikimedia/bblack-WMF
+well, I won't say that, obviously.
+
+1742578205
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well we can limit connection using priority as well, so new ip will get more attention then 1 thats visited 1000's of time.
+
+1742578224
+grayhatter!~grayhatte@user/grayhatter
+I'm glad you're stronger than I am, I'll happily agree it's a personal failing that I can't tollerate that kinda thing
+
+1742578234
+grayhatter!~grayhatte@user/grayhatter
+I'm glad there are people who care that are willing to
+
+1742578245
+grayhatter!~grayhatte@user/grayhatter
+so, thank you again bblack!
+
+1742578263
+bblack!~bblack@wikimedia/bblack-WMF
+but there is something to be said for the fact that the foundation cares enough about this kind of thing (privacy), that pushing a new cookie with an identifier in it is this hard internally.
+
+1742578287
+bblack!~bblack@wikimedia/bblack-WMF
+there's also certainly something negative to be said for what an uphill battle it sometimes is to deploy a defensive idea to our infra :)
+
+1742578309
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you misunderstand how IPs -> clients -> users work in the case of GC-NATs, or other mismanaged networks
+
+1742578329
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there are lots of cases where ppl did good thing, and later someone else comes around and abuses your good thing.
+
+1742578361
+bblack!~bblack@wikimedia/bblack-WMF
+that's where hopefully, transparency saves us.  for someone to change the privacy gaurantees of this system, they have to make changes in a public git repo at the very least.
+
+1742578374
+bblack!~bblack@wikimedia/bblack-WMF
+multiple actually
+
+1742578409
+grayhatter!~grayhatte@user/grayhatter
+bblack: how can I tell the code running on your servers is the same code published in the repo?
+
+1742578428
+grayhatter!~grayhatte@user/grayhatter
+inb4, "trust us"
+
+1742578434
+bblack!~bblack@wikimedia/bblack-WMF
+:)
+
+1742578450
+grayhatter!~grayhatte@user/grayhatter
+lol, yeah, thankfully I still do trust y'all, but :D
+
+1742578474
+bblack!~bblack@wikimedia/bblack-WMF
+for those in the community, it's not hard to see the connection.  Our operational deployments do chatops on public IRC channels, etc.  There are commuity volunteers with access rights to servers and that can see how it's deployed.  And literally all of our infra config is public.
+
+1742578481
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't trust wiki other then computer tech data, lol
+
+1742578529
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+abuse normally happens are higher level vs low
+
+1742578534
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*at
+
+1742578543
+bblack!~bblack@wikimedia/bblack-WMF
+even our metrics are public :)
+
+1742578582
+bblack!~bblack@wikimedia/bblack-WMF
+https://grafana.wikimedia.org
+
+1742578618
+bblack!~bblack@wikimedia/bblack-WMF
+even down to netops-level details, or individual servers: https://grafana.wikimedia.org/d/ed8da087-4bcb-407d-9596-d158b8145d45/bgp-neighbors-detail?orgId=1
+
+1742578622
+bblack!~bblack@wikimedia/bblack-WMF
+it's kind of nuts when you think about it
+
+1742578668
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+200k/s how many servers server that? 
+
+1742578675
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+serve*
+
+1742578691
+bblack!~bblack@wikimedia/bblack-WMF
+anyways, if you ever want to see the live realtime operations, it's here on liberachat in #wikimedia-operations .  there's a ton of other public chans as well.
+
+1742578757
+bblack!~bblack@wikimedia/bblack-WMF
+stealth_: depends on what you mean at what layer.  Our whole infra is somewhere on the order of ~2k metal machines, roughly?  but that counts a lot of different meta-things.
+
+1742578798
+bblack!~bblack@wikimedia/bblack-WMF
+at the CDN edge where I mostly work, there's a little over 100 metal machines that actually "face the internet" in the role of being our private CDN.  They're the first layer that cares about L7.
+
+1742578839
+bblack!~bblack@wikimedia/bblack-WMF
+spread around 7 locations
+
+1742578864
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+wow you guys have a lot of channels here
+
+1742578866
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well 200k / 2k = 100 connection per sever per second
+
+1742578901
+bblack!~bblack@wikimedia/bblack-WMF
+that 200k you're quoting from grafana, that's not connections, that's *requests* at the HTTP level
+
+1742578918
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes
+
+1742578961
+bblack!~bblack@wikimedia/bblack-WMF
+so at the CDN edge it averages out in the low thousands per machine, not that averages matter much (load is not smooth over time and geography, nor site/server depools for maintenance, etc)
+
+1742578967
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its not like all your servers are on high load, so should be able to handle millions or requests per second. 
+
+1742578998
+bblack!~bblack@wikimedia/bblack-WMF
+I gotta run, and we've been way off topic too long! :)
+
+1742579009
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+l8z
+
+1742579260
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, even with  GC-NATs or whatever, eventually in the end you endup visiting a single server for a connection. now that server can limit you is what i am talking about.
+
+1742579261
+grayhatter!~grayhatte@user/grayhatter
+thinking about it... #zig is so cool! Where else could you have a conversation about the internals of python one day, a debate over data vs object design patterns, learn about a new indigame, argue about allocator perf, and then have a conversation about wikipedia network security the next day
+
+1742579290
+grayhatter!~grayhatte@user/grayhatter
+stealth_: how will that server limit the connections? by blocking the IP?
+
+1742579380
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, not blocking but prioritizing 
+
+1742579423
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+a server will crash cause its gets 10 real traffic and 1000 crawler, and its trying to serve every connection as important.
+
+1742579443
+grayhatter!~grayhatte@user/grayhatter
+are you intentionally advocating that one bad (hacked) computer should be allowed to prevent 100s to 10,000s of real users from using wikipedia?
+
+1742579454
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it just need to server every connection as important first, then switch to low priority
+
+1742579507
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no other way around.. right now 1 bad connection can ruin every other connection since its crashing the server
+
+1742579516
+grayhatter!~grayhatte@user/grayhatter
+because that will be the outcome of what your suggesting. One bad computer will be able to get wikipedia to block 1,000s of real users
+
+1742579529
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so you limit that 1 connection from abusing the resources.
+
+1742579530
+grayhatter!~grayhatte@user/grayhatter
+because wikipedia servers will see them all as the same source
+
+1742579565
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what?
+
+1742579570
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that's not even close to how networking really works at the level you're trying to describe it
+
+1742579607
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't know what you are thinking about. but you know the different between http 1.0 vs 1.1 ? 
+
+1742579608
+grayhatter!~grayhatte@user/grayhatter
+like I said... you need to understand the low level details of how CG-NAT traffic actually works, and it actually routed
+
+1742579654
+grayhatter!~grayhatte@user/grayhatter
+many CG-NATs drop long lived connections too
+
+1742579673
+grayhatter!~grayhatte@user/grayhatter
+brb
+
+1742579746
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i really don't know what this CG-NATs thing you keep mentioning. it has nothing to do with network/router/datacenter, i am talking about end connection made to the server itself.
+
+1742580138
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+currently wiki is handling 200k/req/s, with 2000+servers their network should be able to handle 10million/req/s, the fact that they are having crawler issues means some of their server is getting hit hard! not that they don't have the server/network its more of blocking/congestion issue on certain servers
+
+1742580269
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so if each of these servers were smart enough to prioritize connection/traffic they wouldn't die on high load.
+
+1742586664
+jemius!~jemius@2001:16b8:3dca:bd00:804c:4483:f845:c678
+if struct A contains struct B, what would the typical way be to access struct A when you only have a pointer to B?
+
+1742586809
+grayhatter!~grayhatte@user/grayhatter
+jemius: https://ziglang.org/documentation/master/#fieldParentPtr
+
+1742587340
+jemius!~jemius@2001:16b8:3dca:bd00:804c:4483:f845:c678
+grayhatter: thx. Good ol' comptime
+
+1742587436
+grayhatter!~grayhatte@user/grayhatter
+jemius: I got chu :)
+
+1742589218
+jeaye!~jeaye@user/jeaye
+Hi folks. Given this ticket https://github.com/ziglang/zig/issues/16270 it _looks_ like Zig is still intending to keep the `zig c++` facade long term. I'm interested in porting a CMake build setup for a C++ project over to Zig's build system for easier cross compilation, but whether it will remain supported is my primary concern. Is this known?
+
+1742592011
+bblack!~bblack@wikimedia/bblack-WMF
+stealth_: CGNAT is https://en.wikipedia.org/wiki/Carrier-grade_NAT .  Those are some of the biggest cases, but there's also offices, campuses, etc with relatively-smaller NAT setups.  Bottom line is, sometimes what looks like one IP address to a server could have many thousands of real end-users behind it, making separate connections.  Or one IP is sometimes just 1 actor, but they launch thousands of 
+
+1742592017
+bblack!~bblack@wikimedia/bblack-WMF
+connections.  Even regular users with regular browsers often launch more than one.
+
+1742592073
+bblack!~bblack@wikimedia/bblack-WMF
+or even worse, we have the optimizing-proxy cases.  OperaMini was famous for it long ago, apple and google do it now too.  Many users of a mobile browsing interface, going through a big-tech proxycache system with many exit IPs, but no longer 1:1 at all in terms of IPs or conns.
+
+1742592136
+bblack!~bblack@wikimedia/bblack-WMF
+trying to nail down what you /really/ mean when you say "I'll just block the bad IP, or just limit the bad connection, or ..." when dealing with bajillions of real world users from everywhere, gets surprisingly difficult, and it gets hard to protect the legit access you intend while preventing the abuse.
+
+1742593838
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, I have managed small scale data center, nothing like big tech. Also CGNAT seems like it has design flaws.
+
+1742593961
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, i think in io_uring you can do priority queue, this is used (guessing) in facebook server, i don't know to what degree.
+
+1742594020
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i noticed wiki still uses apache servers and such, they would need new grounds up design to do what i am talking about.
+
+1742594088
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+right it works like, we don't care who is requesting, we will serve everyone regardless if its a bot/actual user. this is normally how big tech would think.
+
+1742594455
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+200k request per second is nothing though! 1 single server using just 1 thread can handle million+ request per second. you can easily have 1 server handle the initial request/monitoring and pass that workload to other servers internally. If wiki really wants to find a solution there are always software for it, just need to implement it properly and take out all the middleman. easy said then done, i know :)
+
+1742595641
+grayhatter!~grayhatte@user/grayhatter
+> we will serve everyone regardless if its a bot/actual user. this is normally how big tech would think.
+
+1742595728
+grayhatter!~grayhatte@user/grayhatter
+some of my best friends work on the 50+ team of people who's only job day to day is detecting and preventing bot traffic at [big tech]
+
+1742595798
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, bet they can't fix the issue... cause the problem is the infrastructure design itself.
+
+1742595811
+grayhatter!~grayhatte@user/grayhatter
+that 50+ team btw, is just the number engineers, none of the other roles like data science or anything too
+
+1742595868
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when they designed it they weren't thinking of bots/crawlers, they were thinking more like we have 1000's of servers and it can handle anything...
+
+1742595888
+grayhatter!~grayhatte@user/grayhatter
+stealth_: it's wild how you're willing to be not just wrong... but also rude about it
+
+1742595935
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am not trying to be rude about it, but sometimes you need to be brunt about the truth.
+
+1742595985
+grayhatter!~grayhatte@user/grayhatter
+have you not seen me talk? I'm blunt to the point of being unkind
+
+1742595992
+blurrycat!~blurrycat@user/blurrycat
+> I have managed small scale data center, nothing like big tech
+
+1742596003
+blurrycat!~blurrycat@user/blurrycat
+but you can comment on infrastructure flaws at big tech?
+
+1742596006
+grayhatter!~grayhatte@user/grayhatter
+but I don't tell people they're wrong when I don't even understand what they're talking about
+
+1742596017
+grayhatter!~grayhatte@user/grayhatter
+blurrycat: <3
+
+1742596060
+andrewrk!~andrewrk@mail.ziglang.org
+jeaye: the use case will still be supported one way or another, will make sure projects have an upgrade path
+
+1742596080
+andrewrk!~andrewrk@mail.ziglang.org
+can't promise it will look identical to status quo however
+
+1742596102
+jeaye!~jeaye@user/jeaye
+andrewrk: Yep, that's understandable. Great to hear, too.
+
+1742596154
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I ran a small hosting company back in the day, so at that time there weren't much of a different with big/small teach, later they just used their huge amount of $ to monopoly the market. with their whole flaws cloud design. it was easy to see what they were doing. 
+
+1742596305
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there isn't much of a difference in managing few servers vs 1000's of server, its just number is higher.
+
+1742596330
+grayhatter!~grayhatte@user/grayhatter
+lmao wow... ok that's enough internet for me today
+
+1742596355
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why when bigtech has issues they don't bother with the issue they throw more servers at it.
+
+1742596502
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its the same issue with C vs zig, C never "fixed" their problems, they just kept blaming others to learn their flawed ways and it worked out really good for C developers they had good job security fixing ending bugs.
+
+1742596583
+jeaye!~jeaye@user/jeaye
+andrewrk: May I DM with some questions regarding the ZSF?
+
