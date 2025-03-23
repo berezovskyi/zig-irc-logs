@@ -1,0 +1,744 @@
+1742618110
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a way to set errno? 
+
+1742621905
+squeek502!~squeek502@user/squeek502
+stealth_, probably relevant: https://github.com/ziglang/zig/blob/9c9d3931df4c1decffec610e5e47b3049b147c8d/lib/std/c.zig#L11205-L11209
+
+1742621971
+squeek502!~squeek502@user/squeek502
+sorry, wrong link, here's the correct one: https://github.com/ziglang/zig/blob/9c9d3931df4c1decffec610e5e47b3049b147c8d/lib/std/c.zig#L6903-L6918
+
+1742621998
+squeek502!~squeek502@user/squeek502
+so `std.c._errno().* = 123` should work
+
+1742622010
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+squeek502, i see, let me try, thanks
+
+1742622029
+squeek502!~squeek502@user/squeek502
+(as long as you're linking libc, obviously)
+
+1742622149
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+trying to do that now :)
+
+1742622763
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+squeek502, nice `OSError: [Errno -22] Unknown error` looks like that trick works :)
+
+1742639795
+jemius!~jemius@200116b82df86d00c20a76f9408fa2b7.dip.versatel-1u1.de
+I'm originally not a computer scientist. The amount of stuff in the Zig stdlib confuses me
+
+1742639797
+jemius!~jemius@200116b82df86d00c20a76f9408fa2b7.dip.versatel-1u1.de
+https://ziglang.org/documentation/master/std/
+
+1742639811
+jemius!~jemius@200116b82df86d00c20a76f9408fa2b7.dip.versatel-1u1.de
+There seem to be so many redundant things, or rather ones that are only very slightly different
+
+1742639870
+jemius!~jemius@200116b82df86d00c20a76f9408fa2b7.dip.versatel-1u1.de
+And there seem to be no tree data structures?
+
+1742640039
+Affliction!affliction@idlerpg/player/affliction
+Some of the redundant things are aliases; eg, std.HashMap is a re-export of std.hash_map.HashMap
+
+1742640158
+Affliction!affliction@idlerpg/player/affliction
+But yeah, now that you mention it, there are a lack of trees
+
+1742640170
+Affliction!affliction@idlerpg/player/affliction
+But I guess, we're pre 1.0, anything can change (and things do change)
+
+1742640271
+jemius!~jemius@200116b82df86d00c20a76f9408fa2b7.dip.versatel-1u1.de
+Is there even some sort of policy about what programmers have to write themselves and what classifies for the stdlib?
+
+1742646395
+bw!sid2730@user/betawaffle
+am i correct in thinking it would be a bad idea to expect re-mapping memory with mmap to be atomic? like if one thread is reading from a page, and another thread remaps that page to another page with exactly the same data...
+
+1742646991
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+bw, if the data on the pages are exactly the same, it doesn't seem like it would matter?
+
+1742647055
+bw!sid2730@user/betawaffle
+yeah, i suppose so, though i'm more concerned if there could be a transient state during the call where the mapping is somehow invalid and causes signals/exceptions/whatever
+
+1742647080
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think so
+
+1742647087
+bw!sid2730@user/betawaffle
+ok
+
+1742647094
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but don't take my word for it
+
+1742666842
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can you not have function that only returns null ? 
+
+1742666868
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"error: the following command terminated unexpectedly:"
+
+1742667953
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in c struct there is `__u64 big_cqe[];` when i do `@offsetOf(IoUringCqe, "cqe") + @offsetOf(c.io_uring_cqe, "big_cqe")` it says "error: no field named 'big_cqe'" any idea?
+
+1742668221
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not sure non-sized arrays are supported
+
+1742668245
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+look at the generated code (go to definition)
+
+1742668273
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm what you mean generated code? 
+
+1742668295
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the code generated for c.io_uring_cqe
+
+1742668311
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@cImport generates binding code
+
+1742668344
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+either way, I'm not sure how non-sized arrays could be converted to zig
+
+1742668369
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+where is this generated code located? 
+
+1742668391
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.zig-cache
+
+1742668404
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's why I said you should use go to definition in whatever editor/IDE you're using
+
+1742668699
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is a handy way to look at what zig turn code into, but ya https://zigbin.io/1c8192
+
+1742668779
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, so it turns big_cqe into a function
+
+1742668808
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which means there's no @offsetOf
+
+1742668816
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looks like it
+
+1742668823
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so you are suppose to call that function to get the value? 
+
+1742668832
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+one alternative is to use the @sizeOf of the whole struct
+
+1742668850
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which _should_ be the beginning of that array
+
+1742668876
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+unless it contains some field with more than 8 byte alignment
+
+1742668905
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is what i am working with https://zigbin.io/710276 scroll to the bottom.
+
+1742668930
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.basicsize = @sizeOf(IoUringCqe), <- this obviously won't work
+
+1742668937
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i know it will be big_cqe[16]
+
+1742668973
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you've set the size so that it can at most be big_cqe[0]
+
+1742668978
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no room for any array elements
+
+1742668983
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, so +16 ? 
+
+1742668990
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not 16, no
+
+1742669004
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how big are 16 elements of __u64?
+
+1742669028
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in C you are suppose to set a flag for big_cqe to be enabled. 
+
+1742669034
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+8
+
+1742669050
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+2
+
+1742669056
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+16 elements of __u64 are 8 big?
+
+1742669075
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what unit is .basicsize in?
+
+1742669105
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+dono, will have to look it up
+
+1742669116
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and, in that unit, how big is 16 elements of u64?
+
+1742669122
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't know?
+
+1742669124
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you're setting it
+
+1742669148
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how did you figure out what to set it to if you don't know what unit it is in?
+
+1742669173
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it might just be easy for me to just add `.PyType_Slot{ .slot = c.Py_tp_methods, .pfunc = &Methods },` and call a big_cqe as method and have that call that internal function (if it can be done)
+
+1742669186
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's not relevant to this problem
+
+1742669190
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+those are python capi fields 
+
+1742669197
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you still need to allocate space for the array
+
+1742669244
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't tell python to allocate @sizeOf(IoUringCqe) bytes, leaving no space for any array at the end
+
+1742669246
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://docs.python.org/3/c-api/type.html#c.PyType_Spec.basicsize
+
+1742669252
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so int
+
+1742669260
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+int is not a unit
+
+1742669284
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does the int _mean_?
+
+1742669314
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was thinking `.basicsize = @sizeOf(IoUringCqe)+2`
+
+1742669342
+Gliptic!~glip@2a01:4f8:c012:91f3::1
++2?
+
+1742669346
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does that mean?
+
+1742669353
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+again, what unit is basicsize in?
+
+1742669375
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it literally says in the first sentence of the docs
+
+1742669392
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+u r confusing me, basicsize is int, why are you asking about uint? 
+
+1742669398
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+int is not a unit!
+
+1742669409
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+do you say "that cow is 5 int away"?
+
+1742669413
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i know, why mention uint?
+
+1742669419
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not uint, UNIT
+
+1742669441
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you do +2, what unit is that +2 in?
+
+1742669448
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how many _what_ are you adding to the size?
+
+1742669469
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+first time i am hearing about unit
+
+1742669479
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you've never heard the word "unit" before?
+
+1742669489
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no, i come from python
+
+1742669492
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+lol
+
+1742669500
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it has nothing to do with programming
+
+1742669515
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+when you say "the cow is 5 meters away", "meters" is the unit
+
+1742669535
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so when you pass numbers around, you must know what unit they are in
+
+1742669538
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+to know what to pass
+
+1742669584
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, you are talking in math, i thought you were talking a type
+
+1742669619
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, so, when you add 2 to basicsize, what are you adding 2 of?
+
+1742669635
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+meters?
+
+1742669643
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+byte
+
+1742669647
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1742669649
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so
+
+1742669661
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how large is an array of 16 u64 in bytes?
+
+1742669676
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+2 bytes
+
+1742669679
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+??
+
+1742669686
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how large is _one_ u64?
+
+1742669696
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol
+
+1742669705
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you mean 128
+
+1742669717
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+finally
+
+1742669727
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am not good at answering question
+
+1742669729
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you should of course not write it as a number
+
+1742669737
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cause i can't tell what you are asking about.
+
+1742669747
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@sizeOf(c_ulonglong) * 16
+
+1742669754
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, I'm asking literally what I type
+
+1742669781
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well english is like 5th language i learned .
+
+1742670179
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, let me confirm, you are saying to set `.basicsize = @sizeOf(IoUringCqe) + @sizeOf(c_ulonglong) * 16,` and then what... should i still call that field as method?
+
+1742670222
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: that will leave enough space for 16 array elements, you can do whatever you want with the field
+
+1742670260
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+of course you can't really expose it to python as a field with an offset
+
+1742670275
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as far as I know
+
+1742670278
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya it wont even compile 
+
+1742670340
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a way to directly access that function zig created withing that struct? 
+
+1742670364
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're asking me about the python API again, which I don't know
+
+1742670373
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and I will not google anything more
+
+1742670398
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am talking about https://zigbin.io/1c8192 the one in cache 
+
+1742670417
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+or is that just for internal zig to compile
+
+1742670425
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean directly access
+
+1742670429
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in zig you just call it
+
+1742670434
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's what it's for
+
+1742670456
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm
+
+1742670522
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+calling it gives you a pointer
+
+1742670645
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, ok, maybe it's the wind
+
+1742670653
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oops, wrong channel
+
+1742672115
+andrewrk!~andrewrk@mail.ziglang.org
+jeaye: sure
+
+1742672234
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, so i ended up writing something like https://zigbin.io/508bcf and it does output, will only find out for sure after i got the whole thing working.
+
+1742672275
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+exposing a pointer to python is probably not the best idea
+
+1742672325
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what is it supposed to be doing with an unsigned long long anyway
+
+1742672414
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+normally you have cqe.res that returns `__s32	res;` but some ppl said that wasn't enough so they added this cqe_big so you can have really large completion queue
+
+1742672441
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you're returning a pointer to the big_cqe array, as a ulonglong
+
+1742672447
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+python can't do anything with that
+
+1742672464
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(and it probably breaks horribly if you run it on a 32-bit platform)
+
+1742672484
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its probably for 64bit system but you talking about `return c.Py_BuildValue("K", s.cqe.big_cqe());` ?
+
+1742672496
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1742672504
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+big_cqe() is a pointer
+
+1742672516
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and you pass it with an unsigned long long format string
+
+1742672581
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, i am not really sure how to deal with it yet, i just wanted to see i the method/function worked or not
+
+1742672607
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe return it as bytes?
+
+1742672657
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+changed it to ` const a = s.cqe.big_cqe(); return c.Py_BuildValue("K", a);`
+
+1742672673
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's the same thing
+
+1742672781
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you pass "K", you should be passing a c_ulonglong to Py_BuildValue
+
+1742673064
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya but as i said, its only to test to see if the `s.cqe.big_cqe()` is working, since i didn't write that part and zig did.
+
+1742673073
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in reality i should be returning bytes not int. 
+
+1742673096
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but when you test if something is working, you should be passing the type you're supposed to be passing
+
+1742673112
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+give me a sec
+
+1742673482
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, there https://zigbin.io/62cd5f i am not 100% will have to read more io_uring docs. 
+
+1742673871
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+length should be a Py_ssize_t]
+
+1742673886
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which is presumably a size_t
+
+1742673899
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or rather, something like ptrdiff_t
+
+1742673904
+jemius!~jemius@2001:16b8:3d03:7000:f982:5f9e:3ecf:26c1
+More likely an ssize_t
+
+1742673908
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or that, yes
+
+1742673927
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I forget there's a signed version
+
+1742673950
+jemius!~jemius@2001:16b8:3d03:7000:f982:5f9e:3ecf:26c1
+I did some very hacky things with CPython years ago and my impression was that relying on Py-types matching 1:1 to the expected C-type works indeed well in practice
+
+1742674001
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Py_ssize_t might be the right guess https://docs.python.org/3/c-api/intro.html#c.Py_ssize_t
+
+1742674045
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+probably isize in zig
+
+1742674066
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+c_int likely breaks
+
+1742674088
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+also, again, the unit is bytes
+
+1742674094
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the array isn't 16 bytes
+
+1742674096
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well they all works! so its hard to tell, maybe zig needs to be bit more string when it comes to C code in zig!
+
+1742674208
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in my previous library i just had this whole `big_cqe` feature disabled, it wasn't working with cython. figure i try it out with zig since it has more options. 
+
+1742674258
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i figure anyone that needs to use `big_cqe` isn't going to be using python for their server.
+
+1742674383
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+look at how zig does it https://ziglang.org/documentation/0.14.0/std/#src/std/os/linux.zig search for "io_uring_cqe"
+
+1742674430
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`buffer_id`
+
+1742674753
+jemius!~jemius@2001:16b8:3d03:7000:f982:5f9e:3ecf:26c1
+the Zig compiler backend is LLVM, and the frontend is in Zig instead of C++ since a while now, isn't it?
+
+1742674931
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stage1 is in C++, but I guess it's bootstrapped from non-C++ now? been ages since I built zig
+
+1742674952
+jemius!~jemius@2001:16b8:3d03:7000:f982:5f9e:3ecf:26c1
+there was this article
+
+1742674954
+jemius!~jemius@2001:16b8:3d03:7000:f982:5f9e:3ecf:26c1
+https://ziglang.org/news/goodbye-cpp/
+
+1742675003
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, I remember there was a tiny wasm interpreter involved
+
+1742677001
+squeek502!~squeek502@user/squeek502
+jemius, situation is basically the same as described in that article, except the wasm isn't compressed anymore, see https://github.com/ziglang/zig/tree/master/stage1
+
+1742677157
+squeek502!~squeek502@user/squeek502
+see https://jakstys.lt/2024/zig-reproduced-without-binaries/ if you want to see how it's possible in the present to go from the C++ version to the latest version
+
+1742678059
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there any plans to make zig smaller? 
+
+1742678081
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+define smaller
+
+1742678104
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am thinking of using zig as a build script and its like 80MB 
+
+1742678124
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://pypi.org/project/ziglang/#files
+
+1742678611
+jemius!~jemius@2001:16b8:3d03:7000:f982:5f9e:3ecf:26c1
+Zig's focus seems to be a bit more on features. You might wanna look into V lang if you search for smallness. Or Hare, but the development seems to have halted
+
+1742678967
+squeek502!~squeek502@user/squeek502
+stealth_, moving llvm out of zig will shrink the zig size considerably (from the issue: "The Zig compiler binary goes from about 150 MiB to 5 MiB.")
+
+1742678995
+squeek502!~squeek502@user/squeek502
+however, if you're using the build system for C/C++ then you'll need LLVM+clang+etc installed still so the total install size won't go down
+
+1742679037
+squeek502!~squeek502@user/squeek502
+(or if you want release builds, you'll need llvm still, at least until the (far) future where zig can provide optimizations)
+
+1742679074
+squeek502!~squeek502@user/squeek502
+zig also ships with libc headers which increases the necessary install size, but is also what makes cross-compiling nice
+
+1742679108
+squeek502!~squeek502@user/squeek502
+oh, forgot to link the issue: https://github.com/ziglang/zig/issues/16270
+
+1742680731
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+squeek502, nice. hopefully those changes will be done for next release.
+
+1742680827
+squeek502!~squeek502@user/squeek502
+those are long term plans, the goal is to make the self-hosted x86 backend the default for debug builds in the next release (https://ziglang.org/download/0.14.0/release-notes.html#Roadmap), removing llvm from the main zig binary is likely a ways off still
+
+1742680859
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+most system probably has stuff like clang, libc and other stuff like that included, hopefully zig can make python ziglang download those extra dependency vs having it all in initial download.
+
+1742680986
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i will do stuff like check to see if zig version is already installed if not then they download ziglang. we will see. 
+
+1742686775
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there any change zig will get an walrus operator := 
+
