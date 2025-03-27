@@ -1,0 +1,876 @@
+1742950082
+torque!~tachyon@user/torque
+arrays are value types in zig, there's not a pointer associated with an array
+
+1742950137
+torque!~tachyon@user/torque
+a slice is a pointer+length, so when you perform "slicing" on an array (`my_array[0..]`) the resultant slice is just a pointer to the array data, not a copy of it
+
+1742950163
+torque!~tachyon@user/torque
+so if you define an array in a function and then return a slice of that array, you're returning a reference to no-longer-valid stack memory
+
+1742950195
+torque!~tachyon@user/torque
+however, if you return the array directly, the value will be copied (or otherwise preserved)
+
+1742956731
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, does zig do any auto compile time optimization? if you use e.g: `for ...` vs `inline for`
+
+1742956884
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like cython has these html page it produces when you compile, it like shows you code in dark yellow that code can be optimized and white line when its already optimized. Maybe zig can do something like that?
+
+1742956897
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://cython.readthedocs.io/en/latest/src/quickstart/cythonize.html#determining-where-to-add-types
+
+1742960262
+squeek502!~squeek502@user/squeek502
+stealth_, this is likely the most relevant issue: https://github.com/ziglang/zig/issues/615
+
+1742961729
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, will have to wait and see what andrew comes up with, that being said extra optimization can wait a bit i suppose vs other more important features ppl want to use.
+
+1742968484
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+trying to access this https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L446 getting https://zigbin.io/cc0933 error
+
+1742968659
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i even tried LIBURING_HAVE_DATA64[0]
+
+1742970959
+torque!~tachyon@user/torque
+it's a zero length-array so of course you can't access an element of it
+
+1742970994
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how else are you suppose to access 1|0 ?
+
+1742970996
+torque!~tachyon@user/torque
+that define does not have an associated value, so there's nothing you can compare it against.
+
+1742971059
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't it assumed `#define LIBURING_HAVE_DATA64 = 1;` in C ? 
+
+1742971059
+torque!~tachyon@user/torque
+it's possoble that `if (@hasDecl(c, "c.LIBURING_HAVE_DATA64"))` would work
+
+1742971062
+torque!~tachyon@user/torque
+no
+
+1742971101
+torque!~tachyon@user/torque
+there's no value, it's just `#define LIBURING_HAVE_DATA64`. in c, defines have a state of existing or not existing independent of any value
+
+1742971141
+torque!~tachyon@user/torque
+er i made a typo when copying my above suggestion, it should be `@hasDecl(c, "LIBURING_HAVE_DATA64")`
+
+1742971190
+torque!~tachyon@user/torque
+anyway regardless of that, this define is unilaterally set in this header, i.e. it will always be true, so why are you trying to check for a boolean state here
+
+1742971204
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya it was giving me compile error, let me try again 
+
+1742971233
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think its set to 1 if you are using 64bit and 0 if you are using 32bit system.
+
+1742971257
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that value might be generated at compile time in C
+
+1742971285
+torque!~tachyon@user/torque
+that's not what this header is doing
+
+1742971345
+torque!~tachyon@user/torque
+as I said, there is no associated value, just the existence of that define. it's possible some other code uses `#ifdef LIBURING_HAVE_DATA64` or `#if defined(LIBURING_HAVE_DATA64)` but that would be kind of silly because it is not being conditionally defined
+
+1742971408
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, i am sure i have complained about that define before, just get the this is how its done in C answer. 
+
+1742971414
+torque!~tachyon@user/torque
+i.e. it will always exist no matter how that header is compiled
+
+1742971469
+torque!~tachyon@user/torque
+I suspect it is either a future-proofing thing or it is a backwards-compatibility thing since it doesn't make much sense on its own
+
+1742971615
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, there might have been a make/configure/common that manipulated that value
+
+1742971635
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are actually suppose to use it in your code though!
+
+1742971689
+torque!~tachyon@user/torque
+is there an example in c showing that?
+
+1742971755
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it might be in some man pages, i just know it was used in the past, not sure if its still a thing. 
+
+1742971894
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://patchew.org/QEMU/20220221162401.45415-1-haiyue.wang@intel.com/
+
+1742972076
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o well its not a big deal there is a function that can be used to set/get 64 variant so it should be fine. 
+
+1742972116
+torque!~tachyon@user/torque
+yeah it's a backward compatibility thing according to https://github.com/axboe/liburing/commit/d84c29b19ed0b130000619cff40141bb1fc3615b#diff-e0178cba1dc791a3b22c0a516225980907931d18a2773adf584e8dcffb51a2ca
+
+1742972129
+torque!~tachyon@user/torque
+depending on how you're building this you don't need to care
+
+1742972157
+torque!~tachyon@user/torque
+unless you want to allow people to compile it against a version of liburing that is roughly 4 years old
+
+1742972246
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well they made the get/set uint, later they figured it should have been __64, thus the change.
+
+1742972285
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+abi cant change or whatever the rule is. 
+
+1742972410
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't get what i am doing wrong with this one https://zigbin.io/a55886
+
+1742972869
+squeek502!~squeek502@user/squeek502
+stealth_, free needs a slice, not a pointer (this should sound familiar)
+
+1742972940
+squeek502!~squeek502@user/squeek502
+also, pointer types don't have a `ptr` field
+
+1742972952
+squeek502!~squeek502@user/squeek502
+(this should also sound familiar)
+
+1742973019
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+doesn't this make this a slice `[*]c.io_uring_sqe` ?
+
+1742973040
+squeek502!~squeek502@user/squeek502
+that is a many-item pointer to an unknown number of items
+
+1742973069
+squeek502!~squeek502@user/squeek502
+a slice is essentially `struct { ptr: [*]T, len: usize }`
+
+1742973076
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i even tried `[]c.io_uring_sqe`
+
+1742973088
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i pretty much went through all the combination :D
+
+1742973109
+squeek502!~squeek502@user/squeek502
+a slice needs length information
+
+1742973126
+squeek502!~squeek502@user/squeek502
+`const sqe_slice = sqe[0..some_length];`
+
+1742973156
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you look at line: 10-14 i create that alloc, i am just trying to free it.
+
+1742973189
+squeek502!~squeek502@user/squeek502
+you need to retain the length information in some way, free requires the length of the allocation
+
+1742973213
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, i can do that
+
+1742973282
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think i tried that first, then it gave me `error: member function expected 1 argument(s), found 2  std.heap.c_allocator.free(sqe, 1);`
+
+1742973322
+squeek502!~squeek502@user/squeek502
+you need to pass a slice to free, you can get a slice from `sqe` via `sqe[0..your_length]`
+
+1742973366
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.. ok, i can try that
+
+1742973423
+squeek502!~squeek502@user/squeek502
+if `len` is always either zero or one, then there's no need for `alloc`/`free`, use `create`/`destroy` instead
+
+1742973470
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it might be more than 1, why i want to use alloc/free here, i used create/destroy in another place. 
+
+1742973481
+squeek502!~squeek502@user/squeek502
+ok just wanted to make sure
+
+1742973595
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+now it saying `error: unable to resolve comptime value std.heap.c_allocator.free(sqe[0..self.len]);`
+
+1742973665
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+code https://zigbin.io/31d135
+
+1742973813
+squeek502!~squeek502@user/squeek502
+that should be:
+
+1742973814
+squeek502!~squeek502@user/squeek502
+const sqe: [*]c.io_uring_sqe = @ptrFromInt(self.id);
+
+1742973825
+squeek502!~squeek502@user/squeek502
+std.heap.c_allocator.free(sqe[0..self.len]);
+
+1742973847
+squeek502!~squeek502@user/squeek502
+*c.io_uring_sqe is a single-item pointer
+
+1742973883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, that actually worked!
+
+1742973922
+squeek502!~squeek502@user/squeek502
+also you could just make the `id` field have type `[*]c_io_uring_sqe`, it'll be the same size as usize and then you won't have to use `@intFromPtr`/`@ptrFromInt`
+
+1742973967
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the goal is to only give python/c access to id as int, so it doesn't mess with the pointer value.
+
+1742974037
+squeek502!~squeek502@user/squeek502
+you also seem to be doing a `len == 1` check in sqeFree but that should probably be `== 0`, right?
+
+1742974084
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if python deletes the class it might also effect the pointer which is always active in io_uring side, so it can lead to bug
+
+1742974149
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya i noticed it, i have to fix it up, since i change the from bool to using length.
+
+1742974171
+squeek502!~squeek502@user/squeek502
+what do you mean by 'effect the pointer'?
+
+1742974192
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thanks squeek502 you saved me a bunch of time here, was at it for hrs now, its still weird to send a slice [0..len] to free memory!]
+
+1742974228
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am just overly paranoid with pythons gc, i have had bad experience.
+
+1742974278
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its actually best for zig to manage the memory ;) later it can be improved/optimized, u don't get such features with c/python. 
+
+1742974321
+torque!~tachyon@user/torque
+<stealth_> abi cant change or whatever the rule is.
+
+1742974330
+torque!~tachyon@user/torque
+i mean they flat out broke the abi in the commit i linked
+
+1742974432
+torque!~tachyon@user/torque
+if you're not loading liburing.h from a system location, the point is kind of moot anyway
+
+1742974433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, i meant i get that answer if i ask a question.
+
+1742974497
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i had always included a copy of latest c liburing in my build, not sure what i am going to do this time with zig.
+
+1742974964
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+other than the learning zig + capi, its actually been kinda fun to write zig. it might have a lot to do with you guys helping me out though :)
+
+1742988724
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+any good zig projects which are principally a library but which also have a cli and have a build system that allows you to consume the library part without making the cli a second class citizen
+
+1742988760
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+for example, could just build and test both by default but then if someone wants to consume only the library as a depdency when they build their project it builds the library and cli and runs tests, so any error with the cli will break the build
+
+1742988790
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+could just put "with-binary" as an option to opt-in to building the cli if thats the sane way
+
+1742991833
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+tsujp: zf
+
+1742991848
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/natecraddock/zf
+
+1742999529
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im trying to have a function accept some parameters and then return a struct which contains two fields, a type created using those parameters, and then that type but with arguments to a function pre-filled so the person who gets the function output can do foo.do_the_thing()
+
+1743000199
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+error: type 'fn () error{Revert}!void' does not support array initialization syntax        hmmm
+
+1743001623
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there something special about the parameter named "self"? or is it simply special if the first parameter is of the same type as the struct the function is being defined in?
+
+1743001823
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh or maybe it's how it's called? e.g. foo(...) vs my_instance.foo(...)?
+
+1743004960
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: there's nothing special about naming a parameter "self".  The only magic language things going on at this level AFAIK are: (1) That you can call struct-functions with dot-syntax, and then e.g. foo.bar(a) becomes something like bar(foo, a). and (2) There's a special builtin @This() ( https://ziglang.org/documentation/master/#toc-This ).
+
+1743004982
+bblack!~bblack@wikimedia/bblack-WMF
+the examples under the @This() documentation explain it better
+
+1743005027
+bblack!~bblack@wikimedia/bblack-WMF
+it's common practice in some places for structs to have a line line "const Self = @This();", and then for methods on instances of the struct to have an initial argument of "self: Self" or "self: *Self" as appropriate.
+
+1743005312
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+this compiler error makes no sense to me at all
+
+1743009516
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+tsujp, should post a link to your code+error so people can actually help you
+
+1743010246
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+bblack: yea makes sense.
+
+1743010300
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I was confused b/c I had some struct functions that I defined _without_ a self portion, I guess they were static functions, and I was calling them from other struct functions as if they were free functions, e.g. foo(...). I guess from outside the struct (if they're pub) I could call them as MyStruct.foo(...)
+
+1743011092
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: correct
+
+1743011116
+bblack!~bblack@wikimedia/bblack-WMF
+and that generally works if everything is in the same .zig file, even from other structs/scopes.
+
+1743011147
+bblack!~bblack@wikimedia/bblack-WMF
+as with file-scope functions, struct functions have to be marked as "pub fn" if you want things in other .zig files to be able to call MyStruct.foo(), though.
+
+1743011158
+bblack!~bblack@wikimedia/bblack-WMF
+pub is basically about file scopes
+
+1743016169
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+Should I expect any nasty surprises when using Zig on FreeBSD? I want to write a networking program using TCP connections, later maybe with TLS
+
+1743018584
+blurrycat!~blurrycat@user/blurrycat
+jemius: there's a tracking issue for FreeBSD here: https://github.com/ziglang/zig/issues/1759. Also see the support table in the release notes. From what I can tell it should mostly work fine
+
+1743018617
+blurrycat!~blurrycat@user/blurrycat
+Never tried it though, but I would imagine more people using a target helps in finding bugs/issues with it :)
+
+1743018631
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+blurrycat: thx
+
+1743020699
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+how can I troubleshoot this error? https://dpaste.com/ESXDLDSFK I came across it after updating my zig - I was already using zig from main, which I believe was 0.14, though some things have changed since I originally installed it (e.g. the build.zig.zon thing where you have to specify the name as an enum)
+
+1743021057
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+this is what the Instance Proxy definition looks like "pub fn InstanceProxy(comptime apis: []const ApiInfo) type{...}" so it certainly looks like a function to me
+
+1743021096
+andrewrk!~andrewrk@mail.ziglang.org
+jemius: https://ziglang.org/download/0.14.0/release-notes.html#Target-Support
+
+1743021105
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh I guess I left this out of the paste, the "~~^~~~~...." is pointing to the dot in `vk.InstanceProxy`
+
+1743021211
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I uploaded the current state of my code to this branch https://github.com/ezzieyguywuf/zcad/tree/build_error 
+
+1743021362
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+andrewrk: I'm not sure how the "Code Gen." column is to be read
+
+1743021425
+andrewrk!~andrewrk@mail.ziglang.org
+that's the second bullet point of Tier 1
+
+1743021455
+andrewrk!~andrewrk@mail.ziglang.org
+the icons also have "title" text (mouse over for tool tip)
+
+1743021536
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+yeah, but what even is Code Generation in that context? Is that comptime generating code?
+
+1743021579
+andrewrk!~andrewrk@mail.ziglang.org
+that's the final code that runs on the target
+
+1743021686
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+so if it says "Machine Code" the Zig toolchain on that target can compile to machine code, and if it says "self hosted" it does … ?
+
+1743021726
+andrewrk!~andrewrk@mail.ziglang.org
+I'll be happy to answer your questions but can you first do me a favor and read the text of the section that I linked?
+
+1743022136
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+I re-read it and maintain that it's not clear what is meant. It also doesn't help that right below is another section that is also called Code Generation and seems to be about something else
+
+1743022233
+andrewrk!~andrewrk@mail.ziglang.org
+thanks for re-reading it. so what's the question then?
+
+1743022378
+jemius!~jemius@2001:16b8:3d6c:7100:d9b8:2a47:7626:7e3b
+OK, so I just saw that two emojis are also two independent texts. So it seems "Machine Code" without a lightning means LLVM, and with a lightning means MC without LLVM
+
+1743026634
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so i am stuck in this issue https://zigbin.io/132edb i coded it the way it should work! but getting this weird message, even if i change it to [*c] still same error
+
+1743026714
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: what type is &sqe?
+
+1743026723
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or first of all, what type is sqe?
+
+1743026779
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, its c struct 
+
+1743026782
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1743026785
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it is not
+
+1743026800
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what exact type is it
+
+1743026819
+grayhatter!~grayhatte@user/grayhatter
+stealth_: he's asking about the full complete type related to the memory layout
+
+1743026842
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hint: it's the thing that is right after "var sql: "
+
+1743026843
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ah give me a sec
+
+1743026852
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*"var sqe: "
+
+1743026896
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+my bad should have included the memory assignment https://zigbin.io/4f4033
+
+1743026897
+grayhatter!~grayhatte@user/grayhatter
+that's a good point, stealth_ you'll have a lot fewer errors if you're explicit about every single type when you create a var or const
+
+1743026916
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: that will not affect the type of sqe
+
+1743026958
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: in this case they were explicit
+
+1743026974
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are talking about `var sqe: *c.io_uring_sqe` ? its a pointer to c struct
+
+1743026975
+squeek502!~squeek502@user/squeek502
+stealth_, &sqe is taking a pointer to a pointer, i.e. the type you're passing to the function is `**c.io_uring_sqe`
+
+1743026990
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: yes, so &sqe is what type?
+
+1743026997
+squeek502!~squeek502@user/squeek502
+just pass `sqe`, not `&sqe`
+
+1743027001
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+pause the video now if you want to solve it yourself
+
+1743027012
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that will also not work though, not quite
+
+1743027023
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well get that its ** double pointer, i have tried it without and i still get the same error.
+
+1743027028
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you'll get an exciting different error
+
+1743027035
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: no, you don't get the _same_ error
+
+1743027074
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: yeah, I was stuck on the `pub fn io_uring_prep_statx` block 
+
+1743027090
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, that's a.. something
+
+1743027106
+grayhatter!~grayhatte@user/grayhatter
+squeek502: skip direct answers favoring socratic questions
+
+1743027127
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+squeek502, i have tried that as well 
+
+1743027143
+squeek502!~squeek502@user/squeek502
+stealth_, try it and then read the error message you get after, as suggested
+
+1743027146
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: and what error do you get when you do the thing that is more correct?
+
+1743027157
+grayhatter!~grayhatte@user/grayhatter
+> more correct 
+
+1743027159
+grayhatter!~grayhatte@user/grayhatter
+:fire:
+
+1743027169
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, I'd argue it's slightly more correct anyway
+
+1743027194
+grayhatter!~grayhatte@user/grayhatter
+I'm not disagreeing, just enjoying it
+
+1743027207
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/a8ad23 see now i get the should add [*c] i add that and it stil same error.
+
+1743027223
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: do you see it's not the same error?
+
+1743027244
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it might not even be complaining about the same thing!
+
+1743027282
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+see what i mean? https://zigbin.io/c8e248
+
+1743027301
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, this is the error you should have posted from the beginning
+
+1743027303
+grayhatter!~grayhatte@user/grayhatter
+@ptrFromInt()
+
+1743027317
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wel i have tired everything, why i am asking here cause its puzzling 
+
+1743027331
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I expect you're @cImporting this thing more than once
+
+1743027334
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or something
+
+1743027353
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.. just once in root.zig
+
+1743027368
+grayhatter!~grayhatte@user/grayhatter
+https://gr.ht/i/sweat.gif
+
+1743027395
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: * is a single item
+
+1743027406
+grayhatter!~grayhatte@user/grayhatter
+[*c] is an array with c packing semantics
+
+1743027411
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: but now there's [*c] on both sides
+
+1743027424
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+expected type '[*c]cimport.struct_statx', found '[*c]cimport.struct_statx'
+
+1743027493
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have import like `const c = @import("root.zig").c;` is that `c` messing with `[*c]` ?
+
+1743027509
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why is statx on module x and not c like the other one?
+
+1743027514
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what is x?
+
+1743027521
+grayhatter!~grayhatte@user/grayhatter
+why does this say x.statx instead of c.statx
+
+1743027533
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`const x = @cImport(@cInclude("linux/stat.h"));`
+
+1743027545
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: yeah, so you DO cImport several times
+
+1743027553
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+maybe some day you'll listen to me
+
+1743027553
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1743027578
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: not if you keep voulenteering answers instead of asking questions
+
+1743027586
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.. is that several times? its different file!
+
+1743027598
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: say nothing
+
+1743027599
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: sometimes I get too impatient
+
+1743027607
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: it's not a different file
+
+1743027612
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sorry, spoiled it again
+
+1743027617
+grayhatter!~grayhatte@user/grayhatter
+let it stew..... DAMNIT GLIPTIC!
+
+1743027617
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i can just add that into root and try again.
+
+1743027649
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well eventually i plan on having statx as a separate module, why i made it import like that
+
+1743027678
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: I know, me too... that's why we're supposed to work together! together, we're stronger than either could be indivually 
+
+1743027734
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, let's try this
+
+1743027824
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: what headers do you think your @cImport in root.zig includes, directly or indirectly?
+
+1743027834
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+are you suppose to only import once? in your entire project?
+
+1743027839
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for instance, what headers does it need for the io_uring_prep_statx function
+
+1743027855
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/0cad73
+
+1743027878
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+lol, you're even explicitly including linux/stat.h there too
+
+1743027887
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no i just added that
+
+1743027888
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sorry, I can't socrates this
+
+1743027892
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh
+
+1743027899
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since you said you can only have 1 import!
+
+1743027906
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i removed the x = ... 
+
+1743027933
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's probably safest
+
+1743027939
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: try "explain [line/error/word/whatever lists the answer] to me"
+
+1743027952
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: that will take forever
+
+1743027958
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and I need to go sleep
+
+1743027965
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: then sleep?
+
+1743028003
+grayhatter!~grayhatte@user/grayhatter
+help vampires don't ever go away, he'll be around when you get back
+
+1743028005
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, thanks for your help, good night. 
+
+1743028012
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+gn
+
+1743028047
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: that reminds me of What We Do in the Shadows
+
+1743029108
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so it looks like its not using the stat.h i am trying to include but stdlib statx :(
+
+1743029254
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+looks like the error is coming from https://github.com/ziglang/zig/blob/master/src/Sema.zig#L7310, but at a glance I can't really tell what Sema is doing or why it's producing this error. from the function name `checkCallArgumentCount` I guess it has something to do with the number of arguments, and I guess it thinks InstanceProxy isn't a function and thus it can't check the argument count
+
+1743029763
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I tried switching to the 0.14.0 release and see the same behaviour
+
+1743029818
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"'usingnamespace' is not supported by incremental compilation" is it just me or am i hitting every bug there is?
+
+1743029914
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, I wonder if something changed in the parser that's causing my thing to get parsed wrong
+
+1743030035
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, might as well give master (2025-03-26) a try 
+
+1743030052
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+this is what I'm worried may be getting parsed incorrectly https://github.com/ezzieyguywuf/zcad/blob/build_error/src/VulkanRenderer.zig#L683 - I guess since zirBuiltinCall is being called, that means the instruction (?) is being parsed as a builtin (?). Later in zirBuiltinCall `const func = try sema.resolveInst(extra.callee);` seems to be returning `type` for func instead of the function though
+
+1743030058
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: started on master
+
+1743030092
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+0.15.0-dev.117+1408288b9 <- this was as of a few hours ago
+
+1743030126
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nice, i am going to download that! while creating new software its best to use the latest. 
+
+1743030178
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I just installed zvm somehow a while ago, so I just do `zvm install master` and it gets the latest
+
+1743030298
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+seems like handy software, i normally just download and link it to extract, done. 
+
