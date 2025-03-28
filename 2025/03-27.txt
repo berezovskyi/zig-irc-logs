@@ -1,0 +1,1052 @@
+1743034436
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol "this is the heart of the zig compiler" I don't think I chose an easy entry point for exploring the zig code base 😅
+
+1743034903
+torque!~tachyon@user/torque
+since vk.zig is generated code, have you looked at the generated output
+
+1743035042
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol I'm silly there was actually a change in vulkan-zig https://github.com/Snektron/vulkan-zig/commit/dd978e3023e20793a93ba602c754188a1d246259
+
+1743035060
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: I did look at the generated code, at least I thought I was by goto definition
+
+1743035254
+torque!~tachyon@user/torque
+not sure how zls(?) picks that up so you may want to double check that you were looking at the right file
+
+1743035303
+torque!~tachyon@user/torque
+the syntax here is nothing special, so my first suspicion would be something is weird in vk.zig
+
+1743035348
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+(yea zls)
+
+1743035482
+gastus!~gastus@185.6.123.204
+I tried older code I found on github libgeos something. It uses a shim/default_handler file. How to compile a .c file with build.zig and zig 14 ? createModule .. staticLibraries can't find a way to add c files maybe I overlooked it.
+
+1743035710
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+are you not suppose to write inline function in zig ? 
+
+1743036149
+grayhatter!~grayhatte@user/grayhatter
+the rules that apply inline c functions are the same rules that apply to zig
+
+1743036241
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+seems like its almost discouraged in zig
+
+1743036318
+grayhatter!~grayhatte@user/grayhatter
+yeah, it's weird how it's discouraged in zig, exactly like how it's discouraged in C
+
+1743036457
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even though i didn't inline my functions or even create it yet, zig goes ahead and does the inline already from .c/.h files!?
+
+1743036497
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in cimport.zig there is always stuff like this https://zigbin.io/17b6a2
+
+1743036513
+grayhatter!~grayhatte@user/grayhatter
+it surprises you that the compiler will compile your code?
+
+1743036532
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`io_uring_prep_write` is suppose to be inline function
+
+1743036614
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am saying zig already does the inline, even before i have used that function!
+
+1743036653
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+at least thats what it looks like to me. 
+
+1743036707
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if i try i get "zigcheck: error explicit callconv incompatible with inline keyword"
+
+1743037468
+torque!~tachyon@user/torque
+I don't see "inline" anywhere in that paste?
+
+1743037503
+torque!~tachyon@user/torque
+<gastus> I tried older code I found on github libgeos something. It uses a shim/default_handler file. How to compile a .c file with build.zig and zig 14
+
+1743037507
+torque!~tachyon@user/torque
+there are lots of examples here: https://github.com/allyourcodebase
+
+1743037509
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, that paste i am showing example of what zig cache creates c function as. 
+
+1743037567
+torque!~tachyon@user/torque
+well, an inline function would normally be decalred in the header file, so zig has to translate the whole function body
+
+1743037624
+torque!~tachyon@user/torque
+explaining this would require a bit of context about how includes work in C
+
+1743037642
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its ok, no worries, i was just curious. 
+
+1743050251
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this function compiles fine but i get undefined symbol https://zigbin.io/756911
+
+1743050551
+torque!~tachyon@user/torque
+sounds like the symbol is undefined
+
+1743050615
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i pass the function like so `c.PyMethodDef{.{ .ml_name = "io_uring_get_sqe", .ml_meth = getSqe, .ml_flags = c.METH_VARARGS, .ml_doc = getSqeDoc }` i have other functions those work fine, not sure why this one. 
+
+1743050663
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what do you think about line:12 first time i am writing it. 
+
+1743051828
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in zig cache it mentions "// /usr/include/liburing.h:1520:36: warning: unable to translate function, demoted to extern
+
+1743051828
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+pub extern fn _io_uring_get_sqe(arg_ring: [*c]struct_io_uring) callconv(.c) [*c]struct_io_uring_sqe;"
+
+1743052371
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol someone using liburing using zig seems to have had the same issue https://github.com/ziglang/zig/issues/5101
+
+1743055049
+torque!~tachyon@user/torque
+is it actually a macro instead of a function? it may not be directly translatable depending on what it does but you may be able to hand write a substitute
+
+1743055121
+torque!~tachyon@user/torque
+unfortuantely, c macros are a giant disaster, so they cannot, in the general case, be translated into functions
+
+1743055166
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not as far as i know, might be ams atomic that used to connect to io_uring backend
+
+1743055422
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L1616-L1629
+
+1743056485
+torque!~tachyon@user/torque
+hmm, I wonder why that fails to translate
+
+1743056524
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no clue, it seem simple struct like layout. 
+
+1743056562
+torque!~tachyon@user/torque
+should be fairly straightforward to implement it in zig directly
+
+1743056605
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i wouldn't do that, since its already been done in zig stdlib for its io_uring setup. 
+
+1743056626
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+but zig should work nicely with liburing c library though, maybe there are bugs/features needs to be implemented? 
+
+1743056824
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not just 1 function its many functions, should i post the cimport.zig file? so you can see
+
+1743057158
+torque!~tachyon@user/torque
+translate-c isn't perfect but it does cover a lot of stuff
+
+1743057204
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a way to fix this on my end? i am lost at this point and i went and bragged about zig all over #python :p
+
+1743057283
+torque!~tachyon@user/torque
+it seems like _io_uring_get_sqe translates for me so I'm not sure why you wouldn't have it
+
+1743057305
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm..
+
+1743057315
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am using the latest zig version
+
+1743057377
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/2f64dd this is whats its doing
+
+1743057470
+torque!~tachyon@user/torque
+those line numbers don't match what you linked me on github so you're using a different version of the header
+
+1743057516
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i am using the system liburing but the one i linked to was the under laying function there is another function on top of it
+
+1743057560
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this might be the cause? https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L1727-L1734
+
+1743057593
+torque!~tachyon@user/torque
+you're looking at a different version of the header. you have to look at the one that's actually being translated
+
+1743057621
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it should be the same, i have the latest version 
+
+1743057671
+torque!~tachyon@user/torque
+you do not have the same one that is on github if the line numbers do not match, no matter what you say
+
+1743057718
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have the 2.9 release it was released like a month or so ago
+
+1743057756
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that code i linked to hasn't changed. 
+
+1743057805
+torque!~tachyon@user/torque
+if so, there's no reason this function shouldn't translate
+
+1743057841
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, u tell me. 
+
+1743057907
+torque!~tachyon@user/torque
+https://zigbin.io/d2a274 this is what it translates to for me, which seems reasonable
+
+1743057923
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya
+
+1743057955
+torque!~tachyon@user/torque
+I am using zig 0.14
+
+1743058036
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i just looked the /usr/include/liburing.h and that code block is the same, it hasn't changed for many years. 
+
+1743058046
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok i can download 0.14 and try
+
+1743058152
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok on 0.14 let me delete cache and compile
+
+1743058245
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+exact same issue
+
+1743058308
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does that function i wrote effect how zig compiles/translates its C code?
+
+1743058354
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+my system: 6.14.0-3-cachyos (64-bit) X11 24 × AMD Ryzen 9 9900X 12-Core Processor
+
+1743058850
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i did change the way i cImport i created `c.zig` and `usingnamespace` https://zigbin.io/c1e54a
+
+1743064822
+blurrycat!~blurrycat@user/blurrycat
+stealth_: the liburing.h file definitely has changed between your release and the github master...
+
+1743064836
+blurrycat!~blurrycat@user/blurrycat
+just look at the commits on the file and the last release date 
+
+1743065036
+blurrycat!~blurrycat@user/blurrycat
+also the function that fails to translate has had modifications since the release too... it has not "hasn't changed for many years"
+
+1743065152
+blurrycat!~blurrycat@user/blurrycat
+this is actually your system has: https://github.com/axboe/liburing/blob/liburing-2.9/src/include/liburing.h#L1520-L1543
+
+1743065791
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, we were talking about io_uring_get_cqe hasn't changed much lately.
+
+1743065811
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its just 1 of the function though there are many other function with same issues
+
+1743065834
+blurrycat!~blurrycat@user/blurrycat
+but io_uring_get_cqe isn't the function that fails to be translated...
+
+1743065874
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not sure what you are getting at
+
+1743065897
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is how zig is translating it on my system https://zigbin.io/2f64dd
+
+1743065904
+blurrycat!~blurrycat@user/blurrycat
+"it should be the same" but it isn't the same, that's my point
+
+1743065929
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have liburing 2.9 on my system
+
+1743065942
+blurrycat!~blurrycat@user/blurrycat
+yes, and so you have the 2.9 version of the header, not the master one
+
+1743065951
+blurrycat!~blurrycat@user/blurrycat
+so looking at the master version will not help you at all
+
+1743066006
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its not the liburing itself, it might be something else cause the problem
+
+1743066163
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i can download liburing master and use that as the library but i think the problem will still remain.
+
+1743069096
+taylan!~taylan@user/taylan
+is there a reason @sizeOf(struct { u8, u64, u8 }) is 24, when for { u8, u8, u64 } it's 16?  it's not extern, so I thought the fields may be reordered to optimize it.  tested with `zig run test.zig -O ReleaseFast` on 0.15.0-dev.64+2a4e06bcb
+
+1743069287
+taylan!~taylan@user/taylan
+It's 16 when I name the fields, so I guess that's just tuples.  Maybe because they can be indexed?
+
+1743069416
+taylan!~taylan@user/taylan
+But the index needs to be comptime-known according to docs, so that shouldn't be a hindrance.  Maybe this is just a current limitation of the compiler.
+
+1743070744
+taylan!~taylan@user/taylan
+It appears that tuples are actually arrays under the hood, not structs?  That's quite unexpected.
+
+1743071141
+blurrycat!~blurrycat@user/blurrycat
+They behave similarly to arrays, but aren't they still struct under the hood, just with numeric field names and a flag to tell the compiler this is a tuple not a fully-fledged struct?
+
+1743071162
+blurrycat!~blurrycat@user/blurrycat
+I might be wrong about this, this was just my mental model for tuples
+
+1743071193
+blurrycat!~blurrycat@user/blurrycat
+As an array is all elements of the same type I don't think a tuple is actually an array under the hood
+
+1743072255
+taylan!~taylan@user/taylan
+blurrycat: they appear to be arrays, with an element size equal to the largest element. you can even assign them directly to a compatible array type, without an explicit cast
+
+1743072322
+taylan!~taylan@user/taylan
+I guess this was chosen so e.g. `const x: [n]T = .{ ... };` works
+
+1743073465
+blurrycat!~blurrycat@user/blurrycat
+taylan: what array type is struct { u8, []const u8 }?
+
+1743073486
+blurrycat!~blurrycat@user/blurrycat
+or struct { u16, struct { u32 } }?
+
+1743073506
+blurrycat!~blurrycat@user/blurrycat
+(genuinely curious if they are actually arrays)
+
+1743073555
+ifreund!2940d10f8b@user/ifreund
+taylan: the memory layout of a tuple is that of a struct
+
+1743073574
+ifreund!2940d10f8b@user/ifreund
+you can coerce an anon list literal to a tuple though
+
+1743073592
+ifreund!2940d10f8b@user/ifreund
+you can also coerce an anon list literal to an array, perhaps that's what's causing your confusion
+
+1743073624
+taylan!~taylan@user/taylan
+ifreund: if the memory layout were the same, the size wouldn't change when I name the fields
+
+1743073664
+blurrycat!~blurrycat@user/blurrycat
+but in a tuple you can't reorder fields though, so there are some optimizations that can't be made here, right?
+
+1743073667
+ifreund!2940d10f8b@user/ifreund
+taylan: technically the memory layout for tuples and non-extern/packed structs is undefined
+
+1743073713
+ifreund!2940d10f8b@user/ifreund
+blurrycat: the field names are the ordering guaruanteed by the tuple, the layout in memory is undefined
+
+1743073728
+blurrycat!~blurrycat@user/blurrycat
+oh yeah true that makes sense, thank you
+
+1743073741
+taylan!~taylan@user/taylan
+why bother guaranteeing order if the layout is undefined... I'm writing a proposal to actually make them equivalent to structs with integers as names rn...
+
+1743073746
+ifreund!2940d10f8b@user/ifreund
+perhaps the compiler doesn't sort the fields of tuples by alignment as it does for struct fields currently, I don't know
+
+1743073753
+taylan!~taylan@user/taylan
+yes
+
+1743073774
+ifreund!2940d10f8b@user/ifreund
+taylan: don't bother writing a proposal unless a core team member approves your idea
+
+1743073784
+ifreund!2940d10f8b@user/ifreund
+it's just going to get closed right away
+
+1743073797
+blurrycat!~blurrycat@user/blurrycat
+taylan: https://github.com/ziglang/zig/wiki/Language-Proposals
+
+1743073804
+taylan!~taylan@user/taylan
+well it's gonna be a comment on an open issue
+
+1743073889
+taylan!~taylan@user/taylan
+the fact that tuples are sorta kinda arrays under the hood is also why they can't be packed right now. https://github.com/ziglang/zig/issues/12330  I think the most elegant solution involves making them equivalent to structs.
+
+1743073964
+ifreund!2940d10f8b@user/ifreund
+I think you've completely misunderstood what that proposal is talking about
+
+1743073985
+ifreund!2940d10f8b@user/ifreund
+tuples are currently exquivalent to auto-layout structs
+
+1743073991
+ifreund!2940d10f8b@user/ifreund
+that is a fact
+
+1743074035
+ifreund!2940d10f8b@user/ifreund
+it even says exactly that in that proposal if you read carefully
+
+1743074183
+taylan!~taylan@user/taylan
+ifreund: if tuples were equivalent to auto-layout structs, they would behave the same way w.r.t. sizeOf and such, and would not be possible to implicitly cast into an array
+
+1743074277
+blurrycat!~blurrycat@user/blurrycat
+taylan: how do you cast .{ 1, 2, "hello" } into an array?
+
+1743074296
+ifreund!2940d10f8b@user/ifreund
+taylan: the memory of auto layout structs is undefined, the compiler is free to give whatever sizeOf it likes
+
+1743074327
+ifreund!2940d10f8b@user/ifreund
+also let's be clear what we are talking about, .{ 1, 2, "hello" } is not a tuple
+
+1743074327
+taylan!~taylan@user/taylan
+blurrycat: I'm not sure but I assume the array has to be []u64
+
+1743074332
+ifreund!2940d10f8b@user/ifreund
+that is an anon list literal
+
+1743074350
+ifreund!2940d10f8b@user/ifreund
+struct { u32, u32, []const u8 } is a tuple type
+
+1743074358
+taylan!~taylan@user/taylan
+(actually that wouldn't work since a pointer won't auto-cast to a u64 but in principle you can make it work with a cast)
+
+1743074365
+ifreund!2940d10f8b@user/ifreund
+coercing that anon list literal to that tuple type would give you a tuple value
+
+1743074373
+blurrycat!~blurrycat@user/blurrycat
+yeah sorry I was implicitely asking that but it's true that technically what I wrote was not strictly a tuple
+
+1743074410
+ifreund!2940d10f8b@user/ifreund
+in any case, you're right that it's impossible to initialize an arry with that anon list literal
+
+1743074420
+ifreund!2940d10f8b@user/ifreund
+s/arry/array/
+
+1743074424
+taylan!~taylan@user/taylan
+ifreund: I understand it's undefined but it's observably *different* from structs with named fields despite the field types being the same
+
+1743074444
+ifreund!2940d10f8b@user/ifreund
+taylan: give an example?
+
+1743074452
+taylan!~taylan@user/taylan
+what I already did: sizeOf
+
+1743074470
+ifreund!2940d10f8b@user/ifreund
+I mean a concrete code snippet that demonstrates the behavior you're describin?
+
+1743074698
+taylan!~taylan@user/taylan
+ifreund: most simply: std.debug.print("{}\n", .{@sizeOf(struct { a: u8, b: u64, c: u8 })});  vs.  std.debug.print("{}\n", .{@sizeOf(struct { u8, u64, u8 })});
+
+1743074741
+taylan!~taylan@user/taylan
+also the fact that a tuple implicitly casts to an array with an element type into which each tuple field can be implicitly cast; not so with structs
+
+1743074835
+taylan!~taylan@user/taylan
+@as([2]u64, @as(struct{ u8, u16 }, .{ 1, 2 }))  this works
+
+1743074847
+taylan!~taylan@user/taylan
+I don't think it should, tbh
+
+1743074850
+ifreund!2940d10f8b@user/ifreund
+coerceion doesn't tell you anything about memory layout
+
+1743074858
+ifreund!2940d10f8b@user/ifreund
+a u32 coerces to a u64 for example
+
+1743074928
+taylan!~taylan@user/taylan
+yes but an implicit cast is generally only going to work if the memory layout is equivalent and you need *at most* an implicit @truncate() so speak.  correct me if I'm wrong: are there any instances where zig allows implicit casting that leads to more than a truncation in the compiled code?
+
+1743074994
+taylan!~taylan@user/taylan
+(I guess technically there's no @truncate() as such in assembly but a bunch of equivalents depending on the original larger type and wanted smaller type)
+
+1743075034
+ifreund!2940d10f8b@user/ifreund
+u32 does not have the same memory layout as u64
+
+1743075046
+ifreund!2940d10f8b@user/ifreund
+u32 also coerces to i64 for example
+
+1743075053
+ifreund!2940d10f8b@user/ifreund
+not the same memory layout
+
+1743075106
+ifreund!2940d10f8b@user/ifreund
+coercion does not have anything to do with memory layout
+
+1743075127
+ifreund!2940d10f8b@user/ifreund
+it's much better to think about coercion in terms of lossiness
+
+1743075148
+blurrycat!~blurrycat@user/blurrycat
+So, unless I'm doing something wrong, it does seem that a tuple and an equivalent struct don't always have the same size: https://zigbin.io/96ee59
+
+1743075149
+ifreund!2940d10f8b@user/ifreund
+all possible values of a u32 can be exactly represented by an i64, therefore u32 coerces to i64
+
+1743075173
+ifreund!2940d10f8b@user/ifreund
+blurrycat: yeah, like I said the compiler probably doesn't sort tuple fields by alignment currently
+
+1743075182
+ifreund!2940d10f8b@user/ifreund
+there's no reason I see that it couldn't though
+
+1743075205
+blurrycat!~blurrycat@user/blurrycat
+yeah seems like that's indeed the case
+
+1743075298
+blurrycat!~blurrycat@user/blurrycat
+okay yeah if I change the last field from a u8 to a []const u8 for example, they both have the same size now so it does seem like that's the issue
+
+1743083144
+bw!sid2730@user/betawaffle
+Does zig have any way of getting how much stack space a function uses by itself (not including anything it calls)?
+
+1743089863
+grayhatter!~grayhatte@user/grayhatter
+bw: I'd look for the start of the function, and see how much it moves the stack pointer... but I suspect you mean something programatically within zig?
+
+1743089892
+bw!sid2730@user/betawaffle
+Yeah
+
+1743089930
+bw!sid2730@user/betawaffle
+Like if I wanted to figure out the max stack space used for a set of functions that aren’t recursive
+
+1743090445
+bblack!~bblack@wikimedia/bblack-WMF
+there's an issue related and broader than that somewhere, about having the compiler infer stack requirements for nonrecursive cases or something
+
+1743090711
+bblack!~bblack@wikimedia/bblack-WMF
+I can't find it now, but I know I saw it before
+
+1743090796
+bblack!~bblack@wikimedia/bblack-WMF
+ah here: https://github.com/ziglang/zig/issues/157
+
+1743091807
+TheFox!~TheFox@user/TheFox
+Hi
+
+1743097277
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so i ended up downloading liburing master and compiled using its source, sure it might have fixed the `_io_uring_get_sqe` code but it broke other code that was working previously 
+
+1743097443
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/9eb73f full cimport source search for "pub extern fn io_uring" all those function are extra so pretty much broken!
+
+1743097491
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+"ImportError: liburing.so: undefined symbol: io_uring_queue_init"
+
+1743098199
+grayhatter!~grayhatte@user/grayhatter
+stealth_: do you know what an undefined symbol is?
+
+1743098239
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, all i know is that function can't be used in python side. 
+
+1743098255
+grayhatter!~grayhatte@user/grayhatter
+so, that sounds like something you'd need to know to debug the issue right?
+
+1743098275
+grayhatter!~grayhatte@user/grayhatter
+"what is an undefined symbol error"
+
+1743098293
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it might be broken cause zig didn't translate those C function properly?
+
+1743098312
+grayhatter!~grayhatte@user/grayhatter
+zig doesn't make mistakes like that
+
+1743098330
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well it makes those function as "warning: unable to translate function, demoted to extern"
+
+1743098370
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does that mean, do you think?
+
+1743098385
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what is special about that function?
+
+1743098413
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the way zig builds the source output is different 
+
+1743098423
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, forget about zig
+
+1743098442
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+before io_uring_get_sqe was broken but its working now! but io_uring_queue_init is broken
+
+1743098442
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what's different about io_uring_queue_init compared to other things in the header?
+
+1743098459
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+they are now "pub extern fn" functions
+
+1743098467
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: forget about zig
+
+1743098472
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you need to read C to understand C
+
+1743098488
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+look in the header, what's different about that function?
+
+1743098581
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, those function like `io_uring_queue_init` hasn't changed in a long time! they need to not change so it doesn't break the abi, maybe internally something changed, i dono.
+
+1743098751
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does "demoted to extern" mean, and why wouldn't they always be extern?
+
+1743098810
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+my guess is zig doesn't know how to translate those functions and makes it extern so it doesn't break the compiler! i dono, first time running into that issue.
+
+1743098825
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does "makes it extern" mean?
+
+1743098859
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and what was it before it "[made] it extern"
+
+1743098883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+man now you are asking me what zig compiler does? how am i suppose to know that? 
+
+1743098883
+grayhatter!~grayhatte@user/grayhatter
+> i dono, first time running into that issue. 
+
+1743098896
+grayhatter!~grayhatte@user/grayhatter
+what have you tried to figure out the answer to that question?
+
+1743098900
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: I'm asking you about a concept you need to understand to use C code
+
+1743098934
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that is unrelated to zig
+
+1743098946
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, i am not a c coder. 
+
+1743098953
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the zig compiler already told you what it did
+
+1743098957
+grayhatter!~grayhatte@user/grayhatter
+stealth_: then don't use any part of C
+
+1743098959
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm asking you to explain what it means
+
+1743098960
+grayhatter!~grayhatte@user/grayhatter
+or learn c
+
+1743098987
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it should be banned on here to get someone to learn c, lol.
+
+1743099010
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or to ask questions about things that aren't zig
+
+1743099031
+bblack!~bblack@wikimedia/bblack-WMF
+stealth_: someday when we live in a better world and Zig has replaced C for a whole lot of purposes, maybe.
+
+1743099051
+bblack!~bblack@wikimedia/bblack-WMF
+but at this phase, knowing C when you're working on Zig interop with C libraries/projects is kind of important.
+
+1743099054
+grayhatter!~grayhatte@user/grayhatter
+stealth_: it should be banned to know stuff? that's a hot take
+
+1743099067
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, i thought i was already living that, why i switched to using zig
+
+1743099078
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: you didn't though, you're still trying to use C
+
+1743099088
+bblack!~bblack@wikimedia/bblack-WMF
+stealth_: which is fine if you only use Zig.  You're linking with a C library
+
+1743099132
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have till end of this month to finish this project and from the looks of dealing with issue its not going to happen. 
+
+1743099136
+bblack!~bblack@wikimedia/bblack-WMF
+(and C on the other side towards python too IIRC)
+
+1743099247
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i normally just search for stuff and maybe find something that mentions the problem to fix it.
+
+1743099256
+bblack!~bblack@wikimedia/bblack-WMF
+what you really probably want in your world, I'm guessing, is for Zython to exist, and to use Zython to make Zig's std.os.linux.IoUring available to python scripts somehow.
+
+1743099306
+bblack!~bblack@wikimedia/bblack-WMF
+but instead you're cobbling liburing (a C project) <-> Zig <-> C <-> Python right now.  Knowing C seems important there :)
+
+1743099307
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, i would have just used zig's io_uring library if my project wasn't called "liburing" 
+
+1743099339
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it doesn't make any sense to use zig's io_uring when the library is suppose to be python version of liburing.
+
+1743099390
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i can just leave the project as is in cython i suppose atleast 99% of the functions works
+
+1743099424
+bblack!~bblack@wikimedia/bblack-WMF
+std.os.linux.IoUring, AIUI, is a close analog of liburing, in pure Zig.  But I could be wrong, I haven't actually used it yet.
+
+1743099476
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bblack, they just wrote pure zig version to io_uring backend, yes. I would have done that as well if it wasn't wrapping that C liburing
+
+1743099495
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+liburing = front end, io_uring = backend (linux)
+
+1743099509
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and why do you need to do the specific thing you're doing
+
+1743099545
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cause when i started there wasn't any other liburing projects out there (or that i know of)
+
+1743099567
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's a non-sequitur
+
+1743099612
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i been at it for 5years, the first project i did create it was usable, and ppl used it to learn how to use liburing/io_uring
+
+1743106318
+ifreund!2940d10f8b@user/ifreund
+if you want to do systems programming you pretty much need to learn C
+
+1743106356
+ifreund!2940d10f8b@user/ifreund
+being willfully ignorant will get you nowhere, and its getting really tiring to read these questions
+
+1743106523
+ifreund!2940d10f8b@user/ifreund
+maybe someday we will get non-toy operating systems implemented in something that isnt C/C++
+
+1743106906
+blurrycat!~blurrycat@user/blurrycat
+I very much doubt we'll get rid of C that easily. stealth_, learning C really is a good idea given you want to interface with C. Not knowing it will just hinder any progress you try to make with your project. You've told here multiple times that you don't have much time, but at this point it probably would have been easier and faster to just learn C and read the Zig Language Reference as people said quite a few times now
+
+1743107172
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, learning basic C anyone can do, but it takes like 10years to actually get good at it. by that i mean know all the bug(feature) of c. 
+
+1743107359
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if i was a programming like you guys i would have learnt it properly, but i am not.
+
+1743107366
+ifreund!2940d10f8b@user/ifreund
+nobody is saying you have to spend 10 years becoming a C expert (not that it would actually take 10 years)
+
+1743107370
+blurrycat!~blurrycat@user/blurrycat
+learning the basics of C and manual memory management would actually get you a long way
+
+1743107383
+blurrycat!~blurrycat@user/blurrycat
+you don't need to be an expert to understand how to interop with C
+
+1743107392
+ifreund!2940d10f8b@user/ifreund
+you do need to learn enough about C to be able to read and understand it though
+
+1743107394
+blurrycat!~blurrycat@user/blurrycat
+^
+
+1743107417
+ifreund!2940d10f8b@user/ifreund
+it is the lingua franca of systems programming
+
+1743107424
+blurrycat!~blurrycat@user/blurrycat
+> if i was a programming like you guys
+
+1743107427
+blurrycat!~blurrycat@user/blurrycat
+what does that even mean?
+
+1743107536
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i want to learn programming so i can use it for other none programming stuff i do.
+
+1743107591
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like you know how to change car tire right, but you are not really a mechanic. kinda like that
+
+1743107608
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+did someone summon https://faultlore.com/blah/c-isnt-a-language/
+
+1743107680
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i work on that python liburing/shakti just as a way to keep my mind sharp when it comes to programming, not cause its my job or to make $ or anything like that.
+
+1743107792
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i understand the "knowing how to change a tire as a non-mechanic", but i dont see the "use it for other unrelated stuff" part of the allegory :P
+
+1743107847
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, like i use it for my own personal projects
+
+1743107949
+h4kor!~h4kor@user/h4kor
+Is there a way to create an integer type with a calculated width at comptime? I've a struct with a header and data which will store arbitrary data.
+
+1743108031
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+tranzystorekk, i hired ppl to program for me long time ago, they screwed around and wasted my $ so i had to learn programming as a necessity. 
+
+1743108203
+blurrycat!~blurrycat@user/blurrycat
+for what it's worth, I don't program as a living, I just do it for fun
+
+1743108246
+blurrycat!~blurrycat@user/blurrycat
+and I would argue that being a programmer makes you a mechanic in your metaphor but that's another debate :p
+
+1743108357
+ifreund!2940d10f8b@user/ifreund
+h4kor: perhaps you are looking for @Type()
+
+1743108384
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+blurrycat, thats cool, but i didn't say "being a programmer makes you a mechanic", i said just because you changed tire doesn't make you a mechanic
+
+1743108413
+ifreund!2940d10f8b@user/ifreund
+(in particular `@Type(.{ .int = .{ ... } })`)
+
+1743108756
+h4kor!~h4kor@user/h4kor
+ifreund: thanks :) exactly what I was looking for
+
+1743109327
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i actually ended up fixing that issue by linking to liburing-ffi.so https://github.com/axboe/liburing/blob/master/src/liburing-ffi.map
+
+1743109371
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think someone was trying to include liburing with rust had the same issue and implemented that ffi feature, 
+
+1743109664
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+spoke too soon, fixed most of the problem some functions are still having issues.
+
+1743111359
+grayhatter!~grayhatte@user/grayhatter
+tranzystorekk: do you like that essay? or are you referencing it as a troll?
+
+1743111425
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i do like it, the "lingua franca" comment reminded me of it almost subconsciously
+
+1743111523
+grayhatter!~grayhatte@user/grayhatter
+tranzystorekk: it didn't strike you as weird that they were blaming C for bugs/defects in a huge stack of other things that aren't the C language?
+
+1743111592
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i guess my focus reading this is on c being a protocol
+
+1743112087
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+or maybe more precisely, for less familar readers it puts into perspective what FFI actually entails
+
+1743112105
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is cool in zig you can actually follow the source of the problem! those "warning: unable to translate function, demoted to extern" are very handy. In other ffi i have worked with you directly get thrown into segfault.
+
+1743112161
+grayhatter!~grayhatte@user/grayhatter
+well, you could also do that in other languages if you were willing to learn something about them
+
+1743112170
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is most likely the cause of the problem https://github.com/axboe/liburing/blob/master/src/include/liburing/barrier.h zig doesn't know how to deal with those defines? 
+
+1743118501
+andrewrk!~andrewrk@mail.ziglang.org
+why are you trying to translate liburing c headers? just use std lib io uring
+
+1743118565
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cause i have that python liburing project i create many years ago, which wraps around c liburing, now i am just doing that with zig
+
+1743118675
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i would be misleading to say the project is liburing and use zig's io_uring under the hood
+
+1743119416
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think that's the best way to model the problem you are solving
+
+1743119565
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono... for now `.linkSystemLibrary("uring-ffi");` solved my current issues with c liburing.
+
+1743119663
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+plus c liburing keeps up to date with what they added in io_uring backend, this is neat for someone like me who wants to play around with new features. plus i have also used this way to report liburing/io_uring bugs
+
+1743119677
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+before its released. 
+
