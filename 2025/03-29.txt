@@ -110,3 +110,99 @@ oh man, thx!
 stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
 andrewrk, if you have any form of lock inside your io_uring event loop you have failed io_uring, you technically just blocked something that should be 100% async. Also if you need threads for jobs there is `io_uring_prep_futex_*` async futex this give you many ways to control vs implementing your own thread poll.
 
+1743221220
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I only caught the end about the futex - why do you need a futex?
+
+1743221236
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you can wake up a thread with io_uring and msg_ring
+
+1743221285
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+if the thread is blocked on wait_cqe, you can use msg_ring to wake it up
+
+1743221298
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+io_uring_prep_futex_* is built for waking up threads that io_uring (you) control
+
+1743221332
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think msg_ring needs to be serialized thus it might be slower vs futex
+
+1743221341
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://man7.org/linux/man-pages/man3/io_uring_prep_msg_ring.3.html
+
+1743221373
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: to wake up idle threads so that they can start working on tasks
+
+1743221462
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the other threads have rings or no?
+
+1743221471
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I guess if a futex is faster
+
+1743221478
+andrewrk!~andrewrk@mail.ziglang.org
+each thread has a ring
+
+1743221479
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, it can also be done that way but wouldn't you want to know when the job is done vs waiting for ring to queue up the message send it, then wait in your main threaid?
+
+1743221504
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, don't think you need rings in other thread if you use io_uring_prep_futex_*
+
+1743221527
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you only want rings in other thread if you have some kind of server or something.
+
+1743221548
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like load balancing that run their own server.
+
+1743221586
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the task runner could send a message back to the sending thread to tell it it’s done
+
+1743221622
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I was thinking you could use them as a kind of select too
+
+1743221629
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya there are many usage, depends on your project.
+
+1743221632
+o0x1eef!~user@user/o0x1eef
+Why the focus on uring ? It is very specific to Linux ? What about other platforms ?
+
+1743221663
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+because you could have a ring blocked, and “register” other rings to send it a message on some action using a linked sqe
+
+1743221704
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, same goes for SQPOLL not all events need to use that, its only if you need something fast! but it has its own drawbacks like hard to code/manage.
+
+1743221744
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I just got completely nerdsniped about msg_ring last week and it’s been my hammer ever since
+
+1743221749
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o0x1eef, i know windows started a clone of io_uring called "ring" not sure what they did with it.
+
+1743221837
+andrewrk!~andrewrk@mail.ziglang.org
+o0x1eef: event loops implementations are always platform specific, one must come up with cross-platform abstractions on top of platform-specific impls
+
+1743221854
+o0x1eef!~user@user/o0x1eef
+Fair enough :)
+
