@@ -1,0 +1,520 @@
+1743206977
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, note: you can call epoll from within io_uring. not sure in what context you are using mutex but if its for within async/await look at using futex2, gives you thread job done msg as async event in parent thread. Thanks for mentioned about cloud and its monopoly, one of the flaws that people don't know about is when that 1 cloud server is in country x and that country has no rules when it comes to stealing your code, 
+
+1743206977
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+privacy, ...
+
+1743207409
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I really like concurrency in Go
+
+1743207416
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if zig will support such a select thing, will it also have (buffered/unbuffered) channels like in Go? rockorager 
+
+1743207420
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+timeouts etc.
+
+1743207467
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+flower_: You can implement channels already, eg https://github.com/rockorager/libvaxis/blob/main/src/queue.zig
+
+1743207480
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You can essentially do a select with io_uring too
+
+1743207558
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+rockorager: will check, thx
+
+1743207701
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+night
+
+1743210512
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrew for async/await have you thought of parent/child functions with async calls as well? if you cancel parent function, it needs to cancel all the children's first.
+
+1743212632
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, design concept of io_uring is you only need 1 thread to run it since it can do millions of entries per second. you can have other threads to run their own rings (if needed)
+
+1743212697
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, note: linux 6.13+ you can make the entries/ring grow as needed
+
+1743212714
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+oh interesting
+
+1743212720
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+A blocking call would be better IMO
+
+1743212749
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://www.phoronix.com/news/Linux-6.13-IO_uring
+
+1743212762
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I know there is get_sqe_and_wait, but who knows how long it might be until a completion finishes vs when the kernel pulled an sqe
+
+1743212865
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am not sure how its being implemented in zig
+
+1743213682
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+design concept is backwards.. you are suppose to have 1 io_uring ring controlling other threads/rings vs multiple threads controlling multiple rings
+
+1743214523
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think of it like lord of the rings! 1 ring to control them all!!! lol
+
+1743216539
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+every time you "submit" you make a syscall, so sometimes you just need to process `cqe` and there might no `sqe` to submit, so checking `enter` to see if there is any `sqe`, if so then submit or else skip submit call.
+
+1743216544
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, ^
+
+1743216666
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe i am wrong cause there is no "enter" in liburing like that, other then syscall itself.
+
+1743218721
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, when you submit() it return how many `sqe` was submitted or 0, so you can use that for counter
+
+1743218934
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, can you tell andrew ^
+
+1743219288
+Drixtan!~Drixtan@user/Drixtan
+stealth_: am I missing something? Are you in sync with people in this channel somewhere else? 
+
+1743219303
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Drixtan, https://www.twitch.tv/andrewrok
+
+1743219328
+Drixtan!~Drixtan@user/Drixtan
+oh man, thx!
+
+1743221045
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, if you have any form of lock inside your io_uring event loop you have failed io_uring, you technically just blocked something that should be 100% async. Also if you need threads for jobs there is `io_uring_prep_futex_*` async futex this give you many ways to control vs implementing your own thread poll.
+
+1743221220
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I only caught the end about the futex - why do you need a futex?
+
+1743221236
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you can wake up a thread with io_uring and msg_ring
+
+1743221285
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+if the thread is blocked on wait_cqe, you can use msg_ring to wake it up
+
+1743221298
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+io_uring_prep_futex_* is built for waking up threads that io_uring (you) control
+
+1743221332
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think msg_ring needs to be serialized thus it might be slower vs futex
+
+1743221341
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://man7.org/linux/man-pages/man3/io_uring_prep_msg_ring.3.html
+
+1743221373
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: to wake up idle threads so that they can start working on tasks
+
+1743221462
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the other threads have rings or no?
+
+1743221471
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I guess if a futex is faster
+
+1743221478
+andrewrk!~andrewrk@mail.ziglang.org
+each thread has a ring
+
+1743221479
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, it can also be done that way but wouldn't you want to know when the job is done vs waiting for ring to queue up the message send it, then wait in your main threaid?
+
+1743221504
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, don't think you need rings in other thread if you use io_uring_prep_futex_*
+
+1743221527
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you only want rings in other thread if you have some kind of server or something.
+
+1743221548
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like load balancing that run their own server.
+
+1743221586
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+the task runner could send a message back to the sending thread to tell it it’s done
+
+1743221622
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I was thinking you could use them as a kind of select too
+
+1743221629
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya there are many usage, depends on your project.
+
+1743221632
+o0x1eef!~user@user/o0x1eef
+Why the focus on uring ? It is very specific to Linux ? What about other platforms ?
+
+1743221663
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+because you could have a ring blocked, and “register” other rings to send it a message on some action using a linked sqe
+
+1743221704
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, same goes for SQPOLL not all events need to use that, its only if you need something fast! but it has its own drawbacks like hard to code/manage.
+
+1743221744
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I just got completely nerdsniped about msg_ring last week and it’s been my hammer ever since
+
+1743221749
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o0x1eef, i know windows started a clone of io_uring called "ring" not sure what they did with it.
+
+1743221837
+andrewrk!~andrewrk@mail.ziglang.org
+o0x1eef: event loops implementations are always platform specific, one must come up with cross-platform abstractions on top of platform-specific impls
+
+1743221854
+o0x1eef!~user@user/o0x1eef
+Fair enough :)
+
+1743221950
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: some interesting io_uring stuff here https://github.com/axboe/liburing/wiki/io_uring-and-networking-in-2023
+
+1743222242
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, i dono what you are going to do with that io_uring library now, but please let io_uring control threads, not thread control io_uring, ok? It will prevent stuff like deadlock, and using futex2 you can make threads really awesome! like they have never been used before.
+
+1743243737
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+blurrycat: i can link my zig project, all i did was add fp's zig-tracy and a zone init with a defer and that's it
+
+1743243755
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+blurrycat: lmk when you're around and/or ill push the latest code and link the repo later
+
+1743244144
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+actually one thing I haven't tried is building my project with a simple wrapping binary, since it's primarily a library that might be what is hanging the build somehow (idk)
+
+1743244165
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+but afaik when you add tests zig builds a test binary to run those so why that wouldn't take care of things (if that's true) I also don't know
+
+1743245203
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+blurrycat: yeah just using a fuction with                 const zone = tracy.initZone(@src(), .{ .name = "foo zone" });     defer zone.deinit();      is enough to have zig build test -Dtracy=true  sit forever on that test
+
+1743245210
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+that function only has a print statement in it
+
+1743245454
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm it might be a networking issue? tracy trying to open a socket or something and it hanging forver? quickly tried on another machine outside of a container and it builds fine
+
+1743252534
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah works fine with those networking issues alleviated
+
+1743255902
+bw!sid2730@user/betawaffle
+so i missed some of andrew's stream last night, what's the long-term plan for async/coroutines/whatever support at the language level?
+
+1743256098
+squeek502!~squeek502@user/squeek502
+bw, the vod is still available: https://www.twitch.tv/videos/2417916154
+
+1743256137
+squeek502!~squeek502@user/squeek502
+my understanding was: no plans for it as a language level feature at the moment, still might revisit it but std.Io is pretty much going to happen regardless
+
+1743258558
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+any idea why this std.process.Child call sometimes hangs?   https://git.sr.ht/~netvor/zig-clapp/tree/egg/item/src/sh.zig#L348    with some `&.{"sh", "-c" "something"}` calls the collection will hang inside collectOptput, waiting on poller.poll()    https://ziglang.org/documentation/0.14.0/std/#std.process.Child.collectOutput
+
+1743258596
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+...while the shell process is a zombie according to /proc/<PID>/status
+
+1743260196
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+umm, tried to send sigchld to it manually and it still won't reap.  this is how the end of the strace looks like for my exe  https://bpa.st/Z27Q
+
+1743261379
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, is this what you are looking for? https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L495-L527
+
+1743261998
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+stealth_: assuming you mean the discussion on liburing? I’m mostly interested in the general purpose result referencing 
+
+1743262226
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+maybe as a server: accept a connection, after the first req I have the path they requested. it would be nice to have a single batch that opens, reads, and writes http headers, writes the file body to the client
+
+1743262266
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+brb
+
+1743262285
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+rather than: client wants index.html. open and read it in a batch. now write headers and file body in second batch
+
+1743262683
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that single open/read/write/close batch idea, i have asked them to implement that idea many years ago but it was ignored.
+
+1743262889
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+as for wanting some kind of customization results you can use `big_cqe` https://github.com/axboe/liburing/blob/master/src/include/liburing/io_uring.h#L440
+
+1743262902
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you need to enable the fag for it as well, brb 
+
+1743263761
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o ya the flag is mentioned right above it `IORING_SETUP_CQE32` which enables `big_cqe`. Idea is... you have some form of `struct{user_data, another_user_data, ...}` on cqe return, this way you can do multiple things with that info.
+
+1743264182
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, there are certain things you can do in batch, like read/write/close but you cant do open at same time! since you need to know the fd/index of the file open itself
+
+1743265309
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, https://github.com/axboe/liburing/discussions/1119#discussioncomment-9015473
+
+1743267010
+blurrycat!~blurrycat@user/blurrycat
+tsujp: so the example code provided with zig-tracy (the repo you sent) actually does call initZone(), and did not seem to hang for me, but I gather you've found what the issue was given your later messages?
+
+1743267643
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+blurrycat: i'm pretty sure it's tracy not being able to do something networking related and freezing that is the issue 
+
+1743267952
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, actually there is a way to do in a single call, you have to use *register_direct first to register bunch of int array, use 1 of those as your index, now you can use the *_direct or *_fixed open, read, write, close using "IOSQE_IO_LINK"
+
+1743267982
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that suggest/qustion isn't really possible with the permission model of linux
+
+1743268020
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, which part are you referring to? 
+
+1743268035
+grayhatter!~grayhatte@user/grayhatter
+the discussion/1119 link
+
+1743268100
+grayhatter!~grayhatte@user/grayhatter
+IMO they were also correct to ignore it, io_uring shouldn't be touching fd/handle permissions 
+
+1743268151
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well they didn't really ignore it, cause *_direct features were being implemented at the time, so they were like just wait for it to be released. 
+
+1743268205
+grayhatter!~grayhatte@user/grayhatter
+actually, perhaps liburing might want to do this
+
+1743268228
+grayhatter!~grayhatte@user/grayhatter
+I always forget liburing is a different project, because why wouldn't you just interface with the io_uring interface yourself?
+
+1743268235
+grayhatter!~grayhatte@user/grayhatter
+then I remember leftpad exists
+
+1743268266
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well liburing is the front end /testing ground for their io_uring backend
+
+1743268281
+grayhatter!~grayhatte@user/grayhatter
+do you have the liburing example code to compare it with the python example you have?
+
+1743268310
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+which example are you referring to exactly
+
+1743268332
+grayhatter!~grayhatte@user/grayhatter
+or is that io_uring example done in python as well?
+
+1743268363
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, as for your "permission" comment io_uring does have a feature called "personality" that you can use to set permission and other restrictions
+
+1743268423
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+which example are you talking about, you gota be specific
+
+1743268453
+grayhatter!~grayhatte@user/grayhatter
+do you have multiple examples of code?
+
+1743268467
+grayhatter!~grayhatte@user/grayhatter
+or do you only have the one benchmark from that discussion you linked to?
+
+1743268514
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, https://github.com/yostealth/liburing/ look at /example but mostly in /test folder
+
+1743268796
+grayhatter!~grayhatte@user/grayhatter
+so, your example that python open/read is faster than io_uring, is that python open/read is faster than [setting up an io_uring instance, starting the io_uring, completing io_uring]?
+
+1743268817
+grayhatter!~grayhatte@user/grayhatter
+one day I'll learn... today is not that day
+
+1743269317
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, o, you are talking about my post. yes, in that case python was faster and i don't have that example online. Because io_uring has event loop overhead of back/forth sqe/cqe being set. A python call would be faster even though it has to do 3 syscalls. Think of io_uring as airplane, it would be faster to take a plane if you are visiting far vs taking a plane to visit a place car can reach in 15min. you need to know when 
+
+1743269317
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o take a plane and when to take a car.
+
+1743269458
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you use register + direct feature of io_uring you are now driving an F1 and will be there in 5min 
+
+1743269507
+grayhatter!~grayhatte@user/grayhatter
+stealth_: do you think I don't understand why it's faster?
+
+1743269544
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i don't know what you know, so i just explain it best i can. 
+
+1743269545
+grayhatter!~grayhatte@user/grayhatter
+I know why isn't not faster... I was wondering why **you** thought it should be
+
+1743269564
+grayhatter!~grayhatte@user/grayhatter
+I know why it's not faster... I was wondering why **you** thought it should be faster
+
+1743269596
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i mirco benchmarked it
+
+1743269616
+grayhatter!~grayhatte@user/grayhatter
+disk reads are blocking because the data has to be read from the disk; I was asking if you think io_uring should make disk reads faster? and why you thought they might be faster?
+
+1743269720
+grayhatter!~grayhatte@user/grayhatter
+your analogy is also incorrect, generally too. io_uring isn't actually faster
+
+1743269742
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+your questions... anyways io_uring can't make disk read faster, io_uring can better use the time wasted when blocking does happen.
+
+1743269852
+grayhatter!~grayhatte@user/grayhatter
+people think async code is faster because they don't understand how it actually works. It's not like a car and an airplane it's like a 747 vs a G6
+
+1743269930
+grayhatter!~grayhatte@user/grayhatter
+the only way you could ever reasonable claim that the 747 is faster, is because a 747 can seat 366, where the G6 can seat 19
+
+1743269941
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i am not one of those people, i know the strength/weakness of async so i use the right solution when coding.
+
+1743269994
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya you would be right in your assessment
+
+1743270281
+grayhatter!~grayhatte@user/grayhatter
+I'm not sure I believe that you know the strengths or weaknesses of them? You often have a hard time describing how or why stuff works the way that it does. I still believe you from when you said it's mostly a problem trying to explaining, or articulate it. Then I have to say, does it matter how well you understand something when you can't apply it?
+
+1743270333
+grayhatter!~grayhatte@user/grayhatter
+async api's are not faster on their own, they're only *quicker* under high loads
+
+1743270398
+grayhatter!~grayhatte@user/grayhatter
+I did think quicker was a better word, but I'm not sure I think it's better now that I'm reading it again... I'll have to give it some more thought
+
+1743270499
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just cause i am a noob when it goes to zig (since i am learning) doesn't mean i am an idiot in general.
+
+1743270505
+grayhatter!~grayhatte@user/grayhatter
+stealth_: but as your own examples show, io_uring is significantly slower than a "blocking api" in "micro" benchmarks
+
+1743270563
+grayhatter!~grayhatte@user/grayhatter
+I didn't say you're an idiot, someone who was a complete idiot about everything wouldn't have been able to build that python lib
+
+1743270588
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+only in small cases if i were to do the same thing with 100-1000's result would be io_uring is faster.
+
+1743270673
+grayhatter!~grayhatte@user/grayhatter
+I'm objecting to the claim that you understand the strengths/weaknesses of async generally/globally, because you're trying to wrap a zig io_uring library, using cpython so that you can use the async/await features of python... Which I don't think anyone who understood async well would willingly do
+
+1743270833
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, u took that literally! lol i am not doing that cause of that silly reason. i figure it would be cool to use zig on that project that i already know, this gives me a chance to learn zig and improve that project if i can
+
+1743270879
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that being said end of the month is near and i don't think i can work on zig full time after that, i got get back to my actual stuff i do, and only code zig on part time bases.
+
+1743271092
+grayhatter!~grayhatte@user/grayhatter
+you've said it, and then when pressed, you've backed it up a few times saying you wouldn't need to use python if zig had complete async support... generally, people will believe you when you explain the reason you want to do something
+
+1743271130
+grayhatter!~grayhatte@user/grayhatter
+but, brb!
+
+1743271287
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if zig had async/await i would clearly use that since it would be way faster! who doesn't want that.
+
+1743271386
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*wouldn't
+
