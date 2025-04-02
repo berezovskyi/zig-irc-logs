@@ -1,0 +1,1132 @@
+1743477264
+grayhatter!~grayhatte@user/grayhatter
+I'm writing bot a dection module
+
+1743477280
+grayhatter!~grayhatte@user/grayhatter
+which is more correct `ua_string` or `ua_slice`?
+
+1743477367
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+finally!!! 
+
+1743477429
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you get ptr conversion working?
+
+1743477478
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, man this capi is such a bitch. it has to be its own type that you get from its own functions then pass to its other functions. 
+
+1743477604
+grayhatter!~grayhatte@user/grayhatter
+yeah, that's not really the capi, that's python, in part because python wanted duck typing, so all the types are just shadows of PyObject
+
+1743477765
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well for now i managed to get it to call the the class that i had previously implemented, it just took me hrs to figure out how to pass it 0 for argument!
+
+1743477833
+grayhatter!~grayhatte@user/grayhatter
+yeah, I buy that, figuring out how the internal of python work are a significant hurdle 
+
+1743477892
+grayhatter!~grayhatte@user/grayhatter
+but....as a bonus, the JVM c api also works very similarly, so once you get a good intuition for python's it's easy to pick up others too :)
+
+1743477930
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there is no way i am working on anything like this ever again.
+
+1743478255
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if there is an error in zig, and i am running something it python it shows exact error what zig file, line number! that is so cool
+
+1743478298
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+only sometimes though, other time i get messages like this "fatal error: Python.h: No such file or directory" so lame.
+
+1743478323
+grayhatter!~grayhatte@user/grayhatter
+Alibaba Cloud is amusing... they're lying about their UA, but they're respecting the crawl delay
+
+1743478358
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that depends on where in the build steps it fails
+
+1743478402
+grayhatter!~grayhatte@user/grayhatter
+unless you're getting no such file or directory during runtime... which would be REALLY odd
+
+1743478432
+grayhatter!~grayhatte@user/grayhatter
+I didn't think python would JIT c code... does it?
+
+1743478491
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+python by default doesn't do jit but they do jit like optimization 
+
+1743478528
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+only if it doesn't break anything and it free speed improvement 
+
+1743478793
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think this code is working for now
+
+1743484724
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+can you not @memset struct.field ? 
+
+1743484952
+grayhatter!~grayhatte@user/grayhatter
+it depends on the type of the field
+
+1743484983
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when you build normally (safe?) everything works as it should! but with ReleaseFast the default values on struct while creating is different.
+
+1743485006
+grayhatter!~grayhatte@user/grayhatter
+are you using undefined anywhere?
+
+1743485012
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its a pointer `io_uring: *c.io_uring`
+
+1743485013
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nope
+
+1743485029
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i give it memory using `std.heap.c_allocator.create`
+
+1743485053
+grayhatter!~grayhatte@user/grayhatter
+then the behavior between release safe, release fast,  and debug should be the same with respect to @memset
+
+1743485084
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i though so to, till i tried it and the values are indeed different 
+
+1743485135
+grayhatter!~grayhatte@user/grayhatter
+`thing = alloc(thing)` is  `thing = undefined;`
+
+1743485154
+grayhatter!~grayhatte@user/grayhatter
+technically thing.* = undefined;
+
+1743485202
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/7121aa
+
+1743485519
+grayhatter!~grayhatte@user/grayhatter
+so, `ring.io_uring` is memory, does that memory have a value? or is the memory undefined?
+
+1743485570
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, ya it would be default value from ram, so undefined i suppose, 
+
+1743485577
+grayhatter!~grayhatte@user/grayhatter
+yeah
+
+1743485603
+grayhatter!~grayhatte@user/grayhatter
+create() will set the value of the memory to `undefined` in debug mode, but it'll yolo it in release mode
+
+1743485622
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in safe mode if i have an c_int, the default would be -123, in releasefast the default would be 123
+
+1743485639
+grayhatter!~grayhatte@user/grayhatter
+if you ever see different behavior between debug (default) and release [anything], it's because you're using undefined somewhere
+
+1743485691
+grayhatter!~grayhatte@user/grayhatter
+technically, the default value is undefined, just because you happen to see -123 or +123, doesn't mean you should call it a vaule
+
+1743485694
+grayhatter!~grayhatte@user/grayhatter
+it's undefined
+
+1743485711
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, how to set it to 0? when i try @memset it says "error: type '*cimport.struct_io_uring' is not an indexable pointer"
+
+1743485727
+grayhatter!~grayhatte@user/grayhatter
+that's like saying `null == 0` it matters less if you can trick the compiler or the machine into agreeing with you, it matters if it's misleading or not
+
+1743485754
+grayhatter!~grayhatte@user/grayhatter
+stealth_: `io_uring.* = .{ struct data goes here };`
+
+1743485763
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in my cython project i always used calloc
+
+1743485793
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have to manually set each field?
+
+1743485809
+grayhatter!~grayhatte@user/grayhatter
+stealth_: in zig you don't get to be that kind of lazy
+
+1743485844
+grayhatter!~grayhatte@user/grayhatter
+there are tricks, but I'm going to choose not to share them with you, forcing you to take the 3m now to set each field will save you hours down the line
+
+1743485860
+grayhatter!~grayhatte@user/grayhatter
+maybe someone else will override me and tell you how you can duplicate that behavior
+
+1743485887
+grayhatter!~grayhatte@user/grayhatter
+but setting each field will make your life easier, which seems important because as you keep saying, you're about out of time to work on it
+
+1743485917
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i normally check ring_fd field so i can only set that ignore the rest ;)
+
+1743485931
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you can create a default
+
+1743485944
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+but i figure there would be a easy way to go about it, even the set.mem.zeroes doesn't work
+
+1743485944
+grayhatter!~grayhatte@user/grayhatter
+then `io_uring.* = DEFAULT_IOURING;`
+
+1743485970
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L102-L143
+
+1743486157
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well setting the default ring_fd fixed the issues since i was already checking for it anyways.
+
+1743486197
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+"<stealth_> maybe they were talking about @as()", yes, that's literally what I said
+
+1743486243
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, cool
+
+1743486271
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, this is what the solution ended up being https://zigbin.io/eabeb0
+
+1743486281
+grayhatter!~grayhatte@user/grayhatter
+^that's bait
+
+1743486360
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+<Gliptic> you could also call the class object itself
+
+1743486413
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, since i already had the whole class written, i pretty much just get cpython to call that class and pass the point to it
+
+1743486430
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+pointer*
+
+1743486443
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no shit
+
+1743486482
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+:D
+
+1743486492
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+like every day is "it turns out [your solution] works!"
+
+1743486550
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not sure what you mean by it, but i am coding it!
+
+1743486563
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I mean I suggested this last night
+
+1743486572
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am just glad those are actual capi function and not macros. 
+
+1743486624
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well we all know the concept, its actually figuring it out and what not takes time
+
+1743486646
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+do we
+
+1743486719
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i will have to put this project on pause till i can scrap some time here and there to work on it.
+
+1743486755
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Thank you guys for all the help and support you guys provide :)
+
+1743495519
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm im going to try and straight up build the tracy utilities (capture, csvexport, server) using the zig build system
+
+1743495590
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+without it i need to install things like cmake, glfw, freetype-devel, dbus-devel, libbtbb-devel, tbb-devel on fedora to build and that's fine but i want to have a crack and making using the server side of tracy "cleaner" (project is already using the zig build system)
+
+1743495653
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+going to look at other re-packaged things and re-read the docs but unsure how/if the zig build system can also _install_ those dependencies too or if we can only say "you need to link against these and you'll fail if they don't exist"
+
+1743495865
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+this is _just_ compiling it, not consuming it as a package or anything like that
+
+1743497592
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+alright gotten to the point where im getting things like: error: ld.lld: undefined symbol: tracy::GetPhysicalMemorySize()   so i think i need to tell the zig build system where tracy's internal dependencies (common header files etc) are so it can resolve and build those
+
+1743497610
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so far pretty painless though (looking at others' build.zig files and with my own knowledge so far)
+
+1743498542
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmmm, so do i need to manually addCSourceFile/addCSourceFiles for each build module (as in I explicitly list them) or can I tell the zig build system "look for symbols in these dirs generally"?
+
+1743498556
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it feels like i need to do the former no?
+
+1743498795
+yataro!~yataro@user/yataro
+wdym "look for symbols in these dirs"? symbol is an entry in object file/library you link. sorry I missed start of the discussion
+
+1743499926
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to update a name of a button, so a []const u8. I've been told to use slices. 
+
+1743499944
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+give it a default name first with: var slice = try allocator.dupe(u8, "a string literal"); ?
+
+1743499979
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and how to I give slice a different name if the name of the button should change?
+
+1743500026
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: im not concretely sure myself, mostly I was wondering how explicit we need to be when defining the other files that provide symbols a binary or library needs to link against but I imagine the answer is "yes, you need to be explicit down to the file"
+
+1743500044
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+do I've to defer gpa.free(slice) once, or does the changing of size has effect on free as well?
+
+1743500114
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: here's the build.zig so far (small) https://bpa.st/NWQQ
+
+1743500277
+Affliction!affliction@idlerpg/player/affliction
+flower_: You'll need to free it, yes.
+
+1743500313
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Affliction: ok, first test got me a mem leak message indeed
+
+1743500458
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+jeez, you must have very good reasons to not use a garbage collector, the complexity you get with memory magement is almost insane
+
+1743500751
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Is there example code of a string variable which changes names and so sizes?
+
+1743500867
+yataro!~yataro@user/yataro
+tsujp: you have to supply what to compile and what to link, so you get it right. include files is a different thing, usually they bear no implementation, in libraries they are used to "export" symbols, type definitions and constants.
+
+1743500880
+yataro!~yataro@user/yataro
+header-only libraries exist but it is more like special case 
+
+1743500903
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+does it overwrite memory? Is that legal?
+
+1743501033
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: alrighty
+
+1743501122
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: ive gotten to a point where the build error is "capstone.h" file not found, I figure I should use an already packaged zig wrapper for it: https://github.com/allyourcodebase/capstone  but then I get build errors from that package itself like   type '*Build.Module' does not support struct initialization syntax
+
+1743501162
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so i half wonder if I can just add the tar.gz and provide a path to capstone.h, but then if zig needs to compile stuff further id have to do the same as what allyourcodebase/capstone is doing anyway
+
+1743501355
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah well regarding the build error i wasnt using the latest commit but the latest release, the latest _commit_ fixes the zig 0.14.0 changes but back to capstone.h not found so ill first trying saying "its in this dependency" otherwise ill go the manual .tar.gz route but surely the latter is just re-implementing allyourcodebase/capstone
+
+1743501383
+yataro!~yataro@user/yataro
+if it includes "captsone.h" it probably want to use some of its exports, so that's right in such case you need to compile it. errors you get, probalby due to Zig changes. you can use latest commit or tagged release depending on your Zig version
+
+1743501472
+yataro!~yataro@user/yataro
+the header file you want is installed by allyourcodebase/capstone. you just need to add correct include directory 
+
+1743502165
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+gotcha
+
+1743502207
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+now the build fails at ZSTD symbols, likely from libzstd. To have that dependency managed by zig I'd add it to build.zig.zon and do similar in build.zig right?
+
+1743502273
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah seems like it, always add them to build.zig.zon and configure in build.zig as required for each module and its requirements
+
+1743502363
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+aww yeah 26 missing symbols down to 5 so far
+
+1743502624
+yataro!~yataro@user/yataro
+you getting everything right, keep going
+
+1743502794
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i changed from the raw capstone .tar.gz to the actual allyourcodebase/capstone package and it cannot find the header file again. Doing  capture_mod.addIncludePath(capstone_dependency.path("include/capstone"));  hmmm
+
+1743503035
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+This seems to help me: https://ziggit.dev/t/what-is-zig-analog-for-c-sprintf/360/2
+
+1743503241
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+std.fmt.bufPrint
+
+1743503530
+yataro!~yataro@user/yataro
+tsujp: you missing `linkLibrary` I guess `exe.linkLibrary(capstone_dep.artifact("capstone"));` will work 
+
+1743503596
+yataro!~yataro@user/yataro
+`capstone_dep.path("include/capstone")` will not work as there's no such directory in allyourcodebase/capstone
+
+1743503651
+yataro!~yataro@user/yataro
+but when you link it with `linkLibrary` you'll get installed headers dir in your include path
+
+1743503840
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: hmm but i have that, i see in allyourcodebase/capstone that they install the headers under "capstone" and the zig build command has:   -I /home/jammy/project/attempt_self_tracy_build/.zig-cache/o/976b91981d3b6b4a9e9fa2e96ea7b747      that directory has a folder capstone which has the header files in
+
+1743503861
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i.e. capstone.h is at this path:      /home/jammy/project/attempt_self_tracy_build/.zig-cache/o/976b91981d3b6b4a9e9fa2e96ea7b747/capstone/capstone.h
+
+1743503925
+yataro!~yataro@user/yataro
+so what is exact error you get now?
+
+1743503963
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+the same failure to find capstone.h
+
+1743503978
+yataro!~yataro@user/yataro
+no, like exact error message 
+
+1743503993
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+oh hang on, it's from one of the dependent source file lists so i probably need to set the include path on that
+
+1743503998
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+zig-global/p/N-V-__8AAMeOlQEipHjcyu0TCftdAi9AQe7EXUDJOoVe0k-t/server/TracyWorker.cpp:24:10: error: 'capstone.h' file not found
+
+1743504010
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+that's for tracy_server_sources
+
+1743504097
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm is this because I use .root when I set those? If so I am doing that so I don't need to prefix every file in tracy_server_sources with "server/"
+
+1743504227
+yataro!~yataro@user/yataro
+looks like it includes "capstone.h" but not "capstone/capstone.h". i don't know how to extract installed include path from dependency, will try to play with build.zig a little
+
+1743504251
+yataro!~yataro@user/yataro
+can you share complete project for me to play with?
+
+1743504414
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: can, sec
+
+1743504569
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: https://github.com/tsujp/build-tracy-zig/tree/master
+
+1743504594
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+you should hopefully get the same capstone.h error upon `zig build`
+
+1743504763
+yataro!~yataro@user/yataro
+correct 
+
+1743504988
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah so I _think_ if the tracy_server_sources were defined as a module then we could explicitly add the capstone.h path to that module via addInlcudePath.. the problem is those sources don't make sense as a module (I link the CMake files in build.zig where I got that list of files in the first place)
+
+1743505032
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Maybe we need to template a flag to pass to .flags? Seems hacky though
+
+1743505214
+yataro!~yataro@user/yataro
+no, the problem is in included file name. it includes "capstone.h" but capstone.h located at "include/capstone/capstone.h"
+
+1743505269
+yataro!~yataro@user/yataro
+to fix it, "${capstone_install_dir}/include/capstone" should be added to include path. the problem is that i don't know how to do it 
+
+1743505378
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i tried this earlier but it didn't work:     capture_mod.addIncludePath(capstone_dependency.path("include/capstone"));
+
+1743505485
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what include path did it add (if any)?
+
+1743505634
+yataro!~yataro@user/yataro
+tsujp: capture_mod.addIncludePath(capstone_dependency.artifact("capstone").getEmittedIncludeTree().path(b, "capstone"));
+
+1743505640
+yataro!~yataro@user/yataro
+try this
+
+1743505785
+yataro!~yataro@user/yataro
+Gliptic: `linkLibrary` here adds "${capstone_install_dir}/include/", so compiler can't find "capstone.h" because it is in "${capstone_install_dir}/include/capstone"
+
+1743505848
+yataro!~yataro@user/yataro
+there's could be a lot of reasons why upstream includes "capstone.h" but not "capstone/capstone.h", specifics of c and c++
+
+1743505985
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: it compiled!
+
+1743506009
+yataro!~yataro@user/yataro
+yeah, but dunno if this is the best way to do it
+
+1743506026
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+would this "just work" if the capstone package instead exported those headers without placing them under the subfolder "capstone" (as my -I paste showed)
+
+1743506042
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+as for why capstone is just capstone.h idk, i did find this funnily enough: https://github.com/wolfpld/tracy/issues/547
+
+1743506044
+yataro!~yataro@user/yataro
+yes it would, but this would be invalid i guess
+
+1743506069
+yataro!~yataro@user/yataro
+tsujp: lol
+
+1743506175
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+well it may compile but it crashes at runtime
+
+1743506207
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+https://bpa.st/PRFA
+
+1743506265
+yataro!~yataro@user/yataro
+try to disable asan 
+
+1743506485
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it might be a debug build thing? --release=fast works fine
+
+1743506529
+yataro!~yataro@user/yataro
+yeah, probably ubsan is enabled with debug build
+
+1743506581
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+what is asan too?
+
+1743506643
+yataro!~yataro@user/yataro
+i mean ubsan, undefined behavior sanitization. asan means address aanitizer, not your case i think
+
+1743506728
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+gotcha
+
+1743506824
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+now i wonder if there's a way to make the final executable static, if I had to use addLibrary I could pass static to .linkage, is there any alternative in this case?
+
+1743507041
+yataro!~yataro@user/yataro
+wdym static? like fully static with libc included?
+
+1743507060
+yataro!~yataro@user/yataro
+for me it is static enough
+
+1743507253
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: i just realised i didn't check beyond `file zig-out/bin/tracy-capture`, checking with ldd i only see libc stuff dynamically linked. All the project-specific dependencies appear to be static already (as they aren't listed by ldd)
+
+1743507260
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so.. yeah it's probably static enough eh?
+
+1743507414
+ifreund!2940d10f8b@user/ifreund
+seeing as glibc (which you are presumably using) is not designed to be statically linked, yes
+
+1743513235
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: pretty clean honestly: https://github.com/tsujp/build-tracy-zig/blob/master/build.zig
+
+1743518472
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+what conventions do you use for the name of captured conditionals to avoid shadowing? maybe_var_name for the conditional and then var_name for the capture? var_name for the conditional and something else for the capture?
+
+1743518716
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+gluon: I usually stick to the maybe_var_name |var_name| pattern
+
+1743518760
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+sometimes var_name |v|
+
+1743518767
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+yeah, sounds good
+
+1743518842
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+the second one sounds less verbose. i was also thinking about var_name |some_var_name| but that's also verbose and rusty :)
+
+1743518921
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+by the way, i need to have a look at your irc server code. that's pretty neat
+
+1743518966
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+and i happen to be searching for a minimalist ircd for a private server too
+
+1743519026
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+do you have the repo link?
+
+1743519032
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+apollo isn't it?
+
+1743519034
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah
+
+1743519036
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+yup
+
+1743519051
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I'm running a dev server if you want to connect to try out for your use case, it's using atproto auth right now
+
+1743519073
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+that would be nice
+
+1743519109
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+The example client settings in the readme will get you there ;)
+
+1743519123
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+i'll check it out
+
+1743519166
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+getting back to zig, after a 6 month hiatus. it's funny how it's still all in my head
+
+1743519205
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+similarly to what i feel about go
+
+1743519343
+meidam!~meidam@user/meidam
+I see that there have been some css updates to chat.rockorager.dev, since I saw it last rockorager. Looks nice
+
+1743519697
+bw!sid2730@user/betawaffle
+has anyone requested something like enum(nozero u64) { _, }? it would be a non-exhaustive enum that can't be zero, so it can interact with the optional type stuff like a pointer
+
+1743519778
+bw!sid2730@user/betawaffle
+alternatively, depending on what the compiler can support, it could allow specifying range(s) for the _
+
+1743519787
+bw!sid2730@user/betawaffle
+like _ = 1..
+
+1743519843
+bw!sid2730@user/betawaffle
+but i figure other bit patterns aren't as useful for optimization as non-zero
+
+1743520449
+ifreund!2940d10f8b@user/ifreund
+bw: isn't that `enum (u64) { none, _ }`
+
+1743520459
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+bw: can you do @"null" = 0?
+
+1743520528
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+And then instead of using builtins, add a method on the enum that is fn fromInt(v: ?u64) Enum { ... } to manually handle casting from an int
+
+1743520552
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+(Or what ifreund said)
+
+1743520554
+bw!sid2730@user/betawaffle
+That wouldn’t allow ?Enum to be size of u64
+
+1743520615
+ifreund!2940d10f8b@user/ifreund
+bw: no, but you could have a function on the enum that returns ?Inner
+
+1743520649
+ifreund!2940d10f8b@user/ifreund
+so you get effectively the same ergonomics
+
+1743520649
+bw!sid2730@user/betawaffle
+True
+
+1743520769
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+rockorager: trying to connect to chat.rockorager.dev:6697 with TLS without success
+
+1743520772
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+i wonder what's wrong
+
+1743520782
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I'll dm you
+
+1743523769
+bw!sid2730@user/betawaffle
+What’s the difference between a fn and a *const fn? Is it comptime known vs runtime known?
+
+1743523821
+torque!~tachyon@user/torque
+more or less, `fn` is used to declare a function/function prototype. `*const fn` is a pointer to an function that can be called
+
+1743528646
+grayhatter!~grayhatte@user/grayhatter
+bw: it's the difference between [40]u8 and []u8
+
+1743528678
+grayhatter!~grayhatte@user/grayhatter
+bw: a compiled function is just some amount of numbers, right?
+
+1743528695
+bw!sid2730@user/betawaffle
+Ok cool, so the former is what the zig docs call a “function body” right?
+
+1743528723
+bw!sid2730@user/betawaffle
+And it’s callable, yeah?
+
+1743528725
+grayhatter!~grayhatte@user/grayhatter
+maybe?
+
+1743528731
+grayhatter!~grayhatte@user/grayhatter
+also maybe
+
+1743528749
+bw!sid2730@user/betawaffle
+Ok
+
+1743528750
+grayhatter!~grayhatte@user/grayhatter
+technically, any memory address is "callable" but there are a lot of other rules about that
+
+1743528810
+bw!sid2730@user/betawaffle
+Like if I have const foo: fn (stuff) void = someFn; I can do foo(…..)
+
+1743528854
+grayhatter!~grayhatte@user/grayhatter
+bw: for context, you're asking questions with answers that depend on how a virtual machine works, but you're phrasing the questions using language around how the zig compiler works... It's not wrong to do so, it is just going to lead to very confusing answers if you don't see the boundries between the two :)
+
+1743528887
+bw!sid2730@user/betawaffle
+Hmm
+
+1743528902
+grayhatter!~grayhatte@user/grayhatter
+bw: yes you can
+
+1743528940
+bw!sid2730@user/betawaffle
+I’m mainly asking about zig-the-language spec I think
+
+1743528986
+bw!sid2730@user/betawaffle
+Like… it’s a zero-sized type, comptime-known value, etc
+
+1743528999
+grayhatter!~grayhatte@user/grayhatter
+if you want to ask about the zig language, then the answer to the question
+
+1743529007
+grayhatter!~grayhatte@user/grayhatter
+> What’s the difference between a fn and a *const fn?
+
+1743529020
+grayhatter!~grayhatte@user/grayhatter
+is, one is a function, and one is a constant pointer to a function
+
+1743529118
+grayhatter!~grayhatte@user/grayhatter
+but I think that's less helpful
+
+1743529190
+bw!sid2730@user/betawaffle
+Yeah a bit lol
+
+1743529211
+grayhatter!~grayhatte@user/grayhatter
+bw: so what are you really asking, or rather, why do you need to know?
+
+1743529287
+bw!sid2730@user/betawaffle
+Mainly in curious if zig will always know what function is being referred to at comptime (or throw an error if it doesn’t)
+
+1743529296
+bw!sid2730@user/betawaffle
+In the non-pointer case
+
+1743529341
+grayhatter!~grayhatte@user/grayhatter
+oh, no, zig doesn't need to know the answer to `*const fn` at comptime, you could let the os dynamically link to it at runtime
+
+1743529361
+bw!sid2730@user/betawaffle
+Right I mean fn, not *const fn
+
+1743529377
+grayhatter!~grayhatte@user/grayhatter
+that answer elides some important semantics about how the linker does that though
+
+1743529420
+grayhatter!~grayhatte@user/grayhatter
+fn has less of a meaning than you might hope
+
+1743529428
+bw!sid2730@user/betawaffle
+I’m thinking fn is similar to type and comptime_int
+
+1743529491
+bw!sid2730@user/betawaffle
+Like… can I have a tuple of fns
+
+1743529503
+bw!sid2730@user/betawaffle
+And inline for through them
+
+1743529512
+grayhatter!~grayhatte@user/grayhatter
+IIRC it's true that `fn` will fail to compile if it's not known at comptime. But for reasons that seem less important given the way you're asking the question
+
+1743529540
+grayhatter!~grayhatte@user/grayhatter
+`inline for`, is just loop unrolling
+
+1743529597
+grayhatter!~grayhatte@user/grayhatter
+you can do `inline for (fn)` and `inline for (*const fn)` and the behavior will be the exact same
+
+1743529641
+bw!sid2730@user/betawaffle
+Right but the compiler may not know the values of the latter at comptime
+
+1743529689
+grayhatter!~grayhatte@user/grayhatter
+bw: that's a thing that is true... but it's not important given the context I have
+
+1743529731
+bw!sid2730@user/betawaffle
+Well, for example, it can’t inline a function if it doesn’t know what function it is
+
+1743529773
+bw!sid2730@user/betawaffle
+Like if I did @call(.always_inline, func, …)
+
+1743529785
+bw!sid2730@user/betawaffle
+It would fail for the function pointer
+
+1743529787
+grayhatter!~grayhatte@user/grayhatter
+it does know what function it is, but the second it shows up in a for loop (inline or not) the chance of it getting inlined goes down significantly 
+
+1743529795
+bw!sid2730@user/betawaffle
+Unless it happens to know the value
+
+1743529855
+grayhatter!~grayhatte@user/grayhatter
+bw: yes, that's true... which is why I said that `fn` is to `[40]u8` as `*const fn` is to `[]u8`
+
+1743529864
+bw!sid2730@user/betawaffle
+Yup
+
+1743529891
+grayhatter!~grayhatte@user/grayhatter
+but just like you can use [40]u8 at comptime, and runtime, it's the same with `fn`
+
+1743529931
+grayhatter!~grayhatte@user/grayhatter
+except with `fn` the compiler is also allowed to use other optimizations because a `fn` is more complicated, and more useful than [40]u8
+
+1743529962
+grayhatter!~grayhatte@user/grayhatter
+in theory, you could write `fn` that could be created and used at runtime as well
+
+1743529982
+grayhatter!~grayhatte@user/grayhatter
+I think the zig compiler would be very resistant to allowing that, but I'm sure with enough dark magic, you could get it to work
+
+1743530038
+grayhatter!~grayhatte@user/grayhatter
+but this is the point where that analogy and mental model really breaks down very hard... which is why I was resistant to simply agreeing to that explination
+
+1743530066
+grayhatter!~grayhatte@user/grayhatter
+it's a mistake to think of `fn` as just a comptime function
+
+1743530091
+grayhatter!~grayhatte@user/grayhatter
+comptime *resolved function
+
+1743530307
+grayhatter!~grayhatte@user/grayhatter
+bw: I have another heuristic you can use
+
+1743530416
+bw!sid2730@user/betawaffle
+Hmm ok
+
+1743530465
+grayhatter!~grayhatte@user/grayhatter
+the semantics around `fn` and it's siblings are best left to the compiler, you should as much as you can, allow the compiler to do it job relating to functions. using indirection where you can to free the compiler from rules. i.e. yes, you'd need `fn` if you wanted to always inline, but `*const fn` is better for other examples. Unless you have a very specific reason you need to inline, trust the
+
+1743530467
+grayhatter!~grayhatte@user/grayhatter
+complier to be smarter than you. The same goes for future you, if you force something to be inline, and then future you changes something, ReleaseSmall becomes strictly worse that it otherwise might
+
+1743530537
+grayhatter!~grayhatte@user/grayhatter
+err... trust the *zig* compiler to be smarter than you... that rule applies less to other languages 
+
+1743530590
+bw!sid2730@user/betawaffle
+Well, speaking of the compiler being smarter… if a function is only ever called from one place, and isn’t exported, will it inline it? Is there a valid reason to not inline a function that only has a single call site?
+
+1743530649
+grayhatter!~grayhatte@user/grayhatter
+bw: IIRC it will not inline it in debug mode, it's almost guarenteed to inline it in release modes
+
+1743530665
+bw!sid2730@user/betawaffle
+Yeah that’s fine I think
+
+1743530743
+bw!sid2730@user/betawaffle
+I want to know it’s always ok to extract some logic into a function for clarity, without getting a performance penalty
+
+1743530748
+grayhatter!~grayhatte@user/grayhatter
+as for if there's a valid reason not to inline it if it has a single call site? I can't think of any, but I'm not a compiler dev, so I also won't let myself say the compiler they wrote is wrong if choses not to inline something
+
+1743530755
+grayhatter!~grayhatte@user/grayhatter
+I might think it's wrong, but I won't actually say it :D
+
+1743530770
+grayhatter!~grayhatte@user/grayhatter
+OH, yes, that's *always* ok
+
+1743530790
+bw!sid2730@user/betawaffle
+With some languages it isn’t lol
+
+1743530885
+grayhatter!~grayhatte@user/grayhatter
+the only noticable performance hit would be something that's called from everywhere
+
+1743530985
+grayhatter!~grayhatte@user/grayhatter
+you won't notice a perf hit if you're extracting logic into a non pub fn
+
+1743531002
+bw!sid2730@user/betawaffle
+Cool
+
+1743531095
+grayhatter!~grayhatte@user/grayhatter
+re: your example between `fn` and `*const fn` I don't know, but don't think zig would inline `fn`, in that case. But if that's what you're trying to do you're indexing on the wrong thing.
+
+1743531160
+bw!sid2730@user/betawaffle
+It was more a thought experiment
+
+1743531257
+grayhatter!~grayhatte@user/grayhatter
+IIRC on many ISA, a jmp is a single micro-inst (sometimes 3). multiplication is 20
+
+1743531293
+grayhatter!~grayhatte@user/grayhatter
+do not optimize the the call graph until after you've optimized everything else
+
+1743531478
+grayhatter!~grayhatte@user/grayhatter
+put another way, in most cases, you'll waste many multiples more of your time thinking about the call graph than you'll save across the lifetime of your code... which doesn't apply to other optimizations
+
+1743531580
+grayhatter!~grayhatte@user/grayhatter
+speaking of thought experiments though... I wonder where the inflection point is between time saved between waiting for the optimizer passes, and building in debug and having a slower exe
+
+1743535694
+tsmanner!~tsmanner@161.69.92.34
+Any idea if there's a way to workaround an ENOSYS (Function not implemented) error from a `statx()` call during `zig init`?  I'm trying to get a minimal project set up to test some stuff, running on zig 0.14.0 x86_64-linux-gnu and Red Hat Enterprise Linux 7.9, which doesn't seem to have a full implementation of the `statx` function, if I'm reading
+
+1743535694
+tsmanner!~tsmanner@161.69.92.34
+the strace log correctly.
+
+1743539182
+grayhatter!~grayhatte@user/grayhatter
+ENOSYS isn't an error from statx, it's an error saying statx doesn't exist
+
+1743539295
+grayhatter!~grayhatte@user/grayhatter
+statx was added to 4.11, which is 2014, and RHEL 7 was released 2015 uses kernel version 3.10... 
+
+1743539300
+grayhatter!~grayhatte@user/grayhatter
+yeah, that's what I'd call enterprise grade linux
+
+1743539456
+tsmanner!~tsmanner@161.69.92.34
+hah yeah... I am actively trying to push us to 8 (at LEAST) but they've worked around a lot.  It looks like 7.5 added statx, but it seems to be incomplete at best
+
+1743539493
+grayhatter!~grayhatte@user/grayhatter
+lmao
+
+1743539513
+grayhatter!~grayhatte@user/grayhatter
+you rejoin just after I said
+
+1743539515
+grayhatter!~grayhatte@user/grayhatter
+ENOSYS isn't an error from statx, it's an error saying statx doesn't exist
+
+1743539534
+grayhatter!~grayhatte@user/grayhatter
+but if RHEL backported statx, and did it incorrectly, that's even more halirious 
+
+1743539617
+tsmanner!~tsmanner@161.69.92.34
+Yeah I did see that too, I am also reading some release notes that talk about statx... it's entirely possible that it's available only in some special package that an admin has to install or enable, they did something similar with user namespaces iirc
+
+1743539669
+grayhatter!~grayhatte@user/grayhatter
+what kernel version are you running?
+
+1743539704
+grayhatter!~grayhatte@user/grayhatter
+could be some super dark magic that someone thought was a good idea to add to their sandbox  https://man7.org/linux/man-pages/man1/enosys.1.html
+
+1743540060
+tsmanner!~tsmanner@161.69.92.34
+super dark magic sounds about right for anything with "Enterprise" in the name
+
+1743540065
+tsmanner!~tsmanner@161.69.92.34
+Starship or otherwise
+
+1743540571
+tsmanner!~tsmanner@161.69.92.34
+Looks like the kernel is still 3.10, the 7.5 release notes, under System Tap, say "Support for the new statx system call has been added." That must be a domain specific claim.  Does zig have a build target for legacy linux kernels?  I'm guessing no, that's probably more trouble than it's worth that this point
+
+1743540605
+grayhatter!~grayhatte@user/grayhatter
+if it did, it should be limited to a decade
+
+1743540616
+grayhatter!~grayhatte@user/grayhatter
+statx was added 11 years ago
+
+1743540640
+tsmanner!~tsmanner@161.69.92.34
+🙃
+
+1743540760
+grayhatter!~grayhatte@user/grayhatter
+interesting nerd snipe though... that was a fun trip through the LKML
+
+1743541232
+bw!sid2730@user/betawaffle
+Enterprise!
+
+1743541895
+tsmanner!~tsmanner@161.69.92.34
+As always, thanks for the sanity check(s)!
+
