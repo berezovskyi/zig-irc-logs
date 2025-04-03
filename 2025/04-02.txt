@@ -1,0 +1,352 @@
+1743568473
+grayhatter!~grayhatte@user/grayhatter
+I wanna make a donor bounty suggestion, I would like to pay for build docs
+
+1743570903
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm passing any kind of --release flag to zig build makes tracy captures take _forever_
+
+1743570921
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+debug build traces capture basically instantly... any ideas...?
+
+1743571129
+yataro!~yataro@user/yataro
+try to run it with profiler, perf for example. check if there's an error log or something useful 
+
+1743571163
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is poop (from andrew himself) also an option here?
+
+1743571203
+yataro!~yataro@user/yataro
+could be, haven't tried it yet
+
+1743571263
+yataro!~yataro@user/yataro
+just checked it, looks like there's no stats for function times, not very useful then 
+
+1743571383
+yataro!~yataro@user/yataro
+you can try to run and pause it in the debugger and see if there's any clues
+
+1743571425
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+"the debugger", lldb?
+
+1743571516
+yataro!~yataro@user/yataro
+anything will work here i think, lldb is good 
+
+1743571543
+yataro!~yataro@user/yataro
+whatever you use and can work with
+
+1743571673
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+guess ill have to try lldb later, i appear to (maybe) be wrong in it being tracy though.. any release mode that isn't debug causes the build to hang
+
+1743571698
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+zig build test --release=fast        for example, drop the --release flag and its fine
+
+1743571752
+yataro!~yataro@user/yataro
+yes i get that. if this is the exact way to reproduce it i can take a look 
+
+1743571873
+yataro!~yataro@user/yataro
+your repo is not updated yet i think, there's no test step 
+
+1743571936
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i tried executing it outside of a container and I get output: error: while executing test 'lib.test.opcode.test.test.basic RETURN', the following command terminated with signal 5 (expected exited with code 0):
+
+1743571968
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+something borked signal handling in the container between zig and its subprocesses(?)/sockets, however the fancy tui system communicates
+
+1743571985
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: this is the repo: https://github.com/tsujp/zevem
+
+1743572016
+yataro!~yataro@user/yataro
+make sure you don't touch stdout during tests
+
+1743572472
+yataro!~yataro@user/yataro
+`zig build test` works just fine for me, zig 0.14.0
+
+1743572533
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ive commented out all std.debug.print but it's still behaving like that. I think there _is_ an error in the coebase and its probably try self.mem.resize in MSTORE (from basic std.debug.print here, here 2, here 3 things lol) but strange it doesnt fail when run in a container and the zig build system hangs forever
+
+1743572546
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if you're on linux can u try running that command within a container (interactive shell session)
+
+1743572554
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also try --release=fast in both cases
+
+1743572556
+yataro!~yataro@user/yataro
+debug.print writes to stderr, so it is not a problem 
+
+1743572573
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+oh yeah sorry stdout not stderr
+
+1743572583
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah no messing with stdout going on that im aware of
+
+1743572629
+yataro!~yataro@user/yataro
+i ran it in docker with -Doptimize=ReleaseFast and it indeed stucks 
+
+1743572710
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i forgot the env var to set which removes zigs fancy build system tui, i think even if thats removed the build system still uses child processes and sockets etc to communicate tho
+
+1743572884
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmmmmmmmmmmmmmmmmmmmm is this a fuse-overlayfs issue... what are the filesystems in that container you ran? df -Th
+
+1743572934
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+zig already cannot stat files on filesystems that don't support d_type and the build system (with the fancy tui) uses IPC sockets to communicate if I am reading this right https://andrewkelley.me/post/zig-new-cli-progress-bar-explained.html
+
+1743572967
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so maybe there's an allocator error but because that allocator error (probably??) hard crashes the test process zig cannot detect that properly (due to the filesystem??) and hangs forever?
+
+1743573018
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+https://ziggit.dev/t/getting-error-about-illegal-file-type-unknown-when-fetching-dependencies/7585/2
+
+1743573074
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+^ that already breaks using any files on fuse-overlayfs making working in containers a PITA with zig and this curiously crashes correctly _outside_ of a container and also involves filesystem stuff
+
+1743573087
+yataro!~yataro@user/yataro
+i don't understand how you link test hang to filesystem 
+
+1743573291
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i doubt it too its just a stab in guesstimate
+
+1743573328
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if you use a container with fuse-overlayfs you cannot use zig fetch or zig build etc unless you specify manually both a --cache-dir and --global-cache-dir which point to a filesystem that supports d_type
+
+1743573387
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also i cannot find this env var to disable the pretty zig tui.. or is it just --color off   now?
+
+1743573419
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+--color off   disables _all_ output though
+
+1743573425
+yataro!~yataro@user/yataro
+it is fine, i use docker with overlayfs 
+
+1743573485
+yataro!~yataro@user/yataro
+test hangs in lib.evm.New(lib.DummyEnv).execute (self=0x7ffc2f7b8150) at /root/zevem/src/lib/evm.zig:577 when testing "MSTORE"
+
+1743573514
+yataro!~yataro@user/yataro
+and it hangs at some mutex inside debug allocator
+
+1743573522
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+overlayfs isn't the same as fuse-overlayfs
+
+1743573546
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+did you get that from the debugger? 
+
+1743573572
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i see a failure (just from test errors) _outside_the container at a similar place, but what worries me is the indefinite hang _inside_ the container since id prefer to work in a more hermetic environment there
+
+1743573758
+yataro!~yataro@user/yataro
+evm.zig:74 your gpa is dead when function returns 
+
+1743573793
+yataro!~yataro@user/yataro
+this is the reason allocator hangs, `allocator` refers to gpa that lived in stack memory
+
+1743574160
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is the fact that it hangs an os-level difference then? its hanging in the containers but crashes on a macos host
+
+1743574263
+yataro!~yataro@user/yataro
+it is UB, no clear answer is possible. for me it waits forver on some now-invalid mutex
+
+1743574265
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also ah yes @ evm.zig:74 the scope ends and its cleaned up. Debug optimisation instruments an allocator for us which is why this passes in debug mode but (correctly) fails in all other release modes?
+
+1743574277
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah its UB ok
+
+1743574294
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ok ok phew, im relieved that this is _my_ problem here
+
+1743574375
+yataro!~yataro@user/yataro
+from my observations debug mode is more prone to tolerate such stack issues, maybe due to bigger stack allocations in general
+
+1743574390
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i take it you were using lldb or gdb stepping through things to get this information
+
+1743574473
+yataro!~yataro@user/yataro
+to use debugger on test, you need to install the test using `b.installArtifact(lib_test)`, add `.name = "zevem_test"` to assign name to resulting executable, and now you can `gdb zig-out/bin/zevem_test`
+
+1743574533
+yataro!~yataro@user/yataro
+is use gdb cuz i like it more, but lldb will work just fine  
+
+1743574587
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+that test binary will include _all_ tests won't it?
+
+1743574640
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+or in other words, the only way to produce a test binary that has specific tests in it is to create a test step from a module where said module has the specific tests you want
+
+1743574676
+yataro!~yataro@user/yataro
+you can use test filters to filter tests out 
+
+1743574811
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah yes test filters
+
+1743575123
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im going to change the interface so init takes an allocator, but im curious: there's no nice way of creating and assinging an allocator on one line (like with the BoundedArray) is there?
+
+1743575170
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+{ .alloc = (std.heap.DebugAllocator(.{})).allocator(), };     is messy as and isn't valid AFAIK
+
+1743575245
+yataro!~yataro@user/yataro
+it is valid inside function scope as temporaries live until function returns, otherwise it is invalid
+
+1743575285
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+neat
+
+1743575440
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+changing the pattern so init accepts an allocator fixes it
+
+1743575481
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i wonder (no time to try right now), if I explicitly (with the old pattern) created the allocator as heap allocated would it work as-is? surely not right?
+
+1743575635
+yataro!~yataro@user/yataro
+if you place your gpa somewherem it will work, but it is a memory leak because nobody will keep the reference of gpa
+
+1743575722
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah, needed to move to the user passing in an allocator anyway but just curious
+
+1743575762
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i hadn't even thought about what it was resulting in gpa being stack allocated and then that (of course) not existing anymore once init() is out of scope
+
+1743575799
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+thank you once again for your patience, help, and knowledge yataro :)
+
+1743576250
+yataro!~yataro@user/yataro
+btw about temporaries lifetime, i think i was wrong, accroding to https://ziggit.dev/t/temporaries-and-scope-lifetime-for-allocator-interfaces/4582 Zig doesn't allow mutable temporaries, so it is invalid in any case
+
+1743576372
+yataro!~yataro@user/yataro
+tsujp: if you use gpa you are supposed to `deinit` it to free the memory, on Debug mode it will also perform a leak check
+
+1743576466
+yataro!~yataro@user/yataro
+so usually "master" allocator lives in `main` or as a struct field of your main object, like the `Game` object if your making a game
+
+1743576675
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: will check that thread out later, moved it to this now (small diff) https://github.com/tsujp/zevem/commit/9a733f0171d6ca9ffa3320ea805791bc236d8980
+
+1743576715
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+primary intention of this is being embedded into a host so the host deciding what allocator to use was a TODO anyway
+
+1743576734
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+gotta go for a few hours
+
+1743577005
+yataro!~yataro@user/yataro
+inside tests you use testing.allocator 
+
+1743590449
+bw!sid2730@user/betawaffle
+Can I @import a ZON file?
+
+1743590575
+ifreund!2940d10f8b@user/ifreund
+yes, if you supply a matching type annotation
+
+1743590637
+bw!sid2730@user/betawaffle
+Nice
+
+1743599208
+daurnimator!~daurnimat@vultr.daurnimator.com
+Is there some zig subcommand for dealing with zon?
+
+1743602278
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+daurnima, define "dealing with"?
+
+1743602302
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig fetch can add stuff to build.zig.zon for instance
+
+1743610742
+bw!sid2730@user/betawaffle
+if i dereference a *const align(1) u64, will zig do the right thing?
+
+1743610987
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*daurnimator, I meant
+
+1743615177
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+iirc there was some sort of jq-like utility for zon somewhere..  IIRC, that is
+
+1743621000
+blurrycat!~blurrycat@user/blurrycat
+daurnimator: https://ziggit.dev/t/zq-command-line-zon-processor/8722 there's this but I haven't tried it 
+
+1743637370
+daurnimator!~daurnimat@vultr.daurnimator.com
+Ah I was hoping for inside of zig itself
+
+1743637404
+daurnimator!~daurnimat@vultr.daurnimator.com
+I was looking for a way to parse build.zig.zon without external tooling...... I guess I can try and write like a ten-liner or something? but..... hmmmm
+
