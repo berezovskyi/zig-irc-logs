@@ -1,0 +1,524 @@
+1743638875
+Drixtan!~Drixtan@user/Drixtan
+I changed my lib from "managed" allocator to "unmanaged" allocator and I gained 3 lightning bolts by just doing that... That's insane. Now I unmanage all the things in the world. I told my wife I want to stop managing her, and even there, I gained performance on the divorce process. It's just that crazy good.
+
+1743673848
+Earnestly!~earnest@user/earnestly
+daurnimator: Relevant? https://github.com/ziglang/zig/pull/20271
+
+1743673941
+daurnimator!~daurnimat@vultr.daurnimator.com
+Earnestly: how so?
+
+1743673952
+Earnestly!~earnest@user/earnestly
+Been watching it awhile, provides std lib routines for parsing zon
+
+1743673972
+daurnimator!~daurnimat@vultr.daurnimator.com
+yes..... but not a `zig` subcommand
+
+1743673995
+Earnestly!~earnest@user/earnestly
+True, do you expect the subcommand to work like jq?
+
+1743674006
+daurnimator!~daurnimat@vultr.daurnimator.com
+I wouldn't complain if it did :P
+
+1743674027
+Earnestly!~earnest@user/earnestly
+Ah, so a query-like DSL for interpreting it. Yeah that'd be nice
+
+1743674040
+Earnestly!~earnest@user/earnestly
+I guess zq could become that
+
+1743674085
+daurnimator!~daurnimat@vultr.daurnimator.com
+I want to use it as part of bootstrapping zig things; so having it outside of the core executable isn't so useful
+
+1743674087
+Earnestly!~earnest@user/earnestly
+zig zon --query ...
+
+1743674227
+daurnimator!~daurnimat@vultr.daurnimator.com
+hell if `zig run` was still I think I guess I could probably `zig run 'pub main() { const stdout = try @import("std").io.getStdOut(); for (@import("build.zig.zon").fields, 0..) |v, i| ........ }`
+
+1743674251
+daurnimator!~daurnimat@vultr.daurnimator.com
+no need for a "query language" when we already have a real programming language
+
+1743674278
+Earnestly!~earnest@user/earnestly
+Yeah for sure
+
+1743674309
+Earnestly!~earnest@user/earnestly
+daurnimator: In terms of bootstrap you could essentially do that, but would have to generate the program code as a file
+
+1743674349
+Earnestly!~earnest@user/earnestly
+At least until zig run can take a string or read code from stdin (like tcc)
+
+1743676589
+janvhs!8d8fee6549@user/janvhs
+Agree, a DSL would be a lot to maintain, write docs for etc and I don’t know if that’s in the Zig spirit. Why not provide a file as positional argument to zig zon —query ./query.zig or ./queries/my_cool_query.zig or whatever you please
+
+1743676674
+janvhs!8d8fee6549@user/janvhs
+Just like zig run you could expose it via the build.zig file
+
+1743676793
+janvhs!8d8fee6549@user/janvhs
+Forgive the ignorance, but having seem parts of andrewrk their zig stream introducing zig.IO, isn’t that basically the same concept as the IO monad from Haskell?
+
+1743679537
+bw!sid2730@user/betawaffle
+I just had an idea, but maybe people have already discussed this and come to a different conclusion:
+
+1743679647
+bw!sid2730@user/betawaffle
+What if zig provided a duck-typing thing as a supplement to anytype, where you could define what you expect the anytype to be capable of. Sorta like an interface
+
+1743679727
+bw!sid2730@user/betawaffle
+It would be entirely optional, but it could make for clearer documentation of what a function expects an argument to do
+
+1743679822
+bw!sid2730@user/betawaffle
+It could essentially translate to a comptime function that checks all the requirements and spits out helpful compile error messages
+
+1743679894
+bw!sid2730@user/betawaffle
+Obviously anytype is strictly more powerful, but that comes at a mental cost in situations where it isn’t necessary
+
+1743679949
+bw!sid2730@user/betawaffle
+I might explore a userspace alternative to this idea
+
+1743680635
+yataro!~yataro@user/yataro
+bw: sounds like C++ concepts/constraints to me. Something like this was proposed and rejected few times, https://github.com/ziglang/zig/issues/17198 for example
+
+1743680810
+yataro!~yataro@user/yataro
+now, you can use `@typeInfo(@TypeOf(x))` and implement checks based on type info
+
+1743681708
+leon-p!1b22ab9492@user/leon-p
+in the build system if I build a static library, how do I get the path to that static library (the compiled artifact) so I can use it in a system command step?
+
+1743682354
+leon-p!1b22ab9492@user/leon-p
+ah, it's .getEmittedBin()
+
+1743682909
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://ziglang.org/documentation/0.14.0/std/#std.fs.File.stat 
+
+1743682928
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+stat needs a File? In Go it can be a string afaik
+
+1743682947
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+do I've to open the file first then?
+
+1743683000
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to check if the file exists, if not then create it
+
+1743683040
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if it exists I want to read the content in a buffer
+
+1743683098
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm try to create it with truncate set to false, let see what it return then
+
+1743683237
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+exclusive set to false, hm
+
+1743683398
+yataro!~yataro@user/yataro
+https://ziglang.org/documentation/0.14.0/std/#std.fs.Dir.statFile but you better just try to read it and handle error, due to race conditions 
+
+1743683438
+yataro!~yataro@user/yataro
+e.g. what happens if file get (re)moved between `stat` and `open`+`read`? 
+
+1743683477
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1743686591
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm a bit confused, can you use catch |err| on a function that returns a value?
+
+1743686643
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+const buf_read = std.fs.cwd().readFile(file_name, text_entry_multiline_buf) catch |err| {
+
+1743686677
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: incompatible types: '[]u8' and 'void'
+
+1743687106
+ekaitz!~Ekaitz@46.6.4.221
+flower_: the block should return something that is also a []u8
+
+1743687131
+ekaitz!~Ekaitz@46.6.4.221
+because if you don't, what's going to be the value of buf_read after the catch is run?
+
+1743687157
+ekaitz!~Ekaitz@46.6.4.221
+flower_: example:     const number = parseU64(str, 10) catch 13;
+
+1743687395
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ekaitz: no idea how to do that in this case
+
+1743687454
+ekaitz!~Ekaitz@46.6.4.221
+flower_: try labelling the block and break-ing from it with a value
+
+1743687490
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+seriously?
+
+1743687665
+ekaitz!~Ekaitz@46.6.4.221
+flower_: https://ziglang.org/documentation/0.14.0/#Blocks
+
+1743687677
+ekaitz!~Ekaitz@46.6.4.221
+read test_labeled_break
+
+1743687741
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm trying to do something like this https://zigbin.io/a4ca60
+
+1743687851
+ekaitz!~Ekaitz@46.6.4.221
+let me write an example for you
+
+1743688041
+ekaitz!~Ekaitz@46.6.4.221
+flower_: https://zigbin.io/a721f1 how do you feel about this one?
+
+1743688140
+ekaitz!~Ekaitz@46.6.4.221
+also, do you need to close a file if only created it?
+
+1743688175
+ekaitz!~Ekaitz@46.6.4.221
+oh yes, you need to
+
+1743688177
+ekaitz!~Ekaitz@46.6.4.221
+weird
+
+1743688198
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ekaitz: tbh, I feel very bad about it. I'm coming from Go, almost can't believe I've to use a label for this
+
+1743688228
+ekaitz!~Ekaitz@46.6.4.221
+i'm not an expert, there might be another way for this
+
+1743688264
+ekaitz!~Ekaitz@46.6.4.221
+you could also make the variable an optional
+
+1743688310
+ekaitz!~Ekaitz@46.6.4.221
+I'm a scheme guy, so I also like when everything is an expression... hehe
+
+1743688458
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Go would return an error which can be nil; you would check if the error is nil if not handle error
+
+1743688699
+ekaitz!~Ekaitz@46.6.4.221
+hey it's just a different way to do things, you'll get used to it
+
+1743688995
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ekaitz: probably something like this https://zigbin.io/10d3d3
+
+1743689004
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://akhil.sh/tutorials/zig/zig/error_handling_in_zig/
+
+1743689025
+ekaitz!~Ekaitz@46.6.4.221
+oh yeah that's good, that feels more natural
+
+1743689110
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Go got quite some criticism about it's error handling as being verbose, but I prefer that to this zig example tbh
+
+1743689428
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+nah can't be the way either
+
+1743689754
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the example in https://akhil.sh/tutorials/zig/zig/error_handling_in_zig/#handling-errors is missing code
+
+1743690150
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+The best so far I guess: https://zigbin.io/9c8283
+
+1743690159
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://pedropark99.github.io/zig-book/Chapters/09-error-handling.html
+
+1743690930
+ekaitz!~Ekaitz@46.6.4.221
+flower_: you just learned several ways to do it (all valid)
+
+1743690950
+ekaitz!~Ekaitz@46.6.4.221
+i like the if/else+switch in the else
+
+1743690964
+ekaitz!~Ekaitz@46.6.4.221
+but it depends on the case
+
+1743690986
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep, this comes close how it works in Go
+
+1743691019
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+somewhat of a relief, heheh
+
+1743691057
+ekaitz!~Ekaitz@46.6.4.221
+nah it's a shame, it's better to learn things that are very different to what we already know hehe
+
+1743691135
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that's not the point, but the others where very cumbersome in this case
+
+1743691381
+gastus_!~gastus@185.6.123.153
+I tried compiling cudaz with zig-14. Now list of absolute paths -> foreach -> stf.fs.openfileabsolute -> .. assert -> unrechable -> panic. So there is an assertion it finds out will never be triggered because only absolute paths (wow) .. but fails to compile.
+
+1743691384
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+flower_: I think the "most normal" zig pattern is actually closest to go
+
+1743691465
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/88c5ff
+
+1743691478
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You keep the happy path on the left, and error handling indented in one block
+
+1743691542
+gastus_!~gastus@185.6.123.153
+I also have an old tablet until now I only got c++ working because it uses hard float abi which was deprecatned some time ago and llvm kinda stopped supporting it. Guess that's then called an obscure platform .. cause no C backend would not be able to target that, right ?
+
+1743692398
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+how to accept a comptime param of array?  eg. `table(comptime headers[_][]const u8) type {..}` does not work (unable to infer array size.)  i want the headers to be a comptime-known array of strings, and then use the headers.len in the type
+
+1743692469
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+i suppose i could get there using tuple, but then i guess i would have to type-heck the items via introspection, which seems too much work
+
+1743692747
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+oh wait, just `headers: []const []const u8` should work, i think .. 
+
+1743694291
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm im using a labelled switch and most continues are provided a function which computes the next thing. Said function is inlined. Was hoping that there'd be a way to have a defer or something end at the callsites end of scope (if the function is inlined)
+
+1743694309
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+not possible afaik, or can some incantation of @call achieve this?
+
+1743694353
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+want to define a tracy zone for each prong of the switch without literally have to do that hence my thought to do it in the function that 90% of prongs call in their continue
+
+1743695839
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmmm, maybe i could comptime generate a switch prong but is that taking science too far
+
+1743696067
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+rockorager: but that doesn't handle the return value right?
+
+1743696079
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You didn't use the return value
+
+1743696093
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You can throw it away with _ =
+
+1743696298
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+rockorager: I see, but if you use the return value you'll need the if statement right? https://zigbin.io/9c8283
+
+1743696340
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+No, you can do this https://zigbin.io/333679
+
+1743696352
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Or if you *want* the value, you can do `const result = ....`
+
+1743696364
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+But that is very "go like"...keep the happy path to the left
+
+1743696377
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Error path gets indendented in
+
+1743696556
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+rockorager: but I got a error: error: incompatible types: '[]u8' and 'void
+
+1743696567
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+const buf_read = std.fs.cwd().readFile(file_name, text_entry_multiline_buf) catch |err| {
+
+1743696583
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+At the end of your error block you have to return or break out of the error block with the expected type
+
+1743696593
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If you don't return, you are continuing on the happy path with buf_read
+
+1743696598
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+So buf_read has to be *something*
+
+1743696612
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+And it needs to be the same type you expect from readFile happy path
+
+1743696628
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+If you are handling this as a "read the file, if it doesn't exist create it" you probably want to break out of it with ""
+
+1743696659
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+so you would do const buf_read = std.fs.cwd().readFile(file_name, text_entry_multiline_buf) catch |err| blk: { <do your stuff>; break :blk ""; };
+
+1743696673
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah
+
+1743696761
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah, ok so the suggestion by ekaitz wasn't that bad actually ^
+
+1743696774
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, took some notes, thx
+
+1743696842
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah ekaitz had the same suggestion
+
+1743696988
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm is it possible to have a comptime function which accepts arbitrary zig syntax and inserts some zig code at the top of it, then returning app this as compileable source code
+
+1743699088
+tusf!cb6c78d75e@user/TUSF
+Hmm, ok, at this point, I think we should get rid of std.posix, because it's kinda misleading. Shuttle all its contents into specific 
+
+1743699127
+tusf!cb6c78d75e@user/TUSF
+modules, and have the rest of stdlib depend on those modules, before deprecating std.posix entirely.
+
+1743699333
+tusf!cb6c78d75e@user/TUSF
+Mostly because POSIX is an extension of the C stdlib, as far as I understand, and std.posix occasionally ignores that fact. Also, some of it doesn't work on Windows, and I don't think it's expected to?
+
+1743700221
+scajanus!~scajanus@user/scajanus
+tusf: at least there exists this issue: https://github.com/ziglang/zig/issues/6600
+
+1743700268
+scajanus!~scajanus@user/scajanus
+I also don't think POSIX can be made to work on Windows, i.e. there are enough differences that can't be consolidated
+
+1743700535
+tusf!cb6c78d75e@user/TUSF
+I think one it can be done convincingly, it just wouldn't be as performant, I imagine.
+
+1743700703
+tusf!cb6c78d75e@user/TUSF
+Yeah, #6600 looks like what I was getting it, but written much better,
+
+1743700746
+Earnestly!~earnest@user/earnestly
+scajanus: windows used to have a unix® core, called the SFU
+
+1743700770
+Earnestly!~earnest@user/earnestly
+Or https://en.wikipedia.org/wiki/Windows_Services_for_UNIX
+
+1743700823
+tusf!cb6c78d75e@user/TUSF
+Heard of that. Think it was removed in like, 2016 or something?
+
+1743700849
+Earnestly!~earnest@user/earnestly
+It's all rather legacy though, WSL is essentially the replacement (although not in the same way)
+
+1743700927
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it looks like you cannot comptime produce a block am I right?
+
+1743700931
+Earnestly!~earnest@user/earnestly
+tusf: Apparently the posix subsystem was replaced by this SFU in Windows XP and SFU seems to have ended in Windows 7
+
+1743702637
+grayhatter!~grayhatte@user/grayhatter
+scajanus: mingw64 existing seems to refute that assertion pretty well
+
+1743702696
+grayhatter!~grayhatte@user/grayhatter
+if I'm not mistaken, posix specifies the API much more so than the exact specific behavior
+
+1743703167
+grayhatter!~grayhatte@user/grayhatter
+has 0d0001 been discussed?
+
+1743703203
+grayhatter!~grayhatte@user/grayhatter
+I like that I can pad 0x00ff with 00 to get a uniform alignment but I don't want to put version numbers in hex
+
+1743708128
+andrewrk!~andrewrk@mail.ziglang.org
+janvhs: people keep saying it's like monads from haskell, but there you have to return some kind of encoding for I/O that you want, and then a different system processes the request. here it is simply an interface
+
+1743717254
+latimar!~latimar@user/epicfile
+hey folks, I'm trying to handle signals in my zig code using `std.posix.sigaction`. I need my signal handler function to change some fields in a struct declared earlier, but since the signature of a signal handler function should be `fn handleSignal(sig: i32) callconv(.C) void`, I can't declare it as a method of this struct...Can't figure out a way
+
+1743717254
+latimar!~latimar@user/epicfile
+to access the struct from the signal handler. Could someone point me in the right direction?
+
+1743718809
+janvhs!8d8fee6549@user/janvhs
+andrewrk: ahhh haha I bet you will hear that a lot. It’s probably the naming and me as most people being unfamiliar with Haskell. Still an interesting concept, especially because you can super easily mock things without relying on something like seccomp-ebpf to mess with syscalls
+
