@@ -1,0 +1,664 @@
+1743727730
+Xe!~Xe@perl/impostor/xe
+does the main zig compiler support running in webassembly?
+
+1743727736
+Xe!~Xe@perl/impostor/xe
+like in production mode, not in bootstrap mode
+
+1743728797
+grayhatter!~grayhatte@user/grayhatter
+Xe: are you asking if the zig compiler could emit a wasm binary that could compile zig code?
+
+1743728831
+Xe!~Xe@perl/impostor/xe
+no, i mean if the zig compiler supports being compiled to webassembly such that i can embed it in other programs with webassembly runtimes
+
+1743728841
+Xe!~Xe@perl/impostor/xe
+this is for an Evil Plan ™
+
+1743728881
+grayhatter!~grayhatte@user/grayhatter
+that's literally the same question
+
+1743728893
+grayhatter!~grayhatte@user/grayhatter
+a wasm binary that can compile zig code
+
+1743728911
+Xe!~Xe@perl/impostor/xe
+i mean i guess? my phrasing is more about bin/zig in particular
+
+1743729135
+grayhatter!~grayhatte@user/grayhatter
+I'm sure there are some things that stage1 can't do, but I have no idea what those things are https://github.com/ziglang/zig/tree/master#building-from-source-without-llvm depending on what your evil plan actually is
+
+1743729207
+andrewrk!~andrewrk@mail.ziglang.org
+Xe: lots of compile errors if you try to target wasm32-freestanding because there's a pretty strong dependency on the file system
+
+1743729222
+andrewrk!~andrewrk@mail.ziglang.org
+which is yet another thing that will be solved by this Io interface!
+
+1743729234
+Xe!~Xe@perl/impostor/xe
+andrewrk: how about wasm32-wasi? :)
+
+1743729240
+Xe!~Xe@perl/impostor/xe
+or does it really want exec
+
+1743729242
+andrewrk!~andrewrk@mail.ziglang.org
+you'll have better luck there
+
+1743729255
+andrewrk!~andrewrk@mail.ziglang.org
+try it and see what compile errors you run into: -Dtarget=wasm32-wasi
+
+1743730230
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I am using zig-bootstrap with the native-linux-musl architecture. Can I move the install folder to a different location on my filesystem without any issue?
+
+1743730576
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1743730595
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Thanks
+
+1743758946
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+The goal is to use this c header file in zig: https://github.com/jackaudio/new-session-manager/blob/master/extras/nsm.h/nsm.h
+
+1743759000
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+The file itself has some defines and includes, do I need to care for those when using @cImport?
+
+1743760740
+yataro!~yataro@user/yataro
+flower_: it depends, usually you don't need to think much of defines if you don't know what they do. as for includes, if something is provided by a dependency, you have right to choose, do you want to use system headers and library or build and use them using build.zig. for example, `lo/lo.h` comes from liblo
+
+1743760794
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yataro: ok
+
+1743761836
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm im trying to write a comptime function which can accept either a []const u8 or a specific (named) enum OpCode, I can make the function parameter type but im not sure how to do the comptime check for each of these in the function
+
+1743761894
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if it was just say "accept a bool or int" a switch over @typeInfo seems right, I suppose here I still have to do that but there are further checks (I don't know what) that I'd have to make?
+
+1743762059
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so I've to pass a callback function https://github.com/jackaudio/new-session-manager/blob/master/extras/nsm.h/nsm.h#L85
+
+1743762062
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/jackaudio/new-session-manager/blob/master/extras/nsm.h/nsm.h#L33
+
+1743762100
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I make sure it has the right type / signature? https://github.com/jackaudio/new-session-manager/blob/master/extras/nsm.h/nsm.h#L402
+
+1743762432
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/jackaudio/new-session-manager/blob/master/extras/nsm.h/nsm.h#L149
+
+1743762791
+yataro!~yataro@user/yataro
+flower_: don't forget to set your callback calling conversion to C (assuming you writing it in Zig)
+
+1743762869
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yataro: hm yep that's the first question I have now, do I write that callback in zig or c?
+
+1743762999
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so the zig function has to return: callconv(.C) c_int ?
+
+1743763067
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and how to return void in such case?
+
+1743763158
+yataro!~yataro@user/yataro
+you can write it in zig or c, just make sure your signature matches signature from header 
+
+1743763171
+yataro!~yataro@user/yataro
+for void it is just void
+
+1743763227
+yataro!~yataro@user/yataro
+if you pass this header through `zig translate-c` you can look for assistance in translated code 
+
+1743763275
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok let's see, this is all quite new to me, zig, c ... 
+
+1743763298
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ void *userdata
+
+1743763353
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is in zig: userdata: *const anyopaque
+
+1743763365
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+?
+
+1743763404
+yataro!~yataro@user/yataro
+not necessarily const but yes, *anyopaque
+
+1743763410
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+char **out_msg
+
+1743763450
+yataro!~yataro@user/yataro
+this is probably many-pointer to c string, this would be [*][*:0]u8
+
+1743763472
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok :)
+
+1743763475
+yataro!~yataro@user/yataro
+or *[*:0]u8 if it is used as out parameter
+
+1743763517
+yataro!~yataro@user/yataro
+look for docs, comments, implementation when unsure 
+
+1743763540
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+first some coffee I guess, then I'll see how far I get
+
+1743763570
+yataro!~yataro@user/yataro
+what are you trying to implement btw?
+
+1743763630
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to make a simple texteditor which support the NSM api / nsm.h
+
+1743763669
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so it can receive commands via OSC (open sound control) which may tell the application to save or to quit for instance
+
+1743763707
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so it can be used in a session with multiple modular (audio/music) applications, which all respond the same way to the same command
+
+1743763811
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+lot's of audio stuff is in c / c++, so I try to learn zig to be able to use some of the libraries in this field
+
+1743763947
+yataro!~yataro@user/yataro
+that is curious! i don't know how OSC works, actually it's first time i hear about it. can't help myself but ask how is this supposed to work
+
+1743763979
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://www.non.tuxfamily.org/nsm/API.html
+
+1743764005
+yataro!~yataro@user/yataro
+no i mean in general. like how you trigger save or quit event 
+
+1743764049
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for quit SIGTERM is used actually
+
+1743764103
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for save, the app may receive a msg with the osc address: /nsm/server/save, then the app does his save function and replies with a return code
+
+1743764149
+yataro!~yataro@user/yataro
+and what sends this event?
+
+1743764185
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+a OSC server / udp currently
+
+1743764270
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+typically there is a GUI interface for the server, where the user can press 'save session', the GUI sends a message to the OSC server, the OSC server sends a save command to all the announced applications, waits for their response and then replies to the GUI
+
+1743764325
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://www.non.tuxfamily.org/wiki/Non%20Session%20Manager
+
+1743764380
+yataro!~yataro@user/yataro
+now i get it, thanks 
+
+1743764423
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if you're on linux, you might know JACK (or pipewire using jack)
+
+1743764436
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this allows to route audio from one application to another
+
+1743764500
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that allows a modular setup, wich such a session manager tries to make less complex to manage
+
+1743764527
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+e.g. restore a complete session as it was saved
+
+1743764537
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+including the audio connections between them
+
+1743764654
+yataro!~yataro@user/yataro
+yeah i know some of linux audio, just was unsure how OSC and text editor can work together
+
+1743764787
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+typically it would be a audio application like a softsynth indeed, but this one is to write session notes
+
+1743765716
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm so i can use @compileLog to print comptime stuff but once my source is correct etc builds then fail because @compileLog is being used which is.. annoying
+
+1743765742
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is there a way to print during comptime but not have to manually comment out @compileLog (or alternatives) once my code is correct?
+
+1743765832
+blurrycat!~blurrycat@user/blurrycat
+I hope not tbh, I wouldn't want any of the libraries I use to be able to print arbitrary things to my terminal when I'm compiling
+
+1743765946
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+as security against potential shell injection attacks etc?
+
+1743766418
+yataro!~yataro@user/yataro
+no, afaik there's no other way to log at comptime. compilelogs supposed to be removed after you done 
+
+1743766427
+yataro!~yataro@user/yataro
+*comptimelogs
+
+1743766463
+yataro!~yataro@user/yataro
+i don't this this is a security measure, why?
+
+1743767292
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+mostly in response to blurrycat, i don't see why it would matter if a library printed compile information (even if opt-in) unless for security reasons
+
+1743767327
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also, i am doing 4 asserts but want to execute @compileError if any of them fail.. can't figure out a nice way of doing this
+
+1743767344
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+can't catch on a block in this way, any ideas?
+
+1743767759
+blurrycat!~blurrycat@user/blurrycat
+I just don't want pollution in the build output
+
+1743767837
+blurrycat!~blurrycat@user/blurrycat
+On the other hand if you could do that and not impact downstream users I wouldn't have a problem with it
+
+1743767860
+blurrycat!~blurrycat@user/blurrycat
+(Or in your own executable too, same thing)
+
+1743767946
+blurrycat!~blurrycat@user/blurrycat
+tsujp: Not entirely sure this would work, but scope it and add an errdefer to that scope?
+
+1743768990
+yataro!~yataro@user/yataro
+tsujp: i don't understand, do you mean comptime asserts? do you want to implement assert that reports an error message at comptime, like static_assert in C++?
+
+1743769155
+yataro!~yataro@user/yataro
+assert from std is `if (!ok) unreachable;` you can't catch this (or maybe you can, if you recover from panic with dimdin/zig-recover, never tried it though)
+
+1743769181
+yataro!~yataro@user/yataro
+recovering from panic is about runtime 
+
+1743769776
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+no runtime stuff, this is just a comptime function here's a short paste: https://zigbin.io/d46e29
+
+1743769799
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ideally id like to run those commented asserts (but I guess as if statements) and if any of them fail @compileError just once
+
+1743769819
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+id prefer not to have to negate the conditions and && everything in one big if since that's less readable
+
+1743769945
+yataro!~yataro@user/yataro
+what's the problem then? you can't do what you want with assert, use compileError or write a wrapper 
+
+1743770022
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah not using assert is fine but is the only way to write an entirely new function or an ugly if statement with multiple conditions?
+
+1743770248
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yataro: if this is idiomatic then alright (line 4), mostly just asking if this is the idiomatic way: https://zigbin.io/903834
+
+1743770917
+yataro!~yataro@user/yataro
+i don't know the other way. it is ok but i would prefer `if (!(...)) { @compileError(...); }` to make it more readable
+
+1743771676
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah yeah that works too
+
+1743775272
+happymeal`!~happymeal@centos/community/happymeal
+hey
+
+1743775284
+happymeal`!~happymeal@centos/community/happymeal
+yall should use +R instead of +q
+
+1743775290
+happymeal`!~happymeal@centos/community/happymeal
+sincerely, the rest of the network <3
+
+1743781210
+grayhatter!~grayhatte@user/grayhatter
+how do I debug a build that's successful in debug, but fails using --release=safe?
+
+1743781596
+bw!sid2730@user/betawaffle
+Is the HashMap in std based on SwissTable or something else?
+
+1743781619
+grayhatter!~grayhatte@user/grayhatter
+failed command https://gist.github.com/GrayHatter/21efa9d189b47b18f0d4b88579c3fdba
+
+1743782263
+grayhatter!~grayhatte@user/grayhatter
+it also fails on master as well :<
+
+1743782849
+grayhatter!~grayhatte@user/grayhatter
+so, if you nuke ~/.cache/zig/* then --release=fast will work, but then --release=safe will fail with a different error
+
+1743786120
+TheFox!~TheFox@user/TheFox
+Hi
+
+1743786358
+netvor!~netvor@2a00:ca8:a1f:cd0:1cbe:f76:728f:17a8
+hi :)
+
+1743786453
+TheFox!~TheFox@user/TheFox
+:)
+
+1743791828
+jemius!~jemius@200116b82de24300ddaccb25cf90c1e1.dip.versatel-1u1.de
+Is there a plan to write a standard / specification for Zig? Can't find that in the FAQ
+
+1743791885
+neothechosen!~neothecho@user/neothechosen
+Well, stdlib is some kind of standard by itself
+
+1743791928
+neothechosen!~neothecho@user/neothechosen
+But I think that question isn't irrelevant
+
+1743791940
+jemius!~jemius@200116b82de24300ddaccb25cf90c1e1.dip.versatel-1u1.de
+That's not how that word is used. A standard describes the entire language core
+
+1743792241
+grayhatter!~grayhatte@user/grayhatter
+jemius: it's hard, and not worth a whole lot to write a standard for a language that's currently unfinished 
+
+1743792247
+neothechosen!~neothecho@user/neothechosen
+jemius: perhaps you should develop your take a bit. I understand "language standard" as something similar to the C++ standard, and I find Zig std lib specifications as somewhat similar to that. Considering that Zig is still under 1.0, it's subject to change at any moment.
+
+1743792330
+grayhatter!~grayhatte@user/grayhatter
+neothechosen: brutal response... but I'm actually closer to jemius on this. the stdlib has very little to do with thelanguage standard as I understand what he's asking for
+
+1743792356
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+jemius: https://github.com/ziglang/zig-spec
+
+1743792410
+grayhatter!~grayhatte@user/grayhatter
+rockorager: that's just for the grammer right? it doesn't specify any behavior?
+
+1743792422
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Ah I see
+
+1743792459
+neothechosen!~neothecho@user/neothechosen
+grayhatter: ofc I may be wrong on that point, could use some explanation then
+
+1743792607
+blurrycat!~blurrycat@user/blurrycat
+Until it has a more formal one, I guess the language reference is kind of the "Zig spec" (along with the grammar linked above)
+
+1743792655
+grayhatter!~grayhatte@user/grayhatter
+neothechosen: a language standard would explain the required behaivor of the language. e.g. the semantics of how and when defer would operate, what a compliant and non-compliant implementation would look like. I assume; the behavior of the stdlib lib is unlikely to be included in the language stand, as you can write a zig program without it.
+
+1743792800
+grayhatter!~grayhatte@user/grayhatter
+saying the stdlib is similar to the language specification is similar to saying a thesaurus explains how english should work
+
+1743792858
+neothechosen!~neothecho@user/neothechosen
+Nice analogy. Perhaps should review my understanding
+
+1743792921
+andrewrk!~andrewrk@mail.ziglang.org
+the std lib has an API which can be used as a standard. for instance an alternate zig implementation could provide the same std API but with a different implementation. the reason this rubs people the wrong way is that it's quite unstable at the moment, so it's not a particularly useful standard.
+
+1743792997
+neothechosen!~neothecho@user/neothechosen
+that's what I failed to say in some proper way:)
+
+1743793002
+andrewrk!~andrewrk@mail.ziglang.org
+a compiler's behavior is not really an API contract, which is why it leaves one wanting for a spec document. a std lib API on the other hand can absolutely serve as a spec
+
+1743793023
+blurrycat!~blurrycat@user/blurrycat
+but by itself it does not represent the Zig language standard as a whole right?
+
+1743793049
+andrewrk!~andrewrk@mail.ziglang.org
+right, although much can be inferred, the std lib API does not contain enough information to describe the Zig language
+
+1743793083
+grayhatter!~grayhatte@user/grayhatter
+my understanding of what jemius was asking for, was a document that would enable a "clean room" implementation of the zig language. Which wouldn't require the zig stdlib, would it?
+
+1743793139
+grayhatter!~grayhatte@user/grayhatter
+given you can compile a perfectly valid zig program without using the stdlib at all. That would be the core of the language with stdlib being additional functionality to make the language pleasant to use
+
+1743793179
+andrewrk!~andrewrk@mail.ziglang.org
+such document would be the language specification. it would require the std.builtin namespace, but otherwise would not require using the std lib. but you won't be able to find many working zig programs without a dependency on std, since that's where _start lives
+
+1743793223
+andrewrk!~andrewrk@mail.ziglang.org
+std.builtin has types that the language depends on
+
+1743793321
+grayhatter!~grayhatte@user/grayhatter
+ahh, a complete zig standard being a superset of the zig language specification?
+
+1743793375
+grayhatter!~grayhatte@user/grayhatter
+I wouldn't have assumed _start would live in std
+
+1743793440
+grayhatter!~grayhatte@user/grayhatter
+followup bump on my earlier question for andrewrk, and hint in a direction I could use to debug that error?
+
+1743793451
+grayhatter!~grayhatte@user/grayhatter
+any* hint or direction
+
+1743793459
+mercenary!~mercenary@user/mercenary
+language specification I would expect to be more about things like memory model, like 'can another thread always expect to see sequential modification of two variables in the same order'
+
+1743794357
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Still loving io_uring, it's a joy to work with
+
+1743794431
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Basically every time I want to do something, it's available already in the api (with one exception)
+
+1743794848
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: what was the exception?
+
+1743794863
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Referencing the result of a linked SQE
+
+1743794869
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://github.com/axboe/liburing/discussions/1371
+
+1743794898
+andrewrk!~andrewrk@mail.ziglang.org
+what does linking SQEs normally do?
+
+1743794909
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+They run serially
+
+1743794946
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+But you can't tell the second one "your <x field> is the cqe.res of the sqe in front of you"
+
+1743794993
+andrewrk!~andrewrk@mail.ziglang.org
+your specific case seems similar to splice
+
+1743795002
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah that was a bad example because there are existing solutions
+
+1743795006
+andrewrk!~andrewrk@mail.ziglang.org
+but I guess you also want the buffer
+
+1743795050
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I am writing a little http server, and I have one thread handling accept, and then it uses msg_ring to forward the fd to a thread for handling the request (each thread with it's own ring)
+
+1743795060
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+So main ring -> thread ring
+
+1743795087
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I want to link an accept to a msg_ring, and have it automatically populate the result field of the msg_ring cqe with the fd of the accept
+
+1743795105
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Then the accept thread would "never" have to enter back into userland unless something goes wrong
+
+1743795147
+andrewrk!~andrewrk@mail.ziglang.org
+that's a compelling use case
+
+1743795180
+andrewrk!~andrewrk@mail.ziglang.org
+I don't know why there is such resistance to having syscalls that do multiple things
+
+1743795203
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose it increases the backwards compatibility maintenance cost
+
+1743795244
+andrewrk!~andrewrk@mail.ziglang.org
+but that seems like a reasonable solution to me - have a syscall that does exactly this set of things
+
+1743795331
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+JMAP has this type of thing (albeit in JSON RPC stuff) but it's really useful to prevent RTs
+
+1743795454
+andrewrk!~andrewrk@mail.ziglang.org
+I get where they're coming from, at some point the logic gets more complex, you start needing to do a little bit of computations in the chain, and there is temptation to rely on a computing environment like BPF
+
+1743795469
+andrewrk!~andrewrk@mail.ziglang.org
+but that's a whole can of worms. having more syscalls that do useful sets of operations together is a sweet spot
+
+1743795660
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I tihnk they must have done some magic like this for the link_timeout op. The timeout is the *second* op, but will cancel the first if the timeout expires
+
+1743795683
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+It's probably special cased to start at the same time
+
+1743806971
+Cuboidigon!~Cuboidigo@user/Cuboidigon
+hello
+
+1743807799
+Cuboid!~Cuboidigo@user/Cuboidigon
+test
+
+1743807835
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Test passed
+
+1743807838
+Cuboid!~Cuboidigo@user/Cuboidigon
+yay
+
+1743807921
+Cuboidigon!~Cuboidigo@user/Cuboidigon
+test #2
+
+1743807926
+Cuboid!~Cuboidigo@user/Cuboidigon
+ok that works
+
+1743807943
+andrewrk!~andrewrk@mail.ziglang.org
+if you're testing a bot, they have dedicated channels here on libera for doing that
+
+1743807972
+Cuboid!~Cuboidigo@user/Cuboidigon
+im testing to see if i got glirc to work
+
+1743808691
+clevor!sid649024@id-649024.hampstead.irccloud.com
+#flood on EFnet is also a good place for that, although that channel is coincidentally bridged to 2 Discord servers I am on, which are probably the only bridges anyway.
+
