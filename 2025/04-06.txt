@@ -1,0 +1,828 @@
+1743906022
+daurnimator!~daurnimat@vultr.daurnimator.com
+Still hoping someone might be able to solve https://github.com/ziglang/zig/issues/23110
+
+1743923275
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+what's the fastest possible data structure for a jump table? Given an enum value get some data to use as parameters to a function
+
+1743923355
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Said enum values are from an exhaustive enum with tag types of u8
+
+1743924756
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+could take a struct of arrays though i guess, probably need to benchmark this
+
+1743924794
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+but one could probably also tell by looking at the compiled assembly directly too?
+
+1743924852
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+oh but also std.EnumMap.. so many choices
+
+1743928030
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+src/main.zig:38:16: error: parameter of type '[]const u8' not allowed in function with calling convention 'x86_64_sysv'
+
+1743928100
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it expects [*c]const u8, but I shouldn't use that directly right?
+
+1743928130
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/src/main.zig#L38
+
+1743928228
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/src/main.zig#L115
+
+1743929161
+yataro!~yataro@user/yataro
+flower_: if you `export` your function or if you use other calling convention, you need to use "simple" types. that's right, you don't use `c` pointers in your code, you can use regular zig pointers
+
+1743929350
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but []const u8 doesn't work
+
+1743929401
+yataro!~yataro@user/yataro
+cuz it's a slice, not pointer. you need to use `[*:0]const u8` if it's a C-string 
+
+1743929605
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/4bc52b
+
+1743930118
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: expected type ...
+
+1743930218
+yataro!~yataro@user/yataro
+make all pointer types optional 
+
+1743930384
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+?[*:0]const u8?
+
+1743930418
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+same error
+
+1743930445
+yataro!~yataro@user/yataro
+you probably missed something, there some more pointer types 
+
+1743930527
+yataro!~yataro@user/yataro
+`out_msg` for example, but i suspect it is `?*?[*:0]u8` not `?[*]?[*:0]u8` because of `out` in its name
+
+1743930550
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+out_msg: ?[*]?[*:0]u8
+
+1743930552
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1743930567
+yataro!~yataro@user/yataro
+there should be complete trace of incompatible types and their locations, argument numbers for example 
+
+1743930629
+yataro!~yataro@user/yataro
+once you fix that, you will be closer to compilation. there some minor oopsies here and there like use of `++` with runtime operands
+
+1743930683
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+seems that part compiles now indeed
+
+1743930706
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+now the oopsies (which are not oopsies for me ;) )
+
+1743932092
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+o my, error: expected type '[*c]const u8', found '?[:0]const u8'
+
+1743932150
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I convert ?[:0]const u8 to a c acceptible string
+
+1743932169
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I suck at these types, holy moly
+
+1743932280
+yataro!~yataro@user/yataro
+it's an optional sentinel-terminated slice, not sure why you have this
+
+1743932297
+yataro!~yataro@user/yataro
+`slice.ptr` should be enough to get pointer
+
+1743932413
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it's the return value of std.posix.getenv: https://ziglang.org/documentation/master/std/#std.posix.getenv
+
+1743932474
+yataro!~yataro@user/yataro
+then you first need to check if there's a value, then you can use `.ptr` of slice
+
+1743932522
+yataro!~yataro@user/yataro
+`if (std.posix.getenv(...)) |v| { ...(..., v.ptr, ...); }
+
+1743932735
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1743933210
+yataro!~yataro@user/yataro
+btw i don't know if you noticed, but in C libraries, string is typically null-terminated. this means you must to include null-terminator (0 sentinel in zig). you can refer to this chapter of `Introduction to Zig` book: https://pedropark99.github.io/zig-book/Chapters/14-zig-c-interop.html#sec-zig-obj-to-c
+
+1743933366
+yataro!~yataro@user/yataro
+because there's no way for translate c to understand if null-terminator is requested, default `[*c]const u8` pointer will happily accept pointers from regular slices. this may lead to crashes or even security vulnerabilities
+
+1743933485
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pff I need a break, these types drives me nuts
+
+1743933508
+yataro!~yataro@user/yataro
+i can recommend you to wrap all translate-c functions with safe proxy-functions or write `export`s by hand. in your case you import header-only library so only first way is available for you
+
+1743933592
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+do you have a good resource on that?
+
+1743933757
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm EnumMap, EnumSet, EnumArray, EnumMultiset, BoundedEnumMultiset, just a regular Enum
+
+1743933814
+yataro!~yataro@user/yataro
+14.3.2 from "Introduction to Zig" covers this very well. as for writing safe proxies there's no need for resource, you just did it with `nsmOpen`
+
+1743933893
+yataro!~yataro@user/yataro
+but for proxy you just write a function that calls "unsafe" C-imported version
+
+1743933975
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I take it a dense enum is one that has contiguous tag values?
+
+1743934017
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yataro: so the function of that zig function is to make sure the right data type is passed?
+
+1743934227
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so was is a safe proxy-function exactly
+
+1743935010
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yataro: for nsmOpen and nsmSave I don't pass data myself. But I could wrap c.nsm_send_announce I think, for instance, as I do pass data to that function
+
+1743935049
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yataro: e.g. from nsmOpen I receive data from a c library, which I've to use to create a file for instance
+
+1743935203
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm nah, I don't see how that helps me here
+
+1743936972
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+/usr/lib/zig/lib/std/fmt.zig:532:17: error: cannot format optional without a specifier (i.e. {?} or {any}) @compileError("cannot format optional without a specifier (i.e. {?} or {any})");
+
+1743936985
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm it doesn't say where it is used wrongly
+
+1743938180
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the compiler should have helped me here
+
+1743938184
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+imho
+
+1743938218
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+known problem with @compileError
+
+1743938281
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i think i might be after std.enums.directEnumArrayDefault so i can have a map of enum values to some data about them (e.g. a struct) and access said data in constant time
+
+1743938327
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+not going to be any addition or removal of items at runtime, and only MAYBE changing of some of the data fields in rare cases so I don't think a struct of arrays is the right approach here?
+
+1743938535
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tsujp: depends on how the data is accessed. If you only access one or two fields out of many at a given time, struct of arrays might be better. But I'm guessing your enum isn't very big so the cache effects shouldn't be significant.
+
+1743938755
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Gliptic: the enum tag type is u8, so 256 possible values but it is sparse (not all 256 values are used). The fields will be accessed for a single enum key at each step of a labelled switch (conceptually at the top of a loop)
+
+1743938772
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Gliptic: so actually thinking about it maybe a struct of arrays is better here...?
+
+1743938777
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+arrays of struct should be fine then
+
+1743938821
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*array of structs
+
+1743938831
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+of array of struct (what I am currently doing) is fine?
+
+1743938843
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah (not of)
+
+1743938896
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you access all fields of the struct, they'll be together in memory
+
+1743938933
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and 256 elements is tiny either way
+
+1743938960
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm compile error with a c header https://zigbin.io/ce1389
+
+1743939050
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_: how does the signature of this function look?
+
+1743939418
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/src/main.zig#L49
+
+1743939435
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it's not totally clear which function is causing this, is it?
+
+1743939436
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I mean the one in cimport
+
+1743939448
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+where the error is
+
+1743939451
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah
+
+1743939484
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+looks dodgy
+
+1743939541
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I use this header: https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/nsm.h
+
+1743939553
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but what does the generated code look like
+
+1743939554
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+something with the liblo library I guess
+
+1743939564
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or what is the name of the function you're calling at least
+
+1743939635
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+maybe I'm blind, but I'm not seeing any cImport calls in nsmOpen
+
+1743939662
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/src/main.zig#L148
+
+1743939680
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/src/main.zig#L154
+
+1743939700
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so which one are you getting an error from?
+
+1743939734
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah, so this header has the implementations in it
+
+1743939770
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but how does the _generated_ code for nsm_send_announce look like?
+
+1743939785
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the code it's actually complaining about in cimport.zig
+
+1743939896
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+look like this init fails: https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/src/main.zig#L153
+
+1743939907
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+sorry, how do I find that generated code?
+
+1743939917
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you have the path to it right there in the error message
+
+1743939966
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/nsm_h.zig#L2249
+
+1743939975
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+let me check ...
+
+1743940001
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that doesn't seem to align with what your console said
+
+1743940035
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is this a translate-c version
+
+1743940079
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/9c1ff0
+
+1743940092
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+... the whole function
+
+1743940095
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I've already seen this line
+
+1743940141
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+/home/archie/programming/Zig/zjasmnotes/.zig-cache/o/0affad9a0459ab79b828ad466d4d662d/cimport.zig:2035
+
+1743940155
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/c94c75
+
+1743940176
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that isn't the function we were talking about?
+
+1743940189
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or wait
+
+1743940189
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+from line 11?
+
+1743940197
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+line 39 I guess
+
+1743940222
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that should be the line then 
+
+1743940245
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it was actually nsm_osc_open then?
+
+1743940278
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+problem is that out_msg is declared as char*
+
+1743940307
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so this code is broken even in C IIRC
+
+1743940385
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it works in C at least :)
+
+1743940686
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, mixing up my languages, in C that would unify to const char*, so I guess zig translate-c doesn't do that correctly
+
+1743940767
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: so might be a bug in translate-c, do I understand that correctly?
+
+1743940772
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what you can do is compile the implementation of such functions in a .c file, and only cImport a declaration into zig
+
+1743940848
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+still write it in zig, but translate it to a c file?
+
+1743940861
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+sorry, all this is a bit new for me
+
+1743940863
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, build it as C
+
+1743940870
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in a .c file
+
+1743940884
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so write the function in c?
+
+1743940892
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+write a shim that just calls this function in C
+
+1743940905
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and cImport a declaration of that shim into zig
+
+1743940924
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+cImporting function definitions is always hit and miss
+
+1743940979
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but this nsm.h seems weird
+
+1743940984
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you using it correctly
+
+1743941009
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+There is a example in nsm.h
+
+1743941009
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it has all the definitions, not declarations
+
+1743941018
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+which I'm following
+
+1743941042
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+like, you can only include this nsm.h in one C file, or it'll break
+
+1743941094
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what I would do is just make a nsm.c that includes this C file, then copy the relevant declarations to a nsm_actual_header.h and zig @cImport that
+
+1743941121
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which is how nsm should have been implemented in the first place
+
+1743941148
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*that includes this nsm.h file
+
+1743941199
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah lol #define NSM_EXPORT __attribute__((unused)) static
+
+1743941217
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's a pretty stupid way to make an header-only library
+
+1743941242
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Also C is new to me, lol
+
+1743941252
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but I didn't wrote it, to be clear
+
+1743941259
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I try to follow you
+
+1743941265
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I wouldn't have called it stupid if I thought that :)
+
+1743941280
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+heheh
+
+1743941323
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and actually this #define NSM_EXPORT makes it annoying to fix
+
+1743941334
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+without altering nsm.h
+
+1743941412
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I think this library just has to be fixed, moving the function definitions to a nsm.c, leaving only declarations in nsm.h
+
+1743941424
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I understand that's a bit of a challenge if you're new to C
+
+1743941449
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+This advise is already a start
+
+1743941493
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+or rewrite it in zig? But then you've to deal with c library liblo directly
+
+1743941520
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's one option, you could also take the translate-c generated code and fix it
+
+1743941534
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+like adding the necessary cast in that if (out_msg) ...
+
+1743941573
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or @as might be enough
+
+1743941764
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, let me see, need to go for a while now
+
+1743941769
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+thanks for now
+
+1743951136
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: should that edited nsm.h file use the extern keyword for it's declarations?
+
+1743951242
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+probably not
+
+1743951306
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+doesn't really matter, extern is implicit in C
+
+1743951334
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it should be extern, yes, so that you can link them to the definitions in nsm.c
+
+1743951521
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+those init functions doesn't need a declaration? There are none it seems: https://git.sr.ht/~flower/zjasmnotes/tree/nsm/item/nsm.h#L662
+
+1743951575
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, nsm.h currently _defines_ them (which also declares them), but if you move the definition to a separate nsm.c they need declarations in a header just like everything else
+
+1743951637
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the nsm.c would not be imported with @cImport in zig, but added as a source file in build.zig
+
+1743951644
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1743951757
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What if LLVM had a build.zig so it could be used in the compiler without requiring LLVM system libraries?
+
+1743952378
+yataro!~yataro@user/yataro
+ziglang.org Zig builds don't need LLVM as system installed libraries as LLVM linked statically 
+
+1743956167
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: it compiles somehow: https://git.sr.ht/~flower/zjasmnotes/tree/edit_nsm_header/item/NSM
+
+1743956216
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+But it doesn't work properly yet. It seems it can announce to the OSC server, but the app doesn't receive the reply I think
+
+1743956219
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1743956225
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+time for a break
+
+1743957262
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_: nice. And no, you don't need another include for lo/lo.h as nsm_zig.h already includes it, but it also doesn't hurt
+
+1743957306
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+goes for the other headers too
+
+1743957512
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Does the latest master build for you? I am using the latest nightly. https://www.irccloud.com/pastebin/5q0BJryx/
+
+1743958105
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Wait, I didn't use LLVM libraries built with Zig.
+
+1743958822
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm not sure why I don't receive a reply, you would think that's automatically handled in a created thread:
+
+1743958825
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://liblo.sourceforge.net/docs/lo__serverthread_8h.html#a6713cedfb0b2c4f066ec8a19366bf095
+
+1743959624
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm seems I've to check for OSC msg via nsm_check_nowait
+
+1743959632
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but then it crashes https://zigbin.io/e78542
+
+1743960004
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+panic: member access within misaligned address
+
+1743960317
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/ad961b
+
+1743960665
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: o my, got it working: 
+
+1743960667
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ .flags = &.{"-fno-sanitize=undefined"},
+
+1743960713
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+one small step for ... one giant ... 
+
+1743960717
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+:)
+
+1743960878
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+cool
+
+1743961129
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, turning that off doesn't really fix the problem
+
+1743961259
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: ok, but the app works at least
+
+1743961269
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: that's a problem in the c library?
+
+1743961296
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+maybe, or maybe the C library is used wrongly
+
+1743961314
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+liblo that is
+
+1743961446
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm https://git.sr.ht/~flower/zjasmnotes/tree/edit_nsm_header/item/NSM/nsm.c#L342
+
+1743961533
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+bbl
+
+1743961537
+Cuboid!~Cuboidigo@user/Cuboidigon
+hello, im re-learning zig, but the good way where i gradually make mini projects where i use a new feature, i just did command line arguments and random numbers and a tiny bit of allocators, what should i do next
+
+1743965154
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: or can the misuse be in my zig code? All data types passed to those c functions are accepted by the compiler ... 
+
+1743965184
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+maybe wrong type usage on my side ... that's always a possibility unfortunately, heh
+
+1743965199
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but then the compiler would catch that you would think
+
+1743965245
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+on the other hand, that nsm.h code is used in many programs, without problems apparently
+
+1743965663
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, that nsm lib you're using is doing silly things like `typedef void * nsm_client_t;`, so I there's not much type safety on that one at least
+
+1743965765
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: I see, but fixing such things atm  is out of my scope 
+
+1743965770
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1743965797
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+probably not the problem here, but still
+
+1743965840
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+no it has a problem with lo_arg it seems
+
+1743965867
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm how hard would it to write that nsm.h in zig
+
+1743965900
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+might be a nice exercise, but it should also make sense somewhat before I start 
+
+1743969543
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+meh this is unfortunate, I'm stuck I think
+
+1743969570
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+misalligned address, good luck
+
+1743973037
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ReleaseFast works, but that disables UBSAN afaik
+
+1743975388
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+how to do work with dynamically growing collections in comptime?  is there any good example / resource?   eg. i have @embedFile which is a text file where i use custom format to define some glyphs.. long story short, each glyph is something like [N]u9 where N is not set in stone (each glyph can have different width).
+
+1743975459
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+what i can do now is define upper bound and work with arrays set to that length (and track length of collected glyph in a separate var) but i wonder if there's an easier way
+
+1743975561
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+i also tried to define buffers as eg. `var glyph = .{}` and as i parse & decode a glyph, do `glyph = glyph ++ .{foo}` (note that my "font" is binary and has fixed height 9, hence only width is interesting)
+
+1743975685
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+.. howeve that feels odd, because IIUC (which i probably don't) i'm then essentially working without types.
+
+1743977693
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+netvor: one way is to do the work to find the number, and because that number is also comptime you can then create an array using the result and do the work again
+
+1743977727
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I’ve seen that done using the counting writer plus null writer to count what some format string will be, then create an array with the result
+
+1743977886
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+i see
+
+1743977941
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+i thought about it a bit in the meantime and i'll probably end up with a good ol' array + index anyway
+
+1743977975
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+but i was wondering if tuples are the usual way and i just don't know how to use them
+
+1743978064
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+honestly i kind of forgot that Zig even has them, except for, ehm, std.log, prints, et al. :D
+
+1743978264
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+(now i looked them up and, whoa, we even have destructuring...)
+
+1743982865
+andrewrk!~andrewrk@mail.ziglang.org
+destructuring can be useful when trying to avoid `var` and `undefined` 
+
+1743982877
+andrewrk!~andrewrk@mail.ziglang.org
+generally, const is preferred 
+
