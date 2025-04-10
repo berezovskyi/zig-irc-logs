@@ -1,0 +1,436 @@
+1744193674
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+when should I use @typeInfo(@TypeOf(...)) versus accessing .default_value_ptr to get values on struct fields for comptime stuff
+
+1744193722
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+With the former I can explicitly check additional things like .alignment or .type and so forth, so I suppose if I need to do that I do the former whereas if I just want the comptime values as "painlessly" as possible I can access .default_value_ptr instead?
+
+1744194274
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also i swear i remember reading void is equal to {} but i cannot find that on the docs page again (yet), is that right?
+
+1744195247
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+{} returns void, yes
+
+1744199823
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+is there a maximum of struct size?  i'm trying to create `matrices: std.BoundedArray(Matrix, 256)` where  `const Matrix = struct {cells: std.BoundedArray(Vector2, 10 * 1024)}`  but i get segfault
+
+1744199834
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+or maybe it's a maximum stack size?
+
+1744200064
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+btw @sizeOf the cell array is 73736, so i want 256 x that memory, ie. 18M
+
+1744200512
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+That should be fine to dynamically allocate but I would not generally expect it to fit on the stack, no
+
+1744200620
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+i see
+
+1744200645
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+i'll just use arraylist
+
+1744200674
+netvor!~netvor@2a00:ca8:a1f:cd0:41e0:84d1:9ac4:27ee
+i guess i was greedy with the arrays :)
+
+1744201028
+lemons!~doggie@user/doggie-:49517
+when making an .so, how do i import exported fns from root.zig?
+
+1744201060
+lemons!~doggie@user/doggie-:49517
+rn doing const collision = @import("exports/collision.zig") but that doesnt seem to care for its contents
+
+1744201079
+lemons!~doggie@user/doggie-:49517
+dk if i need to reference the fns contained hterein somehow
+
+1744202718
+yataro!~yataro@user/yataro
+lemons: you link the library and use `extern` function declaration, but why would you compile so from zig just to consume it by zig later? 
+
+1744202953
+lemons!~doggie@user/doggie-:49517
+yataro: ? i meant as in having a bunch of "extern def" files and (actually) exporting them from root.zig
+
+1744202979
+lemons!~doggie@user/doggie-:49517
+im not reusing it from another zig prgram, im passing it to a c game engnie
+
+1744203057
+lemons!~doggie@user/doggie-:49517
+src/root.zig, src/exports/exports_a.zig, src/exports/exports_b.zig, etc
+
+1744203353
+lemons!~doggie@user/doggie-:49517
+but i just did export const thing = @import("...").somefunction; and that seemms to work fine
+
+1744205186
+rapunzelssmurf!~rapunzels@user/rapunzelssmurf
+tung tung tung sahur
+
+1744206247
+meidam!~meidam@user/meidam
+rockorager: I just saw you on Kristoff's stream
+
+1744206257
+meidam!~meidam@user/meidam
+Or I see you there currently
+
+1744206261
+meidam!~meidam@user/meidam
+Hehe
+
+1744206862
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im trying to append to a slice by returning new values-to-append from a switch, if i only need to append a single item it's fine but if i want to append 2 or more at a time i get erors regarding that plurality
+
+1744206892
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+slice_to_append = slice_to_append ++ [_]EnumField{switch ...};     is the pattern
+
+1744207520
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm can you just not break from a switch prong and return an _array_ of something..?
+
+1744214696
+grayhatter!~grayhatte@user/grayhatter
+ tsujp no, because that data needs to live somewhere
+
+1744214847
+grayhatter!~grayhatte@user/grayhatter
+1 ++ 1 ++ 1 = [1, 1, 1] so zig will reserve 3 units of memory for that, where 1 ++ (choose 1 or 2) ++ 1 = [1, 1, 1] or [1, 2a, 2b, 1] so zig can't know how much space to reserve
+
+1744215282
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+++ on slice is only possible in comptime, and at comptime you can return a slice of varying length from the switch
+
+1744215294
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+this is at comptime and I did get it working
+
+1744215340
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+you need to do this:     slice_to_append = slice_to_append ++ outer: { break :outer [_]EnumField{switch ...} }
+
+1744215365
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+huh
+
+1744215372
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+in switch prongs which return just one you can do foo => .{ ... }    and in switch prongs that return many you can do  bar => { ... break :outer payload }
+
+1744215404
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i can paste the code if you'd rpefer but it wont be compilable because its for a project im working on and i havent pushed the code yet
+
+1744215409
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so id be a snippet for syntax only
+
+1744215426
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't need to use any labels or scopes to do it
+
+1744215440
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+maybe I don't understand what you're doing in the switch
+
+1744215462
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i do, the switch has three prongs, two of which return a single EnumField, the final returns N EnumFields
+
+1744215473
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+The named blocks is the only way the compiler shut up and let me do it
+
+1744215480
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you've wrapped the switch in an array too
+
+1744215487
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yes
+
+1744215488
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why?
+
+1744215499
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if the switch returns arrays, you don't need that
+
+1744215509
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+not _all_ prongs return an array
+
+1744215521
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, why can you not make all prongs return arrays then
+
+1744215532
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+even if some are only one-element arrays
+
+1744215535
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+If i dont wrap the switch the compiler complains about expecting a single element but receiving an array, and vice versa
+
+1744215569
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+mostly curious, you can do it without the block scope if you have the single item prongs return as foo => &.{.{ ... }}
+
+1744215580
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't understand how you can return either an array and stuff that into an array
+
+1744215589
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*either an array or a scalar
+
+1744215642
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i can paste the code later if you'd like
+
+1744215649
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is there some flattening zig is doing that I'm not aware of
+
+1744215676
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+this is comptime with inline loops too so yeah there's a lot of flattening
+
+1744215693
+torque!~tachyon@user/torque
+sounds like a compiler bug to me
+
+1744215701
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flattening of arrays, specifically
+
+1744215704
+torque!~tachyon@user/torque
+comptime concatenation shouldn't do any flattening
+
+1744215723
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm wondering if you're actually hitting the case that doesn't make sense
+
+1744215762
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i can turn this into a standalone example (for tomorrow) and link it, for a sanity check then
+
+1744215835
+torque!~tachyon@user/torque
+actually it may be a very weird coercion? iirc &[1]Type can coerce to *const Type? or am i misremembering
+
+1744216301
+grayhatter!~grayhatte@user/grayhatter
+at comptime [[1,1],[1,1]] will become [1,1,1,1], which could be seen as flattening
+
+1744216347
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh, is that so? that sounds weird
+
+1744216355
+grayhatter!~grayhatte@user/grayhatter
+thing[stride_of_2][stride_of_one]
+
+1744216361
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what if you wanted [[1,1],[1,1]]
+
+1744216375
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah, you just mean the memory layout?
+
+1744216381
+grayhatter!~grayhatte@user/grayhatter
+2d_thing[1][0] is flattened[2]
+
+1744216405
+grayhatter!~grayhatte@user/grayhatter
+yeah, that's the memory layout
+
+1744216433
+grayhatter!~grayhatte@user/grayhatter
+otherwise it would be zig changing your type, and it obviously won't do that, so I discarded that question because I know you knew that
+
+1744216649
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+interesting, it _does_ seem like `slice_of_u8 ++ [_]u8 { [_]u8 { 1 } }` compiles
+
+1744216673
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or perhaps it's laziness that just doesn't evaluate it
+
+1744216734
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: types are fungible 
+
+1744216738
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh lol, I didn't make `main` pub
+
+1744216979
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, I can't reproduce this at all, it fails with or without extra scopes/labels
+
+1744217098
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as in, the switch in `[_]EnumField{switch ... }` _must_ return an EnumField (of course)
+
+1744219128
+SultansOfCode!~SultansOf@user/SultansOfCode
+Is it possible to create function types based on types? Like, my game has enemies and each enemy has a different movement, so I want to pass a function when creating them and, when they should move, they call the movement function. Like: const MovementX: type = fn (comptime T: type, object: *T, deltaTime: f32) void;
+
+1744219532
+bblack!~bblack@wikimedia/bblack-WMF
+SultansOfCode: I don't think you can do that directly.  But I think you could make a function that takes T as a parameter, and returns a vtable-like struct that contains something like that?
+
+1744219572
+bblack!~bblack@wikimedia/bblack-WMF
+and/or use anytype to help
+
+1744219801
+bblack!~bblack@wikimedia/bblack-WMF
+lib/std/hash_map.zig has some interesting patterns to study in this regard (re: a function that takes type parameters and returns a structure full of functions which use those types in their signatures).  And lib/std/mem/Allocator.zig shows off vtable constructs.
+
+1744219809
+bblack!~bblack@wikimedia/bblack-WMF
+but I'm not exactly sure how to glue together what you're looking for
+
+1744219946
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter Gliptic i need to go to bed now so ill post the variations of this thing tomorrow, but the one ive just cleaned up and am using is here: https://github.com/tsujp/zevem/blob/master/src/lib/opcode.zig#L218-L269
+
+1744219986
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: what bblack is exactly how you'd do that. zig is smart enough to generate machine code that will be equivalent to creating a unique function for each suppiled type
+
+1744220006
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+grayhatter Gliptic the one with just the EnumField stuff is this (yes, i really did screenshot my own code instead of copy pasting lmfao, very tired right now): https://i.imgur.com/hLJYc4X.png
+
+1744220044
+grayhatter!~grayhatte@user/grayhatter
+but for what you're describing, I'd probably write a function that returns a type, which would be a struct with it's own method function. Depending on what your code looks like
+
+1744221905
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tsujp: ok, so you're returning from _outer_ only when you return an array, that makes sense then
+
+1744221924
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I still don't know why the other branches can't just return an array too
+
+1744222768
+SultansOfCode!~SultansOf@user/SultansOfCode
+I created one for BulletMovement: const BulletMovement: type = fn (self: *Bullet, deltaTime: f32) void;
+
+1744222785
+SultansOfCode!~SultansOf@user/SultansOfCode
+And on init I added fnMovement: *BulletMovement
+
+1744222811
+SultansOfCode!~SultansOf@user/SultansOfCode
+Then, when I create the bullets, I pass: &Bullets.normalMovement, which is: pub fn normalMovement(self: *Bullet, deltaTime: f32) void
+
+1744222835
+SultansOfCode!~SultansOf@user/SultansOfCode
+I got an error about const: error: expected type '*fn (*bullets.Bullet, f32) void', found '*const fn (*bullets.Bullet, f32) void'
+
+1744222852
+SultansOfCode!~SultansOf@user/SultansOfCode
+Why? How to fix?
+
+1744223083
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: what have you tried?
+
+1744223177
+SultansOfCode!~SultansOf@user/SultansOfCode
+Casting everything to *const Bullets.BulletMovement
+
+1744223181
+SultansOfCode!~SultansOf@user/SultansOfCode
+But seems wrong
+
+1744223188
+SultansOfCode!~SultansOf@user/SultansOfCode
+It works, but... Dunno
+
+1744223261
+grayhatter!~grayhatte@user/grayhatter
+SultansOfCode: that shouldn't have worked the way you describe it
+
+1744223298
+grayhatter!~grayhatte@user/grayhatter
+casting should be avoided, and you don't need to cast there
+
+1744223360
+SultansOfCode!~SultansOf@user/SultansOfCode
+By casting, I mean this: pub fn init(x: f32, y: f32, vx: f32, vy: f32, bulletType: BulletType, angle: f32, color: rl.Color, friendly: bool, fnMovement: *const BulletMovement) Bullet {
+
+1744223493
+grayhatter!~grayhatte@user/grayhatter
+there's no cast there either 
+
+1744223950
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+SultansOfCode: why is fnMovement *const?
+
+1744224011
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+SultansOfCode: how does the type of a function pointer look?
+
+1744224167
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+like, does it make sense to write anything through a function pointer?
+
+1744226530
+SultansOfCode!~SultansOf@user/SultansOfCode
+Gliptic, thinking like this, no
+
+1744226560
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+SultansOfCode: so should it be *const or *?
+
+1744226735
+SultansOfCode!~SultansOf@user/SultansOfCode
+*const :P
+
+1744226760
+SultansOfCode!~SultansOf@user/SultansOfCode
+But, at first glance, I thought this conts would act like in c++, a function that does not modify things inside
+
+1744226786
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's not how it works in C++ either
+
+1744226832
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah, you're thinking of the weird way you declare the constness of "this"
+
+1744226866
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig has no implicit "this", so doesn't need any weird syntax like that
+
+1744226866
+SultansOfCode!~SultansOf@user/SultansOfCode
+Yep
+
+1744234460
+bw!sid2730@user/betawaffle
+Has anyone tried to write bpf programs in zig?
+
