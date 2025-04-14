@@ -1,0 +1,192 @@
+1744514491
+jmctagger!~jmcaine@user/jmctagger
+New here.  Question: in std.process, why aren't argsWithAllocator() and argsAlloc() functions named argsIterator() and argsSlice()?  Such names seem more fit to caller's interests ("do I want my args as an iterator or a slice?") than two names that both involve "alloc", suggesting, somewhat confusingly, very little about the actual difference between them.
+
+1744514770
+grayhatter!~grayhatte@user/grayhatter
+jmctagger: did you read how args are process on windows?
+
+1744514918
+jmctagger!~jmcaine@user/jmctagger
+I **think** I understand the Windows, WASI, other target differences... though on a platform like mine (Linux), I think I can use either, and might like to choose based on "what I get out of it", as that seems to be the only real difference.
+
+1744514966
+jmctagger!~jmcaine@user/jmctagger
+Likewise, I understand the potentially disappearing std.os.argv (https://github.com/ziglang/zig/issues/10746)
+
+1744515010
+grayhatter!~grayhatte@user/grayhatter
+oh, wow, I've never looked at into argsAlloc before... this makes me sad
+
+1744515090
+grayhatter!~grayhatte@user/grayhatter
+I get the sense argsAlloc() was a helper function that no one has been willing to delete yet
+
+1744515154
+jmctagger!~jmcaine@user/jmctagger
+That is, I know I should use argsWithAllocator() or argsAlloc(), and, after investigating (the code, in particular), I'm very motivated to use argsWithAllocator().  It might even be nice if the docs said, for argsAlloc(): "This wraps argsWithAllocator(), packaging and returning a slice rather than an iterator." -- that would give a hint to somebody about the innerds without them having to look at the code to realize the significance of the difference.  It'
+
+1744515155
+jmctagger!~jmcaine@user/jmctagger
+s sort-of obvious, in hindsight, but....
+
+1744515186
+grayhatter!~grayhatte@user/grayhatter
+anyways, on linux, I'd just use `it = std.process.args(); while (it.next()) |arg| ...;`
+
+1744515217
+jmctagger!~jmcaine@user/jmctagger
+Yes, that ("...a helper function that no one has been willing to delete...") does make some sense... indeed, I'm not very enthusiastic about it, now that I see its innerds.
+
+1744515305
+Affliction!affliction@idlerpg/player/affliction
+and here I've been using argsAlloc and bringing my own iterator
+
+1744515343
+jmctagger!~jmcaine@user/jmctagger
+Ah, interesting.  I wonder if the ziglang.org/documentation should say something about process.args(); it talks about argsAlloc() (amazingly?!), with reference to WASI, but a common newbie task is going to be processing command-line args, so it feels like it shoudl be relatively simple and should be in the doc.  methinks.
+
+1744515538
+jmctagger!~jmcaine@user/jmctagger
+I even thought that the nice https://renatoathaydes.github.io/zig-common-tasks/#get-command-line-args didn't treat the plain std.process.args(), but see now that it does only AFTER paying lots of lines to the argsAlloc() and argsWithAllocator().  So, perhaps the bottom line is: point users to process.args() as the "normal" way, and THEN the alternate (or two?) that might be valuable or necessary for Windows / WASI / whatever.  Somehow, it doesn't seem that 
+
+1744515539
+jmctagger!~jmcaine@user/jmctagger
+the "easy" way for linux guys like me is front-and-center in searches.
+
+1744515591
+jmctagger!~jmcaine@user/jmctagger
+@Affliction -- indeed, it looks like you might be participating in Dickens' "Office of Circumlocution" :)
+
+1744515702
+grayhatter!~grayhatte@user/grayhatter
+jmctagger: IIRC there are updates planned for significant sections of std.process and other vdso innards because... every OS likes their own "standard" 
+
+1744515844
+jmctagger!~jmcaine@user/jmctagger
+Cool!  Thanks!
+
+1744517442
+jmctagger!~jmcaine@user/jmctagger
+For the record, to complete my thought: argsFree() seems to be tied to argsAlloc() (only) -- if, indeed, argsAlloc() is something that might belong on the chopping block, it might should be noted that argsFree() could belong with it.  True?  Is this the type of thing that wants an Issue to be opened?
+
+1744518142
+grayhatter!~grayhatte@user/grayhatter
+jmctagger: I usually only open issues when I've confirmed something should change, and until std.process sees it's updates, I don't know which direction the issue should face
+
+1744518166
+grayhatter!~grayhatte@user/grayhatter
+that said, if argsAlloc() is deleted, there's 0% chance argsFree() will be missed, with or without an issue
+
+1744521690
+jmctagger!~jmcaine@user/jmctagger
+grayhatter: good to know, and that's fine.  Perhaps somebody with authority will see this and decide it's worth formalizing.  I don't want to add issue-clutter, especially for documentation.  But thought I'd offer to see it through.  I guess issue 10746 might call attention, when handled, if argsAlloc() isn't already in somebody's active box anyway.  Thanks for the insights for this newb.
+
+1744529258
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Gliptic: i mean there is a pre-defined set of functions (ideally in an enum) and this new struct has a field which can only be one of said set (enum) of pre-defined functions
+
+1744529289
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im constructing a comptime table and enum from this, so functions might be re-used etc
+
+1744530637
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Gliptic: (and others) here's a link to a very simplified example of what I am trying to do: https://godbolt.org/z/x17Pq6b9o
+
+1744530708
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+in reality its all at comptime and im going to be switching over an enum to call those functions so wanting to keep type knowledge (parameters and return type) is important
+
+1744530724
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i can post the _actual_ code (its in a public repo)
+
+1744533613
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Man this is hard.. is this even possible in Zig at the moment..?
+
+1744537264
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+fyi: I don't have to be logged into sourcehut to pass the bot
+
+1744541265
+bw!sid2730@user/betawaffle
+What happens if unreachable is hit in ReleaseFast?
+
+1744541393
+bw!sid2730@user/betawaffle
+(I just want to know if it’s guaranteed to crash, or if it’s allowed to arbitrarily corrupt things and keep running)
+
+1744541483
+bw!sid2730@user/betawaffle
+Or if I need to guarantee that should I use @trap?
+
+1744541513
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i dont know for sure but ReleaseFast does not include runtime safety checks so id say its probably undefined behaviour
+
+1744542611
+Affliction!affliction@idlerpg/player/affliction
+By my understanding, the compiler is allowed to assume the conditions that would lead to reaching it truly won't happen, and so, anything can happen, depending on how the compiler decides to optimize based on that.
+
+1744542807
+Affliction!affliction@idlerpg/player/affliction
+So if(!x) { unreachable; } might just end up thrown away completely (and perhaps, the optimizer can assume x is true in later code?).
+
+1744550431
+lemons!~doggie@user/doggie-:49517
+can i defer if(cond) break; in a while loop
+
+1744551188
+lemons!~doggie@user/doggie-:49517
+nop i cant
+
+1744551190
+lemons!~doggie@user/doggie-:49517
+sad
+
+1744555662
+clevor!sid649024@id-649024.hampstead.irccloud.com
+In x86_64-linux, is there a syscall that acts like `sendfile`, but for arbitrary fd types? In my assembly program, I use `read` and `write`, but I would like to use just one syscall to save a few bytes.
+
+1744556382
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The problem with `sendfile` is that it doesn't work if a file had been opened in O_APPEND mode, which is probably the case for stdout. `copy_file_range` only works for regular files, `splice` also requires the output fd not be opened in O_APPEND mode, and `tee` requires both fds to be pipes.
+
+1744556442
+bw!sid2730@user/betawaffle
+is `enum(comptime_int) {...}` something i can do? does it do what i expect?
+
+1744556492
+bw!sid2730@user/betawaffle
+(it looks like i can, yay)
+
+1744571559
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: there is splice, but it has its own set of limitations
+
+1744571645
+andrewrk!~andrewrk@mail.ziglang.org
+in the reader/writer interface reworking that I'm doing, this kind of optimization happens
+
+1744571938
+grayhatter!~grayhatte@user/grayhatter
+there's no single syscall, but if you mmap the fd, you can just send the pointer right into the kernel... I *think* doing it that way, the kernel is the process that triggers the pagefault, so it will effectively give you want you want
+
+1744572117
+grayhatter!~grayhatte@user/grayhatter
+oh, TIL a file in O_APPEND changes the behavior of sendfile :/ nevermind, that suggestion is dumb 
+
+1744572521
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I was thinking about optimizing [mini-utils](https://github.com/myclevorname/mini-utils)' cat program.
+
+1744572700
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Also, it would be nice to see if Zig is doing LTO in the progress tree.
+
+1744575952
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: generally, all zig code goes into one compilation unit. do you mean to adjust the linker progress line to mention whether any of the linker inputs are llvm bitcode files?
+
