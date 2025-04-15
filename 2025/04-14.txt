@@ -1,0 +1,428 @@
+1744596025
+daurnimator!~daurnimat@vultr.daurnimator.com
+clevor: you can with io_uring. but it's non trivial
+
+1744605790
+grayhatter!~grayhatte@user/grayhatter
+is there a way to get the current build step?
+
+1744605829
+grayhatter!~grayhatte@user/grayhatter
+from within the build.zig I'm not looking for `--list-steps`
+
+1744605851
+grayhatter!~grayhatte@user/grayhatter
+I want to change the default config option to enable them during tests
+
+1744607735
+andrewrk!~andrewrk@mail.ziglang.org
+there's no such thing as the current build step during the configure phase. the task is to return a build graph, and the user may ask for more than one step to be completed
+
+1744608016
+grayhatter!~grayhatte@user/grayhatter
+is the correct way then `if (!options.feature_enabled and !builtin.is_test) @compileError("...");`
+
+1744608096
+grayhatter!~grayhatte@user/grayhatter
+I'm writing bot detection code, which contains a lot of extra information, that I don't want to include by default. I'm looking to always test the code, but default to not calling the detection code unless it's enabled
+
+1744608706
+grayhatter!~grayhatte@user/grayhatter
+let me ask this question better... how can I make sure I always test code, while still having the feature defaulted to disabled
+
+1744610610
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: sounds like you should make it such that `zig build test` runs your full test suite
+
+1744610641
+andrewrk!~andrewrk@mail.ziglang.org
+you can have a feature defined separately that defaults to disabled, and have your test step ignore it
+
+1744614281
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm is it not possible to "spread" elements into a tuple within that tuples definition? i.e. .{ a, b, c } but imagine b is an inline for loop which spits out more elements
+
+1744614973
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i cant get the syntax, if it even possible, hmmm
+
+1744617420
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Interestingly @This inside a tuple field for a comptime function resolves to the return type of the function that tuple (might) be used in instead of the tuple itself... how curious
+
+1744617434
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Shouldn't it be the tuple itself since that's the closest struct
+
+1744617447
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Methinks this might be impossible which is a shame
+
+1744617569
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I also cannot "copy" a comptime tuple to change a value of one of it's fields during comptime for some configuration
+
+1744617760
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a tuple isn't a struct definition
+
+1744617767
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's a value
+
+1744617867
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@This() is the type of the closest struct definition
+
+1744617881
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Hangon, but isn't a tuple a type of struct?
+
+1744617935
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's a value of an anonymous struct type
+
+1744618043
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't expect .{ .x = @This() } to return the type of the anonymous struct either, do you?
+
+1744618074
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I think I am missing something here, is there some mismatch between `type` view of what a tuple is and how that is represented as std.builtin.Type
+
+1744618133
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't know what that means, I'm just saying there's a difference between a value and a type definition
+
+1744618150
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Gliptic: I.. do..? @typeInfo(@TypeOf(.{ .x = @This() })) would show its a struct with is_tuple set to true right?
+
+1744618158
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@This() returns the type of the closest struct {}
+
+1744618173
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+an anonymous struct is a value, not a type definition
+
+1744618186
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Oh hangon I think it clicked
+
+1744618280
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+That's interesting, I've been thining about these things as similar from a syntax point of view and because they show up the same in std.builtin.Type have been thinking "well, it's eventually a struct so why not?"
+
+1744618285
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tsujp, my example isn't even a tuple
+
+1744618333
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah sorry the = makes it a struct I think, lemme double check on godbolt
+
+1744618345
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but also, I meant what @This() inside it would return
+
+1744618446
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as for spreading tuples, afaik ++ works for concatenating comptime tuples
+
+1744618481
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Does this mean that if people do that anonymous struct return pattern `return struct { ... }` that @This() inside that would refer to said anonymous struct but if they did `return .{ ... }` a @This() inside that would NOT refer to it, even though those two things may appear to be the same
+
+1744618502
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they are very different
+
+1744618524
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+one returns the type itself and one returns a value of that type
+
+1744618561
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ooooooooooooook
+
+1744618628
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+As for the ++ I mean something like this .{ .{a, 1}, .{b, 2}, for (3..7) |x| .{x, x}, {z, 123} }
+
+1744618643
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+that syntax isn't valid, and ++ isn't valid there either
+
+1744618677
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+The result would be a flat tuple .{ .{a, 1}, .{b, 2}, {3, 3}, {4, 4}, ..., {z, 123} }
+
+1744618709
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, it would need to be a slice
+
+1744618769
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+This is entirely at comptime too
+
+1744618782
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah a slice, like the stuff I was (and am) doing with EnumField the other day
+
+1744618794
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+then you can for(3..7) |x| { slice = slice ++ .{ x, x }; }
+
+1744618799
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ehm
+
+1744618834
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+wrapping the .{ x, x } as a one element array too
+
+1744619097
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah
+
+1744619121
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I think I'll just have an element of that tuple as a function and call that function at comptime. I want this to sometimes increment a number and sometimes not
+
+1744619127
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Can make it nicer later
+
+1744620232
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+When dealing with optionals I should _always_ be checking for null before trying to unwrap them? Very small example: https://godbolt.org/z/qhM5Pxse8
+
+1744620347
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+If I add      if (optional == null) return 0;   to the top of doIt the compiler still wants the return line of that function the same which is annoying because I've just checked that optional is not null
+
+1744620733
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+why not first do a `const v = optional orelse return 0;`
+
+1744620769
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+tsujp: ^
+
+1744620845
+swinnenb!~swinnenb@user/swinnenb
+or 'if (optional) |item| { blabla on item instead of option.? } else return 0;
+
+1744620922
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah, will do
+
+1744620936
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im not yet idiomatic
+
+1744621156
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+also Gliptic that explains why one cannot easily have a function accept a "tuple" as    fn foo(data: .{ u8, u8 })   because it's a type not a definition right?
+
+1744621176
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not a type
+
+1744621187
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's a tuple value
+
+1744621198
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that happens to contain two types
+
+1744621208
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Sorry value yes yes (mispoke)
+
+1744621213
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+That's how incorrectly ingrained it is arghh
+
+1744621246
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig makes it slightly more confusing as types are also values :)
+
+1744621273
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but when I say value, I'm thinking "non-type value"
+
+1744621386
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+struct { u8, u8 } would be the corresponding tuple type
+
+1744621464
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+and then you'd fall into the pitfall (as I did) of trying to destructure the struct because "well, that's what a tuple is when I spam @TypeOf and @typeInfo and look at std.builtin.Type" but it's not destructurable
+
+1744621477
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+only tuple _values_ can be destructured, not tuple _types_ right?
+
+1744621968
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, yeah
+
+1744621985
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't destructure types
+
+1744622225
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and well, if you did @typeInfo(@TypeOf(struct { u8, u8 })) you'd see it's _not_ a tuple
+
+1744622450
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+the zig docs should probably change the wording from "aggregate types" to "aggregate values" then no?
+
+1744622460
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+See first sentence here: https://ziglang.org/documentation/0.14.0/#Destructuring
+
+1744623072
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+one can make c bindings for a Rust package, so one can use a Rust library in Zig this way I guess? https://developers.redhat.com/articles/2022/09/05/how-create-c-binding-rust-library#output_pointer_for_an_opaque_struct
+
+1744624181
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tsujp, [values of] is pretty implicit there, it doesn't make sense otherwise
+
+1744624218
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what would destructuring an array _type_ even mean
+
+1744625686
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+or is that Rust -> c -> zig a pain in the ass to work with?
+
+1744625749
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i have no experience doing so flower_ but unless you're using libffi (or some other cross language protocol) you must use the C abi and rust must be configured to spit out such for any crate in question
+
+1744625770
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1744625786
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+working through multiple layers of ffi being a pain? unheard of /s
+
+1744625903
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+in my _personal_ experience (and only 1 crate in question have I ever wanted to access it via the C abi) the C bindings on that rust crate were.. out of date and.. scarce to say the least (very much second-class citizen attitude towards them)
+
+1744625934
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+the crate in question was the tree-sitter _cli_, i haven't checked explicitly but i believe recently they've done a lot more improvements to that effect
+
+1744625988
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+so yeah, pick your poison. If C abi check the crates bindings and Zig should "just work" with them? If not C abi and libffi idk libffi hard, if protobuf or capt'n proto idk never used them for cross-language stuff
+
+1744625998
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+(i'd think going C abi route will be easiest)
+
+1744626829
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+thx
+
+1744629425
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+In Go one can add methods to any type, like: type MyType int; func (m *MyType) SomeMethod() {} 
+
+1744629454
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how would you do this in Zig?
+
+1744629489
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+struct, enum and union can have methods?
+
+1744630166
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they can, but they must be defined inside the definition of the type
+
+1744630184
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't add methods to any pre-existing type
+
+1744630496
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: do you have a example of that somewhere?
+
+1744630566
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+of what? an enum/union with methods? there are examples in the zig reference
+
+1744630592
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they look exactly like methods in struct
+
+1744630820
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, so you use a enum/union as in Go you can add a method on a int directly (custom int type)
+
+1744631001
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as I sia
+
+1744631044
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, misread, yes
+
+1744631060
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you wrap the int in something
+
+1744631086
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but that's no longer going to behave as an int
+
+1744631418
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1744631808
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Don't people simulate these by having the first argument to a function be some context it needs? Usually the type itself?
+
+1744633006
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+enums and unions are not really in my engraved in my brain yet
+
+1744633032
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so instead of a var bool, one could make a enum with methods
+
+1744633050
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+a enum with two values
+
+1744638303
+bblack!~bblack@wikimedia/bblack-WMF
+flower_: You can also, in place of some argument that would otherwise be say a "u64", use a non-exhaustive enum to give it a specific type name with its own methods, and get type-checking vs just using raw u64 values, e.g. https://zigbin.io/e24723
+
+1744638723
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+bblack: thx, I try to digest it
+
+1744644271
+bblack!~bblack@wikimedia/bblack-WMF
+tsujp: yes, you can use the full range of a u64.  it's basically a specially-named u64 type that can't easily be mis-used against another use of u64 types.
+
+1744654966
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The latest commit of the Zig compiler does not compile because `lib/libc/musl/src/string/strcmp.c` does not exist.
+
+1744655636
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: sometimes you can get away without rebuilding the compiler when you pull but technically you're always "supposed" to
+
