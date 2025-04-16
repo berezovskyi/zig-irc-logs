@@ -1,0 +1,604 @@
+1744708220
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if I enable a lock here, I get a crash: https://git.sr.ht/~flower/zjasmnotes/tree/optional-gui-nsm/item/src/main.zig#L106
+
+1744708229
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/ac93ba
+
+1744708389
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+line 23: https://zigbin.io/a4a31c
+
+1744708492
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is a lock needed for saving a file, if two threads can access it?
+
+1744708507
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and why does it crash?
+
+1744708583
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the used c header file: https://git.sr.ht/~flower/zjasmnotes/tree/optional-gui-nsm/item/NSM/nsm.h
+
+1744708646
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's probably just incidental that locking triggered a crash, something else could probably do it too
+
+1744708706
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and I mean, there's a reason you're locking, no?
+
+1744708747
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're reading and writing stuff in this struct
+
+1744708766
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm a bit new to threading and locking, but as far as I understood, writing needs a lock
+
+1744708823
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it seems like you're locking recursively
+
+1744708847
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in setNsmDirty too
+
+1744708852
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/optional-gui-nsm/item/src/main.zig#L115
+
+1744708860
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep, saw it myself too
+
+1744708867
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that must be it, thx
+
+1744708877
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't know if RwLock supports recursive locking
+
+1744708951
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+seems to fix it
+
+1744708955
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and reading also needs locks, if something else can be writing at the same time
+
+1744709015
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok, there is room for improvement then I guess
+
+1744709083
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I started in Go and tried to solve these things always by using goroutines and channels, making one goroutine the 'maintainer' of the file IO for instance
+
+1744709123
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+That's fun to work with
+
+1744709299
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there are channel abstractions for zig too
+
+1744709306
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not in the stdlib though
+
+1744709378
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+libvaxis has one and I'm using it: https://git.sr.ht/~flower/zjasmnotes/tree/optional-gui-nsm/item/src/main.zig#L251
+
+1744709408
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/optional-gui-nsm/item/src/libvaxis/queue.zig
+
+1744709504
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and andrew was talking about IO having a select, I assume that has a relation with channels, but not sure how close the Zig implementation will be compared to Go. Would be really nice if it will be similar.
+
+1744713722
+mountaingoat!~mountaing@user/mountaingoat
+do i need to explicitly free stuff in build.zig allocated with b.allocator?
+
+1744713732
+mountaingoat!~mountaing@user/mountaingoat
+nothing bad seems to happen if i don't
+
+1744714175
+mountaingoat!~mountaing@user/mountaingoat
+looks like it's an arena allocator that will free everything in the end
+
+1744714623
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+mountaingoat, correct
+
+1744714673
+TheFox!~TheFox@user/TheFox
+why do you have to free it at the end when the program ends anyway?
+
+1744714889
+mountaingoat!~mountaing@user/mountaingoat
+TheFox: or whatever build does with it, not me
+
+1744715049
+lolok!~lolok@user/lolok
+afaik, when your program [the compiler in this case] exits, the os reclaims all the memory you used automatically
+
+1744715078
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+--watch is a thing though
+
+1744715667
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+maybe a good habbit to just always free? 
+
+1744721129
+bblack!~bblack@wikimedia/bblack-WMF
+flower_: IMHO, for complex and especially for long-running programs, it's good practice to explicitly manage freeing memory, and to catch leaks.  The standard debugging allocator can do that latter part for you.
+
+1744721156
+bblack!~bblack@wikimedia/bblack-WMF
+for short-lived, simpler, and/or less-important software, you can just let things go and rely on exit cleanup by the OS, sure.
+
+1744721244
+bblack!~bblack@wikimedia/bblack-WMF
+ignoring a bunch of other context and poor naming, in one of my projects where I care: I put what was my "real" main() code in a function named "_main" that takes an allocator argument, and then the actual outer main() looks like:
+
+1744721268
+bblack!~bblack@wikimedia/bblack-WMF
+        var debug_allocator: std.heap.DebugAllocator(.{ .thread_safe = false }) = .init;
+
+1744721271
+bblack!~bblack@wikimedia/bblack-WMF
+        const alloc = debug_allocator.allocator();
+
+1744721273
+bblack!~bblack@wikimedia/bblack-WMF
+        defer if (debug_allocator.deinit() != .ok)
+
+1744721275
+bblack!~bblack@wikimedia/bblack-WMF
+        try _main(alloc);
+
+1744721278
+bblack!~bblack@wikimedia/bblack-WMF
+            @panic("main thread allocator detected leaks at shutdown!");
+
+1744745136
+lemons!~doggie@user/doggie-:49517
+do tests have some snowflake rules for package importing? getting some weird import error
+
+1744745226
+lemons!~doggie@user/doggie-:49517
+error: import of file outside module path: '../byondapi/_byondapi.zig'␍
+
+1744745228
+lemons!~doggie@user/doggie-:49517
+    const byondapi = @import("../byondapi/_byondapi.zig");
+
+1744745692
+lemons!~doggie@user/doggie-:49517
+oh i just borked the build script
+
+1744747661
+lemons!~doggie@user/doggie-:49517
+ok i do need help i think
+
+1744747678
+lemons!~doggie@user/doggie-:49517
+so as i understand it, i cant @import("../whatever") in tests
+
+1744747693
+lemons!~doggie@user/doggie-:49517
+but that kinda fucks me up so my q is
+
+1744747698
+lemons!~doggie@user/doggie-:49517
+how do i get around that
+
+1744747723
+lemons!~doggie@user/doggie-:49517
+rn my dir structure is uhhh
+
+1744747725
+lemons!~doggie@user/doggie-:49517
+root
+
+1744747733
+lemons!~doggie@user/doggie-:49517
+- api wrappers
+
+1744747736
+lemons!~doggie@user/doggie-:49517
+-- ...
+
+1744747755
+lemons!~doggie@user/doggie-:49517
+- collision stuff
+
+1744747762
+lemons!~doggie@user/doggie-:49517
+-- collision tests.zig
+
+1744747775
+lemons!~doggie@user/doggie-:49517
+and the tests rely on those api wrappers
+
+1744747868
+lemons!~doggie@user/doggie-:49517
+ive abstracted as far as i think i can without making the core code use shitty wrappers just so tests can run
+
+1744747870
+lemons!~doggie@user/doggie-:49517
+so.. what now?
+
+1744750541
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Are imports at the bottom the hip new thing in 0.14?
+
+1744750557
+grayhatter!~grayhatte@user/grayhatter
+bwbuhse: yes
+
+1744750558
+lemons!~doggie@user/doggie-:49517
+that sounds evil
+
+1744750612
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+grayhatter: interesting
+
+1744751507
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I'll put my imports at the top regardless.
+
+1744751693
+smlavine!~smlavine@sourcehut/user/smlavine
+I don't see its use beyond instructional code. It's nice to see the imports at top to grok the genre of code I'm about to read and names of particular types etc if there isn't a familiar convention
+
+1744752234
+grayhatter!~grayhatte@user/grayhatter
+smlavine: do you actually read code top to bottom linearly, line by line... or do you scan the file first to get a feel for it, and then go looking for what you want after that?
+
+1744752385
+grayhatter!~grayhatte@user/grayhatter
+it's super amusing to see programmers lose their mind about anything novel
+
+1744752441
+lemons!~doggie@user/doggie-:49517
+grayhatter: what does this bring other than "im not LIKE the other langs"
+
+1744752442
+grayhatter!~grayhatte@user/grayhatter
+totally makes sense; the venn digagram for people good at code, and unable to tolerate any kind of change, is very narrow
+
+1744752507
+grayhatter!~grayhatte@user/grayhatter
+lemons: it get's noise out of the way, and sorts things by importance to the file... imports are just boilerplate, there's no reason for them to be at the start
+
+1744752514
+andrewrk!~andrewrk@mail.ziglang.org
+mlugg likes bottom imports, I still like top imports. we haven't reached an agreement on what style to push for consistently
+
+1744752671
+grayhatter!~grayhatte@user/grayhatter
+mlugg is correct, bottom imports are objectively better, because files that are also Types with fields, the fields should be before everything else! and then the consistency of bottom imports across all files. both `Types.zig` and `namespaces.zig` is better than a special rule for files that are also types
+
+1744752721
+lolok!~lolok@user/lolok
+change is great when we are making the choice, change is intolerable when someone else changes something you use. thats not a moral judgment of change, thats a neutral analysis of the universal reaction to it. do what you like and be happy as other people are happy to do as they like too
+
+1744752724
+lemons!~doggie@user/doggie-:49517
+what about const someglobal = @import("...").struct
+
+1744752750
+grayhatter!~grayhatte@user/grayhatter
+for languages that are very import heavy, like python, java (kotlin), node, etc. many IDEs will fold imports by default. If an editior hides them by default, why do they belong at the top?
+
+1744752872
+grayhatter!~grayhatte@user/grayhatter
+lolok: it's funny you mention that, I literally just wrote that exact same thing myself. Here there's nothing requiring anyone to make a change to how they do anything. It's suggesting a change, and remarkable how most everyone has an instant negative viceral reaction to it, before really considering if 1) it's better or worse (ignoring personal familarity) 2) if it matters
+
+1744752890
+grayhatter!~grayhatte@user/grayhatter
+that exact same idea* myself
+
+1744752916
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+to me, imports are an important reference to all the things the module needs, so being at the top makes it more visible, (also force of custom probably)
+
+1744752926
+lolok!~lolok@user/lolok
+is there one specific editor that we allow to arbitrate where we should put our code or are we going with a consensus?
+
+1744752959
+grayhatter!~grayhatte@user/grayhatter
+lemons: I put stuff like that at the bottom, and having them at the bottom, I'm less restrictive about what I'll import directly. So my code is more readable because everything that was std.mem.startsWith, has now become startsWith. 
+
+1744752959
+lemons!~doggie@user/doggie-:49517
+i mean idk, you mention clutter but all i see is "shit now i have to scroll up when im looking for tests for how to use this dang thing"
+
+1744752960
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I've never used an editor/IDE that hides imports of python/node
+
+1744753017
+grayhatter!~grayhatte@user/grayhatter
+lolok: you should put your imports whereever you want them, I don't think there's an editor that enforces any... bottom imports is just a style that zig is trying out to see if it's better or worse
+
+1744753060
+lemons!~doggie@user/doggie-:49517
+dont think it matters nearly enough tho also w/e
+
+1744753067
+grayhatter!~grayhatte@user/grayhatter
+lemons: that comment makes no sense to me... you have to scroll [direction] for tests... isn't that true no matter where imports are?
+
+1744753080
+lemons!~doggie@user/doggie-:49517
+this isnt rust and you're not forced to obey some specific styling 
+
+1744753102
+lemons!~doggie@user/doggie-:49517
+grayhatter: tests from what i've seen are typically at the very bottom of the file
+
+1744753102
+lolok!~lolok@user/lolok
+better or worse by what standard tho? the community reaction? or do we tally up points for who has a stronger argument after some set time?
+
+1744753125
+lemons!~doggie@user/doggie-:49517
+granted idk if thats an official how-to
+
+1744753180
+grayhatter!~grayhatte@user/grayhatter
+lolok: as long as you don't try to use \t in your import, I doubt `zig fmt` will ever force you to change
+
+1744753181
+lemons!~doggie@user/doggie-:49517
+in other news i think i have to reorganize my proj's folder structure to appease the import gods and its giving me mental anguish
+
+1744753221
+grayhatter!~grayhatte@user/grayhatter
+lemons: how are you writing code that having imports at the bottom is gonna cause you to scroll, a meaningful amount more than you otherwise would when looking for tests?
+
+1744753259
+grayhatter!~grayhatte@user/grayhatter
+I've *never* gone looking for a test, started at the bottom, and thought, thank god all the tests are pinned right to the bottom, and I don't have to scroll half way up looking for the specific test I wanna read
+
+1744753263
+lemons!~doggie@user/doggie-:49517
+grayhatter: same question to you for regular code in case of having imports at the top
+
+1744753343
+lemons!~doggie@user/doggie-:49517
+oop nvm i think my brain just gave out
+
+1744753344
+grayhatter!~grayhatte@user/grayhatter
+when I open a file, I /search for the function or `[line number]gg`, I never read imports, because I don't care yet. I might care after I understand the function that's using the import, but I don't read imports "just 'cause"
+
+1744753346
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not following this argument at all, what does the location of imports have to do with tests
+
+1744753348
+lemons!~doggie@user/doggie-:49517
+imma sleep, night
+
+1744753365
+smlavine!~smlavine@sourcehut/user/smlavine
+grayhatter: If I'm opening a file to read a file, then kinda, yeah
+
+1744753370
+grayhatter!~grayhatte@user/grayhatter
+this is even more true when there's unused imports, why would I waste time reading imports that aren't even used?
+
+1744753387
+smlavine!~smlavine@sourcehut/user/smlavine
+If I'm opening a file to understand a particular function then I'll jump around a bit
+
+1744753422
+smlavine!~smlavine@sourcehut/user/smlavine
+But yes, I do sometimes peak at the imports to get a sense of things
+
+1744753462
+grayhatter!~grayhatte@user/grayhatter
+smlavine: do you open files more often to grok the codebase as a whole, or more often to debug, edit, inspect some specific [thing]?
+
+1744753476
+smlavine!~smlavine@sourcehut/user/smlavine
+Doesn't seem like it really matters all that much anyhow, might as well put it somewhere
+
+1744753486
+grayhatter!~grayhatte@user/grayhatter
+because I'm gonna ask given which ever is more common, which should you optimize for?
+
+1744753492
+andrewrk!~andrewrk@mail.ziglang.org
+the point is going to be moot when we have essentially zig fmt for imports (both removing unused and adding implicitly used based on type information) and some decision will be made
+
+1744753503
+smlavine!~smlavine@sourcehut/user/smlavine
+In some languages like C of course it's required because of how #include makes
+
+1744753511
+grayhatter!~grayhatte@user/grayhatter
+also, if your file has fields, the belong at the top
+
+1744753544
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: zig fmt will add an import? how would that work?
+
+1744753570
+grayhatter!~grayhatte@user/grayhatter
+is zig fmt planning to flatten the namespace if it can?
+
+1744753578
+smlavine!~smlavine@sourcehut/user/smlavine
+grayhatter: You should optimize for understanding the file, I don't really think it makes any difference whatsoever in understanding if you're only looking at a section of the file
+
+1744753618
+smlavine!~smlavine@sourcehut/user/smlavine
+But it /does/ make a slight difference if you are reading a file top-to-bottom to understand it that way. You won't come across any symbol and think "wait, what is that exactly?" then have to go to the bottom of the file to figure it out
+
+1744753635
+smlavine!~smlavine@sourcehut/user/smlavine
+People that don't like 'em can fold them, as you say
+
+1744753698
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If only readability could be accurately measured quantitative way.
+
+1744753707
+clevor!sid649024@id-649024.hampstead.irccloud.com
+measured in a*
+
+1744753791
+grayhatter!~grayhatte@user/grayhatter
+lol, my brain auto inserted "in a" automatically when I read that... then you said "measured in a*", and it took me way to long trying to figure out how you'd measure that using a-star path finding
+
+1744753843
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can do A* through the import graph
+
+1744753845
+smlavine!~smlavine@sourcehut/user/smlavine
+clevor: Have I got news for you: https://en.wikipedia.org/wiki/Flesch%E2%80%93Kincaid_readability_tests#Flesch_reading_ease
+
+1744753867
+smlavine!~smlavine@sourcehut/user/smlavine
+We must recruit a random sample of sixth graders and have them read Zig standard libary code with imports before and after the rest of the code. It is the only way.
+
+1744754370
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Is there a similar method in Zig? Get the Dir of the path, without the filename (basename): https://pkg.go.dev/path/filepath#Dir
+
+1744754516
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+found it: https://ziglang.org/documentation/master/std/#std.fs.path.dirname
+
+1744754713
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm that actually checks if the path exists... and returns null if it doesn't
+
+1744754825
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is that the task of this function? Hm
+
+1744755033
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i dont think so, only checks if theres any actual directory in that path besides the last component
+
+1744755060
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+(no directory component)
+
+1744755075
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah the description is a bit unclear I think
+
+1744755097
+grayhatter!~grayhatte@user/grayhatter
+flower_: path[0..path.len - basename.len];
+
+1744755111
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+"If the path is a file in the current directory (no directory component) then returns null."
+
+1744755178
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+grayhatter: does that include or exclude a '/'?
+
+1744755197
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah ..
+
+1744755254
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ah yeah the "current directory" might be a mistake
+
+1744755761
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep
+
+1744755957
+grayhatter!~grayhatte@user/grayhatter
+flower_: "a/b"[0..3-"b".len];
+
+1744755999
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+oh man those string convertions ... 
+
+1744756076
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+next to the miss of goroutines / channels, that's maybe the biggest difference with Go. In Go you just handle your strings without thinking basically. With Zig it can take hours. 
+
+1744756109
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it can take me hours
+
+1744756724
+grayhatter!~grayhatte@user/grayhatter
+flower_: the problem is go has runes, and zig has u8
+
+1744756743
+grayhatter!~grayhatte@user/grayhatter
+I like that zig doesn't have that runtime cost
+
+1744756797
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I think I need a good table / list on how to convert C strings to Zig slices or []const u8
+
+1744756920
+grayhatter!~grayhatte@user/grayhatter
+flower_: c string to [:0]u8 is always `std.mem.span()`
+
+1744756991
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+grayhatter: but you can't pass the result to std.fs.path.dirname is it? As it expects a []const u8
+
+1744757002
+grayhatter!~grayhatte@user/grayhatter
+I assert you can always use std.mem.span on a c string; to get a [:0]u8,
+
+1744757009
+grayhatter!~grayhatte@user/grayhatter
+uhh, what?
+
+1744757067
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ error: expected type '[]const u8', found '?[:0]const u8'
+
+1744757085
+grayhatter!~grayhatte@user/grayhatter
+flower_: why aren't you checking if the string is null?
+
+1744757272
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+grayhatter: cause I didn't see that it does something with it's type as well. Ok, compiles now indeed.
+
+1744758334
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: not zig fmt, a feature of https://github.com/ziglang/zig/issues/615
+
+1744758345
+andrewrk!~andrewrk@mail.ziglang.org
+(and probably exposed via cmdline as well)
+
+1744759028
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+grayhatter: thx
+
+1744759094
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+bbl
+
