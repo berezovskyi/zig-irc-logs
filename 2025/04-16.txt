@@ -1,0 +1,1388 @@
+1744768027
+grayhatter!~grayhatte@user/grayhatter
+does i32 have an ill defined layout?
+
+1744768092
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I don't think so. What is ite container?
+
+1744768170
+grayhatter!~grayhatte@user/grayhatter
+I'm trying to determin if the use of fildParentPtr here https://zigbin.io/06a995 will invoke unchecked illegal behavior 
+
+1744768247
+grayhatter!~grayhatte@user/grayhatter
+is this example as written guaranteed to cause UIB?
+
+1744769029
+grayhatter!~grayhatte@user/grayhatter
+basically the same question, does struct{ a: i32 }; have an ill-defined layout?
+
+1744770126
+andrewrk!~andrewrk@mail.ziglang.org
+packed struct and extern struct have well-defined memory layout; struct does not
+
+1744770310
+grayhatter!~grayhatte@user/grayhatter
+that I knew already
+
+1744770344
+grayhatter!~grayhatte@user/grayhatter
+I'm looking to refine my understanding of if my code is gonna explode, or if it will work the way I want it to. Or if it's impossible to know
+
+1744770433
+grayhatter!~grayhatte@user/grayhatter
+does any operation touching UIB mean the behavior is impossible to predict with confidence?
+
+1744770545
+grayhatter!~grayhatte@user/grayhatter
+do I believe the trolls on hn describing it as always incorrect, or dismiss it as fear mongering?
+
+1744770551
+andrewrk!~andrewrk@mail.ziglang.org
+"touching unchecked illegal behavior" is a bit vague. if you change "touching" to "invoking" for clarity, then yes
+
+1744770588
+andrewrk!~andrewrk@mail.ziglang.org
+in Zig "unchecked illegal behavior" is equivalent to "undefined behavior" in C
+
+1744770599
+grayhatter!~grayhatte@user/grayhatter
+so the code in the zigbin link is broken code?
+
+1744770652
+andrewrk!~andrewrk@mail.ziglang.org
+after https://github.com/ziglang/zig/issues/2414 is implemented, that will be checkable illegal behavior (whether it is checked will depend on the optimization mode)
+
+1744770718
+andrewrk!~andrewrk@mail.ziglang.org
+if you change it to an extern struct then it is unchecked illegal behavior
+
+1744770841
+grayhatter!~grayhatte@user/grayhatter
+ok, I guess that kinda answers my question... thanks andrewrk :)
+
+1744770966
+andrewrk!~andrewrk@mail.ziglang.org
+this might help you understand why "anything can happen" in response to undefined behavior being invoked: https://github.com/ziglang/zig/issues/8901
+
+1744771405
+grayhatter!~grayhatte@user/grayhatter
+I think I have a pretty good handle on how UB can really screw you over... My issue with it has always been how it's used to emit code that's fast instead of code that's correct. Turning code that if you generate code that's consistent with the intent of @fieldParentPtr, (of calculuating an offset) but because it touches IB the optimizer will then decide it should "unring the bell"
+
+1744771622
+grayhatter!~grayhatte@user/grayhatter
+#8901 is a very good description of how optimizations should go, but I will always object to generating code that's faster in direct contridiction to what the author wrote
+
+1744771727
+grayhatter!~grayhatte@user/grayhatter
+this behavior turns the relationship between the athor and the compiler from a cooperative one into an adversarial one
+
+1744771784
+grayhatter!~grayhatte@user/grayhatter
+just because it's faster to ignore the intent of the remainer of the function, doesn't mean it's ethical to do so
+
+1744771797
+andrewrk!~andrewrk@mail.ziglang.org
+that's a nonsensical thing to say once you dig in and have to deal with the details of reality
+
+1744771839
+andrewrk!~andrewrk@mail.ziglang.org
+if you take it pedantically, it basically amounts to wishing that the language was reading your mind, rather than being a language with a well-defined set of rules
+
+1744771942
+grayhatter!~grayhatte@user/grayhatter
+no, I want it to execute the code I wrote. in the example from #8901 it's obvious I expect reallyAdoptDoggo to be called, the compiler sees this call, then sees the UB, and optimizes out the rest of adoptDoggo
+
+1744771984
+andrewrk!~andrewrk@mail.ziglang.org
+you are mistaken. it is in fact obvious that you have asserted reallyAdoptDoggo will never be called
+
+1744772053
+grayhatter!~grayhatte@user/grayhatter
+should adoptDoggo return?
+
+1744772202
+grayhatter!~grayhatte@user/grayhatter
+adoptDoggo either invokes UB proveable at compile/optimize time (which it does/must), in which case should delete the function, and never jump to it. Or it's obvious it should be called, and so should getDoggoTypeToAdopt(); and both should return, because the author of the code assumes that functions with a type other than noreturn, should infact return
+
+1744772384
+grayhatter!~grayhatte@user/grayhatter
+I understand this is a contrived example that omits real reasons it *should* behave this way. Like how a real function would have other side effects the compiler/optimizer is not free to ignore or remove prior to the UB. But then it should also make a best effort to reproduce the behavior closest to what the author intended. in knows that anything after the assert is impossible, so the function should
+
+1744772386
+grayhatter!~grayhatte@user/grayhatter
+return there. Because "functions return unless their type is noreturn" is what the author expects and intends.
+
+1744772421
+grayhatter!~grayhatte@user/grayhatter
+I agree it's logical to say a compiler *can* do this. But there's a lot of things that are technically legal, that you still shouldn't do
+
+1744772540
+grayhatter!~grayhatte@user/grayhatter
+I wholehartedly agree with spexguy here 
+
+1744772552
+andrewrk!~andrewrk@mail.ziglang.org
+fn assertFalse() void { unreachable; } // legal code
+
+1744772553
+grayhatter!~grayhatte@user/grayhatter
+> I can't think of any situation where allowing entry points to fall through to other entry points would ever be a useful optimization, but I also don't have a proof that there are no such cases. In any case, I feel that Zig needs a solution to this problem, whether or not it's important to LLVM.
+
+1744772749
+grayhatter!~grayhatte@user/grayhatter
+one of the things that originally attracted me to zig was my understanding (perhaps misunderstanding?) that Zig also wanted a solution to this optimization problem.
+
+1744772821
+andrewrk!~andrewrk@mail.ziglang.org
+it's difficult for me to engage with you because you speak imprecisely and in subjective metaphors
+
+1744772835
+grayhatter!~grayhatte@user/grayhatter
+I also don't really consider "just use ReleaseSafe" to an acceptable solution, because it still enables optimizations that feel user hostile
+
+1744772910
+grayhatter!~grayhatte@user/grayhatter
+I don't think I'm being imprecise, and reading back I can't see the ambiguity... so I'm sorry, and I retract the question
+
+1744772937
+andrewrk!~andrewrk@mail.ziglang.org
+for example, you seem to be asking for something, but I've no idea what it is
+
+1744772984
+andrewrk!~andrewrk@mail.ziglang.org
+I understand the feeling of what you are asking for, but that feeling does not lower to an actually coherent set of semantics
+
+1744773122
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think you're asking for unreachable to be unconditionally lowered to panic. or are you?
+
+1744773183
+andrewrk!~andrewrk@mail.ziglang.org
+your comment about ReleaseSafe seems to imply that ReleaseFast and ReleaseSmall should actually be deleted? but I don't think you actually want that?
+
+1744773194
+andrewrk!~andrewrk@mail.ziglang.org
+I hope that gives you a sense of how I'm struggling to understand you here
+
+1744774503
+grayhatter!~grayhatte@user/grayhatter
+no, I don't think that removing ReleaseSmall, and ReleaseFast is reasonable. I also think always lowering unreachable to panic is insane request too, so I'm not asking for anything specific per se. But I would gladly sacrifice a bit of optimization speed, in all (most?) cases to add instructions that seem imperative, or would encapsulate unexpected behivior. As you mentioned I have a detached view of
+
+1744774505
+grayhatter!~grayhatte@user/grayhatter
+what's reasonable when you have to deal with the details of reality. I've never written a compiler, let alone an optimizing compiler. So it's quite possible I just don't understand, and the optimization that results in the return being omitted are required because [reason I don't know about]. I don't want to be prescriptive about a technology I poorly understand. I do actually get that you can't ask
+
+1744774507
+grayhatter!~grayhatte@user/grayhatter
+the optimizer to "do what the user wants" because the rules the compiler uses are unable to match the rules the user uses when writing the code. 
+
+1744774843
+grayhatter!~grayhatte@user/grayhatter
+bah, now I feel insecure about trying to explain the idea I have, because I *do* understand how impossible a request it is, but I'm trying to force the optimizer to obey the semantics of the "call stack" using the same mental framewore the way the author does. When debugging, you isolate the bug to the smallest section of code, most often using braces. Even if the whole function is UB, I still expect
+
+1744774845
+grayhatter!~grayhatte@user/grayhatter
+the function to return, because I can tell it returns at the closing brace. I want the optimizer to see that, and stop optimizing there. Basically, it should look at the function from both directions. But I feel stupid even explaining that idea, beacuse I don't know how well, or how poorly it maps to how the optimizer actually works
+
+1744775688
+grayhatter!~grayhatte@user/grayhatter
+I do have an idea of how poorly it maps, because unless I'm wildly mistaken I know when optimizing a given subroutine, you get much slower code when you constrain it to a single function. Which is why there's no return here, because the asm doesn't need it. The definition of unreachable, means the asm will branch before that line, thus any return must exist else where... so to optimize my request...
+
+1744775690
+grayhatter!~grayhatte@user/grayhatter
+please solve the halting problem
+
+1744776509
+grayhatter!~grayhatte@user/grayhatter
+this is closer to how I'd expect the zig compiler to function. https://gist.github.com/GrayHatter/04544088dea8659bfc75961e09ef3e94
+
+1744799569
+lemons!~doggie@user/doggie-:49517
+why arent ranges defined as 0=>n
+
+1744799608
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmmm, i've got an exhaustive enum which serves as a map for user-input bytes and i'm switching over it using @as and @enumFromInt.. how can I guard against invalid input (the enum is exhaustive and sparse)
+
+1744799628
+lemons!~doggie@user/doggie-:49517
+or actually can we just have syntax for iterating n=>0
+
+1744799632
+lemons!~doggie@user/doggie-:49517
+where n>0
+
+1744799716
+lemons!~doggie@user/doggie-:49517
+something like 0=>n for up and including n, 0->n for up to but not including n, and 0_>n where n<0
+
+1744799719
+lemons!~doggie@user/doggie-:49517
+would be nice i think
+
+1744799726
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+@enumFromInt has automatic safety checks but the data here is only runtime known.. I haven't tried yet but would a catch just work here..?
+
+1744800646
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah i want std.meta.intToEnum 
+
+1744800731
+lemons!~doggie@user/doggie-:49517
+whats up with module restrictions for unit tests?
+
+1744800759
+lemons!~doggie@user/doggie-:49517
+cant seem to import libraries needed for it 
+
+1744800770
+lemons!~doggie@user/doggie-:49517
+(solely for tests tho, the rest of the file works fine)
+
+1744800852
+dutchie!~dutchie@user/dutchie
+lemons: ranges are [0,n) so that you can write 0..len(thing). it'd be weird to have 0..n contain n+1 members
+
+1744800873
+dutchie!~dutchie@user/dutchie
+see the classic Dijkstra memo https://www.cs.utexas.edu/~EWD/transcriptions/EWD08xx/EWD831.html
+
+1744800986
+cancername!~cancernam@user/cancername
+hey all, is there some shorthand for "runtime safety enabled"? I think I remembered builtin.runtime_safety, but that doesn't exist?
+
+1744801351
+lemons!~doggie@user/doggie-:49517
+fucking hell
+
+1744801372
+lemons!~doggie@user/doggie-:49517
+cancername: @disableRuntimeSafety
+
+1744801379
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I know Rust has 0..=n for that, and I wish Zig had that too.
+
+1744801392
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why'd you swear?
+
+1744801403
+lemons!~doggie@user/doggie-:49517
+or something like that
+
+1744801492
+clevor!sid649024@id-649024.hampstead.irccloud.com
+`@setRuntimeSafety
+
+1744801503
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oops, stray '`'
+
+1744801526
+lemons!~doggie@user/doggie-:49517
+clevor: 4 minute lag
+
+1744801544
+lemons!~doggie@user/doggie-:49517
+clevor: 6 minutes of lag
+
+1744801560
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1744801574
+lemons!~doggie@user/doggie-:49517
+wifi sucks in this classroom
+
+1744801614
+lemons!~doggie@user/doggie-:49517
+its BARELY usable! which makes it even more infuriating i think
+
+1744801625
+clevor!sid649024@id-649024.hampstead.irccloud.com
+In my school, the wifi is fine, but the mobile data isn't.
+
+1744801648
+lemons!~doggie@user/doggie-:49517
+here it depends on where you are
+
+1744801679
+lemons!~doggie@user/doggie-:49517
+in some classrooms its spotless, in others neither wifi nor mobile works, in others yet its barely accessible
+
+1744801746
+lemons!~doggie@user/doggie-:49517
+phone borked so cant "just" use mobile data sadly
+
+1744801761
+lemons!~doggie@user/doggie-:49517
+probably a good thing in the grander scheme of things tbh
+
+1744801788
+lemons!~doggie@user/doggie-:49517
+but it doesnt make the present moments any less annoying
+
+1744801847
+lemons!~doggie@user/doggie-:49517
+> I know Rust has 0..=n for that, and I wish Zig had that too.
+
+1744801895
+lemons!~doggie@user/doggie-:49517
+clevor: i personally dont *like* the exact syntax but its fineish i think
+
+1744801905
+lemons!~doggie@user/doggie-:49517
+((still think -> and => would be better tho))
+
+1744802095
+lemons!~doggie@user/doggie-:49517
+tho above all i just want proper reverse iters
+
+1744802102
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That implies the existence of <- and <= *runs*
+
+1744802141
+lemons!~doggie@user/doggie-:49517
+nah <= is already used for equality so we're safe
+
+1744802158
+lemons!~doggie@user/doggie-:49517
+also would be weird to mentally parse
+
+1744802163
+lemons!~doggie@user/doggie-:49517
+yoda expression kinda stuff
+
+1744802240
+lemons!~doggie@user/doggie-:49517
+> lemons - tho above all i just want proper reverse iters
+
+1744802259
+dutchie!~dutchie@user/dutchie
+It feels against the philosophy of zig to add more syntax for something you can just express as 0..n+1
+
+1744802287
+lemons!~doggie@user/doggie-:49517
+sad cuz they probably wont be added given how .. is basically tied to slices which would probably be hard to express in reverse
+
+1744802388
+cancername!~cancernam@user/cancername
+lemons: that's to set, I would need one to read the current value :)
+
+1744802405
+cancername!~cancernam@user/cancername
+thanks though
+
+1744802414
+lemons!~doggie@user/doggie-:49517
+ah
+
+1744802485
+cancername!~cancernam@user/cancername
+currently using "@import("builtin").mode == .Debug or @import("builtin").mode == .ReleaseSafe", which is somewhat clunky
+
+1744802524
+lemons!~doggie@user/doggie-:49517
+what do you need it for anyways?
+
+1744802562
+cancername!~cancernam@user/cancername
+conditional bounds checking
+
+1744802579
+cancername!~cancernam@user/cancername
+https://gist.github.com/notcancername/bbac567a8c190161087c8ac8e2867764#file-unescape_repr-zig-L11
+
+1744802591
+cancername!~cancernam@user/cancername
+somewhat redundant with zig builtin bounds checks, I guess
+
+1744802657
+lemons!~doggie@user/doggie-:49517
+could probably do whatever bounds checking and have the fail state marked as unreachable
+
+1744802697
+lemons!~doggie@user/doggie-:49517
+with safety it'll still execute, without it should be wholly optimized away
+
+1744802698
+cancername!~cancernam@user/cancername
+yeah that too, but I do want it to fail properly if requested by the user :)
+
+1744802709
+lemons!~doggie@user/doggie-:49517
+fair fair
+
+1744802715
+cancername!~cancernam@user/cancername
+thanks 
+
+1744802721
+lemons!~doggie@user/doggie-:49517
+in that case idk
+
+1744802735
+lemons!~doggie@user/doggie-:49517
+fair bit of a zig noob myself lol
+
+1744802793
+cancername!~cancernam@user/cancername
+I hope you're enjoying it so far!
+
+1744802805
+lemons!~doggie@user/doggie-:49517
+am verily!
+
+1744802850
+lemons!~doggie@user/doggie-:49517
+only other not-babied-to-hell langs i tried were c/cpp and rust 
+
+1744802854
+lemons!~doggie@user/doggie-:49517
+and cshart i guess idk
+
+1744802867
+lemons!~doggie@user/doggie-:49517
+c was fineish tho annoying, rust was just annoying
+
+1744802869
+lemons!~doggie@user/doggie-:49517
+zig feels perfect
+
+1744802874
+cancername!~cancernam@user/cancername
+interesting
+
+1744802998
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I like how Zig interop is more about "How can I get this to build/interop with Zig?" instead of "This is insecure. Let me rewrite it in Rust."
+
+1744803156
+lemons!~doggie@user/doggie-:49517
+rust is... idk. i WANT to like it but i just cant
+
+1744803191
+lemons!~doggie@user/doggie-:49517
+it has a lot of cool ideas but any time i approach it i get spitroasted by the bc and rust's community 
+
+1744803285
+lemons!~doggie@user/doggie-:49517
+and the former isnt get-aroundable on my own, not with the assembly line approach of how i tend to write my code
+
+1744803358
+lemons!~doggie@user/doggie-:49517
+also also the string types not letting me throw out unicode support makes me wannacry 
+
+1744804128
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Too bad Rust does not support `_BitInt` yet.
+
+1744804366
+lemons!~doggie@user/doggie-:49517
+does it try to emulate zig's custom int sizes?
+
+1744804369
+lemons!~doggie@user/doggie-:49517
+clevor: 
+
+1744804415
+cancername!~cancernam@user/cancername
+lemons: it's a LLVM thing
+
+1744804426
+cancername!~cancernam@user/cancername
+clang has it too, for example
+
+1744804455
+cancername!~cancernam@user/cancername
+honestly I would recommend against using non-native ints for the time being, their codegen leaves to be desired
+
+1744804489
+cancername!~cancernam@user/cancername
+after each operation, LLVM does an `and`, even if overflow is illegal, like with zig +-*
+
+1744805078
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: after reading the earlier exchange about #8901 , the main interesting debate I see left in this space, is the side point about assert() itself.
+
+1744805082
+bblack!~bblack@wikimedia/bblack-WMF
+https://github.com/ziglang/zig/issues/8901#issuecomment-851560041
+
+1744805128
+bblack!~bblack@wikimedia/bblack-WMF
+FWIW, in my own past C projects where I've had to roll all these things together, over the years I settled into a pattern of wanting two separate calls, like that comment.  Mine are generally called assert() and assume().
+
+1744805159
+bblack!~bblack@wikimedia/bblack-WMF
+regardless of debug-build vs release-biuld, assert is always a panic.  assume() is a panic in debug and an unreachable-optimizer-hint in release-y build modes.
+
+1744805197
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That is what Rust does.
+
+1744805237
+bblack!~bblack@wikimedia/bblack-WMF
+whereas Zig currently has an assert() that's really an assume()
+
+1744805443
+cancername!~cancernam@user/cancername
+I think there are two distinct use cases for something like an "assert". one is "I am sure this will never happen, and if it does, that's programmer error", the other is "this shouldn't happen, but if it does, shit's fucked and we should crash". in my opinion, the former should be called "assume", because it's not assert which is often misread, and it's assumed to be impossible, and the latter should
+
+1744805445
+cancername!~cancernam@user/cancername
+be called "ensure", because the program can't continue if it happens
+
+1744805447
+bblack!~bblack@wikimedia/bblack-WMF
+I don't think there's really a right or wrong here, but there is some question about user-surprise and expectations, etc
+
+1744805451
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why not do `if (!cond) @panic("some custom error";` to make the panics explicit?
+
+1744805462
+cancername!~cancernam@user/cancername
+clevor: that's what zig programmers usually do
+
+1744805481
+cancername!~cancernam@user/cancername
+however I have also seen horrible uses of assert and unreachable
+
+1744805494
+cancername!~cancernam@user/cancername
+*cough* EBADF *COUGH*
+
+1744805516
+bblack!~bblack@wikimedia/bblack-WMF
+:)
+
+1744805580
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That's a good use case of ReleaseSafe.
+
+1744805596
+cancername!~cancernam@user/cancername
+hmm, clevor?
+
+1744805606
+bblack!~bblack@wikimedia/bblack-WMF
+and as things stand now, especially with the default assert==assume and how safety-checks are, etc... basically I'd never use Release(Fast|Small) for production deployments I really cared about the safety of.
+
+1744805639
+bblack!~bblack@wikimedia/bblack-WMF
+my mom says I write perfect code, but everyone else can see the proof that I don't :)
+
+1744805651
+cancername!~cancernam@user/cancername
++1
+
+1744805941
+bblack!~bblack@wikimedia/bblack-WMF
+actually, to amend myself earlier about assert/assume - I think in some projects where I rolled these up, I had assert() go away completely in release builds (no longer checks or panics, just elided completely).
+
+1744805958
+cancername!~cancernam@user/cancername
+that's the default C behavior I think, if NDEBUG is defined
+
+1744805958
+bblack!~bblack@wikimedia/bblack-WMF
+I'm not sure if that's sane, but that's a choice I've made before anyways.
+
+1744805981
+cancername!~cancernam@user/cancername
+I'd say it's sane for the "assume" according to me
+
+1744805995
+bblack!~bblack@wikimedia/bblack-WMF
+debug-builds: assert->panic, assume->panic.  optimized-builds: assert->nop, assume->unreachable
+
+1744806003
+bblack!~bblack@wikimedia/bblack-WMF
+or in other projects I've done as I said earlier:
+
+1744806009
+bblack!~bblack@wikimedia/bblack-WMF
+debug-builds: assert->panic, assume->panic.  optimized-builds: assert->panic, assume->unreachable
+
+1744806020
+cancername!~cancernam@user/cancername
+huh, assert=>nop seems cursed
+
+1744806043
+bblack!~bblack@wikimedia/bblack-WMF
+yeah.  in that view of the world "assert" is just a development debugging tool more or less
+
+1744806051
+bblack!~bblack@wikimedia/bblack-WMF
+I like the latter set there better :)
+
+1744806056
+cancername!~cancernam@user/cancername
+agreed
+
+1744806086
+ifreund!2940d10f8b@user/ifreund
+cancername: I disagree on the assume vs assert terminology you describe
+
+1744806099
+ifreund!2940d10f8b@user/ifreund
+assume means "to take for granted" in english
+
+1744806119
+ifreund!2940d10f8b@user/ifreund
+assert means "to state that a fact is true"
+
+1744806179
+ifreund!2940d10f8b@user/ifreund
+if an assertion fails, that is a mismatch between the mental model of the programmer who stated that a given fact is true and the reality
+
+1744806185
+bblack!~bblack@wikimedia/bblack-WMF
+Naming Things aside, there's value in having two levels of assertivness about a truth: "I am extremely confident this will never happen.  So confident that I want the optimizer to destroy the world if it happens", vs "I am merely *very* confident this shouldn't happen.  But if it does, I want the program to immediately crash instead of continuing, regardless of how its built"
+
+1744806242
+ifreund!2940d10f8b@user/ifreund
+I think this comes back to the fact that you shouldn't use release-fast for anything safety critical
+
+1744806266
+ifreund!2940d10f8b@user/ifreund
+and that you should fuzz test the hell out of things that matter
+
+1744806345
+bblack!~bblack@wikimedia/bblack-WMF
+"anything safety critical" is anything that... ever touches network traffic from the internet, even indirectly? anything that handles data a user cares about not have errors/loss in? etc... eventually you'd just decide that release(small|fast) is only for toys.
+
+1744806382
+bblack!~bblack@wikimedia/bblack-WMF
+almost anything important enough to even consider these questions, and complex enough to have bugs (which is a pretty low bar), is going to want safety.
+
+1744806385
+ifreund!2940d10f8b@user/ifreund
+toys or things you have exhaustivelly tested
+
+1744806412
+ifreund!2940d10f8b@user/ifreund
+or formally verified (lol zig doesn't have a spec yet, I should be working on that)
+
+1744806432
+bblack!~bblack@wikimedia/bblack-WMF
+I was going to say, fuzzing is great, but formal verification is a very high bar for complex software
+
+1744806442
+ifreund!2940d10f8b@user/ifreund
+and of course nobody want the optimizer to "destroy the world"
+
+1744806464
+ifreund!2940d10f8b@user/ifreund
+the semantics of undefined behavior are what makes it possible for the optimizer to exist though
+
+1744806484
+bblack!~bblack@wikimedia/bblack-WMF
+yeah but it's a halting problem to know that it won't, if "destroy the world" is basically anything the machine is capable of doing.
+
+1744806517
+lemons!~doggie@user/doggie-:49517
+guh
+
+1744806551
+ifreund!2940d10f8b@user/ifreund
+anyhow, I personally am of the opinion that we should be using release-safe for everything by default and only disabling safety checks for select functions that have been exhaustively tested
+
+1744806557
+ifreund!2940d10f8b@user/ifreund
+e.g. memcpy or similar
+
+1744806576
+bblack!~bblack@wikimedia/bblack-WMF
+yeah that's my stance with zig today as well
+
+1744806585
+ifreund!2940d10f8b@user/ifreund
+this may be considered an extreme opinion
+
+1744806659
+ifreund!2940d10f8b@user/ifreund
+there is also a vaild use-case where release-safe isn't feasible: embedded software with tiny memory
+
+1744806673
+bblack!~bblack@wikimedia/bblack-WMF
+but I'd be more inclined to run very-well-tested code in production in a releasefast kind of mode, if I were using a split assert/assume model in my own code.  (which I can totally roll for myself of course.  I can map my_assume -> assert and my_assert -> if (foo) @panic.
+
+1744806720
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Thinking out loud here, but safety-checked asserts in the prologue (preconditions), then the tested working safety-off code after
+
+1744806720
+bblack!~bblack@wikimedia/bblack-WMF
+but I think it's a valid debate whether doing that model in the language would be less-surprising and/or more-helpful for users of Zig in general.
+
+1744806770
+bblack!~bblack@wikimedia/bblack-WMF
+but then if there's "assert on EBADF" kinds of conditions in the stdlib, that's where even rolling my own in *my* code doesn't help me a ton
+
+1744806783
+ifreund!2940d10f8b@user/ifreund
+I don't think you are going to solve people misunderstanding the fundamentals here by changing names
+
+1744806917
+ifreund!2940d10f8b@user/ifreund
+as for the unfortunate current state of std.posix, I think it's pretty clear that the zig standard library should be changed to not rely on specific behavior of the kernel in order to avoid unreachable code
+
+1744806977
+ifreund!2940d10f8b@user/ifreund
+there is value on those currently unreachable branches teaching new systems programmers how to write race free code and avoid footguns of trying to handle errors that can't be handled properly though
+
+1744807040
+ifreund!2940d10f8b@user/ifreund
+for the first point, the existence of seccomp highlights the flaws of the current implementation
+
+1744807115
+bblack!~bblack@wikimedia/bblack-WMF
+yeah, there's really two "kinds" of software engineer or project that are going to use those posix interfaces.  But I feel like the ones that would rather rely on BADF=>unreachable are the kind that might be better off using higher-level abstractions in e.g. std.fs anyways.
+
+1744807223
+cancername!~cancernam@user/cancername
+^^
+
+1744807240
+clevor!sid649024@id-649024.hampstead.irccloud.com
+For me, a beginner, I think a good piece of advice with the assumes vs asserts is to just avoid Release(Small|Fast) if you can help it.
+
+1744807247
+cancername!~cancernam@user/cancername
++1
+
+1744807263
+clevor!sid649024@id-649024.hampstead.irccloud.com
+to me, or bblack?
+
+1744807268
+cancername!~cancernam@user/cancername
++1you
+
+1744807271
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1744807373
+cancername!~cancernam@user/cancername
+ifreund: I think "assert" is too ambiguous and laden with programmer expectations in any case.
+
+1744807430
+lemons!~doggie@user/doggie-:49517
+mm idk, theey're still decent to explicitly draw the unsupported run cases
+
+1744807450
+cancername!~cancernam@user/cancername
+I mean the term ^^`
+
+1744807458
+lemons!~doggie@user/doggie-:49517
+oh
+
+1744807476
+lemons!~doggie@user/doggie-:49517
+wait assumes?
+
+1744807477
+cancername!~cancernam@user/cancername
+I'm fine with both kinds of assertions/assumptions i outlined
+
+1744807494
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The unsupported cases should probably be `@panic("TODO")` instead.
+
+1744807500
+clevor!sid649024@id-649024.hampstead.irccloud.com
+run cases*
+
+1744807526
+lemons!~doggie@user/doggie-:49517
+not always is it a todo
+
+1744807541
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Well, panics in general.
+
+1744807558
+cancername!~cancernam@user/cancername
+@panic("not supported, fuck off") is fine in programs as far as I'm concerned, but really should be a normal error in a library
+
+1744807587
+lemons!~doggie@user/doggie-:49517
+maybe, idk
+
+1744807594
+cancername!~cancernam@user/cancername
+I
+
+1744807605
+cancername!~cancernam@user/cancername
+'m saying that because I think it makes the code more reusable
+
+1744807641
+lemons!~doggie@user/doggie-:49517
+prolly a decent topic to ponder on but also rn i just wanna sleep
+
+1744807652
+cancername!~cancernam@user/cancername
+goodnight!
+
+1744807708
+lemons!~doggie@user/doggie-:49517
+its middle of the day :(
+
+1744807729
+cancername!~cancernam@user/cancername
+try your favorite caffeinated beverage :P
+
+1744807807
+lemons!~doggie@user/doggie-:49517
+coffee doesnt work for me sadly
+
+1744807817
+cancername!~cancernam@user/cancername
+at all?
+
+1744807823
+lemons!~doggie@user/doggie-:49517
+will do the tried and true crash-on-bed tho
+
+1744807826
+lemons!~doggie@user/doggie-:49517
+cancername: at all
+
+1744807830
+cancername!~cancernam@user/cancername
+yikes!
+
+1744807844
+cancername!~cancernam@user/cancername
+try meth </joke> 
+
+1744807865
+lemons!~doggie@user/doggie-:49517
+btw remind me to throw a "why doesnt it work" here after i wake up
+
+1744807879
+lemons!~doggie@user/doggie-:49517
+ok bye-
+
+1744807888
+cancername!~cancernam@user/cancername
+bye
+
+1744807972
+cancername!~cancernam@user/cancername
+for my purposes, std.posix should be thrown out. it's a bad abstraction, it fails at being deep and OS-independent because it refuses to do operations that OSes don't support directly, it fails at being shallow because it doesn't support many things the OSes do support natively. when I want to write portable code, I use std.fs. the only time I ever use std.posix is when I need to do stuff specific to
+
+1744807974
+cancername!~cancernam@user/cancername
+particular OSes and am too lazy to use the std.os.* interfaces directly because their error handling sucks.
+
+1744808034
+cancername!~cancernam@user/cancername
+oh, and casting of arguments and return values
+
+1744808142
+cancername!~cancernam@user/cancername
+compare: `const fd = try std.os.open(...)` vs `const res = std.os.linux.open(...); const errno = std.os.linux.E.init(res); if (errno != .SUCCESS) return error.Heck; const fd: i32 = @intCast(res);`
+
+1744808160
+cancername!~cancernam@user/cancername
+sorry, std.posix.open ... still not used to the rename :P
+
+1744808196
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+lol at error.Heck
+
+1744808233
+cancername!~cancernam@user/cancername
+rockorager: yeah cause all the errno -> error logic is in std .posix :) :) :)
+
+1744809019
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I have all kinds of complaints, coming from the *nix-systems-software-in-C world to Zig about the above matters.
+
+1744809036
+bblack!~bblack@wikimedia/bblack-WMF
+but I don't have a cohesive answer about how to make it all better yet, either, so I try to avoid complaining too much :)
+
+1744809175
+cancername!~cancernam@user/cancername
+fair enough
+
+1744809353
+bblack!~bblack@wikimedia/bblack-WMF
+once I've finished a complete port of a major C project to Zig-as-it-is, then I feel like I'll have a better grip on what to complain about and what a good path to fixing it might be.
+
+1744814863
+bblack!~bblack@wikimedia/bblack-WMF
+right now, the major pain points that are emerging for me at this stage of porting are: (1) Lack of a native, efficient Zig implementation of something like https://liburcu.org/ (specifically, the QSBR variant) + (2) Lack of some of the libsodium safer-memory utils stuff ~like sodium_malloc(), sodium_mprotect().  I may have to stab at implementing these things myself.
+
+1744814921
+bblack!~bblack@wikimedia/bblack-WMF
+the latter I think could be done fairly easily on top of std.heap.page_allocator.  But RCU stuff is extreme difficulty territory, to get it portable and efficient and correct.
+
+1744815109
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What is a good way to compare the result and type of two different integers without invoking peer type resolution? I originally thought of `expect(f(@as(u16, x)) == @as(u8, y)))` where `x` and `y` are both comptime-known values, but I saw that equality invokes peer type resolution.
+
+1744815560
+bblack!~bblack@wikimedia/bblack-WMF
+you could write a function like mycompare(a: anytype, b: anytype) which checks @TypeOf on a/b first before comparing values only if the types are numeric and match?
+
+1744815625
+bblack!~bblack@wikimedia/bblack-WMF
+or does anytype wipe out that data if it's not comptime type?
+
+1744815630
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm
+
+1744816054
+clevor!sid649024@id-649024.hampstead.irccloud.com
+TBH I would want `f(x) == @as(T, y)` to not invoke peer type resolution because the intent appears to be that they want to make sure `f(x)` is of type `T`
+
+1744816112
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I'll search the standard library to see if there is anything on that matter.
+
+1744816336
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Nope
+
+1744816530
+bblack!~bblack@wikimedia/bblack-WMF
+clevor: I assume (maybe incorrectly) that what you're looking for is something like:
+
+1744816553
+bblack!~bblack@wikimedia/bblack-WMF
+if (@TypeOf(a) == @TypeOf(b) and a == b)
+
+1744816555
+bblack!~bblack@wikimedia/bblack-WMF
+?
+
+1744816903
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Yeah
+
+1744816971
+bblack!~bblack@wikimedia/bblack-WMF
+I would just do that, maybe wrap it in a pretty function with some name, or even propose adding it to std.math
+
+1744816974
+bblack!~bblack@wikimedia/bblack-WMF
+I'm bad at naming things :)
+
+1744817047
+bblack!~bblack@wikimedia/bblack-WMF
+fn numeric_exact_types_eql(a: anytype, b: anytype) bool { return @TypeOf(a) == @TypeOf(b) and a == b; }
+
+1744817686
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I named it `fullEqual`, not to be confused with `std.expect.deepEqual`
+
+1744818247
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I imagine half equal is when a == b, but b != a
+
+1744818392
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That sounds like a compiler bug.
+
+1744818802
+bblack!~bblack@wikimedia/bblack-WMF
+maybe b is a cursed type which increments its own value after every time you try to read the value :)
+
+1744818844
+bblack!~bblack@wikimedia/bblack-WMF
+(that kind of thing is real in some languages, which is why I love that Zig doesn't do operator overloading)
+
+1744819470
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Here is what I came up with. https://github.com/ziglang/zig/pull/23584
+
+1744819630
+grayhatter!~grayhatte@user/grayhatter
+bblack > Naming Things aside, there's value in having two levels of assertivness about a truth: [...]
+
+1744819743
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Reminds me of this meme https://usercontent.irccloud-cdn.com/file/OZr1XuPK/Screenshot_20250122-024434.png
+
+1744819744
+grayhatter!~grayhatte@user/grayhatter
+this is closer to what I want for the code I write. I don't object to the current behavior of unreachable, and the optimizations that you can find by abusing that. I object to the compiler being smarter than me, and then using that against me.  
+
+1744819881
+grayhatter!~grayhatte@user/grayhatter
+if I use `unreachable;` or `undefined;` in my code, and the compiler fucks me up for it, that's a good thing. if I use @fieldParentPtr(), the compiler figures out something I missed, and then the compiler inserts "unreachable" for me (because it is, I'm just not smart enough to see it) and then optimizes something bad(tm) into the asm, that's what makes the relationship feel abusive
+
+1744819942
+grayhatter!~grayhatte@user/grayhatter
+ifreund > [...] we should be using release-safe for everything by default and only disabling safety checks for select functions
+
+1744819982
+grayhatter!~grayhatte@user/grayhatter
+all my complaints would go away if there was a way to define that per block/scope
+
+1744820000
+grayhatter!~grayhatte@user/grayhatter
+you've heard of defer, and errdefer, but have you heard of unreachabledefer?
+
+1744820020
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+defer unreachable?
+
+1744820056
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What about unreachablerrdeferfined?
+
+1744820068
+blurrycat!~blurrycat@user/blurrycat
+I understood it as a defer that runs when reaching (heh) unreachable
+
+1744820089
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: no, I was making a joke, I'm thinking something like @optimizeFor() but it's a compile error if the compiler finds unreachable code in the block
+
+1744820104
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That would be useful.
+
+1744820121
+clevor!sid649024@id-649024.hampstead.irccloud.com
+You should probably use ReleaseSafe anyway.
+
+1744820121
+grayhatter!~grayhatte@user/grayhatter
+like `errdefer comptime unreachable` 
+
+1744820154
+grayhatter!~grayhatte@user/grayhatter
+clevor: I'd **love** to use release safe, but I can't. My zig compiler crashes (exits non-zero) if I try to use ReleaseSafe
+
+1744820210
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That sounds like a bug you should report, if you haven't already done so.
+
+1744820228
+grayhatter!~grayhatte@user/grayhatter
+clevor: I don't reports bugs that are "it doesn't work"
+
+1744820262
+clevor!sid649024@id-649024.hampstead.irccloud.com
+:p
+
+1744820270
+grayhatter!~grayhatte@user/grayhatter
+I've tried getting the compiler to emit some kind of diagnostic anything, to get closer to the real issue, but I've run out of ideas on how to do so
+
+1744820374
+grayhatter!~grayhatte@user/grayhatter
+I *think* it's this bug https://github.com/ziglang/zig/issues/23110
+
+1744820396
+grayhatter!~grayhatte@user/grayhatter
+> Expected Behavior: Successful build
+
+1744820402
+grayhatter!~grayhatte@user/grayhatter
+yeah... same
+
+1744820406
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I've had this issue before.
+
+1744820439
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Have you removed all zig cache?
+
+1744820556
+grayhatter!~grayhatte@user/grayhatter
+clevor: yes, multiple times, when I do, sometimes it appears I can get furter in the build
+
+1744824800
+bblack!~bblack@wikimedia/bblack-WMF
+re safety above, don't forget there's also https://ziglang.org/documentation/master/#setRuntimeSafety
+
+1744824818
+bblack!~bblack@wikimedia/bblack-WMF
+(which can be used to flip Safe-mode on/off at block levels)
+
+1744829478
+lemons!~doggie@user/doggie-:49517
+funky
+
+1744829502
+lemons!~doggie@user/doggie-:49517
+someone earlier said "when are you really using ..= in loops"
+
+1744829517
+lemons!~doggie@user/doggie-:49517
+just stumbled onto having to use it myself
+
+1744829631
+lemons!~doggie@user/doggie-:49517
+handling bitshifts, got a clz and the clz==0 case needs to be handled separately (invalid-ish state)
+
+1744829671
+lemons!~doggie@user/doggie-:49517
+immediately after i iterate through all the bitshifts im allowed to do that dont result in data loss and its a for(1..=max_shift) loop
+
+1744832718
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+IIRC it's possible to have private fields in a public struct in Go. How about Zig?
+
+1744832829
+lemons!~doggie@user/doggie-:49517
+a struct is a struct, global fields in one can be privated, regular ones (afaik) cant
+
+1744832841
+lemons!~doggie@user/doggie-:49517
+better question is why you want that
+
+1744832860
+lemons!~doggie@user/doggie-:49517
+*you'd
+
+1744832983
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the same reason why C++ has private stuff I guess, make clear that the field shouldn't be used directly. By using methods (Go) you're able to change the internals of a method, but keeping it API compatible. 
+
+1744833028
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so I can keep the field private, but offer a public method to the user.
+
+1744833091
+lemons!~doggie@user/doggie-:49517
+more asking in what case would you want such a "dont touch this" privatisation
+
+1744833129
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+maybe that method will do some checks first
+
+1744833133
+lemons!~doggie@user/doggie-:49517
+do mind im a diehard access modifiers suck d00d so dont take this as a "you-stupid"
+
+1744833142
+lemons!~doggie@user/doggie-:49517
+just curious
+
+1744833207
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+all fields public is a very nice feature
+
+1744833218
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I almost wish everything was public
+
+1744833319
+lemons!~doggie@user/doggie-:49517
+i do see the justification for private fields of "sometimes you want intermediary vars/things that shouldnt be written to directly but through a helper" 
+
+1744833350
+lemons!~doggie@user/doggie-:49517
+i semi-get it but also very often code can simply be rewriten to avoid such vars
+
+1744833392
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it's called encapsulation  isn't it? Using methods instead of direct access. 
+
+1744833395
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Sure, but don't use my library wrong. Or maybe you read all the source and understand the implications of accessing a field that isn't intended to be accessed - go right ahead
+
+1744833463
+lemons!~doggie@user/doggie-:49517
+flower_: yeah but you can have encapsulation without private vars
+
+1744833467
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Which is really why I wish everythign was public - there will be structs that I can get the field access of but maybe the *type* of that field is private, so it makes it harder to initialize or something. or there will be a function that I need to copy over
+
+1744833488
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I liked the explanation for it in Go, but I'm not a very experienced programmer
+
+1744833535
+lemons!~doggie@user/doggie-:49517
+eg: i wrote a wrapper struct around a black box from a api. it has a bunch of functions to modify the state but all of it still uses an "inner" var that references the og extern struct
+
+1744833580
+lemons!~doggie@user/doggie-:49517
+and that field is intentionally public because whenever crossing api boundaries you need to return *it*, not my cool abstraction
+
+1744833663
+lemons!~doggie@user/doggie-:49517
+now granted i could write a .getRaw() that does the same thing but coming from a lang where we abuse the preprocessor just to avoid calling functions, im mildly averse to do-nothing procs
+
+1744833709
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+when in doubt I trust rockorager ;)
+
+1744833728
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+... or use brute force
+
+1744833738
+lemons!~doggie@user/doggie-:49517
+brute force good
+
+1744833747
+lemons!~doggie@user/doggie-:49517
+dont be my dumb ass
+
+1744833759
+lemons!~doggie@user/doggie-:49517
+just get the code working
+
+1744836038
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+const dvui = @This(); in a module, what does it do exactly?
+
+1744836091
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+functions in that module can be called with: dvui.fnName() ?
+
+1744836195
+lemons!~doggie@user/doggie-:49517
+isnt @This() how you get the type of yourself
+
+1744836218
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://ziglang.org/documentation/master/#This
+
+1744836325
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+merci
+
+1744837898
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Wait, is the progress bar supposed to look like this with "x" and "tq" and "mq"? This is a compiler build using ReleaseSafe, where I have been building using ReleaseFast before. https://usercontent.irccloud-cdn.com/file/M0aAXATf/20250416_17h07m59s_grim.png
+
+1744838302
+lemons!~doggie@user/doggie-:49517
+doesnt feel like it should
+
+1744838306
+lemons!~doggie@user/doggie-:49517
+granted i never used it so idk lol
+
+1744838712
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can one assign a function to a var?
+
+1744838748
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+clevor: that looks like it's trying to use DEC box-drawing mode but your terminal doesn't support it
+
+1744838769
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Hmm...
+
+1744838794
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+x is vertical line, q is horizontal line, t is a t-junction and m is a corner
+
+1744838818
+lemons!~doggie@user/doggie-:49517
+ahhh.. today was a good day. reorganized my project such that its nice and cozy, and encapsulated some of the exported logic such that i can throw it at tests
+
+1744838819
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The last build of Zig on my system was from April 11.
+
+1744838868
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+flower_: yes, more specificially you assign a function pointer to a const
+
+1744838875
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+or do you mean exactly a var?
+
+1744838903
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+Usually it's enabled with SHIFT OUT (0x0E) and disabled with SHIFT IN (0x0F)
+
+1744838905
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+If your terminal supports it, but it's off by default, try: printf '\x1B)0'
+
+1744838907
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+and then try the build again to see if it renders right.
+
+1744838980
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+It may be that your terminal supports it (so zig tries to use it) but it's currently turned off, in which case that sequence (designate G1 character set as DEC VT100 line-drawing set) will turn it on.
+
+1744838982
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+gluon: yeah, so one can assign a callback to a var. 
+
+1744839011
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+gluon: no idea if I'm on the right path here, but I'm fooling around with it
+
+1744839136
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+flower_: in my irc library i use a callback as a field to a struct here:
+
+1744839139
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+https://github.com/vascocosta/zircon/blob/0bf434e7a4808a4f4e417f3725fc8225e8e9ccef/src/client.zig#L36
+
+1744839152
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+maybe that example is helpful
+
+1744839214
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+gluon: thx, will see
+
+1744839214
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+you can assign, but you can't mutate it, so no var, just a const
+
+1744839222
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok
+
+1744839284
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+clevor: realized I forgot to ping you with the above suggestion
+
+1744839317
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+gluon: here are also hints maybe: https://codeberg.org/andrewrk/daw/src/branch/main/src/wl.zig#L57
+
+1744839373
+clevor!sid649024@id-649024.hampstead.irccloud.com
+ToxicFrog: Apparently, the solution was to run `reset`.
+
+1744839529
+ToxicFrog!~ToxicFrog@69-171-137-95.rdns.distributel.net
+That would also fix it if your terminal normally has G1 set up for drawing but it somehow got changed.
+
+1744839637
+gluon!~gluon@2a01:4f8:c2c:5ac::1
+flower_: nice one
+
+1744839697
+clevor!sid649024@id-649024.hampstead.irccloud.com
+grayhatter: I am getting the libcompiler_rt.a :/
+
+1744840055
+lemons!~doggie@user/doggie-:49517
+imma eep, cya
+
