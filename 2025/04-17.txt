@@ -1,0 +1,176 @@
+1744851642
+clevor!sid649024@id-649024.hampstead.irccloud.com
+How do I convert a tuple in a ZON file into an array? I am taking `.{ … .channels = .{ "a", "b" }, … }` and importing it, expecting it to coerce into `[][]const u8`, but I get a type error with the actual type being something along the lines of `struct { comptime *const[1:0]u8 = "a", … }`.
+
+1744857618
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Wait, the problem was that the tuple was const and it has to be var.
+
+1744879050
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Is the type that stores a slice's length a usize?
+
+1744879564
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1744879806
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+and slice.len is a usize also?
+
+1744879926
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, that's the same thing
+
+1744880158
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Lmao I asked the same question twice
+
+1744880168
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+My bad, "multitasking" right now
+
+1744908731
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It seems this issue is relevant: https://github.com/ziglang/zig/issues/4625
+
+1744908760
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Even if I make each string a constant length, ensuring they are the same type.
+
+1744909084
+lemons!~doggie@user/doggie-:49517
+can i type a null char by hand
+
+1744909293
+clevor!sid649024@id-649024.hampstead.irccloud.com
+'\00'?
+
+1744909295
+clevor!sid649024@id-649024.hampstead.irccloud.com
+wait
+
+1744909353
+clevor!sid649024@id-649024.hampstead.irccloud.com
+'\x00'
+
+1744909367
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://ziglang.org/documentation/master/#Escape-Sequences
+
+1744910742
+lemons!~doggie@user/doggie-:49517
+clevor: thanks
+
+1744910768
+lemons!~doggie@user/doggie-:49517
+so it'd be \x00 then?
+
+1744913104
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Yeah
+
+1744913132
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I think it would be nice to have a new '\0' escape.
+
+1744914473
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm I tried to make this c header file a bit more accesible when working in zig: https://git.sr.ht/~flower/nsmzig/tree/develop/item/nsm/nsm.h
+
+1744914486
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/nsmzig/tree/develop/item/nsm/nsm.zig
+
+1744914498
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+some sort of template I guess
+
+1744914726
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+would be nice to wrap those functions in a struct, but I don't think that's possible, as this function is called and you can't pass a struct to it https://git.sr.ht/~flower/nsmzig/tree/develop/item/nsm/nsm.zig#L30
+
+1744914778
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+or maybe by using: userdata ?*anyopaque
+
+1744931343
+lemons!~doggie@user/doggie-:49517
+how do i check which union field is active
+
+1744931422
+lemons!~doggie@user/doggie-:49517
+or w/o the xy, im comparing two unions together for equality
+
+1744931462
+andrewrk!~andrewrk@mail.ziglang.org
+coerce the union to its tag type
+
+1744931532
+lemons!~doggie@user/doggie-:49517
+andrewrk: const x: Tag = onion; ?
+
+1744931558
+andrewrk!~andrewrk@mail.ziglang.org
+ya
+
+1744931565
+lemons!~doggie@user/doggie-:49517
+aig
+
+1744931581
+andrewrk!~andrewrk@mail.ziglang.org
+somebody convinced me once upon a time to remove @TagType and I've regretted it ever since
+
+1744931582
+lemons!~doggie@user/doggie-:49517
+gonna assume there isnt an equivalent for union(enum)
+
+1744931643
+andrewrk!~andrewrk@mail.ziglang.org
+equivalent to what?
+
+1744931686
+lemons!~doggie@user/doggie-:49517
+like to coerce i need to define the enum as a type
+
+1744931720
+lemons!~doggie@user/doggie-:49517
+instead of the inferred tags that union(enum) syntax gives me
+
+1744931778
+lemons!~doggie@user/doggie-:49517
+basically need to const Tag = enum{ ... }; const onion = union(Tag) { ... };
+
+1744931811
+lemons!~doggie@user/doggie-:49517
+what was the justification for removing @TagType anyways? andrewrk 
+
+1744932251
+andrewrk!~andrewrk@mail.ziglang.org
+"it can be implemented in userland"
+
+1744932272
+andrewrk!~andrewrk@mail.ziglang.org
+i.e. `std.meta.Tag`
+
+1744932301
+andrewrk!~andrewrk@mail.ziglang.org
+which is a shortcut for @typeInfo(T).@"union".tag_type
+
+1744932862
+lemons!~doggie@user/doggie-:49517
+andrewrk: dont follow much of zig's development but cant *most* things be done in userland?
+
+1744932944
+lemons!~doggie@user/doggie-:49517
+if its convenience that doesnt detract from optimizational freedom (and doesnt give us too many tools to choose from), why not have it
+
+1744933072
+lemons!~doggie@user/doggie-:49517
+i assume at least that union tags can be more efficiently used by the compiler than the user
+
+1744934380
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+are there freebsd zig 0.14 binaries out there somewhere?
+
