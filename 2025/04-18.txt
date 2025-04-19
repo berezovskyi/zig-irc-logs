@@ -1,0 +1,464 @@
+1744936676
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: not yet, I ran into some trouble building them
+
+1744940776
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ah damn. do any bsds have binaries?
+
+1744960876
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm didn't receive a ziggit.dev confirmation mail
+
+1744967165
+ledx!~thomas@user/ledx
+I'm struggling a bit with strings and memory. I have created an iterator struct that iterates a string character by character. I want to keep "taking" characters as long as the char is not a " (yes I'm writing a parser as a toy project while learning zig). I'm confused about how to collect the resulting string and store it in my Token struct. If I use an ArrayList to build up the string literal I don't see how 
+
+1744967171
+ledx!~thomas@user/ledx
+I can easily free the memory of the string ownership which is transferred to the Token. Hope that made sense, and that someone have some tips for me :)
+
+1744971738
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+you get the home folder in zig by using a env var? No dedicated method?    if (std.zig.EnvVar.HOME.getPosix()) |home| .....
+
+1744975157
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I try to strip the home folder from a filename: https://git.sr.ht/~flower/zsamples/tree/main/item/src/main.zig#L129
+
+1744975169
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+does it make sense to do it this way?
+
+1744976904
+lemons!~doggie@user/doggie-:49517
+do tests have some specific naming conventions?
+
+1744978072
+bblack!~bblack@wikimedia/bblack-WMF
+ledx: generally the efficient thing to do in a parser is not to allocate new memory for the token you've parsed.  Instead, you identify a token in the input buffer and just return some kind of reference to the bytes+length of the token where it already existed.
+
+1744978084
+bblack!~bblack@wikimedia/bblack-WMF
+ledx: in Zig, that would generally be a Slice
+
+1744978163
+bblack!~bblack@wikimedia/bblack-WMF
+(or in the case of a true token, e.g. the token "if" in Zig or many other programming languages, usually the underlying bytes of the token aren't even something you care about once you've parsed it.)
+
+1744978187
+Affliction!affliction@idlerpg/player/affliction
+Naturally if you need to escape a string, then yeah, you'll have to allocate.
+
+1744978216
+Affliction!affliction@idlerpg/player/affliction
+er, unescape*
+
+1744978594
+Affliction!affliction@idlerpg/player/affliction
+But yeah, encounter the ", find the next ", grab the slice of bytes between the two, there's your string value, zero-copy. Where it would get slightly more complex is, you won't be able to free that slice, but if you have to escape and are storing an allocated slice, you do have to free that. I'd consider giving the tokenizer an arena for that, if the surrounding structure of the code would allow
+
+1744978594
+Affliction!affliction@idlerpg/player/affliction
+that. Then when you're done with the token stream, you can deinit the arena and free all the dynamic memory it used.
+
+1744978667
+Affliction!affliction@idlerpg/player/affliction
+Naturally if these string values are used outside the parser, they can then be dupe'd with the allocator of your choice, regardless of if they're backed by memory in the source string, or the arena.
+
+1744979670
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for a struct you always need to allocate memory? Because it's a unknown structure with unknown size?
+
+1744979815
+lemons!~doggie@user/doggie-:49517
+structs are of known size tho
+
+1744979865
+lemons!~doggie@user/doggie-:49517
+and if they werent, heap allocation wouldnt magically solve anything
+
+1744979965
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1744980048
+lemons!~doggie@user/doggie-:49517
+if you're storing slices then you're just storing the eql of .{str_pointer, length}
+
+1744980074
+lemons!~doggie@user/doggie-:49517
+both are always the same size*, therefore the compiler can just figure out how to stack alloc that stuff
+
+1744980128
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1744981027
+bblack!~bblack@wikimedia/bblack-WMF
+yeah a slice is basically a kind of fat pointer.  You don't generally need to heap-allocate slices passed around as arguments/retvals.
+
+1744981053
+bblack!~bblack@wikimedia/bblack-WMF
+(but you might create a data structure which stores a giant list of Slices, and that would be a different case of course)
+
+1744981120
+lemons!~doggie@user/doggie-:49517
+dood's question did get me curious though, can there even *be* anon structs with variadly-typed arguments?
+
+1744981234
+bblack!~bblack@wikimedia/bblack-WMF
+I think as struct as defined in zig always has a fixed size.  That size may not be generally predictable by anyone but the compiler (knowing the target built-for's type-sizes and alignemnts, and the chosen auto-layout), but at compile time it should always be a fixed size.
+
+1744981245
+lemons!~doggie@user/doggie-:49517
+static-length strings you obviously cant modify the length of and something like if(x) y else z would just be collapsed for all the possible values
+
+1744981313
+lemons!~doggie@user/doggie-:49517
+Lost terminal?
+
+1744981343
+bblack!~bblack@wikimedia/bblack-WMF
+SIGHUP :)
+
+1744981381
+lemons!~doggie@user/doggie-:49517
+huh
+
+1744988832
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+for dynamic strings, do you need to free the name before assigning a new name (with dupe)?
+
+1744988860
+lemons!~doggie@user/doggie-:49517
+wdym dynamic strings
+
+1744988916
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pff I don't know if this is for me. Every line of code is a puzzle
+
+1744988936
+lemons!~doggie@user/doggie-:49517
+if you mean something like resizable strings, strings are arrays and arrays arent resizable
+
+1744988958
+lemons!~doggie@user/doggie-:49517
+any time you want to you have to allocate memory for a new one and copy the contents over
+
+1744988973
+lemons!~doggie@user/doggie-:49517
+(its what every programming langauge does, zig just doesnt hide it)
+
+1744988979
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the old string can go to trash
+
+1744989017
+lemons!~doggie@user/doggie-:49517
+and yeah, no worries. system langs you definitelly have to grow into 
+
+1744989044
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it's so much more complicated then Go, just wow
+
+1744989063
+lemons!~doggie@user/doggie-:49517
+havent used go so no comment
+
+1744989110
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so dupe creates new memory, do I need to free that string var which is not null, first?
+
+1744989145
+lemons!~doggie@user/doggie-:49517
+generally if you received something from a function that takes an allocator parameter, yes
+
+1744989177
+lemons!~doggie@user/doggie-:49517
+idk how you obtained that string var so cant comment, if its one you defined in-code (aka literal) then no
+
+1744989186
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if (name) |n| allocator.free(name); name = allocator.dupe(u8, new_name);
+
+1744989200
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if (name) |n| allocator.free(n); name = allocator.dupe(u8, new_name);
+
+1744989200
+lemons!~doggie@user/doggie-:49517
+oh
+
+1744989225
+lemons!~doggie@user/doggie-:49517
+you generally dont use allocator-specific functions yourself (spare for .free() )
+
+1744989260
+lemons!~doggie@user/doggie-:49517
+actually someone chime in on that cuz i never had to do so
+
+1744989293
+lemons!~doggie@user/doggie-:49517
+but sm like concat is one of the std.mem.concat functions
+
+1744989330
+lemons!~doggie@user/doggie-:49517
+nop nvm you were right, allocator.dupe is indeed what you use
+
+1744989348
+lemons!~doggie@user/doggie-:49517
+do show the entire code tho cuz it feels like you're doing a dumb 
+
+1744989409
+lemons!~doggie@user/doggie-:49517
+through zig fiddle, bpa.st or such
+
+1744989479
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm I need to go ... thx for now
+
+1744989886
+lemons!~doggie@user/doggie-:49517
+np, same lol
+
+1744991528
+torque!~tachyon@user/torque
+if you have a pointer to allocated memory and you want to replace it with a different pointer to allocated memory, you need to free it first otherwise you are introducing a memory leak
+
+1744991552
+torque!~tachyon@user/torque
+(assuming you are not preserving a reference to the old memory elsewhere that can be used to free it, like using an arena allocator)
+
+1744991694
+torque!~tachyon@user/torque
+also, calling allocator vtable methods like dupe is fine. that's what they're there for
+
+1744993606
+miezekatze!~user@2001:871:20f:2b5b:9e18:b502:75d3:3c81
+Does anyone here know, if there is an easy way to add additional values to errors in zig?
+
+1744993873
+grayhatter!~grayhatte@user/grayhatter
+miezekatze: if you mean something like `ErrorWithInt{42}` you want to use an tagged union
+
+1744993978
+miezekatze!~user@2001:871:20f:2b5b:9e18:b502:75d3:3c81
+grayhatter: but with tagged unions, if have to do all the error propergation manually, because try doesn't work..
+
+1744994023
+grayhatter!~grayhatte@user/grayhatter
+miezekatze: there's likely a better way to express the code you're trying to write
+
+1744994076
+grayhatter!~grayhatte@user/grayhatter
+I doubt passing some error_with_value to a much higher level function is the way to go about what you're going for
+
+1744994115
+miezekatze!~user@2001:871:20f:2b5b:9e18:b502:75d3:3c81
+grayhatter: I'm writing a Lisp, so error messages are more complex and most functions just propergate it to the top, except a catch expression is used.
+
+1744994161
+grayhatter!~grayhatte@user/grayhatter
+you could use a global
+
+1744994200
+miezekatze!~user@2001:871:20f:2b5b:9e18:b502:75d3:3c81
+but I still have to early return at errors
+
+1744994475
+grayhatter!~grayhatte@user/grayhatter
+miezekatze: yes, that's kinda how it works, zig's syntax is intenentionally simple. It'll be very difficult to make it behave one to one with how lisp works... that's intention too
+
+1744998694
+ledx!~thomas@user/ledx
+bblack + Affliction: thanks!
+
+1745006125
+lemons!~doggie@user/doggie-:49517
+ughhhhh my brain sucks
+
+1745006181
+lemons!~doggie@user/doggie-:49517
+coding a "make math-reliant stuff faster" dll for a game engine and have to deal with variable terribleness
+
+1745006270
+lemons!~doggie@user/doggie-:49517
+i work on it, bang my head against a wall for a day, figure a clean solution, think im almost done with the current functionality, then realize that theres a not-edge-but-entire-floor case that ive been forgetting this entire time
+
+1745006278
+lemons!~doggie@user/doggie-:49517
+groan and repeat
+
+1745006366
+lemons!~doggie@user/doggie-:49517
+i need to deal with black box variables which themselves represent an engine-side var which has uhhh 6 possible variants?
+
+1745006447
+lemons!~doggie@user/doggie-:49517
+the var can hold a list of either typepath variables, instances or nulls, OR a typepath/instance/null
+
+1745006518
+lemons!~doggie@user/doggie-:49517
+and i need to fetch which one of these do i actually access through a supplementary bitmask 
+
+1745006574
+lemons!~doggie@user/doggie-:49517
+and i NEED to have it in such a terrible way because the engine's memory management is both beyond terrible as well as bounded by 32bit arch (~2 gigs of usable ram before death)
+
+1745006795
+lemons!~doggie@user/doggie-:49517
+right now suffering with transitioning between typepaths and instances because the engine wont even let me grab a handle to a var
+
+1745006831
+lemons!~doggie@user/doggie-:49517
+so bloody stupid 
+
+1745007280
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why use the game engine if it is such a pain to deal with?
+
+1745007346
+andrewrk!~andrewrk@mail.ziglang.org
+I mean, you're either using one or making one
+
+1745007477
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I guess you're right
+
+1745007489
+clevor!sid649024@id-649024.hampstead.irccloud.com
+By the way, when is your next stream?
+
+1745007786
+lemons!~doggie@user/doggie-:49517
+clevor: because the codebase im working on is using said engine
+
+1745007803
+andrewrk!~andrewrk@mail.ziglang.org
+next week
+
+1745007810
+andrewrk!~andrewrk@mail.ziglang.org
+probably friday
+
+1745007835
+lemons!~doggie@user/doggie-:49517
+forked, not made from ground up
+
+1745007885
+lemons!~doggie@user/doggie-:49517
+also it handles both networking and presenting for me (think gmod) which im not smart enough to do on my own
+
+1745008114
+lemons!~doggie@user/doggie-:49517
+hm.. what i need to do rn is write to a var (engine-side) given some three or so thingymabops. do you think its sane to be holding 4 "var" vars in my collider struct?
+
+1745008125
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+andrewrk: is your freebsd build issue a zig one, or a CD one? IE...should I try to build zig on freebsd for my own purposes?
+
+1745008236
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: it was https://github.com/ziglang/zig/issues/23546
+
+1745008257
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ack
+
+1745008262
+andrewrk!~andrewrk@mail.ziglang.org
+I can work around it; I wasn't able to give it my full attention last week
+
+1745008289
+andrewrk!~andrewrk@mail.ziglang.org
+pretty sure that unsupported linker arg can be hacked to be ignored and a viable build will pop out
+
+1745008610
+andrewrk!~andrewrk@mail.ziglang.org
+hm std.math seems to be missing a way to negate a negative signed integer and receive an unsigned return value
+
+1745008750
+andrewrk!~andrewrk@mail.ziglang.org
+aha! it's @abs
+
+1745008751
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+how would that be different from @abs?
+
+1745008757
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+beat me to it
+
+1745009269
+h4kor!~h4kor@user/h4kor
+I'm currently using zig to implement a time series database, both to learn zig and database concepts. Just wanted to say I really like the language :) 
+
+1745009321
+lemons!~doggie@user/doggie-:49517
+hrm.. how many vars can there be in a struct before its officially considered bloated
+
+1745009591
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+lemons: files are structs ;)
+
+1745009927
+andrewrk!~andrewrk@mail.ziglang.org
+hi h4kor, welcome
+
+1745010000
+lemons!~doggie@user/doggie-:49517
+holy shit ok theres a new development
+
+1745010028
+lemons!~doggie@user/doggie-:49517
+so the engine has a "pointer" construct which lets me- ok yknwo what a pointer is i dont need to explain
+
+1745010065
+lemons!~doggie@user/doggie-:49517
+point being, i can get (and more importantly store) a pointer to a list entry 
+
+1745010094
+lemons!~doggie@user/doggie-:49517
+this cuts down on me having to store four dummy vars across a struct union down to one
+
+1745010159
+lemons!~doggie@user/doggie-:49517
+(and no union)
+
+1745011023
+lemons!~doggie@user/doggie-:49517
+no api function to actually make a pointer though.. hrm
+
+1745015611
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, wouldn't it be ideal to implement async as you were talking about in your live-steam with either userspace/kernel side context switching, later (if need be) switch it out for whatever is better technology? As far as zig users are concerns it still async call
+
+1745015710
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: have you seen the proof of concept yet? it's in the async-await-demo branch
+
+1745015761
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, i haven't, is it something i can use?
+
+1745015896
+andrewrk!~andrewrk@mail.ziglang.org
+I feel that I have explained to what extent it can be used by calling it a "proof of concept" - not sure what kind of usage you are asking about
+
+1745016120
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+right, i mean whats stopping you from actually implementing it in 0.15 release? i thought it was a good idea, if you add basic async/await later advanced features can be added.
+
+1745017129
+andrewrk!~andrewrk@mail.ziglang.org
+what do you think I'm working on right now? :)
+
+1745017173
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+stream it
+
+1745017345
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrew that's totally awesome!!! if you can land async/await in next release i might actually be able to use zig in a major project i been planning for years. :D
+
