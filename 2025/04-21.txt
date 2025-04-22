@@ -1,0 +1,608 @@
+1745208308
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+do decl literals for creation need to be public on the struct? the release notes suggest they don't but im getting a compile error if they aren't
+
+1745208755
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+tsujp: they need to be accessible at the call site. if that is in a different file, then it needs to be pub
+
+1745209088
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+rockorager: at right
+
+1745209121
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it looks like zig "erases" (for lack of a better word) the decl literal from the type too (good) so you cannot accidentally access it later
+
+1745209171
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+imagine a struct { x: u8, y: u8, pub const init: Self { .x = 1, .y = 2 } }     you cannot access .init on an initialised value of that type (good), only x and y
+
+1745209181
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+same if the decl literal is actually a function
+
+1745209218
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i was worried that using decl literals would add a field or decl to the struct value effectively "bloating" it and accidentally accessing what is essentially an instantiation-only helper
+
+1745209226
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+am i right in the behaviour here?
+
+1745212512
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I remember seeing a code coverage tool recommend in some zig talk (cannot remember which), it was k conv or something? That is, the code coverage tool
+
+1745212527
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Anyone confirm or suggest an alternative etc?
+
+1745214007
+torque!~tachyon@user/torque
+<tsujp> i was worried that using decl literals would add a field or decl to the struct value effectively "bloating" it
+
+1745214012
+torque!~tachyon@user/torque
+this is never how decls have worked
+
+1745214026
+torque!~tachyon@user/torque
+they're just named values within the namespace of the type
+
+1745214057
+torque!~tachyon@user/torque
+decl literals do not change this, they just give the compiler the ability to infer in which namespace to look up the named value
+
+1745224702
+h4kor!~h4kor@user/h4kor
+I'm trying to use fuzzing but fail at setting the cache dir. 
+
+1745224702
+h4kor!~h4kor@user/h4kor
+`zig test src/server.zig --cache-dir tmp -ffuzz` => missing --cache-dir=[path] argument
+
+1745224721
+h4kor!~h4kor@user/h4kor
+`zig test src/server.zig --cache-dir=tmp -ffuzz` => error: unrecognized parameter: '--cache-dir=tmp'
+
+1745226821
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Do I miss a float here? https://zig.guide/working-with-c/c-primitive-types
+
+1745227129
+h4kor!~h4kor@user/h4kor
+float and double have the same size on all pĺatforms
+
+1745227165
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that is absolutely not true
+
+1745227223
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, you would use f32 / f64 even for C
+
+1745227289
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, thx
+
+1745227333
+h4kor!~h4kor@user/h4kor
+where do they differ?
+
+1745227334
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah, I see what h4kor meant, not that float and double are the same size
+
+1745227343
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sorry, misread
+
+1745227358
+h4kor!~h4kor@user/h4kor
+ok :D was massively confused for a moment
+
+1745227365
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+me too :P
+
+1745227452
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+long double differs between platforms though
+
+1745227461
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not very common
+
+1745227654
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I have a platform where long double is 64 bits wide.
+
+1745227684
+clevor!sid649024@id-649024.hampstead.irccloud.com
+And double is 32 bits wide.
+
+1745227829
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not a platform supported by zig, I'm guessing
+
+1745227971
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+C standard itself doesn't define the float types to be any particular size
+
+1745228966
+Affliction!affliction@idlerpg/player/affliction
+long double is 64 on ARM isn't it?
+
+1745229373
+clevor!sid649024@id-649024.hampstead.irccloud.com
+See https://github.com/ziglang/zig/issues/3999
+
+1745230536
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+fprintf: to stderr: doesn't this need a '\n'? https://github.com/jackaudio/new-session-manager/blob/master/extras/nsm.h/nsm.h#L318
+
+1745230912
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+libraries printing stuff to stderr annoys me greatly
+
+1745230932
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+noted
+
+1745233537
+clevor!sid649024@id-649024.hampstead.irccloud.com
+zircon
+
+1745235483
+bw!sid2730@user/betawaffle
+is it possible to condition something on whether the length of a slice is comptime-known?
+
+1745235796
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a slice never has a comptime-known length afaik, that would be a pointer to an array, *[size]T
+
+1745236129
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+lsp: 'control flow is diverted here', thx
+
+1745237059
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm writing zig wrapper functions for a c header file. 
+
+1745237091
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+out_msg: ?[*]?[*:0]u8, this is a pointer to char * 
+
+1745237105
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+passed to a callback, so one can set a message
+
+1745237116
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I handle this in a zig friendly way?
+
+1745237139
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I get out_msg, how do I set that out_msg in my callback?
+
+1745237242
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/nsmzig/tree/develop/item/nsm/nsm.h#L477
+
+1745237484
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.zig#L216
+
+1745237548
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.zig#L331
+
+1745238516
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it gets freed in the c library: https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.h#L493
+
+1745238887
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can I allocate in a zig library let the c library do the free?
+
+1745242434
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, if you use the std.heap.c_allocator yes
+
+1745242930
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: ah
+
+1745245500
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.zig#L331
+
+1745245518
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+: error: cannot assign to constant out_msg = &msg.ptr;
+
+1745245625
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+not sure how I get that string stored in out_msg
+
+1745245819
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.* would help with the type, but what's the lifetime of msg.ptr?
+
+1745245867
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah right, you don't really mean to do &msg.ptr
+
+1745245918
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+seeing &X.ptr is giving me ptsd from yesterday
+
+1745245978
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I try to make a c string of it I guess
+
+1745246035
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think allocPrint will make a zero-terminated string
+
+1745246189
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, only assigning to a local variable or parameter (well, if they weren't read-only) would never affect anything outside the function where the variable/parameter is in. The variable/parameter disappears after the function returns
+
+1745246223
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+s/function/scope/
+
+1745246477
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+out_msg is a pointer right?
+
+1745246506
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if I allocate memory in a function, that memory isn't freed after the function returns right?
+
+1745246583
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so I want to store a string in memory and let out_msg point to it 
+
+1745246616
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm just not very good in pointers and types ... 
+
+1745246732
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm there is also: https://ziglang.org/documentation/master/std/#std.fmt.bufPrintZ
+
+1745246758
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://ziglang.org/documentation/master/std/#std.fmt.allocPrintZ
+
+1745246762
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+out_msg is already pointing somewhere
+
+1745246827
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what you can do is change the _value_ of the thing out_msg is pointing to
+
+1745246854
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the value is referenced with the expression "out_msg.*"
+
+1745246900
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: cannot dereference non-pointer type '?[*]?[*:0]u8'
+
+1745246911
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's because it's ?
+
+1745246912
+jmctagger!~jmcaine@user/jmctagger
+flower: absorb https://ziglang.org/documentation/master/#Lifetime-and-Ownership if you haven't already... that might help with understanding of ownership and lifetimes.
+
+1745246986
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and look up optionals (?)
+
+1745247069
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yeah a optional can be null
+
+1745247133
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+?[*]?[*:0]u8 is **char in c
+
+1745247190
+jmctagger!~jmcaine@user/jmctagger
+briefly: "if I allocate memory in a function..." - then it's up to the designer of the function to make it clear what responsibility you should take, as a caller, including, possibly, deallocation responsibility.  And if something is an optional, there's no "magic" in an unwrap - you have to test for null explicitly, and deal with that case, before expecting an unwrap to succeed.
+
+1745247248
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.h#L506
+
+1745247298
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.h#L513
+
+1745247309
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/zjasmnotes/tree/nsm_out_msg/item/src/nsm/nsm.h#L529
+
+1745247316
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so the c library is doing the free
+
+1745247362
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+out_msg has  ?[*]?[*:0]u8 and is null when I receive it
+
+1745247370
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+*has type
+
+1745247384
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if it's null, you can't do anything
+
+1745247392
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it's not null, is it?
+
+1745247449
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm it's a address of something that is null?
+
+1745247452
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+would like 513 create a null pointer?
+
+1745247477
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*line
+
+1745247479
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1745247766
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm not able to solve this for now
+
+1745249046
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm not sure if it's me or it's the design of how out_msg works in that c api of nsm.h
+
+1745249546
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: can you solve it?
+
+1745249554
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig just forces you to be extra explicit, the C api is pretty normal
+
+1745249580
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, yes, I just don't want to tell you what to write outright
+
+1745249613
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if one knows it, one starts to see it
+
+1745249619
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I don't know it and don't see it
+
+1745249685
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+did you read about optionals in the zig docs?
+
+1745249696
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how to unwrap optionals
+
+1745249764
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if () ||
+
+1745249808
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, yes, that's one way
+
+1745249853
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but if you know for sure the pointer isn't null, there's a simpler way
+
+1745249853
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+msg.?
+
+1745249858
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1745249885
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what type is msg_out.?  ?
+
+1745249904
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that will tell you what more you need to do
+
+1745250047
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+msg_out.? is a pointer to *char 
+
+1745250063
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not on zig
+
+1745250070
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*not in zig
+
+1745250121
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+a multipointer to a optional multi pointer with a 0 senitel to u8
+
+1745250134
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+right
+
+1745250180
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and your null-terminated string pointer has what type?
+
+1745250198
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that you make with allocPrintZ
+
+1745250221
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+[:0]u8
+
+1745250229
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+right
+
+1745250278
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so, what do you need to do to [*]?[*:0]u8 to get a value of ?[:0]u8 ?
+
+1745250316
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+?[*:0]u8 rather
+
+1745250405
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+([*:0]u8 can be assigned to ?[*:0]u8)
+
+1745250492
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+we've [:0]u8 right? not [*:0]u8
+
+1745250528
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, bot after you've done .ptr on the slice
+
+1745250533
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*not
+
+1745250554
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I guess I skipped that step because you were already doing that
+
+1745250633
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+C won't understand slices, it only wants a multipointer to a zero-terminated string, i.e. the ptr part of the slicd
+
+1745250636
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+slice
+
+1745251022
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ out_msg.?[0] = msg.ptr;
+
+1745251037
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+at least that compiles
+
+1745251039
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+bingo
+
+1745251083
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pfff
+
+1745251086
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+thx
+
+1745251140
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I understand myself really well, for not finding this easy :) 
+
+1745251164
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Some people must have a other type of brain, heh. 
+
+1745257744
+GlowingUmbreon!~GlowingUm@2a0a:ef40:978:d501:cae2:65ff:fe6c:f51b
+Hiya, does anyone know of a way to stop zig from checking packages from build.zig.zon when building?I have really poor internet and compiling will sometimes just fail due to zig being unable to fetch the packages inside of build.zig.zon despite them already being installed.
+
+1745257841
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+GlowingUmbreon: this will happen if the packages are not using the 0.14.0 hash version. I would check that you have the latest tags / commits on the deps. If the deps aren't updated, I'd send a patch upstream to get them on the new hash
+
+1745258254
+GlowingUmbreon!~GlowingUm@2a0a:ef40:978:d501:cae2:65ff:fe6c:f51b
+rockorager yep just running `zig fetch --save "git+..."` fixed it. Also it sped up my compilation time from around 30 seconds down to below 5 which is quite nice.
+
+1745258254
+GlowingUmbreon!~GlowingUm@2a0a:ef40:978:d501:cae2:65ff:fe6c:f51b
+Would it be worth adding a warning to zig if compiling a package using a outdated hash format?
+
+1745258289
+GlowingUmbreon!~GlowingUm@2a0a:ef40:978:d501:cae2:65ff:fe6c:f51b
+Thank you for the help.
+
+1745270838
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: What do you think of a @compileWarn builtin?
+
+1745271587
+bblack!~bblack@wikimedia/bblack-WMF
+clevor: I couldn't find a succinct reference, but the discussion here is a decent reference: https://github.com/ziglang/zig/issues/335 .  TL;DR is this issue has been beaten to death, and whatever side of whatever debate you many be on, Zig's current official stance is no warnings, only errors.
+
+1745271619
+bblack!~bblack@wikimedia/bblack-WMF
+design changes are always possible, but it sounds like a lot of people have already chimed in on this one unconvincingly :)
+
+1745272842
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: easy "no"
+
+1745273066
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1745274398
+lemons!~doggie@user/doggie-:49517
+how many chained .? operators is too many
+
+1745275170
+lemons!~doggie@user/doggie-:49517
+oooh ugghhhhhh fuck.
+
+1745275185
+lemons!~doggie@user/doggie-:49517
+i just realized i have to deal with mixed indexing rules
+
+1745275200
+lemons!~doggie@user/doggie-:49517
+the api im using indexes by 1
+
+1745275508
+andrewrk!~andrewrk@mail.ziglang.org
+burn it with fire
+
+1745277613
+lemons!~doggie@user/doggie-:49517
+andrewrk: it probably would have be fine if the api let you index by zero
+
+1745277700
+lemons!~doggie@user/doggie-:49517
+but because the lists im indexing are magical voodoo containers that act as both assocs and vectors its probably unfeasible
+
+1745277770
+lemons!~doggie@user/doggie-:49517
+argh it WOULD be fine
+
+1745277782
+lemons!~doggie@user/doggie-:49517
+dang it brain get it together
+
