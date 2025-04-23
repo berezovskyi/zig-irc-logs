@@ -1,0 +1,208 @@
+1745293837
+sunflr!~sunflr@user/sunflr
+how can i read a binary file's header and check if it's the correct one? I'm just trying to parse a png file
+
+1745293890
+sunflr!~sunflr@user/sunflr
+i haven't really done this before in other languages 
+
+1745294925
+andrewrk!~andrewrk@mail.ziglang.org
+sunflr: generally, you read some of the file into a buffer until it is as big as the header, then you check if the header fields make sense for your file format. there's often a field called "magic" that identifies what kind of file it is
+
+1745295015
+andrewrk!~andrewrk@mail.ziglang.org
+you should be able to set up a buffered reader and then call readStructEndian
+
+1745296214
+sunflr!~sunflr@user/sunflr
+mmm, not sure if i understand fully right now but sure
+
+1745298189
+andrewrk!~andrewrk@mail.ziglang.org
+I believe there are multiple png loaders implemented in zig already - you could have a look at one of them and see how they do it
+
+1745299592
+sunflr!~sunflr@user/sunflr
+oh, good idea :3
+
+1745309194
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Is there a way to force the std.heap.c_translator as a fn parameter? 
+
+1745312414
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+c_allocator? and what do you mean force?
+
+1745312786
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+normally a Allocator accepts different types of allocators right? Can a function only accept the c_allocator?
+
+1745312891
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+setting the specific type (c_allocator) or maybe with a assert?
+
+1745313228
+blurrycat!~blurrycat@user/blurrycat
+flower_: if you already know that you'll only be using the C allocator there, why would you need to pass it as a function argument?
+
+1745313272
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blurrycat: I thought as Zig convention, to let user know it allocates memory
+
+1745313290
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, in this case the user shouldn't free it
+
+1745313318
+blurrycat!~blurrycat@user/blurrycat
+add it as a doc comment :p
+
+1745313381
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I thought Zig was aiming to do this better then c, no implicit allocations
+
+1745313410
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it seems to make sense to make to have a way of enforcing the c_allocator in this case
+
+1745313478
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+*to me
+
+1745313642
+blurrycat!~blurrycat@user/blurrycat
+since you're using the c_allocator, I imagine you're interfacing Zig code with C code? In that case they will most likely be implicit allocations in the C code whether you want it or not
+
+1745313652
+blurrycat!~blurrycat@user/blurrycat
+there will*
+
+1745313730
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+sure, but still it could help to make it explicit I think, as there will be a lot of Zig wrappers for c libraries
+
+1745313769
+blurrycat!~blurrycat@user/blurrycat
+if the code you're calling just calls malloc and free you don't have any way of making this explicit
+
+1745313779
+blurrycat!~blurrycat@user/blurrycat
+(the C code)
+
+1745313834
+blurrycat!~blurrycat@user/blurrycat
+(I guess technically that's not entirely true since you could replace malloc/free implementations)
+
+1745313915
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if the user has to pass a allocator, it dives into the docs and sees that memory is allocated and how is free handled. 
+
+1745313934
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is a c_allocator only used when the c library frees the memory?
+
+1745313987
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+If so, then it could become some sort of convention, ok, we have to pass a c_allocator, then we know what that means
+
+1745314025
+blurrycat!~blurrycat@user/blurrycat
+I don't think there's any restrictions of the sort on the c_allocator, you could use it wherever you want to
+
+1745314088
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Note I'm looking at it from a fairly naive perspective, but that can sometimes be a good thing
+
+1745314126
+blurrycat!~blurrycat@user/blurrycat
+But std.heap.c_allocator is an instance of std.mem.Allocator so I don't know if you could easily distinguish it from other allocators 
+
+1745314254
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+right. If I had the choice I would make the allocation explicit, by forcing a c_allocator ... 
+
+1745314279
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+If that's not possible, then implicit is the only option.
+
+1745314321
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+The only sane option as far as I can tell. 
+
+1745331811
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Oh sweet, the link under https://ziglang.org/documentation/0.14.0/ for the stdlib goes to the 0.14.0 stdlib instead of master :D
+
+1745332580
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Why is the .INVAL branch unreachable in posix.sigaction()? https://ziglang.org/documentation/0.14.0/std/#std.posix.sigaction
+
+1745333658
+yataro!~yataro@user/yataro
+bwbuhse: i think it's well described in related comment. EINVAL can happen only if an invalid signal was specified
+
+1745334211
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+yataro: ah, I think I get it. So the idea is that, if somehow you do use an invalid signal, you should probably have figured that out from hitting unreachable in debug mode before trying to build with ReleaseFast
+
+1745334338
+SultansOfCode!~SultansOf@user/SultansOfCode
+I have a tagged union type and it has functions. All the tagged types have a property called enabled. Is it possible for the function isEnabled() bool to return its enabled status without doing return switch (self) { .foo => |foo| foo.enabled, .bar => |bar| bar.enabled, }?
+
+1745334482
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+return switch (self) { inline else => |foo| foo.enabled, };
+
+1745334550
+SultansOfCode!~SultansOf@user/SultansOfCode
+rockorager is it the ziggy way or a hacky workaround?
+
+1745334557
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it is the way
+
+1745334582
+SultansOfCode!~SultansOf@user/SultansOfCode
+Sexy, thank you :D
+
+1745334803
+SultansOfCode!~SultansOf@user/SultansOfCode
+Can I use the same trick to retrieve the type of it? I mean, the type name, for debug purposes
+
+1745334873
+SultansOfCode!~SultansOf@user/SultansOfCode
+Because it complained error: expected type 'type', found 'effects.EffectBackgroundFlash'
+
+1745334932
+SultansOfCode!~SultansOf@user/SultansOfCode
+Maybe due to inline I ned to also retrieve @TypeOf before @typeName?
+
+1745334952
+SultansOfCode!~SultansOf@user/SultansOfCode
+Or is it always like that, regardless of the inline keyword?
+
+1745335031
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You can get the tag, I just discovered
+
+1745335033
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+with two captures
+
+1745335040
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+inline else => |foo, tag|
+
+1745335635
+SultansOfCode!~SultansOf@user/SultansOfCode
+Interesting
+
+1745335691
+SultansOfCode!~SultansOf@user/SultansOfCode
+But in a tagged union, seems that both result in the same thing
+
+1745350917
+h4kor!~h4kor@user/h4kor
+when I build the docs of my project, it also includes zig std and builtin sources. Is there a way to exclude these?
+
