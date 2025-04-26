@@ -1,0 +1,392 @@
+1745547237
+clevor!sid649024@id-649024.hampstead.irccloud.com
+When should I use an error vs an optional?
+
+1745548353
+dsal!sid13060@id-13060.lymington.irccloud.com
+clevor: Kind of a weird question that's hard to answer out of context.  They mean different things and aren't mutually exclusive.
+
+1745548697
+Affliction!affliction@idlerpg/player/affliction
+You might even use both in cases where you might successfully return no result
+
+1745548783
+Affliction!affliction@idlerpg/player/affliction
+Pretty much, errors signify something going wrong, and what went wrong. Optionals signify that there may be no result.
+
+1745549607
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1745562329
+reykjalin!7e28cf3a41@user/reykjalin
+is it not possible to have a zig project nested in another zig project? I'm trying to restructure one of my projects: the top level of the repo should be a reusable library that can be installed via zig-fetch. I then have another zig project in a sub-directory with it's own build.zig file. Think `./src/library.zig` with a `./build.zig`, and a `./tui/src/main.zig` with a `./tui/build.zig`. (continued in next message)
+
+1745562394
+reykjalin!7e28cf3a41@user/reykjalin
+I've done a `zig fetch --save ..` from the `./tui` directory to get the library module installed but when I try to build I get a panic saying the module isn't found "thread 1571021 panic: unable to find module 'library'"
+
+1745562462
+reykjalin!7e28cf3a41@user/reykjalin
+Actual repo with the build scripts here: https://github.com/reykjalin/fn
+
+1745562734
+reykjalin!7e28cf3a41@user/reykjalin
+hmmm, this fails with an entirely different error in CI: https://github.com/reykjalin/fn/actions/runs/14658395145/job/41137408967. Now complaining that `..` isn't a valid url format for the depenencies, so maybe that's the issue?
+
+1745562771
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're not using .path for the dependency
+
+1745562857
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.. is indeed not a url
+
+1745562909
+reykjalin!7e28cf3a41@user/reykjalin
+yeah, I would've expected zig fetch to know that though.
+
+1745562924
+reykjalin!7e28cf3a41@user/reykjalin
+Either way I just tried to install the library from the repo instead of using `..` and that causes the same issue
+
+1745562927
+reykjalin!7e28cf3a41@user/reykjalin
+at least locally
+
+1745563040
+reykjalin!7e28cf3a41@user/reykjalin
+well, either way changing `.url` to `.path` in the build.zig seems to have worked! thanks Gliptic that was the hint I needed :)
+
+1745565050
+squeek502!~squeek502@user/squeek502
+reykjalin, relevant pr: https://github.com/ziglang/zig/pull/21931
+
+1745567577
+reykjalin!7e28cf3a41@user/reykjalin
+squeek502: oh interesting, thanks!
+
+1745608915
+grayhatter!~grayhatte@user/grayhatter
+clevor: did you get a good enough example for error vs null?
+
+1745609056
+grayhatter!~grayhatte@user/grayhatter
+Gliptic> .. is indeed not a url 
+
+1745609073
+grayhatter!~grayhatte@user/grayhatter
+um... technically.... :P
+
+1745609701
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, if scheme is optional
+
+1745611673
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I think so
+
+1745612175
+grayhatter!~grayhatte@user/grayhatter
+clevor: how much gas does my electric car have? `null` because 0 is an incorrect answer.
+
+1745612225
+grayhatter!~grayhatte@user/grayhatter
+clevor: how much gas does my gasoline car have? `error.Other` because it's unable to check while the car is upside down and on fire 
+
+1745620961
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, are you actually planning on adding async/await ad keywords are is it going to be @"async" style usage? 
+
+1745621141
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: https://gist.github.com/andrewrk/1ad9d705ce6046fca76b4cb1220b3c53
+
+1745621194
+andrewrk!~andrewrk@mail.ziglang.org
+if the project moves forward with this then async/await keywords will be dropped and those @"" identifiers will be written canonically without @"" syntax
+
+1745621571
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, does `defer producer.cancel(io)` cancel in async as well?
+
+1745621863
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if you .open a file in async the .close should to be async as well since .close can block as well.
+
+1745622336
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+shouldn't `const n = try in_file.readAll(io, &buffer);` be something like `const n = try in_file.readAll.@"await"(io, &buffer);` so its more explicit as to whats its doing?
+
+1745622355
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/blob/570b5cac4a79ad96c529d62b9c48b72cf8ae13d8/lib/std/Io.zig#L55-L69
+
+1745622369
+andrewrk!~andrewrk@mail.ziglang.org
+"Equivalent to `await` but initiates cancel request."
+
+1745622469
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think your proposed API makes sense from any point of view
+
+1745622568
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, what i am saying is syntax is not explicit, in python for example its very clear when you are using async/await, maybe your concept is to use minimal async/await keyword? 
+
+1745622685
+Drixtan!~Drixtan@user/Drixtan
+andrewrk, love it that way, I am just throwing flowers there <3
+
+1745622751
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: I don't even know where to begin arguing with you, I'm completely unable to understand your point of view
+
+1745622848
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, lol i am having the same issue but opposite, maybe i am just used to how things work in python, and i should let you do your own thing, you seem to have different point of view and get it right in your own way ;)
+
+1745622904
+andrewrk!~andrewrk@mail.ziglang.org
+I'll try regardless: isn't it more convenient to call regular functions and get regular results? and isn't it flexible and reusable to be able to call any function async and thereby make any function concurrent?
+
+1745623049
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps if you make your suggestion without relying on the word "explicit" it will help me understand
+
+1745623070
+andrewrk!~andrewrk@mail.ziglang.org
+or rather, without the premise that explicit is always better
+
+1745623153
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, so you are mixing both async/non-async as normal functions. well its a technically challenge and if you can solve it, thats good thing. i am just thinking in terms of usability, like mixing the two type might lead to abuse and what about the event handlers? 
+
+1745623190
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig makes the choice which event handlers to use epoll, io_uring, thread in the background? 
+
+1745623285
+andrewrk!~andrewrk@mail.ziglang.org
+the example that I linked works and there are two kinds of Io implementations already, one based on io_uring, one based on threads
+
+1745623304
+andrewrk!~andrewrk@mail.ziglang.org
+it's also possible to implement the interface with single-threaded blocking
+
+1745623318
+andrewrk!~andrewrk@mail.ziglang.org
+and the issue for stackless coroutines is https://github.com/ziglang/zig/issues/23446
+
+1745624286
+lemons!~doggie@user/doggie-:49517
+ive gotten tests to work
+
+1745624303
+lemons!~doggie@user/doggie-:49517
+oughhhhh 17/17 tests passed gives me life
+
+1745624328
+lemons!~doggie@user/doggie-:49517
+i think i get tdd devs, this shit you can get addicted to
+
+1745624358
+Drixtan!~Drixtan@user/Drixtan
+well, it depends "which tdd devs"
+
+1745624376
+lemons!~doggie@user/doggie-:49517
+wdym
+
+1745624416
+Drixtan!~Drixtan@user/Drixtan
+it's not true you have to mock everything outside of the function/method you are testing, for one
+
+1745624431
+Drixtan!~Drixtan@user/Drixtan
+for 2, you should test the behaviours of the function, not the implementation
+
+1745624446
+Drixtan!~Drixtan@user/Drixtan
+third, you should test only the contract
+
+1745624457
+Drixtan!~Drixtan@user/Drixtan
+if you are going outside of this scope, you are doing it wrong
+
+1745624490
+lemons!~doggie@user/doggie-:49517
+so elaborate on 2 and 3
+
+1745624505
+lemons!~doggie@user/doggie-:49517
+3 i assume you mean dont test undefined behaviour?
+
+1745624560
+Drixtan!~Drixtan@user/Drixtan
+point 2; never test what a function has called, for example you pass a number to a function, which is the number of "monsters" you want to create, do not test that "createMonster" within the function is called N times
+
+1745624572
+lemons!~doggie@user/doggie-:49517
+oh
+
+1745624572
+Drixtan!~Drixtan@user/Drixtan
+that's testing the implementation, not the behaviour
+
+1745624575
+lemons!~doggie@user/doggie-:49517
+do people do that
+
+1745624579
+Drixtan!~Drixtan@user/Drixtan
+oh fuck yes
+
+1745624585
+lemons!~doggie@user/doggie-:49517
+oh God please
+
+1745624597
+lemons!~doggie@user/doggie-:49517
+why
+
+1745624603
+Drixtan!~Drixtan@user/Drixtan
+https://stackoverflow.com/questions/14889951/how-to-verify-a-method-is-called-two-times-with-mockito-verify
+
+1745624617
+Drixtan!~Drixtan@user/Drixtan
+that's an example, first link I found, just to show you how it is common
+
+1745624637
+Drixtan!~Drixtan@user/Drixtan
+because people think they are testing their method, generally to get code coverage
+
+1745624707
+Drixtan!~Drixtan@user/Drixtan
+point 3; you are testing the behaviour of your code, what is going to be tested, so the public points of access if I can say. In a OOP, call it the public methods. If you are testing the behaviour of your methods/functions, you do the same with a bigger unit of codes (class for instance)
+
+1745624733
+Drixtan!~Drixtan@user/Drixtan
+if we go back to my point #1, you will test all your privates doing proper tests on those public points
+
+1745624781
+Drixtan!~Drixtan@user/Drixtan
+BUT, I admit that I am cheating on that... there is always a "the function" in a class that is doing the "real work"... I am testing that one individually for obvious reason
+
+1745624788
+lemons!~doggie@user/doggie-:49517
+its so weird to think that there are people that do this kind of dumbshit, while even you with comparatively no experience, realize is dumb
+
+1745624802
+Drixtan!~Drixtan@user/Drixtan
+"enterprise software" :D
+
+1745624821
+Drixtan!~Drixtan@user/Drixtan
+hell of a lot of dumb shit going on
+
+1745624845
+lemons!~doggie@user/doggie-:49517
+Drixtan: most of my functions rely on blackbox shit, but i just abstracted the bulk of their computing onto a separate function and tested that
+
+1745624950
+lemons!~doggie@user/doggie-:49517
+funky words but i mean instead of dealing with @"byond:get_floor_top"(_movable: bapi.ByondValueRaw, ...) i parse all the relevant data in these and pass it to get_floor_top(movable: CollisionData, ...)
+
+1745624986
+reykjalin!7e28cf3a41@user/reykjalin
+I'm running into an issue with `zig build` in CI on sourcehut that I think has something to do with caching. Is it possible to force a fresh cache on `zig build` without trying to delete ~/.cache/zig or someting like that?
+
+1745625003
+reykjalin!7e28cf3a41@user/reykjalin
+something like a `zig build --no-cache` or something
+
+1745625015
+lemons!~doggie@user/doggie-:49517
+actually across some.. ok tbh only 9-ish functions so far, that i export - only two i cant really test
+
+1745625023
+lemons!~doggie@user/doggie-:49517
+init() and deinit()
+
+1745625072
+reykjalin!7e28cf3a41@user/reykjalin
+example failed build here: https://builds.sr.ht/~reykjalin/job/1478776#bottom
+
+1745625104
+lemons!~doggie@user/doggie-:49517
+reykjalin: for the record, not ignoring you, just dont know the answer
+
+1745625127
+reykjalin!7e28cf3a41@user/reykjalin
+yeah no worries, I saw you had a different conversation going on :)
+
+1745625138
+lemons!~doggie@user/doggie-:49517
+<3
+
+1745625222
+lemons!~doggie@user/doggie-:49517
+byeah only reason i cant is because theres nothing TO test really
+
+1745625240
+lemons!~doggie@user/doggie-:49517
+who cares about if a variable is initialized
+
+1745625259
+lemons!~doggie@user/doggie-:49517
+*global
+
+1745625290
+lemons!~doggie@user/doggie-:49517
+am i really to check if core.local_alloc is holding uninitialized memory
+
+1745625294
+lemons!~doggie@user/doggie-:49517
+does that really matter
+
+1745625358
+Drixtan!~Drixtan@user/Drixtan
+https://www.youtube.com/watch?v=EZ05e7EMOLM
+
+1745625382
+Drixtan!~Drixtan@user/Drixtan
+lemons, idk if I can paste url in here, but if you have about 1h, watch this, it explains a bit of what I am trying to say
+
+1745625391
+lemons!~doggie@user/doggie-:49517
+blacklisted yt in hosts, synopsis?
+
+1745625433
+Drixtan!~Drixtan@user/Drixtan
+it's about mocking in general, unit testing, that "unit" in "unit testing" is an "unit of TEST" not a "unit of CODE"
+
+1745625445
+lemons!~doggie@user/doggie-:49517
+oh
+
+1745625464
+Drixtan!~Drixtan@user/Drixtan
+so there is nothing wrong if a test is calling multiple of your own functions, but you might want to mock some part, let's say an expensive call, heavy computation, etc.
+
+1745625506
+Drixtan!~Drixtan@user/Drixtan
+like in your case, you seem to have pre-computed some data that you know is right and use it to accelerate/ease the testing, which is stubbing, and it's great
+
+1745625520
+lemons!~doggie@user/doggie-:49517
+yeah personal opinion; if i have to mock something above "make a struct, just skip initiallizing this and that" to test shit it needs a refactor anyways
+
+1745625554
+Drixtan!~Drixtan@user/Drixtan
+anyway, that's an infite topic, but, to answer the "expand on point 2 and 3", I think I've done that. So, in other words, when you said : "I get the tdd guys" --> well, it depends which tdd guys :D
+
+1745625590
+lemons!~doggie@user/doggie-:49517
+tbf, one way or the other, test go green, brain go brr
+
+1745625599
+Drixtan!~Drixtan@user/Drixtan
+indeed
+
