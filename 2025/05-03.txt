@@ -1,0 +1,308 @@
+1746263648
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ char *out_msg = NULL;
+
+1746263722
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+a pointer to a char, points to nothing. var ?*[]u8 in zig?
+
+1746263808
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+or: var ?*[]const u8 
+
+1746266838
+dutchie!~dutchie@user/dutchie
+more likely [*]const u8 or [*:0]const u8
+
+1746266899
+dutchie!~dutchie@user/dutchie
+err, optionals of them, ?[*]const u8 or ?[*:0]const u8
+
+1746266927
+dutchie!~dutchie@user/dutchie
+you could convert to a slice with out_msg[0..len] if you know the length or with std.mem.span if it's null-terminated
+
+1746267032
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+var out_msg: ?[]const u8 = null;
+
+1746267082
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pass it to func as: &out_msg, which expects *?[]const u8
+
+1746267136
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+make a slice with dupe and assign: out_msg.* = a;
+
+1746267147
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+seems to work
+
+1746267991
+mountaingoat!~mountaing@user/mountaingoat
+can anybody help explain this behavior on x86_64 vs aarch64? https://pastebin.com/JU7buHxp and when should i know to use comptime var instead of var in this case? seems like quite a pitfall
+
+1746268019
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, &out_msg is a *?[]const u8, not ?[*]const u8
+
+1746268026
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not seeing how that can work
+
+1746268088
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, I see
+
+1746268139
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but if it's a zig function, why return out_msg by pointer
+
+1746268388
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+mountaingoat, index 1 and 2 seem to be undefined still, looks like a bug to me
+
+1746268413
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no wait
+
+1746268429
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're returning it as a slice, that won't work
+
+1746268475
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what's the lifetime of `sizes`?
+
+1746268627
+mountaingoat!~mountaing@user/mountaingoat
+it's all used in comptime
+
+1746268647
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, it's not
+
+1746268683
+mountaingoat!~mountaing@user/mountaingoat
+how come comptime var works but var doesn't in this case?
+
+1746268684
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sizes1 is run at runtime
+
+1746268749
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think comptime var is sound either
+
+1746268778
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it might be aliasing sizes as _sizes, and _sizes is statically allocated
+
+1746268789
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so working but accident
+
+1746268794
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*by
+
+1746268890
+mountaingoat!~mountaing@user/mountaingoat
+ok, not sure what to follow up with. how does someone know what to do in this case?
+
+1746268912
+mountaingoat!~mountaing@user/mountaingoat
+i just need a comptime slice of type sizes
+
+1746268914
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+don't return it as a slice is one easy option
+
+1746268924
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or make the function comptime
+
+1746268940
+mountaingoat!~mountaing@user/mountaingoat
+isn't the function comptime by nature of having a comptime arg?
+
+1746268945
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1746269004
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there are lots of functions with comptime args
+
+1746269012
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+usually types
+
+1746269057
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. std.mem.eql cannot run at comptime, can it?
+
+1746269078
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or expectEqualSlices, that you're already using
+
+1746269150
+mountaingoat!~mountaing@user/mountaingoat
+i'm imaging it has a static slice of stuff generated at comptime it's comparing to
+
+1746269193
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+expectEqualSlices can be passed runtime slices
+
+1746269212
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+would be pretty useless if you could only pass it two comptime slices
+
+1746269258
+mountaingoat!~mountaing@user/mountaingoat
+so i know that `&[3]usize{1,16,1}` is a statically generated thing that exists at comptime
+
+1746269268
+mountaingoat!~mountaing@user/mountaingoat
+how do i know that the return of sizes1() or sizes2() is that or isn't that?
+
+1746269291
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you know that because you're not running it at comptime and the function isn't comptime
+
+1746269341
+mountaingoat!~mountaing@user/mountaingoat
+ok, so i always put comptime in front of this function to be safe?
+
+1746269367
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+on the function definition should work, yea
+
+1746269428
+mountaingoat!~mountaing@user/mountaingoat
+do you mean invocation? i can put it on the definition?
+
+1746269435
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, definition
+
+1746269443
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+comptime fn
+
+1746269468
+mountaingoat!~mountaing@user/mountaingoat
+i get "error: expected function or variable declaration after pub"
+
+1746269536
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm wait, did I hallucinate that's possible
+
+1746269560
+mountaingoat!~mountaing@user/mountaingoat
+it works on the invocation. actually that's how i'm using in the codebase outside of this test, so easy fix
+
+1746269607
+mountaingoat!~mountaing@user/mountaingoat
+well in any case thanks for the progress. all my tests pass on both archs for now
+
+1746289220
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I just assigned a string to a var without allocation. The compiler didn't safe me, it crashed. 
+
+1746289261
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I think I'm the ideal person to test out how much zig prevents you from doing evil things with memory. :)
+
+1746289337
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+On the downside, I'm expensive. 
+
+1746289405
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+also Go is capabable of checking for race conditions
+
+1746291672
+grayhatter!~grayhatte@user/grayhatter
+flower_: zig can also check for race conditions
+
+1746292790
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+grayhatter: ah good to know
+
+1746292889
+grayhatter!~grayhatte@user/grayhatter
+it's just not provided by the compiler, you'd have to do it at runtime, just like go 
+
+1746293397
+Drixtan!~Drixtan@user/Drixtan
+grayhatter: can you point me some documentation about that? I am interested to learn more about this.
+
+1746294674
+grayhatter!~grayhatte@user/grayhatter
+Drixtan: about how to check for race conditions?
+
+1746294721
+grayhatter!~grayhatte@user/grayhatter
+create a mutex lock, and @panic() if you hit a case where another thread already holds it?
+
+1746294915
+grayhatter!~grayhatte@user/grayhatter
+I was gonna link to code in the stdlib that called tryLock() and panicked if it couldn't get the lock, but I can't find it... probably removed
+
+1746295799
+Drixtan!~Drixtan@user/Drixtan
+grayhatter: nah that's fine if that's what you were talking about, that's ok
+
+1746295808
+Drixtan!~Drixtan@user/Drixtan
+thank you.
+
+1746296917
+grayhatter!~grayhatte@user/grayhatter
+there's a lot of abmiguity between detecting race conditions, vs managing race conditions, at compile time vs runtime
+
+1746297064
+grayhatter!~grayhatte@user/grayhatter
+I'm pretty sure golang can't actually detect race conditions at comptime
+
+1746297389
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+no it's at runtime
+
+1746297400
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+you've to build it with the -race flag
+
+1746297407
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the go application
+
+1746297477
+grayhatter!~grayhatte@user/grayhatter
+flower_: right, you can do that in zig too
+
+1746298986
+torque!~tachyon@user/torque
+<flower_> I just assigned a string to a var without allocation. The compiler didn't safe me, it crashed.
+
+1746298992
+torque!~tachyon@user/torque
+I don't really understand what this is saying
+
+1746299027
+torque!~tachyon@user/torque
+storing a "string literal" in a var is legal, since it's just a pointer to memory in the binary
+
+1746299097
+torque!~tachyon@user/torque
+the only way to cause problems of this manner without allocating afaik is to create an array on the stack, copy the string contents into your stack array, and then return a pointer to said array to create a dangling pointer
+
+1746299102
+torque!~tachyon@user/torque
+which is more involved
+
+1746306881
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+torque: hm good point, will look at it again tomorrow
+
