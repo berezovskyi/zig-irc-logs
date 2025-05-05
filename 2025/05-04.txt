@@ -1,0 +1,108 @@
+1746324832
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Why am I just finding out about StackFallbackAllocator
+
+1746324913
+Drixtan!~Drixtan@user/Drixtan
+You tell us
+
+1746325109
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Well, I was thinking "99% of the time the memory i need for this application will be bounded to some value. The rest, I'm not sure how to deal with" So then I was wondering if there was an allocator that works exactly how stackfallback does...and there it was
+
+1746325199
+Drixtan!~Drixtan@user/Drixtan
+it's what I call: "A Zig moment". As far as I can remember, only with Zig I had those moment, where I "guess there is something for that" and there it is. Or when I want to do something and see how beautifully it is done in Zig and I am just like: "Wow! that's so cool!"
+
+1746325227
+Drixtan!~Drixtan@user/Drixtan
+I am not bitching on the "other" language, but that's the total reverse the other side of the fence -- it's not greener over there :D
+
+1746339616
+sunflr!~sunflr@user/sunflr
+do you guys know how to make a slice allocated on the heap readable and seekable like std.fs.File?
+
+1746339676
+sunflr!~sunflr@user/sunflr
+i just wanna read from one big buffer into a small buffer in a loop
+
+1746339735
+sunflr!~sunflr@user/sunflr
+maybe there's another way? Just something like buf_big.read(buf_small)
+
+1746339909
+Affliction!affliction@idlerpg/player/affliction
+sunflr: https://ziglang.org/documentation/0.14.0/std/#std.io.fixed_buffer_stream.FixedBufferStream
+
+1746339932
+Affliction!affliction@idlerpg/player/affliction
+Or maybe https://ziglang.org/documentation/0.14.0/std/#std.io.BufferedReader would be useful, if your intent is to do small reads without a syscall for each one.
+
+1746340167
+sunflr!~sunflr@user/sunflr
+hmmm ok that's nice. It compiles x3
+
+1746340224
+sunflr!~sunflr@user/sunflr
+i'm basically allocating a 16kib buffer on the heap first, so std.io.BufferedReader doesn't seem to work because it needs a comptime value
+
+1746341034
+Affliction!affliction@idlerpg/player/affliction
+sunflr: If it's always going to be 16K, then that is known at comptime?
+
+1746341123
+sunflr!~sunflr@user/sunflr
+allocator.alloc() returns a slice though
+
+1746341164
+sunflr!~sunflr@user/sunflr
+when i specify that the array is 16kib it causes an error saying allocator.alloc() returns a wrong type
+
+1746341197
+Affliction!affliction@idlerpg/player/affliction
+you could store a [16384]u8 on the stack (in most platforms, as long as yo're not recursing too deep), or allocator.create() a [16384]u8
+
+1746341230
+sunflr!~sunflr@user/sunflr
+ok well probably not on the stack but what does allocator.create do?
+
+1746341246
+Affliction!affliction@idlerpg/player/affliction
+allocates a single object, instead of a slice
+
+1746341275
+Affliction!affliction@idlerpg/player/affliction
+you do need to free it with .destroy instead of .free, however.
+
+1746341294
+sunflr!~sunflr@user/sunflr
+i just use .deinit() 
+
+1746341589
+sunflr!~sunflr@user/sunflr
+hmm for some reason it doesn't seem to read the whole buffer
+
+1746341663
+sunflr!~sunflr@user/sunflr
+basically buffer_big is 16kib and buffer_small is 8b and near the end of buffer_big it doesn't want to read into buffer_small
+
+1746341764
+Affliction!affliction@idlerpg/player/affliction
+BufferedReader? Its intent is to wrap and buffer a reader so you can do small reads and writes without making so many syscalls. You'd give it a buffer, and let it manage it. If that's not what you're looking for, you probably want FixedBufferStream, which gives you a reader/writer over a slice of memory.
+
+1746373032
+grayhatter!~grayhatte@user/grayhatter
+say I have a programatic type, is there a way to emit source code for that type?
+
+1746383376
+torque!~tachyon@user/torque
+since they can't have decls, it should be relatively straightforward to use the type introspeciton machinery to do so, except properly emitting the type names might be fiddly since afaik you can only get the fully-qualified versions
+
+1746383417
+torque!~tachyon@user/torque
+I don't think there's an existing function in std that does this tho
+
+1746395502
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this suggest one can pass user_data to the signal handler as ?*anyopaque? https://ziggit.dev/t/how-to-handle-sigusr1-and-sigusr2/6988/4
+
