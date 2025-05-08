@@ -1,0 +1,144 @@
+1746579551
+clevor!sid649024@id-649024.hampstead.irccloud.com
+lol
+
+1746581148
+triallax!f378378b91@lacerte/triallax
+i have a std.process.Child whose stdin pipe i want to close myself and then wait for the process to finish
+
+1746581166
+triallax!f378378b91@lacerte/triallax
+however, `Child.wait` then errors because it tries to close the stdin pipe again
+
+1746581215
+triallax!f378378b91@lacerte/triallax
+i've resorted to setting the child's stdin field to null after closing it but i don't know if that's a valid way of going about it
+
+1746581702
+grayhatter!~grayhatte@user/grayhatter
+triallax: "you're holding it wrong" ...but setting it to null is correct
+
+1746581875
+grayhatter!~grayhatte@user/grayhatter
+or, maybe not? I was gonna assert that if you're gonna manage the io yourself, you should "wait by hand", but reading the new implementation of wait() it seems fine to use it exactly how you are now
+
+1746581930
+grayhatter!~grayhatte@user/grayhatter
+(I remember the whole of process.Child being much more complicated last I used it)
+
+1746583517
+triallax!f378378b91@lacerte/triallax
+grayhatter: how am i holding it wrong though?
+
+1746584853
+grayhatter!~grayhatte@user/grayhatter
+triallax: that was the maybe not comment
+
+1746585058
+grayhatter!~grayhatte@user/grayhatter
+before, (could be as long as a year ago now) process.child was a lot more complicated and IIRC there were other functions that you could call that would do what you're asking. Reading the source again now, it seems to have been simplified, I think you're doing it correctly. (where my original comment was from an out of date memory)
+
+1746585560
+triallax!f378378b91@lacerte/triallax
+right
+
+1746585577
+triallax!f378378b91@lacerte/triallax
+i mean from reading the code it seemed correct to
+
+1746585581
+triallax!f378378b91@lacerte/triallax
+i just don't know if it was intended
+
+1746585596
+triallax!f378378b91@lacerte/triallax
+and if not, there ought to be a way to do this anyway
+
+1746585677
+grayhatter!~grayhatte@user/grayhatter
+the original intended way was that process.Child was very much "on rails" and if you wanted to do anything slightly different, you had to piece it together yourself
+
+1746585711
+grayhatter!~grayhatte@user/grayhatter
+I think setting it to null is exactly what it's intended for you to do
+
+1746585789
+grayhatter!~grayhatte@user/grayhatter
+but also, zig is intended to enable maintainable code, so it should be easy enough to do it however you want. I.e. there is no "one right way, it'm more, however you wanna do it :)
+
+1746602487
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+is there a minimum supported kernel version for io_uring on zig? i tried to give lsr a spin and IoUring spews error.ArgumentsInvalid on wsl2 (linux 5.15.133)
+
+1746616771
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+tranzystorekk: I use a flag that requires 6.1x, I’ll get the exact version and document it in the repo so it’s clear
+
+1746616791
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+<3
+
+1746618817
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+"global space, which is where program constants, including string literals ...  fully known at compile time ..." https://www.openmymind.net/learning_zig/stack_memory/
+
+1746618850
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but not all string literals are known at compile time right? Maybe you get a value from some sort of socket. 
+
+1746618860
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+during runtime. 
+
+1746619208
+ifreund!2940d10f8b@user/ifreund
+its not a literal then
+
+1746619276
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, I see
+
+1746623227
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+tranzystorekk: I added a runtime check for the kernel version so it should work on any kernel with io_uring
+
+1746623254
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+wow, nice!
+
+1746623401
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i was going to test it on my void linux vm with 6.12, but suddenly zig 0.14 started segfaulting when building from source :/
+
+1746640730
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I am creating a replacement function for std.fmt.hex called std.fmt.hexOptions, which allows setting the endian order, as an example. One approach I am thinking of is instead of using a for or while loop, I cast the integer into a vector of u4, possibly swapping the byte order depending on endianness, selecting the elements that are 10...15, turning each into a vector of u8's, adding '0' in one and 'a'-10 in another, then combining 
+
+1746640730
+clevor!sid649024@id-649024.hampstead.irccloud.com
+them. Is this a thing I can do, or is it best to just use a simple loop?
+
+1746643255
+braewoods!~braewoods@user/braewoods
+clevor, would it not be easier to just reverse the byte order of the input value?
+
+1746643311
+braewoods!~braewoods@user/braewoods
+Oh, vectors.
+
+1746644059
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Vectors are cheap at comptime, but I'm not acquainted with SIMD yet.
+
+1746648992
+clevor!sid649024@id-649024.hampstead.irccloud.com
+braewoods: This is what I came up with.
+
+1746649839
+clevor!sid649024@id-649024.hampstead.irccloud.com
+oops forgot link
+
+1746649849
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://github.com/ziglang/zig/pull/23819
+
