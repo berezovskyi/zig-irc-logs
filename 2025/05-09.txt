@@ -1,0 +1,200 @@
+1746784910
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why is shifting left and right by an amount greater than the bit width illegal bwhavior, especially when the shift amount is comptime known? Why not return either 0 for unsigned values, and the highest bit as a u1 for signed values?
+
+1746785155
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Wait, my situation can be resolved by making an integer of larger size.
+
+1746785495
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I wouldn't want different rules depending on whether something is comptime known or not
+
+1746786271
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1746787061
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I solved it
+
+1746789303
+tonitch!~tonitch@user/tonitch
+I don't find how I should use a library that I cloned manually (without using zig fetch). I assume this should be a module so I tried b.addModule but i'm not sure. I don't really find anything online for that. 
+
+1746790193
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://ziglang.org/documentation/master/std/#std.Build.dependencyFromBuildZig
+
+1746791152
+tonitch!~tonitch@user/tonitch
+thanks
+
+1746793292
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tonitch: you can also just refer to it in build.zig.zon with `.path = "./path/to/lib"`
+
+1746793385
+tonitch!~tonitch@user/tonitch
+that seeems like a better solution. I want to modify existing libs ^^
+
+1746800885
+shikaan!~manuel@user/shikaan
+Hey! I am about to catch a flight, and to pass the time, I wanted to take a stab at this https://github.com/ziglang/zig/issues/23518 which seems approachable for a newbie. This folder (https://github.com/ziglang/zig/tree/master/lib/std/fmt/parse_float) should include all the info I need, right? Any other pointers?
+
+1746805699
+bw!sid2730@user/betawaffle
+Not really a zig-specific question, but does saving and restoring registers to/from the stack often include some registers that have no useful value in them? Like where the code that used that register initially doesn’t care about the value anymore?
+
+1746805766
+bw!sid2730@user/betawaffle
+I imagine the compiler maybe could eliminate some of that when it knows enough, but presumably there are a lot of situations where it has no way of knowing whether the register’s value still matters
+
+1746805814
+bw!sid2730@user/betawaffle
+Or am I thinking about this wrong?
+
+1746806104
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+bw, that definitely happens. If the compiler knows a function is only called internally in the translation unit, it can do whatever it wants with the calling convention, such as just overwriting registers it knows don't have anything relevant in them
+
+1746806141
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(or even outside the translation unit when doing LTO)
+
+1746806231
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it of course it has to be compiling all the call sites itself so it knows 100% that they aren't used
+
+1746807475
+bw!sid2730@user/betawaffle
+Yeah that makes sense
+
+1746812345
+grayhatter!~grayhatte@user/grayhatter
+fn func(a: Allocator) void { comptime unreachable; } is a compile error... is that expected?
+
+1746813119
+bw!sid2730@user/betawaffle
+Yes definitely
+
+1746813139
+bw!sid2730@user/betawaffle
+Unreachable at comptime
+
+1746813160
+bw!sid2730@user/betawaffle
+It shouldn’t be if the function isn’t analyzed tho
+
+1746813162
+grayhatter!~grayhatte@user/grayhatter
+bw: you just activated my trap card! :P that's it's not a compile answer 
+
+1746813172
+grayhatter!~grayhatte@user/grayhatter
+s/it's//
+
+1746813182
+grayhatter!~grayhatte@user/grayhatter
+answer?!
+
+1746813190
+grayhatter!~grayhatte@user/grayhatter
+that's not why it's a compile error
+
+1746813206
+grayhatter!~grayhatte@user/grayhatter
+sorry, must have had a stroke trying to type that
+
+1746813229
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: thank you for zig, I absolutely *love* it
+
+1746813298
+grayhatter!~grayhatte@user/grayhatter
+(I just added a new crime against ~~humanity~~ code to verse, that I'm very happy with :D )
+
+1746813327
+bw!sid2730@user/betawaffle
+grayhatter: oh why is it?
+
+1746813447
+grayhatter!~grayhatte@user/grayhatter
+bw: unused function paramater
+
+1746813454
+bw!sid2730@user/betawaffle
+lol
+
+1746813549
+grayhatter!~grayhatte@user/grayhatter
+I'm wondering why *that's* a compile error, if comptime unreachable isn't? I would assume if you don't evaluate the function body, you wouldn't know if the function args are used or not 🤔
+
+1746813560
+bw!sid2730@user/betawaffle
+I usually forget about things the editor complains about before I ever compile it
+
+1746813605
+bw!sid2730@user/betawaffle
+grayhatter: it will be if you use the argument
+
+1746813618
+bw!sid2730@user/betawaffle
+It’s just hitting the first error
+
+1746813669
+bw!sid2730@user/betawaffle
+I’m assuming it doesn’t just do a single pass over the function
+
+1746813709
+bw!sid2730@user/betawaffle
+So it sees you don’t use the arg before it ever even considers trying to evaluate the body
+
+1746825371
+tonitch!~tonitch@user/tonitch
+How do I get the size of an array ? I did `@sizeOf(@TypeOf(t))` where t is of the type `[4]f32` and I got 16 (where I would have expected 128 because 4 * 32) I suppose that 16 is the size of the pointer ? 
+
+1746825492
+fifr!~fifr@user/fifr
+32 ist the number of bits, not bytea
+
+1746825504
+fifr!~fifr@user/fifr
+bytes
+
+1746825585
+fifr!~fifr@user/fifr
+i.e. an f32 ist 32 bits or 4 bytes wide, 4*4=16
+
+1746826382
+tonitch!~tonitch@user/tonitch
+ho yhea! so this is really the whole size. Thanks
+
+1746831655
+tonitch!~tonitch@user/tonitch
+hum... is that a bug ? the types seems to be the same 
+
+1746831657
+tonitch!~tonitch@user/tonitch
+https://0x0.st/8J7h.txt
+
+1746831704
+tonitch!~tonitch@user/tonitch
+shaderSource is `const shaderSource = @embedFile("vertex.glsl");`
+
+1746831743
+tonitch!~tonitch@user/tonitch
+the final type i'm trying to get is `[]const [*:0]const u8`
+
+1746832977
+Earnestly!~earnest@user/earnestly
+That is not the most helpful error message, would be interested to know the answer too
+
+1746833268
+torque!~tachyon@user/torque
+my best guess is it appears you're passing &[*:0]const u8 to an argument that wants a slice, which is producing `*const [*:0]const u8` rather than `[]const [*:0]const u8`
+
+1746833325
+torque!~tachyon@user/torque
+you may be able to do `&[_][*:0]const u8{shaderSource.ptr}` or something similar
+
