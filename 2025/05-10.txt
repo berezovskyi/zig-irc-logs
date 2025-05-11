@@ -1,0 +1,372 @@
+1746846036
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+Is argsAlloc not compatible with the arena allocator somehow?
+
+1746846062
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+I do this:
+
+1746846064
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+const arena = std.heap.ArenaAllocator.init(std.heap.page_allocator);
+
+1746846070
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+const args = try std.process.argsAlloc(arena);
+
+1746846092
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+And the compiler complains about error: expected type 'mem.Allocator', found 'heap.arena_allocator.ArenaAllocator'
+
+1746846431
+triallax!f378378b91@lacerte/triallax
+you need to do `const allocator = arena.allocator()`
+
+1746846443
+triallax!f378378b91@lacerte/triallax
+and pass that in to argsAlloc
+
+1746846473
+triallax!f378378b91@lacerte/triallax
+also probably `defer arena.deinit()`
+
+1746846706
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+Ok, thanks!
+
+1746846761
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+I'm confused as to why argsAlloc allows a const allocator to be passed in. Surely, the allocator contains internal state and would need to be modified when allocations are done, right?
+
+1746846887
+triallax!f378378b91@lacerte/triallax
+if you check the fields in std.mem.Allocator
+
+1746846905
+triallax!f378378b91@lacerte/triallax
+you'll see it consists of just two pointers
+
+1746846909
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+Oh, I suppose all of that state is hidden in the ptr field.
+
+1746846926
+triallax!f378378b91@lacerte/triallax
+pointer to the allocator and the functions vtable
+
+1746846936
+triallax!f378378b91@lacerte/triallax
+yeah
+
+1746846970
+triallax!f378378b91@lacerte/triallax
+it's an understandable question, i thought the same thing when i first started using zig
+
+1746847016
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+man, this is quite a bit of work just to read command-line arguments compared to just `int main(int argc, char **argv)`
+
+1746847048
+triallax!f378378b91@lacerte/triallax
+it's a little more overhead but you usually have one global allocator
+
+1746847054
+triallax!f378378b91@lacerte/triallax
+so it's mostly a one-time cost
+
+1746847118
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+Are allocations thread safe? (both GeneralPurposeAllocator and ArenaAllocator)
+
+1746847144
+triallax!f378378b91@lacerte/triallax
+um, i think so?
+
+1746847158
+triallax!f378378b91@lacerte/triallax
+for arena allocator it probably depends on the inner allocator you pass to it
+
+1746847228
+triallax!f378378b91@lacerte/triallax
+but i admit i'm not super familiar with threading shenanigans
+
+1746847252
+triallax!f378378b91@lacerte/triallax
+i know for sure gpa is/can be thread safe though (it's got a config option)
+
+1746847353
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Question: On Linux, I'm pretty sure the null-terminated string contents of argv are laid out in memory one after another, and I am curious if it is possible to define an array of null-terminated arrays.
+
+1746847850
+torque!~tachyon@user/torque
+arena allocators are not thread safe
+
+1746847856
+torque!~tachyon@user/torque
+I'm not sure gpa is either
+
+1746847962
+torque!~tachyon@user/torque
+page_allocator is thread safe, as is smp_allocator
+
+1746847977
+torque!~tachyon@user/torque
+SomeRandoUser: ^
+
+1746848135
+torque!~tachyon@user/torque
+for threading stuff you typically only want per-thread arena allocators anyway, but they of course have to be backed by a thread-safe allocator, which can be a bit of a footgun
+
+1746848181
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+That makes sense. Multiple threads trying to allocate from the same arena sounds like a recipe for disaster.
+
+1746848212
+Guest7161!d3fc6e6a8a@user/geemili
+debug_allocator supports multi-threading as well https://github.com/ziglang/zig/blob/master/lib/std/heap/debug_allocator.zig#L126-L137
+
+1746848222
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+A malloc-style gpa should be okay for multithreading, though.
+
+1746848389
+torque!~tachyon@user/torque
+smp_allocator is the (actually performant) general purpose allocator as of 0.14.0, I believe
+
+1746848446
+torque!~tachyon@user/torque
+<clevor> Question: On Linux, I'm pretty sure the null-terminated string contents of argv are laid out in memory one after another, and I am curious if it is possible to define an array of null-terminated arrays.
+
+1746848463
+torque!~tachyon@user/torque
+sure but since each argument in argv is a different length you would need an array of slices
+
+1746848468
+geemili!d3fc6e6a8a@user/geemili
+torque: GeneralPurposeAllocator is an alias for DebugAllocator at the moment https://github.com/ziglang/zig/blob/master/lib/std/heap.zig#L23-L26
+
+1746848494
+torque!~tachyon@user/torque
+and since the length of argv is only known at runtime, it really needs to be a slice of slices
+
+1746848561
+torque!~tachyon@user/torque
+geemili, yes, because that was the historical "GeneralPurposeAllocator" which was always more of a debug allocator due to being implemented in a perfomance-unfriendly way
+
+1746848575
+torque!~tachyon@user/torque
+afaik the plan is to remove this deprecated alias in 0.15
+
+1746848617
+geemili!d3fc6e6a8a@user/geemili
+That's what the doc comment says, yeah
+
+1746848740
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you only need to do argsAlloc if you need windows support
+
+1746848750
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+the alloc is for wtf16 encoding
+
+1746851015
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+I must say the lack of /* */ comments is a pain point in Zig. I wonder why Andrew decided to not include that.
+
+1746852274
+geemili!d3fc6e6a8a@user/geemili
+SomeRandoUser: The syntax is designed so you can parse any line without needing to know the previous lines
+
+1746852320
+geemili!d3fc6e6a8a@user/geemili
+s/parse/tokenize/
+
+1746852687
+grayhatter!~grayhatte@user/grayhatter
+it's a pain to have to have just one style of comments?
+
+1746852701
+grayhatter!~grayhatte@user/grayhatter
+dude, wait until you learn about tabs
+
+1746853118
+geemili!d3fc6e6a8a@user/geemili
+SomeRandomUser: Found the issue about removing multi-line comment syntax: https://github.com/ziglang/zig/issues/161
+
+1746855772
+torque!~tachyon@user/torque
+wow I had not run across that one before
+
+1746855817
+torque!~tachyon@user/torque
+remarkable how people are still arguing for it imo, but I've always disliked block comments in C
+
+1746863877
+tonitch!~tonitch@user/tonitch
+torque: Thanks it seems to work. I just want to understand it now. so `&[_] [*:0]const u8{vertexSource}` is a pointer to an array of known size (therefore a slice I assume) of `[*:0]const u8` witch are pointer of an array of const u8 with a sentinel set to 0 ? and in that array you place only one element: vertexSource ? If that make sense ? ^^ 
+
+1746864407
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a pointer to an array of known size is not a slice (although it's convertible to a slice)
+
+1746864490
+tonitch!~tonitch@user/tonitch
+okay I see, so it's a pointer to array of array-sentinel or u8 ?
+
+1746864500
+tonitch!~tonitch@user/tonitch
+of*
+
+1746868306
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's a pointer to an array of many-item pointers terminated by 0
+
+1746868408
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(not 0-terminated array, that would be [N:0] for some N)
+
+1746868552
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+[*] is a pointer that you can do pointer-arithmetic on, and [*:0] is just the 0-terminated variant of that
+
+1746884018
+triallax!f378378b91@lacerte/triallax
+torque: how come gpa is not threadsafe, if it's explicitly got a config option called `thread_safety`? (genuine question)
+
+1746884075
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Assuming you mean debugallocator (post rename), it is thread safe
+
+1746884081
+triallax!f378378b91@lacerte/triallax
+yes
+
+1746884132
+triallax!f378378b91@lacerte/triallax
+i'm too used to the old name
+
+1746886042
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this c function needs a:  char  buf[JACK_UUID_STRING_SIZE] 
+
+1746886082
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can I just pass:  const uuid_buf: [jack_uuid_string_size]u8 ?
+
+1746886090
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://jackaudio.org/api/uuid_8h.html#ad0f407d1d45a9c00f55ae6499daa801e
+
+1746886092
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+unparse
+
+1746886424
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+presumably it wants to write to that buffer, so it can't be cost
+
+1746886426
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*const
+
+1746886627
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+But I think the lsp requires that ...
+
+1746886696
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean the lsp requires that?
+
+1746886724
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+consider using a const
+
+1746886772
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, consider not using a const
+
+1746886781
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what is the actual compile error?
+
+1746886787
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+heh
+
+1746886799
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I didn't try to compile yet
+
+1746886811
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+walking trough the code
+
+1746896790
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic:  error: local variable is never mutated
+
+1746896803
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ var uuid_buf: [jack_uuid_string_size]u8 = @splat(0);
+
+1746896916
+torque!~tachyon@user/torque
+c functions cannot take arrays as arguments. `char whatever[size]` is equivalent to `char *whatever` in c abi across the function boundary
+
+1746896931
+torque!~tachyon@user/torque
+so you need to pass in a `[*]u8`
+
+1746897320
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+torque: ok
+
+1746897819
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_: if you didn't do &uuid_buf to pass it, you'll get an error on that too
+
+1746905139
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: expected type '?*cimport.struct_lo_address_', found '?*cimport.struct_lo_address_'
+
+1746905167
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1746906780
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_: how many @cImport do you have?
+
+1746909486
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+I'm not sure I understand this compiler error. https://paste.debian.net/1374051/
+
+1746909531
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+I'm trying to read command-line arguments. the -l <length> option to my program is optional, so I declared optLength as ?u32
+
+1746909553
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+The error message doesn't even point to a line in my code, which is pretty terrible.
+
+1746909667
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+Ok, -freference-trace (not sure why that's not turned on by default) reveals that it's the std.fmt.parseInt call. I'm not sure why it doesn't let me assign that to an optional u32.
+
+1746909721
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+I can do `optLength = 10;` just fine, but somehow the result of a function call isn't compatible?
+
+1746909914
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+Oh, looks like the @TypeOf function is screwing it up. I can just hardcode u32 instead, and it compiles.
+
+1746910129
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+seems like @TypeOf(optLength.?) works as well
+
+1746910153
+SomeRandoUser!~SomeRando@2600:8807:50da:1200:604a:bb82:2bd5:1175
+aimi, please fix your connection
+
