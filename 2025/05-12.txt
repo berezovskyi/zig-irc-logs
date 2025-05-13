@@ -1,0 +1,516 @@
+1747030444
+lemons!~doggie@user/doggie-:49517
+someone got any large zig codebase at hand? need to test my theory of c# being terrible to look at
+
+1747033473
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+lemons: I've been looking at ghostty recently and it seems big
+
+1747033525
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+here's the repo link: https://github.com/ghostty-org/ghostty
+
+1747044123
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://jackaudio.org/api/group__Metadata.html#ga1b7b25ad3e29266e056d7bc3e647b39e
+
+1747044154
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I need to pass [*c][*c]u8
+
+1747044163
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+char**
+
+1747044427
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I don't manage to create such thing in zig
+
+1747045004
+ifreund!2940d10f8b@user/ifreund
+flower_: `var value: ?[*:0] = null; jack_get_property(subject, key, &value, null);`
+
+1747045006
+ifreund!2940d10f8b@user/ifreund
+for example
+
+1747045035
+ifreund!2940d10f8b@user/ifreund
+oops, ?[*:0]u8 not ?[*:0] of course
+
+1747045420
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ifreund: error: expected type '[*c][*c]u8', found '*?[*:0]u8'
+
+1747046893
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+even [*c][*:0]u8 isn't implicitly convertible to [*c][*c]u8, is it?
+
+1747047083
+ifreund!2940d10f8b@user/ifreund
+flower_: lame, then either do `var value: [*c] = null` or use @ptrCast()
+
+1747047119
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Here the issue is also discussed I think: https://ziggit.dev/t/improving-on-c-u8-when-calling-a-c-function-that-allocates-a-string/2489/9
+
+1747047122
+ifreund!2940d10f8b@user/ifreund
+[*c]u8 that is
+
+1747047330
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+seems to work, thx
+
+1747048497
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm not being able to catch multiple times |err| in the same scope, keeps being annoying. If err, run a function which can return a err as well ...
+
+1747048601
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+err has a special meaning, or can you name that catch everything you want?
+
+1747048701
+ifreund!2940d10f8b@user/ifreund
+you can name it whatever you want
+
+1747048714
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah :)
+
+1747048752
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+[*c][*c]u8 seems to be such an alien concept, is a "c" pointer to a "c" pointer even a thing?
+
+1747049269
+ifreund!2940d10f8b@user/ifreund
+char** in C...
+
+1747049276
+ifreund!2940d10f8b@user/ifreund
+it's quite common
+
+1747049304
+ifreund!2940d10f8b@user/ifreund
+[*c] pointers as a type only exist in Zig to make translate-c
+
+1747049317
+ifreund!2940d10f8b@user/ifreund
+*to make translate-c work
+
+1747049350
+ifreund!2940d10f8b@user/ifreund
+since C's type system doesn't have as much information as zig's does, it is impossible to translate a pointer in C to the correct zig pointer type
+
+1747049526
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I think you would have to manually ensure it is correct.
+
+1747049581
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+ok, but char** doesn't mean "c pointer to c pointer to char" it means "pointer to pointer to char"
+
+1747049677
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+swap this with Golang and using same semantics you get "go pointer to go pointer to char" and I see ingestion of such datatype, but creating one is hmmm
+
+1747049682
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, it means a C pointer to a C pointer to a char, because it's in C
+
+1747049706
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and a C pointer in zig is [*c]
+
+1747049746
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+afaik pointers are memory address so they don't have language attached
+
+1747049774
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not in zig, zig has lots of different kinds of pointers with different restrictions
+
+1747049778
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+so if I'm in Zig and I want to create a [*c] to a [*c] and I don't have (or use) C at all, then it all feels like voodoo
+
+1747049807
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there wouldn't be any reason to create a [*c] unless you interact with C code
+
+1747049929
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+100% agree here, but [*c][*c] IMO should be equivalent to *[*c] when produced (and maybe [*c][*c] when ingested). Creating [*c][*c] feels off and I'd be looking to delegating this to C directly.
+
+1747050042
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+Only armchairing though. Probably there's some deeper meaning.
+
+1747050080
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+You would think it should be possible to make a tool that wraps the declarations of a c library to a zig wrapper. Now I'm doing this manually and 'zig can include c libraries' is actually harder then it sounds, for me at least
+
+1747050081
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+* is not implicitly convertible to [*c], because * is restricted
+
+1747050123
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, unfortunately, the C declarations do not contain enough information to do that
+
+1747050147
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok
+
+1747050151
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+too bad
+
+1747050153
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no indication of what char** really means
+
+1747050154
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+Makes sense, thus @ptrCast
+
+1747050198
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: hm then maybe not all of them (UNSOLVED!), but maybe 85%?
+
+1747050203
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+flower_ seen the same, depends on library, I spent 2 days trying to integrate Souffle and finally gave up.
+
+1747050236
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, but as soon as you have e.g. _any_ pointer, it will have to throw up its hands
+
+1747050282
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+IMO it's completely doable, but not without in-depth analysis, i.e. I doubt AST checks will be enough for it
+
+1747050288
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is char* supposed to be the .ptr from a []u8, with the length passed as another parameter? who knows!
+
+1747050338
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm already busy for a week to rewrite a simple C tool into zig... Ok, it doesn't help that I'm not a C coder and new to zig. :)
+
+1747050362
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+It gets better
+
+1747050404
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+I picked it up recently, too, and at the beginning I was tracking disappearing allocations
+
+1747050482
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I think you get something back if you've a foot between the door with Zig
+
+1747050505
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the whole world of c code is open for you then...
+
+1747050507
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+Fault is completely on me, serves me right for passing slices back and forth and then destacking the owner
+
+1747050625
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+In a lot of situations a garbarge collector is a good thing though I think ... But yeah Go and C doesn't go together too well. 
+
+1747050635
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+But I was somewhat surprised that it was that difficult to debug...
+
+1747050682
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+uncheckable undefined behaviour tends to be that way
+
+1747050828
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+Go interop is what brought me to Zig. I'd like to integrate Pikchr with my project and it's written in C. So I grokked CGo, read about shortcut of using Zig and figured yet another area I want to put. Static analysis using Datalog (so Souffle, but failed to integrate it).
+
+1747061082
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if (name[0] == 'n') {}
+
+1747061089
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is that correct in zig?
+
+1747061096
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+checking if first char is 'n'
+
+1747061200
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+As I mentioned, not an Zig expert, but I'm betting my goats on "yes"
+
+1747061749
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, if name is at least 1 byte long, yes
+
+1747061771
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+goats are safe for now
+
+1747066878
+grayhatter!~grayhatte@user/grayhatter
+is there a chance that `[]const []const u8` will ever cast into `[]const std.posix.iovec_const`?
+
+1747066894
+ifreund!2940d10f8b@user/ifreund
+no
+
+1747066924
+ifreund!2940d10f8b@user/ifreund
+the memory layout of slices is not likely to ever be well-defined
+
+1747067096
+grayhatter!~grayhatte@user/grayhatter
+I'm using this for it's ergonomics, any chance this PR as a PR would be accepted? https://gist.github.com/GrayHatter/32cb26cc49c802fa914da7192e9db0b0
+
+1747067328
+grayhatter!~grayhatte@user/grayhatter
+I suspect the .empty decl literal would be the controversial part
+
+1747067421
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+how to define a slice?  i have `comptime T: type`,  i want to create a secondary type which is a slice of values of T.  now i'm trying to define it using std.builtin.Type but i'm not sure if it's right way.  eg. i have no idea what to pass as address_space  (assuming what i want is `const ti = std.builtin.Type{.pointer={.size = .slice, ...}}` and then `return @Type(ti)`)
+
+1747067451
+grayhatter!~grayhatte@user/grayhatter
+netvor: why doesn't `[]T` work
+
+1747067480
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+oh
+
+1747067486
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+good i asked
+
+1747067489
+grayhatter!~grayhatte@user/grayhatter
+lmao
+
+1747067495
+grayhatter!~grayhatte@user/grayhatter
+I've been there
+
+1747067508
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+i guess i got into turbo overthinking mode :D
+
+1747067595
+ifreund!2940d10f8b@user/ifreund
+netvor: for future reference, you'd want .generic for the address space
+
+1747067612
+ifreund!2940d10f8b@user/ifreund
+but []T is certainly better if you have the option to use that
+
+1747067617
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+ thanks
+
+1747067651
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+i've been constructing types like that left and right in my code and always using `[]T` .. i don't know why i got lost this time :D
+
+1747068298
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+just curious, in std.io.PollFiles when defining struct based on enum, why do they use this trick for defining name?  `.name = enum_field.name ++ "",`
+
+1747068372
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+https://github.com/ziglang/zig/blob/master/lib/std/io.zig#L806
+
+1747068422
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+oh i found it using blame: https://github.com/ziglang/zig/commit/c8fa767f083e610840cef688b709783c5ad66acc
+
+1747068466
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Looks like it can be reverted then.
+
+1747068501
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+"Work around stage1 not yet returning null-terminated @typeInfo strings" .. not that i understand 100% .. i was just wondering if i should cargo cult that
+
+1747068552
+grayhatter!~grayhatte@user/grayhatter
+anything suspicious is a bug unless otherwise clearly documented
+
+1747068562
+ifreund!2940d10f8b@user/ifreund
+netvor: don't cargo cult it
+
+1747068578
+grayhatter!~grayhatte@user/grayhatter
+there's no inline comments, which means it's a bug.... don't copy bugs
+
+1747068685
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+"anything suspicious is a bug unless otherwise clearly documented" i like this :D
+
+1747068706
+grayhatter!~grayhatte@user/grayhatter
+<3 thanks, I invented it myself :)
+
+1747069041
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/pull/23866
+
+1747069046
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Can someone please restart the failing github action for this PR? I don't think it has anything to do with the changes I made. https://github.com/ziglang/zig/pull/23819
+
+1747069064
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Specifically x86_64-windows-release
+
+1747069255
+ifreund!2940d10f8b@user/ifreund
+clevor: done
+
+1747069455
+grayhatter!~grayhatte@user/grayhatter
+ifreund: technically he didn't do it, he only considered doing it
+
+1747069507
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+lol
+
+1747069597
+ifreund!2940d10f8b@user/ifreund
+true, thanks for helping improve the std netvor :)
+
+1747069628
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+i'm putting this on my resume "scared zig developers into fixing part of std" :D
+
+1747069661
+grayhatter!~grayhatte@user/grayhatter
+if you can't be an example of what to do, you can be a warning of what never to do :D
+
+1747069677
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+rofl :D
+
+1747070430
+xlii!~xlii@83.9.196.198.ipv4.supernova.orange.pl
+Gliptic: they'll wait till the next bet
+
+1747070516
+clevor!sid649024@id-649024.hampstead.irccloud.com
+netvor looks quite a bit like clevor
+
+1747071573
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+how to compute bits needed for a given comptime-known int value?  specificially i'm creating tagged union with fields based on a struct fields.  ie. i know number of the fields as comptime_int.   now IIUC for tagged union .tag_type needs to be int type, but to construct it i need bit size
+
+1747071593
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+i know i can do it via @log2 but i feel there should be simpler way
+
+1747071746
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+until there's an integer log2, @log2 is probably the easiest way to do it
+
+1747071789
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+thanks .. i saw also std.math.log2_int_ceil, not sure if that would be better
+
+1747071839
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh, so there is an integer log2
+
+1747071917
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+beware of corner cases though
+
+1747071943
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(powers of 2)
+
+1747071944
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+good point, i guess 0 fields is the only one though
+
+1747072042
+lemons!~doggie@user/doggie-:49517
+what chat did i miss 
+
+1747072175
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+log2_int_ceil does not accept comptime_int though (@compileError) so it's a chicken-and-egg problem
+
+1747072270
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+(or i could just pass usize there)
+
+1747072577
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+and so far `1` is a weird corner case, log2_int_ceil(1) == 0  but i'm not sure i want u0 .  (on the other hand it might be righ, maybe i need to re-watch Loris' video on u0 :D)
+
+1747072788
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's what I meant about corner cases
+
+1747072890
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+although, if I understand right, you say you have the count of the fields, and you want to number the fields and store that number in an integer
+
+1747073036
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+then indeed u0 is good for a count of 1, although I don't know if there's some weirdness with u0 that makes it non-viable
+
+1747073036
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+yeah, ie. for 4 fields `u2` should work
+
+1747073065
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+which is what the fn returns
+
+1747073226
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+count of 0 is also possible, but log2_int_ceil(usize, 0) throws panic. it's easy for me to just ban that with @compileError.   i suppose if i wanted, u0 would also work for the weird case when someone passes a field-less struct (resulting in a field-less union -- if that's even possible)
+
+1747073263
+netvor!~netvor@2a00:ca8:a1f:cd0:77f7:851b:346a:d0fb
+but in my case it's mostly just learning, i don't actually need to support more than about 10 types
+
+1747074170
+clevor!sid649024@id-649024.hampstead.irccloud.com
+netvor: Speaking of comptime_int in math functions, the PR I linked earlier adds support for math.shr and math.shl for scalar comptime_ints just because I wanted fmt.hexOptions to support comptime ints. I don't need it anymore, but it also fixes the bug where `std.math.shr(@as(i8, -1), 9)` gave 0 despite `std.math.shr(@as(i8, -1), 7)` returning -1.
+
+1747074286
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I typed the functions wrong, but oh well
+
+1747080708
+lemons!~doggie@user/doggie-:49517
+why do switch statements differentiate between _ => {} and else => {} btw?
+
+1747080794
+grayhatter!~grayhatte@user/grayhatter
+lemons: `.named` will never be in `_ =>` but it will be in `else =>`
+
+1747081033
+lemons!~doggie@user/doggie-:49517
+ic
+
+1747092315
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Zig outputs it like an error, says the unexpected LLD stderr is a warning, and then returns the exit code 0. https://gist.github.com/myclevorname/7826f15c617fa861b7ca19f1f049f457
+
+1747092538
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The Nix flake in question (assuming (any)zig is installed and you run `nix develop`): https://usercontent.irccloud-cdn.com/file/byPyP9FK/gui.tar.xz
+
