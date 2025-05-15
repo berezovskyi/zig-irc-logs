@@ -1,0 +1,1372 @@
+1747183379
+torque!~tachyon@user/torque
+the json for tagged unions is quite similar to how you assign them in zig source
+
+1747183392
+torque!~tachyon@user/torque
+or in other words, they are like a struct that can only have one field active
+
+1747183403
+torque!~tachyon@user/torque
+i.e. `{"field": value}`
+
+1747183479
+torque!~tachyon@user/torque
+(comapare to `const foo = .{.field = value}`)
+
+1747190552
+sleeplessknight!~sleepless@user/sleeplessknight
+As a C enthusiast, I really want to love Zig, but I'm struggling with signal handling
+
+1747190614
+sleeplessknight!~sleepless@user/sleeplessknight
+The C interop seems to work, but then some of my cleanups with defer stop working, it's odd.
+
+1747190662
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+sleeplessknight: any example code?
+
+1747190784
+sleeplessknight!~sleepless@user/sleeplessknight
+I was just trying to implement a basic, single-threaded http server
+
+1747190814
+sleeplessknight!~sleepless@user/sleeplessknight
+````const std = @import("std");
+
+1747190815
+sleeplessknight!~sleepless@user/sleeplessknight
+const net = std.net;
+
+1747190815
+sleeplessknight!~sleepless@user/sleeplessknight
+const http = std.http;
+
+1747190816
+sleeplessknight!~sleepless@user/sleeplessknight
+const c = @cImport({
+
+1747190816
+sleeplessknight!~sleepless@user/sleeplessknight
+    @cInclude("signal.h");
+
+1747190817
+sleeplessknight!~sleepless@user/sleeplessknight
+});
+
+1747190817
+sleeplessknight!~sleepless@user/sleeplessknight
+const BUFF_MAX = 8096;
+
+1747190818
+sleeplessknight!~sleepless@user/sleeplessknight
+var host: []const u8 = "127.0.0.1";
+
+1747190818
+sleeplessknight!~sleepless@user/sleeplessknight
+var port: u16 = 8080;
+
+1747190819
+sleeplessknight!~sleepless@user/sleeplessknight
+var running = true;
+
+1747190819
+sleeplessknight!~sleepless@user/sleeplessknight
+pub fn main() !void {
+
+1747190820
+sleeplessknight!~sleepless@user/sleeplessknight
+    @atomicStore(bool, &running, true, .release);
+
+1747190820
+sleeplessknight!~sleepless@user/sleeplessknight
+    var sa = std.mem.zeroes(c.struct_sigaction);
+
+1747190821
+sleeplessknight!~sleepless@user/sleeplessknight
+    sa.__sa_handler.sa_sigaction = &handleSignal;
+
+1747190821
+sleeplessknight!~sleepless@user/sleeplessknight
+    sa.sa_flags = c.SA_SIGINFO;
+
+1747190822
+sleeplessknight!~sleepless@user/sleeplessknight
+    sa.sa_mask = std.mem.zeroes(c.sigset_t);
+
+1747190822
+sleeplessknight!~sleepless@user/sleeplessknight
+    if (c.sigaction(c.SIGINT, &sa, null) != 0) {
+
+1747190823
+sleeplessknight!~sleepless@user/sleeplessknight
+        return error.SigactionFailed;
+
+1747190834
+sleeplessknight!~sleepless@user/sleeplessknight
+        };
+
+1747190834
+sleeplessknight!~sleepless@user/sleeplessknight
+        try handleConn(conn);
+
+1747190835
+sleeplessknight!~sleepless@user/sleeplessknight
+    }
+
+1747190835
+sleeplessknight!~sleepless@user/sleeplessknight
+    std.debug.print("Shutting down server...\n", .{});
+
+1747190836
+sleeplessknight!~sleepless@user/sleeplessknight
+}
+
+1747190836
+sleeplessknight!~sleepless@user/sleeplessknight
+fn handleSignal(sig: c_int, info: [*c]c.siginfo_t, context: ?*anyopaque) callconv(.C) void {
+
+1747190837
+sleeplessknight!~sleepless@user/sleeplessknight
+    _ = sig;
+
+1747190837
+sleeplessknight!~sleepless@user/sleeplessknight
+    _ = info;
+
+1747190838
+sleeplessknight!~sleepless@user/sleeplessknight
+    _ = context;
+
+1747190838
+sleeplessknight!~sleepless@user/sleeplessknight
+    @atomicStore(bool, &running, false, .release);
+
+1747190839
+sleeplessknight!~sleepless@user/sleeplessknight
+    std.debug.print("\nCtrl+C received...\n", .{});
+
+1747190839
+sleeplessknight!~sleepless@user/sleeplessknight
+}
+
+1747190840
+sleeplessknight!~sleepless@user/sleeplessknight
+````
+
+1747190844
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+sleeplessknight: use a pastebin like zigbin.io
+
+1747190896
+sleeplessknight!~sleepless@user/sleeplessknight
+https://zigbin.io/432b0a
+
+1747190907
+sleeplessknight!~sleepless@user/sleeplessknight
+My allocator defer isn't running
+
+1747190947
+sleeplessknight!~sleepless@user/sleeplessknight
+28.      std.debug.print("Entering defer block...\n", .{});
+
+1747190948
+sleeplessknight!~sleepless@user/sleeplessknight
+Doesn't run. I don't get any info about leaks like I want
+
+1747191040
+sleeplessknight!~sleepless@user/sleeplessknight
+I'm just really not sure what's going on, it's my first time using Zig and it's been a bit of a pain
+
+1747191156
+sleeplessknight!~sleepless@user/sleeplessknight
+The lack of built in signal handling is the real pain here
+
+1747191481
+sleeplessknight!~sleepless@user/sleeplessknight
+I can post the full runnable code if needed, it's just 100 lines long so I tried to only share the relevant parts
+
+1747191614
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://zigbin.io/ca5c9c
+
+1747191626
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+here is some zig style signal handling
+
+1747191633
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+using the std.posix namespace stuff
+
+1747191679
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+as for your defer....you are sending a sigint and then attempting a connection?
+
+1747191691
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+When I send SIGINT, then attempt connection the defer runs as expected
+
+1747191716
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I'm guessing you are only sending sigint though, which isn't getting out of the blocking accept
+
+1747191916
+sleeplessknight!~sleepless@user/sleeplessknight
+Oh, that's much more sane. I did think it might have something to do with the IO blocking. I tried making it async but the compiler kept saying that async was only supported by the llvm backend, which I couldn't get to work
+
+1747191931
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+async is out of the language for now
+
+1747192023
+sleeplessknight!~sleepless@user/sleeplessknight
+Yeah so I guess the problem is the IO blocking. That makes sense. I thought async came back in 0.14.0?
+
+1747192032
+sleeplessknight!~sleepless@user/sleeplessknight
+Thanks for the help by the way
+
+1747192049
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+andrew has a branch to do coroutines but it on 0.15-dev
+
+1747192140
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+To do something like your single threaded server you'll either want to do your own evented io with kqueue/epoll/io_uring or use a library (there are a few zig ones)
+
+1747192155
+sleeplessknight!~sleepless@user/sleeplessknight
+I guess I'll use thread pooling and an event loop then. I'm not super technically savvy so the IO blocking was a bit mystifying to me, I thought I could get away with just a blocking thread for the basic example
+
+1747192199
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Blocking thread would do it also. I would probably stay away from a library and just write a multithreaded implementation until you get more used to zig vs C
+
+1747192251
+sleeplessknight!~sleepless@user/sleeplessknight
+Yeah I guess I'll do that now. Thanks :)
+
+1747192276
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+np
+
+1747192312
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+when you do reach for a library: https://github.com/rockorager/ourio ;)
+
+1747192352
+sleeplessknight!~sleepless@user/sleeplessknight
+Thanks! I'll bookmark that.
+
+1747192444
+sleeplessknight!~sleepless@user/sleeplessknight
+I'm really excited about the future of Zig. Explicit allocators, defer, optionals, error unions and pattern matching, comptime, built-in tooling (no valgrind!)
+
+1747192465
+sleeplessknight!~sleepless@user/sleeplessknight
+It's like everything I ever wanted in C
+
+1747212967
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zig.news/castholm/announcing-zigglgen-zig-opengl-binding-generator-35id
+
+1747212972
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+"A long-term goal for zigglgen is for every single pointer type to be correctly typed."
+
+1747214556
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+looks like it's doing that using manual overrides
+
+1747214595
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because the API registry doesn't have the information
+
+1747217038
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+here a return value of a c function is compared with 0; shouldn't that be @as(c_int, 0) and if so, why doesn't the compiler tells me to do so? 
+
+1747217041
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/fix_imports/item/src/clientslist.zig#L70
+
+1747217276
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can compare comptime_int with other ints without conversion
+
+1747217371
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah, hm ok
+
+1747222017
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm it seems the zig compiler sometimes requires me to handle a return value of a c function and sometimes it doesn't?
+
+1747222412
+squeek502_!~squeek502@user/squeek502
+flower_, care to share the 'sometimes it doesn't' case?
+
+1747222768
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+squeek502_: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/fix_imports/item/src/clientslist.zig#L54
+
+1747222777
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+if I leave that check out, it still compiles
+
+1747222798
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://jackaudio.org/api/group__ClientFunctions.html#ga9800d5b29bd7670d9944a15f6ea0ecf8
+
+1747222836
+squeek502_!~squeek502@user/squeek502
+flower_, what do you mean by 'leave that check out'?
+
+1747222869
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+squeek502_: if I don't check the return value
+
+1747222894
+squeek502_!~squeek502@user/squeek502
+you mean `if (c.jack_activate(jack_client.?)) {`
+
+1747222894
+squeek502_!~squeek502@user/squeek502
+?
+
+1747222897
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yes
+
+1747222913
+squeek502_!~squeek502@user/squeek502
+i would expect a compile error due to a non-boolean condition
+
+1747222927
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ if (c.jack_activate(jack_client.?) != 0) {
+
+1747222929
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+it is
+
+1747222952
+squeek502_!~squeek502@user/squeek502
+if you don't have `!= 0` it isn't
+
+1747222973
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I have :)
+
+1747223026
+squeek502_!~squeek502@user/squeek502
+flower_, i think we're misunderstanding each other. Can you post the version that you think shouldn't compile but does?
+
+1747223088
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+squeek502_: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/fix_imports/item/src/clientslist.zig#L54
+
+1747223124
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+squeek502_: I would expect to be forced to handle the int c.jack_activate returns
+
+1747223143
+squeek502_!~squeek502@user/squeek502
+yeah i would expect that not to compile
+
+1747223158
+squeek502_!~squeek502@user/squeek502
+afaik translated c doesn't get any special rules applied to it
+
+1747223198
+squeek502_!~squeek502@user/squeek502
+you sure that code is being referenced? if you stick an explicit @compileError("test"); in there does it get hit?
+
+1747223334
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I don't get a hit when running zig build
+
+1747223345
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+referenced here: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/fix_imports/item/src/clientslist.zig#L84  (runtime)
+
+1747223422
+squeek502_!~squeek502@user/squeek502
+flower_, my attempt at reproducing it triggered the expected compile error: https://zigbin.io/53a0f0
+
+1747223469
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+squeek502_: hm I think initJack isn't referenced, ok that might be it, thx
+
+1747223534
+squeek502_!~squeek502@user/squeek502
+np
+
+1747224036
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: value of type 'c_int' ignored
+
+1747224039
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1747225965
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so you can't have unused variables, but you can have unused functions ...
+
+1747227146
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+a c function needs: char  buf[JACK_UUID_STRING_SIZE] 
+
+1747227176
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://jackaudio.org/api/uuid_8h.html#ad0f407d1d45a9c00f55ae6499daa801e jack_uuid_unparse()
+
+1747227263
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah I've solved that already I think ...
+
+1747229430
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If C is considered an open standard, then why is it so expensive?
+
+1747230898
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+who considers it an open standard
+
+1747231084
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://en.m.wikipedia.org/wiki/C23_(C_standard_revision)
+
+1747231190
+bblack!~bblack@wikimedia/bblack-WMF
+yeah the official standard you have to pay to download, but the drafting process happens in the open, and so you end up with each official standard version of C having a semi-canonical "final draft" that's free for download and effectively the same thing.
+
+1747231283
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If you have to pay for the official standard, I would not consider it open.
+
+1747234423
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+this might be safety mechanism for compliance etc. saw a case like that couple weeks ago
+
+1747234620
+bw!sid2730@user/betawaffle
+xlii: can you tell us more about what you mean?
+
+1747234669
+bw!sid2730@user/betawaffle
+Like is there some legal reason why you’d need to use a standard that costs money?
+
+1747239553
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+Ok, so think security. You are selling software to Big Automaker. If there's screw-up you have millions if not billions eurodollars of blame that has to be put somewhere. Obv. it's not about blame, put people actually want the software.
+
+1747239645
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+So there's standard. But there's slight problem with standard available for free online. I could, as a malicious author put a copy where I'd put conceptual exploit. Otherwise print is the same minus the same paragraph. They, who downloaded my version, would like to point finger at me, but in my defence - I just got it from internet - I'm completely innocent! 
+
+1747239711
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+And so you have an entity that everybody trusts. They need to pay for insurance, which is not free. Yes, they could be open about this document and share it online, but we are back at point 1 - what if I modify it to be official looking yadda yadda.
+
+1747239761
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+So to avoid that - they have their own repository - with signed copies. In theory, everybody can download it through work version/draft version or demo excerpts, but it's not "official" per se. 
+
+1747239903
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+And to close up this already long story: I was implementing some security compliance and CISO told me to grab it online (cause official doc cost 500 €, and I wasn't part of the interest group), I refused so he gave me his copy (stupid, but hey). I ran it through diff of some rogue version found online and there were major differences and paragraphs missing.
+
+1747240092
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+Standards are all about trust, and one needs accountability to build that trust. Anonymous crowd can't build trust by definition, and sustaining architecture costs money. It's pretty much everywhere.
+
+1747240207
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+...aaaanyway I have this code over here:
+
+1747240209
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+https://gist.github.com/exlee/c94bbf22f575be4d88bd419e9c25965c
+
+1747240249
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+and unless I put value inside it complains that it won't compile the user, because it's comptime dependent, not the full code
+
+1747240338
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+xlii: compile the user?
+
+1747240468
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+erm, function that's using code in gist
+
+1747240484
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how does that function look, and what error are you getting?
+
+1747240493
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not seeing anything obviously wrong with the gist
+
+1747240569
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+I added error as a comment to gist
+
+1747240672
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you're using this in a comptime context where the passed `t` is not comptime?
+
+1747240677
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+I'm trying to do unit type generator, will push the whole thing to my utility repo soon, but I don't like this construct. I had "return value * switch (t.unit)" until it started to complain.
+
+1747240685
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+can't really say more unless you show the caller
+
+1747240712
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+Ok, I'll push the full version, it compiles even if I don't like the code because of that
+
+1747240891
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+https://github.com/exlee/zax/blob/master/src/generators.zig
+
+1747240925
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+This segfaults: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/jackproperty_queue/item/src/clientslist.zig#L168
+
+1747240942
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this actually: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/jackproperty_queue/item/src/clientslist.zig#L173
+
+1747240968
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+maybe related to line 168, type of value ...
+
+1747241003
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/e8a689
+
+1747241096
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://jackaudio.org/api/group__Metadata.html#ga1b7b25ad3e29266e056d7bc3e647b39e
+
+1747241112
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+jack_get_property
+
+1747241139
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+xlii: I'm not seeing any `return value * switch (t) {` line
+
+1747241154
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+yeah because it didn't compile xD
+
+1747241166
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, what's the latest compile error
+
+1747241183
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+the problem is that if I remove those "value" from the switch it won't compile
+
+1747241225
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, so it does compile now?
+
+1747241239
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, the reason is you can't have a switch return a comptime_int
+
+1747241240
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm maybe I can't pass null as type
+
+1747241245
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+when the switch is on a runtime value
+
+1747241263
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you should post the code that _doesn't_ compile, not the one that does
+
+1747241323
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+https://github.com/exlee/zax/compare/comptime-compile-failure
+
+1747241333
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+here's the failing code
+
+1747241333
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the types of the integers in each arm of the switch must have a real int type, e.g. @as(u32, EE * EE * EE) etc.
+
+1747241354
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep, fixed
+
+1747241355
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+EE * EE * EE * value turns it into a real integer type because `value` is u32
+
+1747241366
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+ah
+
+1747241367
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+right
+
+1747241376
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Wait, so some people modify standards documents. Why not release a copy with a digital signature and require payment in order to start the certification process?
+
+1747241414
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+xlii: another easy fix is to mae EE and SI have real integer types
+
+1747241419
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*make
+
+1747241459
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+be aware u32 is quite small for this purpose :P
+
+1747241464
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+5 gib overflows
+
+1747241486
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+Yeah, it just flew over my head. I was like "oh this infers just fine", nope.
+
+1747241488
+clevor!sid649024@id-649024.hampstead.irccloud.com
+u64 is nice for file sizes.
+
+1747241558
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+Yeah, that's just a demo. I'm actually using something even smaller, but I release pieces out. The case is that I don't have to have all the parsers for "5kb" strings or "10cm" or whatever.
+
+1747241603
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+flower_: recently I learned to put plenty of assertions while working with C code. It helps, because things break in mysterious ways.
+
+1747241637
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If you were to do addition on ranged integer types, should `a + b` coerce to type `@TypeOf(a)`, `@TypeOf(b)`, or something like `@Int(a.min + b.min, a.max + b.max)`?
+
+1747241732
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+IMO, uA + uB should turn into u(max(A, B) + 1) ;P
+
+1747241753
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+I prefer saturated ops 
+
+1747241765
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you have explicit saturated ops, +|
+
+1747241768
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+but every time I use it I spend 5 minutes searching for syntax
+
+1747241779
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I never used it
+
+1747241790
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but maybe I will in some graphics stuff
+
+1747241848
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+I'm doing that for CLI idea, I'll release it once done, but the point of it is that it has to be super fast and efficient
+
+1747241864
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+a toy for me to get used to Zig before tackling the big stuff
+
+1747242675
+xlii!~xlii@83.9.143.176.ipv4.supernova.orange.pl
+ok, marked EE and SI with the concrete types and it works nicely, thanks again for help
+
+1747243017
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to log it as string if it's not null ...
+
+1747243048
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ACTION needs to dive into logging more deeply at some point
+
+1747243066
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but a optional requires {any} afaik
+
+1747243286
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+flower_: {?s}
+
+1747243299
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+rockorager: merci
+
+1747256523
+sleeplessknight!~sleepless@user/sleeplessknight
+Can someone help me understand what's going on here? I'm sure I'm missing something basic, but somehow I can't figure it out. I've written a basic threaded http server in C before, but admittedly it's been a while. With my C server, I just ran cleanups atexit
+
+1747256524
+sleeplessknight!~sleepless@user/sleeplessknight
+https://zigbin.io/c38b1a
+
+1747256524
+sleeplessknight!~sleepless@user/sleeplessknight
+Output:
+
+1747256525
+sleeplessknight!~sleepless@user/sleeplessknight
+Server listening on 127.0.0.1:8080...
+
+1747256525
+sleeplessknight!~sleepless@user/sleeplessknight
+Shutting down server...
+
+1747256526
+sleeplessknight!~sleepless@user/sleeplessknight
+Request for: /
+
+1747256526
+sleeplessknight!~sleepless@user/sleeplessknight
+No leaks.
+
+1747256527
+sleeplessknight!~sleepless@user/sleeplessknight
+Request for: /favicon.ico
+
+1747256527
+sleeplessknight!~sleepless@user/sleeplessknight
+Request for: /
+
+1747256528
+sleeplessknight!~sleepless@user/sleeplessknight
+Request for: /favicon.ico
+
+1747256528
+sleeplessknight!~sleepless@user/sleeplessknight
+Request for: /
+
+1747256529
+sleeplessknight!~sleepless@user/sleeplessknight
+Request for: /favicon.ico
+
+1747256529
+sleeplessknight!~sleepless@user/sleeplessknight
+...
+
+1747256530
+sleeplessknight!~sleepless@user/sleeplessknight
+"Shutting down server..." / "No leaks" shouldn't output until main exits. It runs after the first request, yet the server continues happily serving.
+
+1747256535
+grayhatter!~grayhatte@user/grayhatter
+lol
+
+1747256560
+sleeplessknight!~sleepless@user/sleeplessknight
+:(
+
+1747256570
+grayhatter!~grayhatte@user/grayhatter
+that probably should have been a paste
+
+1747256593
+sleeplessknight!~sleepless@user/sleeplessknight
+Sorry yeah. I pasted the code, but the output should have been pasted too.
+
+1747256723
+sleeplessknight!~sleepless@user/sleeplessknight
+https://zigbin.io/437873
+
+1747256922
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sleeplessknight: running is still true after `run` returns?
+
+1747257162
+sleeplessknight!~sleepless@user/sleeplessknight
+Gliptic yes but `run` shouldn't be returning until ctrl+c or an error of some kind
+
+1747257183
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I mean, did you check that it's true
+
+1747257283
+sleeplessknight!~sleepless@user/sleeplessknight
+I guess not...
+
+1747257283
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: are you sure this is the code that you're running?
+
+1747257293
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+this doesn't make any sense
+
+1747257295
+sleeplessknight!~sleepless@user/sleeplessknight
+Yes it is
+
+1747257310
+sleeplessknight!~sleepless@user/sleeplessknight
+100% the same code. And it makes no sense to me either
+
+1747257313
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+even with memory corruption, how would it keep running the loop in `run`
+
+1747257336
+grayhatter!~grayhatte@user/grayhatter
+yeah, I think Gliptic found it
+
+1747257343
+grayhatter!~grayhatte@user/grayhatter
+seing wg.start in a while feels wrong
+
+1747257345
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what did I found?
+
+1747257353
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*find
+
+1747257384
+sleeplessknight!~sleepless@user/sleeplessknight
+I'll try checking and debug print in the console
+
+1747257398
+grayhatter!~grayhatte@user/grayhatter
+asking about the behavior of run
+
+1747257402
+grayhatter!~grayhatte@user/grayhatter
+^is what you found
+
+1747257447
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+remains to be seen
+
+1747257481
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+wg.start just adds one to the waitgroup 
+
+1747257492
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+wg.start() is fine, but..
+
+1747257512
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, I guess if there is an error before .finish(), it doesn't really matter that it never gets to call it
+
+1747257563
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: why aren't you using  https://ziglang.org/documentation/master/std/#std.Thread.Pool.spawnWg instead of calling start/finish yourself?
+
+1747257602
+sleeplessknight!~sleepless@user/sleeplessknight
+Because I'm a noob and I didn't know better
+
+1747257626
+sleeplessknight!~sleepless@user/sleeplessknight
+I really just quickly threw it together, but got so confused by the output
+
+1747257743
+sleeplessknight!~sleepless@user/sleeplessknight
+Also checking for running doesn't seem to make a difference. It's like running never returns
+
+1747257782
+sleeplessknight!~sleepless@user/sleeplessknight
+I'll refactor the waitgroup part
+
+1747257795
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: I just wrote something similar, I didn't wait at all
+
+1747257812
+grayhatter!~grayhatte@user/grayhatter
+I put accept in the primary thread
+
+1747257857
+sleeplessknight!~sleepless@user/sleeplessknight
+I was actually having this same issue even singlethreaded
+
+1747257882
+sleeplessknight!~sleepless@user/sleeplessknight
+I thought it was an IO blocking issue so I used threads
+
+1747257914
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Seeing this, I would still roll my own as I heard somewhere you can make lock-free multithreading with linked lists. The catch is that my idea uses quite a few atomic ops and requires a thread-safe allocator.
+
+1747257941
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Although it's really more of a list of tasks than a thread pool.
+
+1747257993
+sleeplessknight!~sleepless@user/sleeplessknight
+If anyone can get that example to run with sane output, I'd appreciate it. Then I can dissect and figure out where I went wrong. I don't even mind if it's 100% single threaded
+
+1747258003
+sleeplessknight!~sleepless@user/sleeplessknight
+But at the moment nothing seems to be working
+
+1747258052
+sleeplessknight!~sleepless@user/sleeplessknight
+It's really just a basic http server example I was writing to test out Zig
+
+1747258140
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: I don't think you could get leaks detected before "Shutting down server" without threads
+
+1747258165
+sleeplessknight!~sleepless@user/sleeplessknight
+I'll remove the threads and show you
+
+1747258197
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+sleeplessknight: copying and pasting that, it runs just fine on my machine
+
+1747258204
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+greyhatter, it's after Shutting down server though
+
+1747258211
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+oh
+
+1747258217
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I bet you already have a listener on 8080
+
+1747258305
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+reuse_address
+
+1747258325
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+sleeplessknight: linux or mac?
+
+1747258332
+sleeplessknight!~sleepless@user/sleeplessknight
+Give me a few minutes to refactor to single threaded
+
+1747258334
+sleeplessknight!~sleepless@user/sleeplessknight
+Linux
+
+1747258346
+sleeplessknight!~sleepless@user/sleeplessknight
+Also I'm using musl, if that matters?
+
+1747258408
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you aren't using libc so it doesn't matter
+
+1747258432
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+maybe some of that stuff calls libc if it's linked though
+
+1747258442
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you don't need libc so you can remove the linkLibC call in build.zig if you have it
+
+1747258465
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+i am on gnu+linux, not linking libc, and your code is working as expected
+
+1747258487
+sleeplessknight!~sleepless@user/sleeplessknight
+Oh I do have linkLibC in my build.zig
+
+1747258560
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: there's something missing from your explination 
+
+1747258580
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+ok so if you link libc you will be using different functions for all of the posix namespace than if you don't link libc
+
+1747258591
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+std.c instead of std.os.linux
+
+1747258693
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I doubt that is the issue though
+
+1747258775
+sleeplessknight!~sleepless@user/sleeplessknight
+https://zigbin.io/01d665
+
+1747258784
+sleeplessknight!~sleepless@user/sleeplessknight
+Single-threaded and I still get the nonsensical output
+
+1747258834
+sleeplessknight!~sleepless@user/sleeplessknight
+It keeps serving fine. I guess that could be IO still open, and still accepting
+
+1747258859
+sleeplessknight!~sleepless@user/sleeplessknight
+Also I removed linkLibC
+
+1747258884
+sleeplessknight!~sleepless@user/sleeplessknight
+But there's no errors. And it serves as long as I leave it running
+
+1747258896
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: remove reuse_address
+
+1747258920
+sleeplessknight!~sleepless@user/sleeplessknight
+oh you're right!
+
+1747258967
+grayhatter!~grayhatte@user/grayhatter
+that's quite often the case
+
+1747258983
+grayhatter!~grayhatte@user/grayhatter
+you have multiple proccess running in the background right?
+
+1747259013
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in the same terminal?
+
+1747259021
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: lol, yeah
+
+1747259036
+grayhatter!~grayhatte@user/grayhatter
+I've seen that before
+
+1747259038
+sleeplessknight!~sleepless@user/sleeplessknight
+I have no idea what might be using 8080 at the moment
+
+1747259044
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was gonna say, I expected a fork somewhere
+
+1747259055
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: the part that you omitted, was that you were seeing 3 requests, but only sending one
+
+1747259061
+sleeplessknight!~sleepless@user/sleeplessknight
+No I sent 3
+
+1747259072
+grayhatter!~grayhatte@user/grayhatter
+... why?
+
+1747259082
+sleeplessknight!~sleepless@user/sleeplessknight
+To see if it still worked after the "shutting down" output
+
+1747259100
+sleeplessknight!~sleepless@user/sleeplessknight
+But now  it won't even run because the address is in use
+
+1747259117
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+i see the issue
+
+1747259121
+sleeplessknight!~sleepless@user/sleeplessknight
+Maybe I have some rogue process running
+
+1747259134
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You run the program and then press ctrl+c?
+
+1747259145
+sleeplessknight!~sleepless@user/sleeplessknight
+Yes, hence the signal handling
+
+1747259156
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+zig build run?
+
+1747259156
+sleeplessknight!~sleepless@user/sleeplessknight
+I wanted to clean up on ctrl+c
+
+1747259163
+sleeplessknight!~sleepless@user/sleeplessknight
+Yes zig build run
+
+1747259163
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+you are killing the zig parent, *not* the program
+
+1747259168
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+it's left open as an orphan
+
+1747259171
+sleeplessknight!~sleepless@user/sleeplessknight
+oh shoot
+
+1747259185
+sleeplessknight!~sleepless@user/sleeplessknight
+That makes sense
+
+1747259195
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+zig build run has signal handlers too so it's grabbing SIGINT before yours
+
+1747259218
+sleeplessknight!~sleepless@user/sleeplessknight
+!!
+
+1747259270
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is debug.print signal safe
+
+1747259283
+grayhatter!~grayhatte@user/grayhatter
+signal safe, isn't how you'd ask that
+
+1747259316
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+debug.print is just going to print to the processes stderr
+
+1747259327
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+s/processes/process's
+
+1747259331
+grayhatter!~grayhatte@user/grayhatter
+is debug.print reentrant safe, and no it's not... but it *is* thread safe
+
+1747259344
+sleeplessknight!~sleepless@user/sleeplessknight
+The insanity did seem to begin around the time I started signal handling. I guess I'm still used to C
+
+1747259353
+grayhatter!~grayhatte@user/grayhatter
+which is what I think you're really asking Gliptic 
+
+1747259367
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+sleeplessknight: you can get around this by running the artifact instead of zig build run
+
+1747259370
+grayhatter!~grayhatte@user/grayhatter
+rockorager: I think you're wrong about this
+
+1747259380
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+zig build && ./zig-out/bin/<binary>
+
+1747259387
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+grayhatter: I was able to repro 
+
+1747259387
+grayhatter!~grayhatte@user/grayhatter
+I use threads and ctrl+c and zig build run for srctree
+
+1747259419
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+but are you blocked in the main thread on accept?
+
+1747259435
+grayhatter!~grayhatte@user/grayhatter
+rockorager: not that you're wrong, just that for **this** I think there's some extra semantics
+
+1747259452
+grayhatter!~grayhatte@user/grayhatter
+he's also "blocked" on the main thread
+
+1747259456
+grayhatter!~grayhatte@user/grayhatter
+run() isn't threaded
+
+1747259467
+sleeplessknight!~sleepless@user/sleeplessknight
+I might have to restart my system to get rid of the orphan process, I can't find it
+
+1747259493
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: google how to find the pid of a process listening on a port
+
+1747259510
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter, not really, thread safety doesn't mean signal safety
+
+1747259510
+sleeplessknight!~sleepless@user/sleeplessknight
+Oh right
+
+1747259515
+grayhatter!~grayhatte@user/grayhatter
+something like `netstat -nlp`
+
+1747259524
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. printf is not signal safe in C
+
+1747259550
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: printf isn't reentrant safe
+
+1747259595
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+grayhatter: https://0x0.st/8tlt.mp4
+
+1747259643
+sleeplessknight!~sleepless@user/sleeplessknight
+Cool yeah I killed the process. I guess this all boils down to improper signal handling
+
+1747259648
+grayhatter!~grayhatte@user/grayhatter
+zig's print is reentrant safe... huh
+
+1747259667
+grayhatter!~grayhatte@user/grayhatter
+actually I'm 90% sure that it's safe because it does the things that make printf unsafe at comptime
+
+1747259698
+grayhatter!~grayhatte@user/grayhatter
+but 90% isn't high enough confidence, so my offical answer is I think maybe it's signal safe
+
+1747259776
+grayhatter!~grayhatte@user/grayhatter
+rockorager: oh yes
+
+1747259778
+grayhatter!~grayhatte@user/grayhatter
+that's exactly what I meant
+
+1747259796
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+This seems like a bug in zig though
+
+1747259797
+grayhatter!~grayhatte@user/grayhatter
+you're correct that it's leaving orphan threads
+
+1747259810
+sleeplessknight!~sleepless@user/sleeplessknight
+Now I'm not sure how to ensure that my allocator defer runs on ctrl+c
+
+1747259814
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+the build runner, not the language
+
+1747259821
+grayhatter!~grayhatte@user/grayhatter
+but `zig build run` swallowing  ctrl+C isn't what's causing that
+
+1747259822
+sleeplessknight!~sleepless@user/sleeplessknight
+oh right, yes the zig runtime. hurdurr
+
+1747259838
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: you wouldn't call that a runtime
+
+1747259838
+sleeplessknight!~sleepless@user/sleeplessknight
+I'm still running zig build run instead of the artifact itself
+
+1747259842
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+grayhatter: what is?
+
+1747259903
+grayhatter!~grayhatte@user/grayhatter
+the main thread exits, but the other threads from the pool aren't joined? 
+
+1747259986
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+if main exits, the program exits
+
+1747260142
+grayhatter!~grayhatte@user/grayhatter
+main can return before all threads are finished
+
+1747260237
+grayhatter!~grayhatte@user/grayhatter
+if you replace sigint, which normall calls exit(), and don't call exit() [something something] the main function will return control of the tty to the shell, while the threads are still in the background
+
+1747260280
+grayhatter!~grayhatte@user/grayhatter
+I don't know the semantics about if a child thread can outlive a parent thread on linux
+
+1747260304
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+there aren't orphan threads - if main exits then all threads are killed and cleaned up
+
+1747260329
+grayhatter!~grayhatte@user/grayhatter
+but I know I've seen my shell print PS1, before my update thread prints it's message about exiting so 
+
+1747260420
+sleeplessknight!~sleepless@user/sleeplessknight
+Okay, so this is more sane, but I still want to see the leak check at the end after ctrl+c: https://zigbin.io/b2f27b
+
+1747260443
+sleeplessknight!~sleepless@user/sleeplessknight
+I know the OS cleans up but the leak check is for my debugging
+
+1747260478
+sleeplessknight!~sleepless@user/sleeplessknight
+In C what I would do is capture sigint and run cleanups with debug checks before exiting
+
+1747260536
+sleeplessknight!~sleepless@user/sleeplessknight
+I guess Zig would already tell me if there's a leak in a debug build? I guess I just expected the allocator defer to tell me "No leaks."
+
+1747260556
+sleeplessknight!~sleepless@user/sleeplessknight
+And thanks for the help,and I apologize for the confusion
+
+1747260600
+grayhatter!~grayhatte@user/grayhatter
+sleeplessknight: no apologies needed
+
+1747260612
+grayhatter!~grayhatte@user/grayhatter
+we're happy to help :)
+
+1747260616
+sleeplessknight!~sleepless@user/sleeplessknight
+:)
+
+1747260662
+sleeplessknight!~sleepless@user/sleeplessknight
+I guess I'm just not sure if Zig will tell me if there's a leak after ctrl+c, since I assumed the process was just killed and the OS cleans up
+
+1747260702
+sleeplessknight!~sleepless@user/sleeplessknight
+I'm just so used to running valgrind, having manual cleanups and capturing signals that this is oddly foreign to me
+
+1747260783
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+grayhatter: I'm running the single threaded version
+
+1747260787
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+and it has the same issue
+
