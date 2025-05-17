@@ -1,0 +1,456 @@
+1747373511
+norineko!~norineko@user/norineko
+is there a way to get the package version from build.zig.zon in my program?
+
+1747373536
+grayhatter!~grayhatte@user/grayhatter
+@import("build.zig.zon");
+
+1747373551
+norineko!~norineko@user/norineko
+indeed.
+
+1747373572
+grayhatter!~grayhatte@user/grayhatter
+norineko: that worked for you, right?
+
+1747373589
+grayhatter!~grayhatte@user/grayhatter
+or at least got you closer?
+
+1747373597
+norineko!~norineko@user/norineko
+trying it now
+
+1747373661
+norineko!~norineko@user/norineko
+well, i can't import outside of my module path (inside src/)
+
+1747373843
+grayhatter!~grayhatte@user/grayhatter
+the way I'd do it, is import it into build.zig, and then expose it as an option
+
+1747373884
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.Build.Step.Options
+
+1747373919
+grayhatter!~grayhatte@user/grayhatter
+this is probably a better doc link https://ziglang.org/documentation/master/std/#std.Build.Module.addOptions
+
+1747374325
+torque!~tachyon@user/torque
+afaik 0.14 can't infer zon result types
+
+1747374332
+torque!~tachyon@user/torque
+https://github.com/ziglang/zig/pull/22907 has the 0.14.1 milestone on it
+
+1747374541
+norineko!~norineko@user/norineko
+i am currently on nightly, but that's good to know
+
+1747374576
+norineko!~norineko@user/norineko
+might just do the old fashioned "write it twice"
+
+1747374608
+norineko!~norineko@user/norineko
+but this *does* work - by adding anonymous import with the root source=build.zig.zon, i can reference build.version after importing it in my file
+
+1747380797
+h4kor!~h4kor@user/h4kor
+is the arena allocator thread safe?
+
+1747406644
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+ fjkhkjjjjjjjjkjj]jk:w
+
+1747406836
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+oops, sorry for that :) 
+
+1747407062
+ToxicFrog!~ToxicFrog@66.49.187.238
+Hello, xlii's cat
+
+1747407095
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I'm more of a guinea pig person
+
+1747408427
+bblack!~bblack@wikimedia/bblack-WMF
+bringing this up because if it cost me time to figure it out, it probably costs some others too
+
+1747408457
+bblack!~bblack@wikimedia/bblack-WMF
+@FieldType: why isn't this just done by @TypeOf for the common case?
+
+1747408481
+bblack!~bblack@wikimedia/bblack-WMF
+given "const mystruct = struct { x: u32; ... };"
+
+1747408516
+bblack!~bblack@wikimedia/bblack-WMF
+@TypeOf(mystruct.x) gives the unhelpful compile error "mystruct has no member named x"
+
+1747408530
+bblack!~bblack@wikimedia/bblack-WMF
+but @FieldType(mystruct, "x") does the job
+
+1747408544
+bblack!~bblack@wikimedia/bblack-WMF
+it's at least a confusion point on the Zig learning curve
+
+1747408569
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+@TypeOf requires expression and @FieldOf type
+
+1747408647
+bblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/17ce39
+
+1747408680
+bblack!~bblack@wikimedia/bblack-WMF
+^ that's where I was first stuck, before I eventually figured out @FieldType() was the solution
+
+1747408703
+bblack!~bblack@wikimedia/bblack-WMF
+from a new user perspective, it's at the very least a confusing situation (that @TypeOf() doesn't work there as expected, and that the error message seems like a lie)
+
+1747408836
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+well mystruct is a type :)
+
+1747408870
+bblack!~bblack@wikimedia/bblack-WMF
+and mystruct.x is a field in the mystruct type, and mystruct.x has a type, which @TypeOf() can't tell me :P
+
+1747408883
+torque!~tachyon@user/torque
+you can't access struct fields through the type with dot notation
+
+1747408902
+torque!~tachyon@user/torque
+there's no other context there `MyStruct.x` works, so this would have to be special syntax inside of the @TypeOf, which seems unreasonable
+
+1747408904
+bblack!~bblack@wikimedia/bblack-WMF
+I guess "member" is what throws me here
+
+1747408915
+torque!~tachyon@user/torque
+s/there/where/
+
+1747408924
+bblack!~bblack@wikimedia/bblack-WMF
+member means the declarations, not the fields
+
+1747408998
+bblack!~bblack@wikimedia/bblack-WMF
+and yeah, I guess the dot-notation thing is the root of all this
+
+1747409035
+bblack!~bblack@wikimedia/bblack-WMF
+but again: coming from C and taking stabs at things, @TypeOf(mystruct.x) seemed logical, and the error message is completely unhelpful.
+
+1747409063
+bblack!~bblack@wikimedia/bblack-WMF
+is there any other syntax for looking at the fields of a struct type?
+
+1747409067
+torque!~tachyon@user/torque
+the error message could maybe be worded slightly better
+
+1747409083
+torque!~tachyon@user/torque
+I believe `@TypeOf(@as(MyStruct, undefined).x)` works
+
+1747409107
+bblack!~bblack@wikimedia/bblack-WMF
+yeah that makes sense.  or if you had any actual MyStruct value in scope to use.
+
+1747409120
+torque!~tachyon@user/torque
+yes
+
+1747409135
+bblack!~bblack@wikimedia/bblack-WMF
+in this case I was just trying to make a struct field in one struct match the same type as a struct field in another nearby, without duplicating and causing future mismatches.
+
+1747409139
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+IMO it's clear
+
+1747409158
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+and confusion might came from naming
+
+1747409164
+torque!~tachyon@user/torque
+@FieldType was also a replacement for the much less efficient `std.meta.FieldType` which existed for a long time
+
+1747409171
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+const T = struct{}... is actually a type
+
+1747409217
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+so if it'd be written in verbose way, like, for example: StructType then @TypeOf(StructType.some_field) might hint immediatelly that something is off
+
+1747409223
+torque!~tachyon@user/torque
+anyway, in c, you have to do similar acrobatics to access information about struct fields, so I don't think that your claim that `@TypeOf(mystruct.x)` makes sense coming from C
+
+1747409242
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+s/mystruct/mystruct_type/ :P
+
+1747409294
+bblack!~bblack@wikimedia/bblack-WMF
+agreed on the acrobatics.  I didn't mean to imply this makes sense equivalently in C, more just stating the background I came from, when I arrived here confused, in case that offered any context :)
+
+1747409335
+bblack!~bblack@wikimedia/bblack-WMF
+lots of things are simpler in Zig than in C.  Even this, once you know about it.
+
+1747409642
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I exercised some attempts on other ways to obtain this information, if it can be initialized by default you could also do `@TypeOf((mystruct{}).a)`
+
+1747410108
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+hm.. I think it'd be nice if Zig cli could spawn ad-hoc minimal random-named file and immediatelly start zig test --watch on it 
+
+1747410215
+torque!~tachyon@user/torque
+I mean you could write a shell alias to do that
+
+1747410235
+torque!~tachyon@user/torque
+I typically use zig.godbolt.org for quick repl-style testing
+
+1747410268
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+yes, but personally I like the idea of batteries included and also little friction == better adoption 
+
+1747410328
+torque!~tachyon@user/torque
+that seems like a fairly niche use-case to me tbh
+
+1747410333
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I was looking on some nice code sandboxes, that would be quicker, but there isn't anything
+
+1747410353
+torque!~tachyon@user/torque
+there's a difference between batteries included and kitchen sink included that can be hard to discern
+
+1747410390
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+this kind of solutions are indispensible when discussing with others online
+
+1747410502
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+as you said (and I agree) that could be a shell script, but first impressions matter a lot, let someone write "zig playground" that says "go edit file: XXX" with immediate watch testing and first-time user likes it already
+
+1747410585
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+if you hadn't used Elixir before - the first thing it does is downloads bunch of packages and require you to set up project before executing anything non-trivial
+
+1747410609
+torque!~tachyon@user/torque
+sounds like an antifeature to me
+
+1747410664
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+why?
+
+1747410681
+torque!~tachyon@user/torque
+anyway I'm not opposed to something like `zig playground` though it would be better to directly spawn EDITOR or w/e instead of just printing a message, but I still think it's niche and not useful enough to be a dedicated command
+
+1747410695
+torque!~tachyon@user/torque
+I'm not the arbiter of zig features though, so this is just an opinion
+
+1747410732
+torque!~tachyon@user/torque
+downloading a bunch of packages is bad behavior, doing it automatically is gross
+
+1747410733
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I've been researching dozens of various development environments for past 2 years, and this kind of features are make or break
+
+1747410754
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+wait till you learn that Elixir like to fail compilation if internet access is not provided ;-)
+
+1747410763
+torque!~tachyon@user/torque
+sounds like an antifeature
+
+1747410781
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I loved it, but the core system was complex enough that I learned to hate it with passion
+
+1747410789
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+today it's Rails, but worse
+
+1747410851
+torque!~tachyon@user/torque
+I would say that calling this a "make or break feature" is overdramatic considering zig is doing just fine without it so far
+
+1747410856
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+there are way better languages than Elixir, and if you need OTP, just pick Erlang instead
+
+1747410871
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I'm talking in adoption context
+
+1747410903
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+if I'm evaluating technology for use and presenting it, the first technical stakeholder question is "how can I test it quickly"
+
+1747410933
+torque!~tachyon@user/torque
+`zig init`
+
+1747410951
+torque!~tachyon@user/torque
+next queisotn
+
+1747410968
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+-bash:zig: command not found
+
+1747410985
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+apt-get install zig
+
+1747410990
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+"Unable to locate package zig"
+
+1747411027
+torque!~tachyon@user/torque
+apologies for assuming you were still arguing in favor of `zig playground` which would similarly require an existing zig executable already installed
+
+1747411030
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+This is a small problem, I usually prepared docker images anyway
+
+1747411210
+torque!~tachyon@user/torque
+anyway I would still probably recommend zig.godbolt.org to someone who absolutely must go as fast as possible, since it doesn't assume shell knowledge or heavy local environments like docker containers
+
+1747411235
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+but everything that requires time (to read, to figure out, to setup) is time - mature tooling and quick execution is a good sign
+
+1747411238
+torque!~tachyon@user/torque
+obviously there are other considerations that change this but in the general case I think it's reasonable
+
+1747411254
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I don't know how it works for you, but for me feedback is approx 5-10s 
+
+1747411303
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+"ok, so zig is slow, that's fine"
+
+1747411338
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+it's not, but that's the initial illusion created by godbolt.org, thus I wouldn't recommend it
+
+1747411386
+torque!~tachyon@user/torque
+a reasonable counterargument
+
+1747411420
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+that's - however - an opinion like yours, I strongly believe in poka-yoke method - if you get bitten by something I maintain, the design is at fault, not you
+
+1747411516
+torque!~tachyon@user/torque
+however, for getting a local setup, I think `zig init` is still fine for getting started, with the minor caveat that it can be information overload for some poeple
+
+1747411517
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+but other than holes in documentation, I'm liking zig so far
+
+1747411539
+torque!~tachyon@user/torque
+but from my perspective, I think it giving the user different things to look at and start experimenting with is actually good
+
+1747411544
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+yeah, and Zig Build takes 1Gigawat of energy to unearth
+
+1747411577
+torque!~tachyon@user/torque
+perhaps, but it's how you actually use zig
+
+1747411590
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+yeah, and it's awesome when you get there
+
+1747411637
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+right now I have things like this: https://github.com/exlee/zax/blob/master/src/build_helpers.zig 
+
+1747411685
+torque!~tachyon@user/torque
+neat
+
+1747411698
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+per-mod tests wrapped in lldb in case I want to get them hardcoded, in project I'm setting up check step for LSP, it all makes sense quite quickly
+
+1747411749
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+getting there is not smooth though
+
+1747411797
+bblack!~bblack@wikimedia/bblack-WMF
+I like the lldb wrapper idea :)
+
+1747411819
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+feel free to steal it
+
+1747411827
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+it's MIT
+
+1747411879
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I'm kind of proud of testing_future helpers
+
+1747414866
+phaebz!bdffc84e6f@2a03:6000:1812:100::2f0
+ToxicFrog: "Hello, xlii's cat" more like: vim-cat ;)
+
+1747415197
+xlii!~xlii@83.9.223.113.ipv4.supernova.orange.pl
+I was wondering if someone notices, kudos to you! not a vim though, vim-like
+
+1747427724
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, how is async/await coming along?
+
+1747430366
+clevor!sid649024@id-649024.hampstead.irccloud.com
+stealth_: I think he might be on vacation.
+
+1747431365
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+clevor, ah, thats cool 
+
+1747439345
+Smithx10!sid243404@helmsley.irccloud.com
+stealth_: it seems up may need to await for him to come home......
+
