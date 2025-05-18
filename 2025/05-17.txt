@@ -1,0 +1,144 @@
+1747478014
+xlii!~xlii@83.9.172.90.ipv4.supernova.orange.pl
+regarding async/await - was OCaml-like effect handlers considered for concurrency, I had reasonable success with it (especially they're easy to unit test and there's no need for function coloring)
+
+1747512985
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, nicely done with lsr project ;)
+
+1747513660
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, i am curious what your result will be for single syscall, it might not be worth using io_uring for that.
+
+1747513859
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+stealth_: thanks :). what do you mean for a single syscall?
+
+1747513926
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, like if you are doing something that needs to just 1 syscall, io_uring wouldn't be best for this since io_uring itself needs to submit a syscall and io_uring init/exit overhead. 
+
+1747513940
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Ah, yeah that seems like it wouldn't be helpful
+
+1747513960
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+I don't think it actually hurts that much though
+
+1747513975
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Or rather - the overhead is very low to create an io_uring
+
+1747513984
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mhmm... well it doesn't look like it doesn't hurt cause you are using zig :p zig is giving you better speed itself.
+
+1747514007
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+if you look at my benchmarks vs busybox for n=10 lsr is still faster even though it's spinning up an io_uring instance with 256 queue size
+
+1747514010
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for 1 syscall job, try it without io_uring, see what you get. 
+
+1747514057
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya i noticed that, why i am saying n=1 might be different
+
+1747514119
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+99% of the time ppl might be using lsr for doing just n=1 job/task.
+
+1747514185
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+https://0x0.st/8vUR.png
+
+1747514225
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+91 syscalls vs 21, 1.29x faster
+
+1747514375
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+my guess is zig itself is the cause for speed difference. 
+
+1747514415
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+You think so? I'd be surprised - busybox is in C so I would think they should be about the same - it's not like there can be tons of optimizations in ls
+
+1747514470
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+My guess is that both busybox and lsr are so much faster vs the otehrs because they are static
+
+1747514561
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't know much about busybox to comment on it.
+
+1747514689
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+FWIW, the n=1 in those is just one file but there is syscall overhead for the -al flag - you need /etc/passwd, /etc/group, /etc/localtime
+
+1747514690
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also line:264-286 are you not closing those `_` fds? https://tangled.sh/@rockorager.dev/lsr/blob/main/src/main.zig#L264
+
+1747514757
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+happens here: https://tangled.sh/@rockorager.dev/lsr/blob/main/src/main.zig#L806
+
+1747514758
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ah i see, you are running all the run/close of the software using io_uring? that actually makes sense, now you are actually using multiple syscalls in 1
+
+1747514790
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+Yeah everything possible is using io_uring
+
+1747514806
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+i wish I could mmap through io_uring :)
+
+1747514824
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+readlink too
+
+1747514893
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not what you mean by mmap through...
+
+1747514955
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, i get it :p 
+
+1747515024
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, https://github.com/axboe/liburing/issues/203 i created that long time ago 
+
+1747515050
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+closed as completed??
+
+1747515063
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya i don't get it either, that axboe can be weird at times. 
+
+1747515140
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+probably means he doesn't have any plans to implement it unless other ppl say they want that feature implemented as well.
+
+1747515340
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, there is `io_uring_queue_mmap` i am not sure what its about.
+
+1747515360
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wait nm, i am being really dumb today. 
+
+1747515903
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+rockorager, linkat/unlinkat already exist, if you create a topic and ask for readlinkat to be implemented, they might just do it, since it seems simple enough.
+
+1747516252
+rockorager!~rockorage@172-234-192-125.ip.linodeusercontent.com
+stealth_: good idea
+
