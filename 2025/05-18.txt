@@ -1,0 +1,164 @@
+1747553610
+rubywilde!~rubywilde@user/rubywilde
+Hii! I'm using libera chat for the first time, so I am not sure if I should ask it here. I am reading zig documentation and some parts of it lack examples, for example part about doctests lacks example of how doctest in zig looks like: https://ziglang.org/documentation/master/#Doctests Is it possible to submit proposal to improve documentation somehow?
+
+1747558893
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Is there a ziggit.dev moderator in da house? 
+
+1747558916
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I don't get a confirmation mail
+
+1747559654
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+In Windows OS one can't use SIGTERM. In Go I was able to send CTRL_BREAK_EVENT to 'replicate' SIGTERM
+
+1747559678
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Seems to exists in Zig as well https://ziglang.org/documentation/master/std/#std.os.windows.CTRL_BREAK_EVENT
+
+1747559927
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+But I also had to create a process group it seems, which I can't find in Zig: CREATE_NEW_PROCESS_GROUP
+
+1747559938
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Go: https://paste.debian.net/1375354/
+
+1747560228
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/golang/go/issues/6720#issuecomment-66087740
+
+1747561267
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://codereview.appspot.com/29290044/diff/20001/src/pkg/os/signal/signal_windows_test.go
+
+1747561741
+torque!~tachyon@user/torque
+assuming it's a terminal app you should be able to use https://ziglang.org/documentation/0.14.0/std/#std.os.windows.SetConsoleCtrlHandler
+
+1747561851
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+no it's not a terminal app. It's a daemon which starts a process and stops it (as owner of the process) by using SIGTERM (on Linux)
+
+1747561883
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+which I was able to implement on Windows with Go as described
+
+1747563173
+xlii!~xlii@83.9.194.247.ipv4.supernova.orange.pl
+flower_: I believe it might be too high level 
+
+1747563276
+xlii!~xlii@83.9.194.247.ipv4.supernova.orange.pl
+(i.e. process group handling)
+
+1747569491
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah found it: https://ziglang.org/documentation/master/std/#std.os.windows.CreateProcessFlags
+
+1747571925
+xlii!~xlii@83.9.194.247.ipv4.supernova.orange.pl
+I got bitten by not being able to search by fields couple times, maybe worth a ticket (or submission)
+
+1747573794
+xlii!~xlii@83.9.194.247.ipv4.supernova.orange.pl
+I'm looking at the std.log.defaultLog function and I can't shake the impression that (in context of scoping and levels) there's encouragement to "roll your own".
+
+1747577150
+fleischie!~fleischie@vm069.de
+Hey y'all. I am investigating, why github.com/xcaeser/zli will not build on Windows. See https://github.com/xcaeser/zli/issues/1 for reference.
+
+1747577373
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+fleischie: std.io.getStdOut() can't run at comptime (on windows), so it can't be used as an initializer at container-level
+
+1747577390
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+would have to be called in main
+
+1747577448
+fleischie!~fleischie@vm069.de
+What does "initializer at container-level" mean (for my understanding to get more context).
+
+1747577460
+fleischie!~fleischie@vm069.de
+I mean more than: "Call in main and not outside it."
+
+1747577472
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the `const` is at container-level (module struct)
+
+1747577508
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+say "outside a function" might be clearer
+
+1747577555
+fleischie!~fleischie@vm069.de
+Ah, I never read the "Container" description on the main documentation page.
+
+1747577577
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it tries to external functions, and that can of course not be done at comptime
+
+1747577581
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*to call
+
+1747577601
+fleischie!~fleischie@vm069.de
+Is it documented, why Windows doesn't allow that, but other OSs might?
+
+1747577626
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not allowed anywhere, but getStdOut on e.g. Linux doesn't require it, afaik
+
+1747577715
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+on Linux it's just creating a struct with `posix.STDOUT_FILENO` in it
+
+1747577764
+fleischie!~fleischie@vm069.de
+OK cool. I think I get it now. The thing I'm investigating just accidentally works..
+
+1747577786
+fleischie!~fleischie@vm069.de
+Is there a conventional solution for getting the stdout writer globally?
+
+1747577948
+fleischie!~fleischie@vm069.de
+I guess I'd have to retrieve the stdout-writer in every struct on `init()` call then, right?
+
+1747579369
+fleischie!~fleischie@vm069.de
+I managed to fix the issue, thank y'all for your help. :)
+
+1747579414
+fleischie!~fleischie@vm069.de
+💖
+
+1747584338
+thorongil!~thorongil@user/thorongil
+hi there.  i'm learning zig by reading the openmymind.net intro.  in the section on stack memory, it says "[the OS] will dynamically grow [the stack] when necessary though".  my experience with Linux, at least, has been that the stack is allocated a fixed amount of space at process creation time and exceeding that space causes a segfault.  is that incorrect?  or does the statement apply to other OSes?
+
+1747584405
+thorongil!~thorongil@user/thorongil
+and then the next paragraph does indeed mention stack overflows, so it's not clear to me what was meant by the thing i quoted above
+
+1747584438
+thorongil!~thorongil@user/thorongil
+is it just referring to the fact that frames will be pushed as necessary?
+
+1747584759
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+thorongil: linux may allocate _address space_ for the stack up-front, but not the memory itself. The memory would be allocated as the program tries to access more and more of the stack memory (page fault handler)
+
+1747584824
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(up to a limit, typically 8 MB)
+
+1747584946
+thorongil!~thorongil@user/thorongil
+that sounds like differentiating between "allocating virtual memory" and "allocating physical memory", but isn't that below the level of abstraction provided by zig?
+
