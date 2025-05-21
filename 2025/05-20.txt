@@ -1,0 +1,140 @@
+1747715486
+Fingel!~Fingel@user/fingel
+squeek502thank you that's exactly what I needed
+
+1747723610
+daurnimator!~daurnimat@vultr.daurnimator.com
+I just pushed zig 0.14.0 to archlinux testing. https://archlinux.org/packages/extra-testing/x86_64/zig/
+
+1747728724
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+I'm noob when it comes to the lldb, so I just run/gui and inspect. Are there any tricks that would help me figure out when stack memory is released? 
+
+1747728867
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+* / or overwritten, I suspect I might share static memory between testing threads - I allocate buffer for std.fs.realpath (with const buffer) and it just goes "poof" 2 steps after the return 
+
+1747728983
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+I've been able to push some forward by returning allocation buffer instead of returned slice (this one isn't released), but I don't think such acrobatics should be required, so I think I'm doing something wrong, not sure how to find it
+
+1747729458
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+dynamic 'strings': when I need to set a new value, I free the old value and then allocate for the new value:
+
+1747729461
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/develop/item/src/clientslist.zig#L370
+
+1747729533
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+But there is also Allocator.resize. How should one handle these cases actually?
+
+1747729550
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm new to manual memory management
+
+1747729576
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+(But I got my tool working now)
+
+1747729928
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+this is "it depends" kind of question, depending on context resize might be (new->copy->release old) and might also fail
+
+1747730021
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+there's very good YT video about allocators (I don't watch usually, but I found it very captivating) searching for it now
+
+1747730092
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+https://youtu.be/vHWiDx_l4V0 that's the one
+
+1747730204
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+aside of allocators description it also goes about what you can and cannot do with specific allocators and what free is
+
+1747730293
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+IMO: decision is between total memory consumption over long time or spending time/risking reallocation failure - ultimatelly memory leak isn't a big deal in some contexts
+
+1747730375
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://www.openmymind.net/Allocator-resize/
+
+1747730418
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Is there a relation between memory leak and undefined behavior, or are those two different topics? Can a memory leak cause undefined behavior?
+
+1747730520
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, will watch the video, thx
+
+1747730747
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+There is some, for example buffer overflow (e.g. you split buffer in two, one is for some cache, second is for execution, and because of overflow cache gets into execution), but in simple case - not necessarily. You could have isolated allocator for cache and let it grow to infinity during execution and allow OS to clean it up later.
+
+1747730827
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+https://devblogs.microsoft.com/oldnewthing/20180228-00/?p=98125 another exampe ;-)
+
+1747731886
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+This c tool uses [BUFSIZ]; seems to be a c macro. Is there something like that in zig?
+
+1747731927
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://github.com/linuxaudio/non/blob/master/session-manager/src/jackpatch.c#L261
+
+1747732364
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://c-for-dummies.com/blog/?p=4711
+
+1747732743
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/develop/item/src/clientslist.zig#L609
+
+1747733567
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+when does one actually use usize? What type do you use for a loop? 
+
+1747733569
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/develop/item/src/clientslist.zig#L457
+
+1747733766
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+https://zigbin.io/11c170 is this expected (failure on arena)
+
+1747733774
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I use the same buffer in a loop, can I just overwrite or need I 'clear' it first? I use @splat(0) now, but not really knowing if that makes any sense tbh:
+
+1747733777
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/develop/item/src/clientslist.zig#L453
+
+1747733880
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+it's your memory, go rampage!
+
+1747734049
+xlii!~xlii@83.9.140.5.ipv4.supernova.orange.pl
+joking aside it might be premature optimization, I usually go for the "best guess minimal size" usize AFAIK is rather big - also I think you could simplify loops if you'd opt for sentinel
+
+1747744956
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Speaking of memory, I made a todo list GUI program in Zig a week ago that loads the list of tasks from the filesystem into a hash map, allows arbitrary insertion and removal of each string, and saves the list to the filesystem for the next time it starts. I don't expect the user to have too many strings or strings that are too long, but I want the program to support that case. Would the GeneralPurposeAllocator be a good fit for this 
+
+1747744956
+clevor!sid649024@id-649024.hampstead.irccloud.com
+case?
+
+1747745449
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://github.com/myclevorname/todo-list
+
+1747767842
+drbeco!~beco@user/beco
+Hi. I've added an issue reporting the f16 bug I found earlier https://github.com/ziglang/zig/issues/23942 Thanks for looking into it.
+
