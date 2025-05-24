@@ -1,0 +1,332 @@
+1747874930
+norineko!~norineko@user/norineko
+main issue is if ill need arrays of structs where each one has a different size parameter - can't be done in comptime without getting more complex
+
+1747879098
+grayhatter!~grayhatte@user/grayhatter
+solve that problem only when you need to
+
+1747879131
+grayhatter!~grayhatte@user/grayhatter
+if it turns out you need dynamically sized arrays, you can thread in an allocator pretty easily, and you'll end up with a much better design in the end even if you have to 
+
+1747898066
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+I have a shower idea - I'd like to have a binary generator, something that would work like this: https://glot.io/snippets/h7kt9rqcpc
+
+1747898335
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+but I wonder how difficult it would be to execute it, I'm thinking about copy&modify to not require carrying full zig compiler. Probably I could get a pointer, copy binary, modify it at the pointer. Other idea would be to just have a very verbose delimiter [1K of Xs on both sides, 1K of zeroes inside] and doing a search + replace inside, but not sure how that would fit different archs..
+
+1747930453
+grayhatter!~grayhatte@user/grayhatter
+xlii: you would enjoy the game suggested in the essay Reflections on Trusting Trust
+
+1747930531
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+been there, done that, bought a t-shirt, context is important as always :) 
+
+1747930584
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+but after couple tries I figured it's much easier to do the good old "what's my exec name" trick and read config instead
+
+1747930591
+grayhatter!~grayhatte@user/grayhatter
+if you've played with that problem, you should already have the answer to your shower idea
+
+1747930674
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+yeah, it was a fun hour trying to hand edit binary files, got flashbacks from GameWizard era
+
+1747930704
+grayhatter!~grayhatte@user/grayhatter
+but, TL;DR, you just need a valid ELF header, and then the write syscall number on linux is 1
+
+1747930822
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+the problem, unfortunatelly is how valid/invalid it is (as you pointed to suggesting essay) - the full problem is super silly - Kakoune is great, but integrating anything is pain, stdin and stdout are blocking easily and there's special invocation to get environment variables hydrated
+
+1747930913
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+I was thinking about having binary that would forkexec shell utility and pack it into plugin, but that's way too much magic, whereas a simple ~/.config/littlebin/kak_stream and cp littlebin kak_stream will work just as fine if not better
+
+1747930985
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+I'm on the different quiz today though :D
+
+1747930991
+xlii!~xlii@83.9.186.215.ipv4.supernova.orange.pl
+s/quiz/quest/
+
+1747933935
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+gosh i keep writing // for comments in nftables.conf.  what have you done to me, Zig!? :-O ... :-D
+
+1747933941
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+(still worth it, btw :D)
+
+1747934360
+norineko!~norineko@user/norineko
+are the builtins like @tagName going to be replaced with std.enums.tagName, likewise with std.meta.fields? 
+
+1747936055
+grayhatter!~grayhatte@user/grayhatter
+god I hope not
+
+1747937642
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+why would it?  or why would you even consider that?  (i assume they're builtins for a reason)
+
+1747942814
+bblack!~bblack@wikimedia/bblack-WMF
+I couldn't find it in old issues, but has anyone proposed an optional-assignment operator?
+
+1747942841
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+meaning what exactly?
+
+1747942859
+bblack!~bblack@wikimedia/bblack-WMF
+var x: u32 = 123; ...; x ?= func_that_returns_optional_32(); // leaves the value as 123, if the func returns null
+
+1747942860
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+assign if left-hand side is null?
+
+1747942869
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh, other way around
+
+1747942871
+bblack!~bblack@wikimedia/bblack-WMF
+if the right hand side is null, don't assign
+
+1747942914
+bblack!~bblack@wikimedia/bblack-WMF
+I found myself wanting something like that, but what I do now is more or less:
+
+1747942923
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+doesn't seem very useful, there's already `x = func() orelse x;`
+
+1747942923
+bblack!~bblack@wikimedia/bblack-WMF
+x = func_returning_optional_u32() orelse x;
+
+1747942965
+bblack!~bblack@wikimedia/bblack-WMF
+when you have to do a bunch of times in a row, setting values from configuration on a struct that already is full of its own default values, it just seemed nice to have a terse-r way
+
+1747943009
+bblack!~bblack@wikimedia/bblack-WMF
+cfgobj.asdf = whatever.get_optional_config_value(...) orelse cfgobj.asdf; // repeat ad naseum for a bajillion options.
+
+1747943047
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if (whatever.get_optional_config_value(...)) |v| { cfgobj.asdf = v; }
+
+1747943079
+bblack!~bblack@wikimedia/bblack-WMF
+that's even less-terse than the orelse, although does avoid repeating itself as much :)
+
+1747943130
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, it's not, it's shorter than yours :P
+
+1747943156
+bblack!~bblack@wikimedia/bblack-WMF
+more complex-looking, I guess
+
+1747943164
+bblack!~bblack@wikimedia/bblack-WMF
+out-param is also a possible pattern
+
+1747943204
+bblack!~bblack@wikimedia/bblack-WMF
+fn get_optional_config_value(..., out: *T) !void // only sets out if the optional option needed setting, instead of returning null
+
+1747943235
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that doesn't seem very clear
+
+1747943237
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+i actually like that `if` version because i think it works better once you start to have more methods and/or a slighgly more complex logic  to get the better-than-default value.
+
+1747943297
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+iow, it seems the advantage you would get from `?=` would only last as long as all of the apis return null (and that null precisely means that there's nothing to improve on the default)
+
+1747943405
+bblack!~bblack@wikimedia/bblack-WMF
+as it looks in the consumer (the real code, which is using this config parser/library to set a bunch of values that already have defaults):
+
+1747943423
+bblack!~bblack@wikimedia/bblack-WMF
+self.lock_mem = try o.hash_get_bool("lock_mem", true, efmt, .{}) orelse self.lock_mem; // orelse variant
+
+1747943435
+bblack!~bblack@wikimedia/bblack-WMF
+try o.hash_get_bool("lock_mem", &self.lock_mem, true, efmt, .{}); // out-param variant
+
+1747943467
+bblack!~bblack@wikimedia/bblack-WMF
+if (try o.hash_get_bool("lock_mem", true, efmt, .{})) |v| { self.lock_mem = v; } // if variant (which btw, "zig fmt" makes into 3 lines)
+
+1747943494
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+you can omit the curlies => 1 line
+
+1747943497
+bblack!~bblack@wikimedia/bblack-WMF
+ignore the "efmt, .{}" are bits to customize logged error messages
+
+1747943500
+bblack!~bblack@wikimedia/bblack-WMF
+ah true
+
+1747943514
+bblack!~bblack@wikimedia/bblack-WMF
+if (try o.hash_get_bool("lock_mem", true, efmt, .{})) |v| self.lock_mem = v;
+
+1747943608
+bblack!~bblack@wikimedia/bblack-WMF
+^ going with that for now, thank you!
+
+1747943677
+bblack!~bblack@wikimedia/bblack-WMF
+self.lock_mem ?= try o.hash_get_bool("lock_mem", true, efmt, .{}); // the hypothetical optional-assignment operator variant
+
+1747943698
+bblack!~bblack@wikimedia/bblack-WMF
+^ JFTR, I still think that could be a nice convenience feature
+
+1747944426
+torque!~tachyon@user/torque
+it's unlikely that such a specific use case would get language-level syntax when there are already two reasonable syntactic constructs that support the use case
+
+1747944467
+torque!~tachyon@user/torque
+but I suspect you already know this
+
+1747945224
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+it's convenience for very specific case, vs. need for every zig programmr, all time, to be aware of this
+
+1747945529
+bblack!~bblack@wikimedia/bblack-WMF
+I get it, but I don't really have data on how common the pattern might be re "very specific case"
+
+1747945567
+bblack!~bblack@wikimedia/bblack-WMF
+the pattern not necessarily being specific to my config case I mean.
+
+1747945576
+bblack!~bblack@wikimedia/bblack-WMF
+x = f() orelse x;
+
+1747945591
+bblack!~bblack@wikimedia/bblack-WMF
+but the other variant, it's harder to argue with it
+
+1747945607
+bblack!~bblack@wikimedia/bblack-WMF
+if (f()) |v| x = v;
+
+1747945647
+bblack!~bblack@wikimedia/bblack-WMF
+x ?= f(); // is definitely nicer than either one, but yeah, maybe it's uncommon to want it?
+
+1747945679
+norineko!~norineko@user/norineko
+can't you do x = f() orelse x; 
+
+1747945705
+bblack!~bblack@wikimedia/bblack-WMF
+yes, that's above a couple times :)
+
+1747945714
+norineko!~norineko@user/norineko
+disregard, didn't scroll up
+
+1747948848
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+ofc it boils down to judgment call.   to me it's just not generic enough.  ofc i do things like that all the time so i get it but i feel that every time i've tried to settle on some syntax that would "nicely repeat" it would fall apart pretty soon
+
+1747949000
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+eg. first it's just things passed on cli, but then i add support for config files, then envvars... then inevitably there's something that needs to be done based on a condition unrelated to a value being null.... the if approach is the only thing that remain universally applicable
+
+1747949088
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+(i see one could use that argument agains `orelse` which i love dearly, though :D)
+
+1747953444
+grayhatter!~grayhatte@user/grayhatter
+orelse is objectively better
+
+1747953466
+grayhatter!~grayhatte@user/grayhatter
+zig's inability to do sane type resolution aside
+
+1747954073
+Fingel!~Fingel@user/fingel
+grayhatterwhat do you mean by (in)sane type resolution?
+
+1747954337
+grayhatter!~grayhatte@user/grayhatter
+Fingel: either it was already fixed, or the example where this doesn't work is more complicated but 
+
+1747954340
+grayhatter!~grayhatte@user/grayhatter
+https://zigbin.io/8a8762
+
+1747954398
+grayhatter!~grayhatte@user/grayhatter
+I've found my self stuck in this patten, but it would never actually work for me... kinda mad this works exactly the way I want
+
+1747954406
+grayhatter!~grayhatte@user/grayhatter
+this example*
+
+1747954428
+Fingel!~Fingel@user/fingel
+hmm, yea  I would definitely expect that to return 7
+
+1747954461
+grayhatter!~grayhatte@user/grayhatter
+the error I was expecting was incompatable types between comptime int, and usize
+
+1747954482
+Fingel!~Fingel@user/fingel
+Like this? https://github.com/ziglang/zig/issues/2749#issuecomment-528528968
+
+1747954524
+grayhatter!~grayhatte@user/grayhatter
+similar, but not exactly that, no
+
+1747954625
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/srctree/blob/src/patch.zig#L287
+
+1747954735
+Fingel!~Fingel@user/fingel
+Is it the the necessity of using @as there annoying?
+
+1747955580
+grayhatter!~grayhatte@user/grayhatter
+Fingel: I rewrote the code in the other places, but not anymore
+
+1747955612
+grayhatter!~grayhatte@user/grayhatter
+the trick is to wrap the right most thing with `@as(usize,` then everything works as I want
+
+1747955635
+grayhatter!~grayhatte@user/grayhatter
+I kept trying to wrap the left side var, and it would never compile
+
+1747956562
+Fingel!~Fingel@user/fingel
+grayhatter thanks for the explanation! I’m new to the language so very interested in these kinds of situations
+
