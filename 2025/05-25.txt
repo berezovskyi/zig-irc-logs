@@ -1,0 +1,420 @@
+1748133701
+grayhatter!~grayhatte@user/grayhatter
+I loudly judge people who use/create deinit function
+
+1748133720
+grayhatter!~grayhatte@user/grayhatter
+raze is objectively the better name for such a function
+
+1748133742
+grayhatter!~grayhatte@user/grayhatter
+netvor: I didn't die, I went slacklining, but reading now :)
+
+1748137073
+triallax!f378378b91@lacerte/triallax
+grayhatter: "raze" is awfully poetic but maybe we need more of that :D
+
+1748137972
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If there is nothing to deinit, you don't need a deinit function.
+
+1748138053
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Although avoiding calling deinit when the lifetime is near the end of the program's lifetime is a neat idea in some cases.
+
+1748138080
+grayhatter!~grayhatte@user/grayhatter
+"neat idea"
+
+1748138090
+grayhatter!~grayhatte@user/grayhatter
+nah, I take it back
+
+1748138098
+grayhatter!~grayhatte@user/grayhatter
+I don't care about that mine field anymore
+
+1748138174
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I have a program I made that doesn't deinit the GPA just because one of my objects lives as long as the program.
+
+1748138221
+triallax!f378378b91@lacerte/triallax
+grayhatter: what do you mean?
+
+1748138499
+grayhatter!~grayhatte@user/grayhatter
+triallax: it's a really common argument when people don't understand the why about what makes a resource leak
+
+1748138549
+grayhatter!~grayhatte@user/grayhatter
+you shouldn't call "not freeing [memory]" (or other resource), just before `exit()` a neat idea, it should be the default
+
+1748138610
+grayhatter!~grayhatte@user/grayhatter
+clevor: is right, that's exactly what you should do; but many people have the opinion that's wrong, or somehow unsafe
+
+1748138633
+clevor!sid649024@id-649024.hampstead.irccloud.com
+FWIW the TI-89 Titanium has an allocator in the OS, and any memory used by it that isn't deallocated is not freed, causing a memory leak that lasts until a RAM clear.
+
+1748138695
+GreaseMonkey!greaser@user/greasemonkey
+probably worth doing the full cleanup at the end for debug builds anyway just so you can catch any leaks that might arise during normal operation
+
+1748138709
+grayhatter!~grayhatte@user/grayhatter
+clevor: cooperative multi processing?
+
+1748138744
+grayhatter!~grayhatte@user/grayhatter
+^ case in point, people think it makes sense
+
+1748138821
+GreaseMonkey!greaser@user/greasemonkey
+i understand the reasoning behind not doing a cleanup when the program is finished, and i can also understand not cleaning up for stuff which is short-running, but if something's going to stay around for a while, you're going to want to make sure the RAM consumption doesn't run away on you
+
+1748138855
+grayhatter!~grayhatte@user/grayhatter
+GreaseMonkey: that's a non-sequitur
+
+1748138857
+GreaseMonkey!greaser@user/greasemonkey
+and by "run away" i think it's usually "crawl away"
+
+1748138894
+grayhatter!~grayhatte@user/grayhatter
+clevor: I can't find any API docs for the TI-86, so I can't tell if that's a bug
+
+1748138933
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The TI-86 is unrelated.
+
+1748139002
+grayhatter!~grayhatte@user/grayhatter
+sorry, TI-89
+
+1748139024
+triallax!f378378b91@lacerte/triallax
+grayhatter: i don't necessarily disagree, i only do it just so the leak detector actually does its job
+
+1748139026
+triallax!f378378b91@lacerte/triallax
+but it's a pain
+
+1748139066
+triallax!f378378b91@lacerte/triallax
+my life would be quite a bit easier if i didn't have to deal with that
+
+1748139127
+GreaseMonkey!greaser@user/greasemonkey
+i'd argue it'd be even more of a pain if your software were a server that after a month ended up slowing to a crawl because of a memory leak
+
+1748139136
+grayhatter!~grayhatte@user/grayhatter
+I forgot how cancerous the TI site is... thanks for the reminder
+
+1748139141
+triallax!f378378b91@lacerte/triallax
+not what i'm doing regardless
+
+1748139159
+triallax!f378378b91@lacerte/triallax
+but it's a cli program that can possibly run for _some_ time
+
+1748139168
+grayhatter!~grayhatte@user/grayhatter
+GreaseMonkey: [long running] memory leaks have nothing to do with freeing memory before exit
+
+1748139190
+triallax!f378378b91@lacerte/triallax
+the leak detector doesn't know the difference
+
+1748139214
+GreaseMonkey!greaser@user/greasemonkey
+freeing memory before exit and then doing a leak detection does mean you can pick up on a lot of that happening
+
+1748139238
+grayhatter!~grayhatte@user/grayhatter
+still reachable != no longer reachable 
+
+1748139250
+GreaseMonkey!greaser@user/greasemonkey
+hence "a lot of that"
+
+1748139283
+grayhatter!~grayhatte@user/grayhatter
+those are two very different states
+
+1748139373
+GreaseMonkey!greaser@user/greasemonkey
+yeah but by not attempting a cleanup at the end you're missing an opportunity to detect memory that is "definitely lost"
+
+1748139389
+grayhatter!~grayhatte@user/grayhatter
+GreaseMonkey: no, that's incorrect
+
+1748139502
+Drixtan!~Drixtan@user/Drixtan
+not cleaning = you know that you are leaking, but you don't know where. cleaning = you are not leaking. So if you always have a positive, you don't know if it's just what you didn't want to clean up "at the end" or if it's another leak somewhere you don't know. Is that a good summary of that whole convo?
+
+1748139539
+grayhatter!~grayhatte@user/grayhatter
+using the debug allocator with leak detection; if it detects "leaks" at the cleanup step, is that memory reachable, or unreachable? and is it possible to know? 
+
+1748139553
+grayhatter!~grayhatte@user/grayhatter
+if you clean up all memory at exit, does that prove there's no memory leak in the program?
+
+1748139600
+Drixtan!~Drixtan@user/Drixtan
+it doesn't prove, but you are closer to the truth than just say: fuck it, give me a positive.
+
+1748139620
+grayhatter!~grayhatte@user/grayhatter
+Drixtan: that's pretty close to the technical conclusion. But the coversation itself is about how pervasive the meme is that it's important to free memory before exit()
+
+1748139642
+grayhatter!~grayhatte@user/grayhatter
+and how that meme is misleading
+
+1748139650
+GreaseMonkey!greaser@user/greasemonkey
+if the debug allocator deinits without complaining then it gives very good evidence that if you haven't corrupted memory somewhere then all of the allocations which went through that allocator have been deallocated
+
+1748139679
+grayhatter!~grayhatte@user/grayhatter
+GreaseMonkey: sure, does it prove there's no memory leak?
+
+1748139716
+grayhatter!~grayhatte@user/grayhatter
+or, let me be more exact here
+
+1748139720
+GreaseMonkey!greaser@user/greasemonkey
+it can't prove that you dumped a bunch of things into a dynamically-sized array that you only cleaned up on exit, but it can prove that there *is* one
+
+1748139726
+grayhatter!~grayhatte@user/grayhatter
+does it prove there's not a memory leak bug somewhere in the code base?
+
+1748139727
+GreaseMonkey!greaser@user/greasemonkey
+erm, it can prove that there is a leak
+
+1748139763
+grayhatter!~grayhatte@user/grayhatter
+GreaseMonkey: no, again, that's incorrect. It can't prove if it's a leak, only that it's unfreed memory
+
+1748139850
+grayhatter!~grayhatte@user/grayhatter
+a memory leak, is memory that you've lost track of, and are no longer able to free
+
+1748139893
+grayhatter!~grayhatte@user/grayhatter
+a resource exaustion bug, is memory that you could free, because the ptr exists in memory, but due to a logic error it will never be free'd (this is not a leak)
+
+1748139965
+GreaseMonkey!greaser@user/greasemonkey
+at this point this argument has fallen into the trap of Layne's Law - https://kidneybone.com/c2/wiki/LaynesLaw
+
+1748139976
+grayhatter!~grayhatte@user/grayhatter
+the debug allocator is unable to differentiate between the two... it's also unable to tell if the memory would have been free'd correctly if the program didn't exit when it did, because of some other error
+
+1748139980
+GreaseMonkey!greaser@user/greasemonkey
+Every debate is over the definition of a word. Or / Every debate eventually degenerates into debating the definition of a word. Or / Once a debate degenerates into debating the definition of a word, the debate is debatably over.
+
+1748140016
+GreaseMonkey!greaser@user/greasemonkey
+and honestly, a similar argument can be made to say "unit tests can't disprove the existence of bugs so why bother"
+
+1748140030
+grayhatter!~grayhatte@user/grayhatter
+GreaseMonkey: political debates are often not about words
+
+1748140051
+grayhatter!~grayhatte@user/grayhatter
+debates over the better implementation to solve a given problem is also not
+
+1748140074
+grayhatter!~grayhatte@user/grayhatter
+> unit tests can't disprove the existence of bugs so why bother
+
+1748140080
+grayhatter!~grayhatte@user/grayhatter
+but, they can... 
+
+1748140084
+grayhatter!~grayhatte@user/grayhatter
+I'm so confused
+
+1748140097
+GreaseMonkey!greaser@user/greasemonkey
+erm, "unit tests can't prove that the code is bug-free"
+
+1748140113
+grayhatter!~grayhatte@user/grayhatter
+yes they can
+
+1748140123
+grayhatter!~grayhatte@user/grayhatter
+incomplete tests can not
+
+1748140136
+GreaseMonkey!greaser@user/greasemonkey
+anyway, this is getting pretty unproductive, so i'm stepping away from this
+
+1748140140
+grayhatter!~grayhatte@user/grayhatter
+but unit tests can prove the bug they're testing for doesn't exist
+
+1748140247
+Drixtan!~Drixtan@user/Drixtan
+that was fun, thank you guys.
+
+1748140259
+grayhatter!~grayhatte@user/grayhatter
+if you want to know if your program has a leak, there are tools to do that
+
+1748140268
+grayhatter!~grayhatte@user/grayhatter
+valgrind is the gold standard for leak detection
+
+1748140341
+grayhatter!~grayhatte@user/grayhatter
+the debug allocator is useful for things like unit tests, where the bool (some memory unfreed) is meaningful, because the specific function should clean up, and because it's a unit test, memory pointers should never be able to escape
+
+1748140483
+grayhatter!~grayhatte@user/grayhatter
+saying "you should always clean up memory before exit, because it'll help you find leaks" is divorced from the actual behavior of the system, because it'll will just as easily provide both false positives and false negatives
+
+1748140533
+grayhatter!~grayhatte@user/grayhatter
+you should [do thing] that will be wrong in both directions but sometimes it guesses correctly, is part of why so much software is awful
+
+1748140689
+grayhatter!~grayhatte@user/grayhatter
+understand exactly what you're doing, then pick a solution that can't be wrong, instead of a solution that can sometimes guess correctly
+
+1748140860
+Drixtan!~Drixtan@user/Drixtan
+grayhatter: have you ever thought of writing a book? 
+
+1748140874
+grayhatter!~grayhatte@user/grayhatter
+Drixtan: I don't have the attention to write a book
+
+1748140888
+grayhatter!~grayhatte@user/grayhatter
+I can barely finish a blog post
+
+1748142179
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I don't care about memory leak detection in my program because the only two objects are the task list and the DVUI state. I trust the latter not to cause a memory leak, and the former lasts the entire program, giving me an excuse not to write a deinit function.
+
+1748142421
+Drixtan!~Drixtan@user/Drixtan
+good job clevor
+
+1748142646
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My current project is a Nix archive (nar) parser, and I am currently working on deserialization from a slice.
+
+1748143122
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The only other one is narz, but that project doesn't export any modules, includes an empty library, relies on recursion, and I want to further learn Zig. https://github.com/water-sucks/narz
+
+1748143307
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One of my future goals is to include a simple C-style interface for the library and add an std.Io file interface when the relevant interface makes it to master.
+
+1748143356
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I haven't shared the source yet because I am worried I might abandon it.
+
+1748143476
+Drixtan!~Drixtan@user/Drixtan
+don't do that, we need people like you to build the Zig ecosystem, you can do it!
+
+1748143881
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I already have 2 PRs waiting to get merged.
+
+1748145268
+Drixtan!~Drixtan@user/Drixtan
+that's pretty well done there clervor
+
+1748175910
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It turns out that the name "narser" is also used for a repo by the Github user Nacorpio, but it hasn't been updated in almost 9 years.
+
+1748188061
+levitating!~Thunderbi@user/levitating
+How am I supposed to keep an updated version of the zig master branch? 
+
+1748188574
+Drixtan!~Drixtan@user/Drixtan
+git clone, git pull to get the changes ? :s
+
+1748188727
+levitating!~Thunderbi@user/levitating
+right
+
+1748188737
+levitating!~Thunderbi@user/levitating
+I am kind of confused because the Getting Started guide states
+
+1748188738
+levitating!~Thunderbi@user/levitating
+> The good news is that it’s very easy to switch from one Zig version to another, or even have multiple versions present on the system at the same time: Zig releases are self-contained archives that can be placed anywhere in your system.
+
+1748188759
+levitating!~Thunderbi@user/levitating
+So I was hoping there was some automated tool to manage these archives
+
+1748189081
+triallax!f378378b91@lacerte/triallax
+levitating: zvm is a thing
+
+1748189101
+levitating!~Thunderbi@user/levitating
+ah, exactly what I was looking for, thanks
+
+1748189119
+levitating!~Thunderbi@user/levitating
+somehow google just brought me to https://github.com/jsomedon/night.zig
+
+1748189142
+triallax!f378378b91@lacerte/triallax
+zvm is more generic probably
+
+1748190109
+clevor!sid649024@id-649024.hampstead.irccloud.com
+There's also anyzig
+
+1748191473
+Drixtan!~Drixtan@user/Drixtan
+https://pastebin.com/b47v4RMw  
+
+1748191503
+Drixtan!~Drixtan@user/Drixtan
+I put my stuff in ~/Applications and I have a path to ~/Applications/zig, which is a symlink to the zig version I want to use
+
+1748191543
+Drixtan!~Drixtan@user/Drixtan
+0.14.1 introduced a breakage with the zig package name change thou
+
+1748194917
+grayhatter!~grayhatte@user/grayhatter
+var index: usize = @as(comptime_int, 4);
+
+1748194923
+grayhatter!~grayhatte@user/grayhatter
+^ is this guarenteed runtime?
+
+1748197089
+grayhatter!~grayhatte@user/grayhatter
+has anyone seen a false positive in the dependency loop detection?
+
