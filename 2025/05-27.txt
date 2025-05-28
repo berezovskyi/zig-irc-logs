@@ -1,0 +1,328 @@
+1748312435
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+how to create instance of an union(enum) when i have the enum?  eg. `const Foo = enum {foo1, foo2}; const Bar = union(Foo) { ... };  fn createBar(t: Foo, ...) {  const bar = ???????; }`
+
+1748312492
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+i know i can switch but i'm hoping for a more straightworward syntax; something like reverse of std.meta.activeTag
+
+1748312955
+Drixtan!~Drixtan@user/Drixtan
+https://ziglang.org/documentation/0.14.0/#Tagged-union
+
+1748313153
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+i just re-read that and can't see the answer
+
+1748315709
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I find that unless I use c_allocator here, my app crashes at runtime: https://github.com/ezzieyguywuf/zcad/blob/ai_http_lines_renderer/src/HttpServer.zig#L27 the crash looks like this: https://pastebin.com/QYurUQN2 . am I doing something wrong that causes this crash? at a high level I'm trying to start the httpz server on a thread, and starting the server seems to be what's crashing
+
+1748316725
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+seems to work ok if I don't start the http server on a thread, though I prefer to keep that on a thread so I can run my renderer on the main thread
+
+1748316747
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I think there's obviously something wrong in my setup, especially since I can't reproduce this in a more minimal setup, though I'm not really sure how to further debug it
+
+1748316932
+grayhatter!~grayhatte@user/grayhatter
+netvor: = .{ .foo1 = .{} };
+
+1748317018
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: try the SMP allocator instead of the debug allocator
+
+1748317642
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I can try that. fwiw this is the minimal example I tried to reproduce the crash (but failed to reproduce it) https://github.com/ezzieyguywuf/zig-examples/tree/main/httpz_thread
+
+1748318074
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hah SmpAllocator works with no crashes! so does this mean the issue _isn't_ on my end? or is the DebugAllocator trying to tell me something?
+
+1748322913
+grayhatter!~grayhatte@user/grayhatter
+it means you don't understand why it is your problem/bug
+
+1748323294
+grayhatter!~grayhatte@user/grayhatter
+why would the debug allocator crash, but the SMP doesn't?
+
+1748324045
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, `gpa.allocator()` returns a struct that stores a pointer to `gpa`. In your code, that is a stack allocated variable that goes out-of-scope after `init` returns, so any usage of `HttpServer.allocator` will invoke illegal behavior
+
+1748324119
+squeek502!~squeek502@user/squeek502
+easiest solution would be to take an allocator as a parameter in `init`, that's the most "zig" way of handling allocators
+
+1748325131
+torque!~tachyon@user/torque
+<netvor> i know i can switch but i'm hoping for a more straightworward syntax; something like reverse of std.meta.activeTag
+
+1748325149
+torque!~tachyon@user/torque
+the union tag has to be known at comptime so if you want to be able to pass it in at runtime your options are limited
+
+1748325246
+torque!~tachyon@user/torque
+in simple cases, `switch (t) { inline else => |tag| @unionInit(Bar, @tagName(tag), value), }` will work
+
+1748325275
+torque!~tachyon@user/torque
+but more likely you will simply have to expand out the switch
+
+1748341376
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+ah thanks, @unionInit was whati was looking for
+
+1748341501
+netvor!~netvor@2a00:ca8:a1f:cd0:2c65:6cc1:caca:16ec
+and yeah I ended up with better (more explicit) code if i expanded it anyway :)
+
+1748342088
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Speaking of builtins I haven't heard of yet, what are the @workGroup* and @workItemId builtins used for? Is it only for SPIR-V?
+
+1748352745
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: ah, I think I read somewhere that each thread should have its own allocator, but I can't find that reference at the moment. I'll try passing in the allocator as you've suggestied
+
+1748352996
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ezzieyguywuf: FWIW the SMP allocator uses threadlocals for storage so you basically get that for free
+
+1748353022
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://github.com/ziglang/zig/pull/22808 has an snippet for using Debug / SMP depending on build mode 
+
+1748353115
+bblack!~bblack@wikimedia/bblack-WMF
+yeah the smp allocator is probably the right model for general-purpose use
+
+1748353150
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1748353191
+bblack!~bblack@wikimedia/bblack-WMF
+personally, for how I tend to use threads in my projects, I tend to prefer an explicit new single-threaded allocator state that threads spin up for themselves early in the thread's start func.
+
+1748353223
+bblack!~bblack@wikimedia/bblack-WMF
+you have options and you can spin this whichever way you want
+
+1748353232
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+bblack: that's what I was aiming for but per squeek502's comments above my approach is obviously lacking a bit
+
+1748353247
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+bblack: do you pass in the thread's allocator from the main thread?
+
+1748353258
+bblack!~bblack@wikimedia/bblack-WMF
+if you're going down that road, you don't.
+
+1748353285
+bblack!~bblack@wikimedia/bblack-WMF
+you just treat the thread's start function a lot like you would your original main(): you create a new allocator there and pass it down within the thread.
+
+1748353314
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh ofc
+
+1748353340
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I was creating the allocator in `init`, which gave me problems when it went out-of-scope, but doing it in the thread's start function makes so much sense
+
+1748353346
+bblack!~bblack@wikimedia/bblack-WMF
+but the details of these allocators matter.  some of the stock allocators either don't have real per-instance state, or are effectively meant to be shared-state.
+
+1748353382
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea fair
+
+1748353439
+bblack!~bblack@wikimedia/bblack-WMF
+for now, I'm just using the debug allocator everywhere, and initializing my separate per-thread instances with thread_safe = false.
+
+1748353470
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. near the top of one of my thread start functions:
+
+1748353471
+bblack!~bblack@wikimedia/bblack-WMF
+        var debug_allocator: std.heap.DebugAllocator(.{ .thread_safe = false }) = .init;
+
+1748353475
+bblack!~bblack@wikimedia/bblack-WMF
+        const alloc = debug_allocator.allocator();
+
+1748353477
+bblack!~bblack@wikimedia/bblack-WMF
+        defer if (debug_allocator.deinit() != .ok)
+
+1748353479
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1748353480
+bblack!~bblack@wikimedia/bblack-WMF
+            @panic("TCP thread allocator detected leaks at shutdown!");
+
+1748353496
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+what's the impact of explicitly setting `.thread_safe = false`? also I thought it was the default already
+
+1748353497
+bblack!~bblack@wikimedia/bblack-WMF
+and then that "alloc" gets used throughout the other calls within that thread's context as it calls other useful functions.
+
+1748353563
+bblack!~bblack@wikimedia/bblack-WMF
+thread_safe defaults to !builtin.single_threaded, which is probably going to default true if you're using threads
+
+1748353571
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm I see
+
+1748353594
+bblack!~bblack@wikimedia/bblack-WMF
+all it really affects, AFAIK, is whether it uses an internal mutex to prevent races between threads using the same allocator.
+
+1748353605
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+makes sense
+
+1748353621
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+seems similar to wrapping it in `std.heap.ThreadsafeAllocator` or not
+
+1748353736
+bblack!~bblack@wikimedia/bblack-WMF
+but going back to your earlier question: if you do want to pass an allocator to a thread, you can just give it as an argument to the thread start function.  For debug and smp and such this should work fine in their default state, since they're meant to work for multiple threads.
+
+1748353770
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+sg, thanks for the tips
+
+1748353776
+bblack!~bblack@wikimedia/bblack-WMF
+std.Thread.spawn() allows you to pass whatever arguments that your start func takes.
+
+1748353887
+bblack!~bblack@wikimedia/bblack-WMF
+(also, I should note that when I adapted my code to the 0.14 release and started using .init above, I never really checked if that does what I think it does.
+
+1748353895
+bblack!~bblack@wikimedia/bblack-WMF
+var debug_allocator: std.heap.DebugAllocator(.{ .thread_safe = false }) = .init;
+
+1748353919
+bblack!~bblack@wikimedia/bblack-WMF
+^ for all I know this leaves me with thread_safe = true based on the .init :)  It hasn't mattered to me much, I'm not chasing perf yet.
+
+1748353958
+bblack!~bblack@wikimedia/bblack-WMF
+the more I stare at it, it seems likely that .init's defaults win there.
+
+1748353982
+bblack!~bblack@wikimedia/bblack-WMF
+I don't know, I should check!
+
+1748354764
+bblack!~bblack@wikimedia/bblack-WMF
+[FWIW: I did double-check, and my initialization method above does result in a single-threaded allocator that uses DummyMutex]
+
+1748357463
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤣
+
+1748357479
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hah similarly I'm not too interested in perf at the moment, but I was dealing with a runtime crash yesterday thus I was digging into this
+
+1748368477
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+fwiw i just improved my zls & nvim experience 100 times by adding this `entry_filter` to my config (i use kickstart.nvim, don't judge me, ok? :D)  https://file.vornet.cz/tmp/_config/nvim/lua/kickstart/init.lua   (look for entry_filter)
+
+1748368519
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+for some reason zls sometimes kept bumping `allowzero` `usingnamespace` and `resume` in front of `allocator`, `usize` and `return` .. and yeah it kept making me crazy
+
+1748368561
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+(there's probably more to ban, and also better lua code to do so, but so far it's aleady so much better :D)
+
+1748368681
+JodiJodington!~jodi@user/JodiJodington
+are you sure that was ZLS suggestions and not another completion-provider? wouldnt surprise me if neovim was able to get a list of keywords for the current language and add them as a completion option
+
+1748368753
+JodiJodington!~jodi@user/JodiJodington
+(I dont use LSP, ive just never seen this happen for people on vscode, not that ive been looking out for it though)
+
+1748368768
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+i'm not sure, it could be 
+
+1748368785
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+i always find it hard to understand what belongs to what in my nvim config :D
+
+1748368848
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+anyway adding list of keywords for the current language is exactly what i want it to do.  eg. i want `return` to be suggested
+
+1748368878
+JodiJodington!~jodi@user/JodiJodington
+your completion engine can probably have you prioritize one over another
+
+1748368888
+JodiJodington!~jodi@user/JodiJodington
+i.e have lsp completions come before keyword completions
+
+1748368895
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+i think those words are valid zig, just almost never used (or obsolete, eg. resume, but i'd understand that old kws are being kept)
+
+1748368931
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+but as i said i want keyword completions; it's all about which keywords
+
+1748368990
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+tbh the engine is not the best now, often it just won't see vars or args, but that's fine, i just didn't want it to suggest these words (which i probably won't ever use) every time
+
+1748369045
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+but i'm done procrastinating today; i just wanted to share it if someone uses nvim as well and could make use of it .  i'm not looking for improvements
+
+1748375858
+norineko!~norineko@user/norineko
+if I have a ArrayList(myStruct) as a comptime type parameter, is there a way I can get myStruct as a type? i.e can i "extract" the interior type?
+
+1748376483
+bblack!~bblack@wikimedia/bblack-WMF
+norineko: something like @TypeOf(some_list.items[0]) ?
+
+1748376522
+bblack!~bblack@wikimedia/bblack-WMF
+but if you want it abstractly from type-to-type, I think all the solutions are at least a little bit ugly.
+
+1748376538
+triallax!f378378b91@lacerte/triallax
+i don't know what you're doing exactly (xy problem?), but why not simply pass in myStruct and wrap it in an ArrayList inside the comptime func
+
+1748376655
+bblack!~bblack@wikimedia/bblack-WMF
+^ but yeah, that would be more ziggish I think
+
+1748381943
+norineko!~norineko@user/norineko
+yeah, i split it into NetMap and NetMapMany which uses arraylist.
+
