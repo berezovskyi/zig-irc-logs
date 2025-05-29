@@ -1,0 +1,236 @@
+1748451323
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+I've been flailing for some time now for a while with an issue (that I'm sadly not able to reproduce outside of my codebase) in which this line in udivmod.divwide_generic causes a divide-by-zero exception: https://github.com/ziglang/zig/blob/e28b4027ee273ab72c4eb572adc5abc257230284/lib/compiler_rt/udivmod.zig#L45
+
+1748451396
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Looking at it in GDB, it appears that both un64 and vn1 are 0. vn1 is set on line 37, where v = 256 and T = u64 (so vn1 = 0 seems correct, but obviously bad for a denominator)
+
+1748451513
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+This whole chain is entered by calling std.fmt.format, which eventually hits this line: https://github.com/ziglang/zig/blob/e28b4027ee273ab72c4eb572adc5abc257230284/lib/std/fmt.zig#L1224
+
+1748451548
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+At that line, a = 1024 and base = 16
+
+1748451750
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+I would greatly appreciate any ideas about what to try next or suggestions about getting this to appear in a smaller example that I can share! I'm of course happy to provide more details, just let me know what you need
+
+1748452518
+bblack!~bblack@wikimedia/bblack-WMF
+seems like the "normalize divisor" part that shifts v<<=s at L37 should've put some one-bits in vn1
+
+1748452527
+bblack!~bblack@wikimedia/bblack-WMF
+there must be a bad assumption in here somewhere
+
+1748453170
+bblack!~bblack@wikimedia/bblack-WMF
+noeontheend: do you have a simple example of the original fmt line? (what specifier and input type+value triggers it)
+
+1748453284
+bblack!~bblack@wikimedia/bblack-WMF
+I can't seem to repro when I try various things, and it seems unlikely that every attempt to print the u64 value 1024 as hex would be failing
+
+1748453310
+bblack!~bblack@wikimedia/bblack-WMF
+are you do some magic constructing custom int types?
+
+1748453572
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+It's a little tricky to send the exact line, this is in an x86 kernel (so freestanding, running in QEMU--sorry, meant to mention that originally!) This is the actual line: Serial.printf("type = {x}, base_addr = 0x{x}\n", .{ entry.type, entry.addr });
+
+1748453605
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Serial.printf is a straightforward wrapper around std.fmt.format
+
+1748453640
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+entry.addr is the problem child, and it's a u64.
+
+1748453806
+bblack!~bblack@wikimedia/bblack-WMF
+do you know an example value it's holding when things break?
+
+1748453812
+bblack!~bblack@wikimedia/bblack-WMF
+is if all-1's or something?
+
+1748453936
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+I'll try to extract the value. (Annoyingly, GDB doesn't recognize that it's a struct, so p entry.value doesn't work.) I believe I did this the last time I tried debugging this and was able to successfully print that value when given as a literal, but I'll try to confirm that now
+
+1748454139
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+It's a packed struct--once I have the right bits, since this is x86, will those be a little-endian representation of the actual value?
+
+1748454609
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Ok, did trigger the error with this: Serial.printf("value = 0x{x}\n", .{0xd000780000000000});
+
+1748455532
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Calling just that in a simple example does hit a breakpoint on the "const digit = a % base" line (fmt.zig:1224). This time however, a = 0xd000780000000000 and not 1024. At the very least, this is something to go off of now!
+
+1748459838
+bblack!~bblack@wikimedia/bblack-WMF
+noeontheend: I still can't repro it on a normal x86_64 linux build.  I've tried commenting out the x86_64 asm optimized one and forcing it to use divwide_generic and tried some manual invocations of divwide_generic too.
+
+1748459880
+bblack!~bblack@wikimedia/bblack-WMF
+but it never seems to result in vn1==0
+
+1748460190
+bblack!~bblack@wikimedia/bblack-WMF
+the shift by the clz() bits really should, almost by definition, ensure vn1 has 1-bits in it, unless v really was zero to begin with.
+
+1748460231
+bblack!~bblack@wikimedia/bblack-WMF
+s/almost// :)
+
+1748463761
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+bblack: Thanks for looking into it with me. I also can't get it to reproduce elsewhere. I did replace the % operator in fmt.formatInt with a custom mod implementation, but then it also fails out (again in divwide_generic) on the /= a few lines later
+
+1748463853
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+I also tried setting up a 32-bit VM, thinking maybe it had something to do with using the large number on the 32 bit processor, but I can't get it to trigger there either
+
+1748464654
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+I just checked and it triggers with any value above 0xFFFFFFFF (i.e., anything greater than a u32)
+
+1748465277
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Hmmm, this is suspicious
+
+1748465321
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+I don't fully understand what's happening, so maybe this is expected, but when it calls a % base I have a = 13847352798598922240, and then one step down in the stack, __umoddi3, it shows a = 4294967296
+
+1748466860
+bblack!~bblack@wikimedia/bblack-WMF
+noeontheend: your qemu VM isn't using the x32 ABI/arch/whatever is it?
+
+1748466917
+bblack!~bblack@wikimedia/bblack-WMF
+(which is basically x86_64 with an ILP32 sort of ABI - you'd have 32-bit pointers)
+
+1748467000
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Possibly? I'm not sure exactly what you mean, but I am using qemu-system-i386
+
+1748467050
+bblack!~bblack@wikimedia/bblack-WMF
+I guess maybe a more-direct question would be, what's the zig target you're compiling to?
+
+1748467113
+bblack!~bblack@wikimedia/bblack-WMF
+oh hmmm, I'm not sure there is a freestanding x32 target
+
+1748467153
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+std.Target.Query{ .cpu_arch = .x86, .cpu_model = .native, .os_tag = .freestanding, .abi = .none } (along with some enabled/disabled features)
+
+1748467195
+bblack!~bblack@wikimedia/bblack-WMF
+ok, so it's really like a 32-bit x86 arch?
+
+1748467242
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm
+
+1748467336
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Yes, if I understand you correctly
+
+1748467400
+bblack!~bblack@wikimedia/bblack-WMF
+yeah, umoddi3 would expect a 32-bit operand
+
+1748467975
+bblack!~bblack@wikimedia/bblack-WMF
+I thought maybe I could repro using "zig run -target x86-linux-none", but still no dice
+
+1748468040
+bblack!~bblack@wikimedia/bblack-WMF
+noeontheend: what enabled/disabled features? maybe I have to be more precise than that (they do sometimes determine codegen for things like clz and divmod)
+
+1748468143
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+bblack: I tried that as well earlier, although not with the features set. mmx, sse, sse2, avx, avx2, bmi, bmi2 are all disabled, and soft_float is enabled.
+
+1748468321
+bblack!~bblack@wikimedia/bblack-WMF
+cpu_model is "native", though, so that's going to depend on whatever you're running the compiler as
+
+1748468468
+bblack!~bblack@wikimedia/bblack-WMF
+maybe try setting cpu_model explicitly? to i386 (which would have almost no features anyways)
+
+1748468503
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Ahh, good call. I have an i7-1165G7, which is tigerlake. I'll try that!
+
+1748468574
+bblack!~bblack@wikimedia/bblack-WMF
+yeah it's possible somehow you're ending up with some blend of 32/64-bit assumptions with .native + .x86
+
+1748468593
+bblack!~bblack@wikimedia/bblack-WMF
+bblack@memex:~/repos/zig$ zig run -target x86_64-linux-none -mcpu i386-mmx-sse-sse2-avx-avx2-bmi-bmi2+soft_float x.zig
+
+1748468596
+bblack!~bblack@wikimedia/bblack-WMF
+LLVM ERROR: 64-bit code requested on a subtarget that doesn't support it!
+
+1748468603
+bblack!~bblack@wikimedia/bblack-WMF
+^ I get errors like that when I try invalid combos
+
+1748468616
+bblack!~bblack@wikimedia/bblack-WMF
+but I'm just doing zig run on a small example source
+
+1748468707
+bblack!~bblack@wikimedia/bblack-WMF
+(whereas the same command with "-target x86-linux-none" works, but doesn't repro the problem either)
+
+1748468792
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+...
+
+1748468793
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+It worked!
+
+1748468879
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+bblack: You are a miracle worker--I abandoned this project a few months ago after getting stuck on this, came back last week hoping it was magically fixed in Zig updates, and have been pulling my hair out ever since. Thanks a million!
+
+1748468954
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I'm guessing when you say ".cpu_arch = .x86" (32-bit) + ".cpu_model = .native" (which is your 64-bit tiger lake), something goes wrong with various codegen / platform assumptions that affect/confuse the clz/divmod -level stuff?
+
+1748469002
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+That makes perfect sense, should have thought to check that!
+
+1748469011
+bblack!~bblack@wikimedia/bblack-WMF
+there may be a real zig-level bug in there somewhere, or at least a case it should kick out with a compile error or something.  But it might be some work to dig into it and figure that out.
+
+1748469044
+bblack!~bblack@wikimedia/bblack-WMF
+good luck :)
+
+1748469060
+noeontheend!6c26d871c9@2a03:6000:1812:100::40d
+Thanks again :)
+
+1748469065
+bblack!~bblack@wikimedia/bblack-WMF
+np!
+
