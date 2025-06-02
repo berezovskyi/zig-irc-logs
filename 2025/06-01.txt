@@ -1,0 +1,324 @@
+1748739141
+clevor!sid649024@id-649024.hampstead.irccloud.com
+tranzystorekk: If anything, it nakes me want to avoid StackOverflow out of spite.
+
+1748739433
+meidam!~meidam@user/meidam
+Hey, does anyone have experience with using an api key with zig, when using it to interact with an api, which requires it? Where do you store the api key, and how do you access it programmatically. Do you use something like dotenv?
+
+1748739887
+Drixtan!~Drixtan@user/Drixtan
+I guess I would just put it in my config file with the rest...
+
+1748739916
+Drixtan!~Drixtan@user/Drixtan
+you know, with all the good jazz of using a place holder ({some api here}) to be replaced by the CI at one point
+
+1748740220
+meidam!~meidam@user/meidam
+And what do you use to read the config file, Drixtan?
+
+1748740274
+meidam!~meidam@user/meidam
+Would probably not be good to have an api key in the source code, even if it was a placeholder replaced by the CI, since it would be visible in the executable, right?
+
+1748740421
+Drixtan!~Drixtan@user/Drixtan
+json stuff in the std
+
+1748740444
+Drixtan!~Drixtan@user/Drixtan
+meidam, you are right, but I think he's not there yet
+
+1748740473
+Drixtan!~Drixtan@user/Drixtan
+he has to get different filenames for each environment, like myconfig.dev.json, myconfig.staging.json, etc.
+
+1748740524
+Drixtan!~Drixtan@user/Drixtan
+anyway, I've made a little lib with some "useful" stuff in it, like a config loader, it's all based on the json lib in the std, it shouldn't take you long to make something similar
+
+1748740682
+meidam!~meidam@user/meidam
+Ah okay. Yeah, I did consider a bit that I could use the json parser from the std for it. I guess I'll just do that, when hearing that someone else already has
+
+1748740727
+meidam!~meidam@user/meidam
+I've used the std.json to parse an http response json body already, so I'll figure it out
+
+1748740739
+meidam!~meidam@user/meidam
+thx
+
+1748741005
+Drixtan!~Drixtan@user/Drixtan
+https://pastebin.com/rnJ5Rs8p
+
+1748741020
+Drixtan!~Drixtan@user/Drixtan
+fsutils is only a part of the lib, but you will understand
+
+1748744140
+LAC-Tech!~lewis@granite-phrase.bnr.la
+is there no way to bit cast a tagged union?
+
+1748774235
+tonitch!~tonitch@user/tonitch
+Hey, I'm playing with std.http I need to pass a server_header_buffer to RequestOptions when I open a connection. I have 2 "questions" 1) what's a proper way to make buffer in zig (my current solution is to just use my allocator but then I have to choose a size and there is no indication on how to handle size and what to do if the size overflow. 2) well how do I get the size of my header. My current
+
+1748774237
+tonitch!~tonitch@user/tonitch
+solution is to memset my buffer to 0 so that is "probably" null terminated at the end but this seems wrong.
+
+1748790518
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+std.ArrayList or (preferably) std.ArrrayListUnmanaged
+
+1748790550
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+(if you're new std.ArrayList is easier to use)
+
+1748790712
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+on a second re-read of your question i might be wrong tho..  i haven't used std.http
+
+1748790878
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+generally if i don't know the size of the array and want it to grow as the code unfolds, i may use std.ArrayListUnmanaged, but that might be a bad strategy if the "as the code unfolds" entirely depends on data coming from outside, because then the growing might continue until your allocator is exhausted (which might be OOM)
+
+1748791016
+netvor!~netvor@2a00:ca8:a1f:cd0:473a:3320:4db6:44a1
+what i think is safer is to just set hardcoded maximum (eg. const MAX_HEADER_SIZE = 1024) and then use plain array, or std.BoundedArray.  but that rather applies if you're parsing the http request yourself; i don't know if std.http can do it for you
+
+1748791435
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tonitch: server_header_buffer is a slice, so it knows how large it is. It doesn't need to be zero-terminated, it's just a buffer that's used for storing the headers.
+
+1748791445
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if it's too small, you'll get a HttpHeadersOversize error
+
+1748791540
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you are not meant to read the data in this buffer directly, you do that from the Response (e.g. iterateHeaders)
+
+1748793954
+Drixtan!~Drixtan@user/Drixtan
+usually, the headers are known / not a huge part of the message. I wrapped my std.http get in a function that takes a header and response buffer as []u8 and I pass those from the stack based on where I call. It's simple, each case use a correct and tested amount of memory (not at the byte close). Headers normally don't change much anyway
+
+1748795580
+grayhatter!~grayhatte@user/grayhatter
+> headers normally don't change much anyway
+
+1748795590
+grayhatter!~grayhatte@user/grayhatter
+hold on, let me screen shot this
+
+1748795597
+grayhatter!~grayhatte@user/grayhatter
+this comment will *not* age well
+
+1748796138
+Drixtan!~Drixtan@user/Drixtan
+you might want to review how you are doing your website/webapp then
+
+1748796320
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+usually when using http Client I don't control the server I connect to
+
+1748796327
+tonitch!~tonitch@user/tonitch
+ho by the way i'm trying to implement (basic) websocket in zig. there is std.http.WebSocket but it seems like there is only the server part and not the client part in there (at least I couldn't get it working). So I have to check the received headers
+
+1748796356
+tonitch!~tonitch@user/tonitch
+thanks for your help everyone. I'm gonna try again
+
+1748796378
+grayhatter!~grayhatte@user/grayhatter
+and the inverse of Gliptic, when you're impelmenting a server, you don't control the clients that connect to it
+
+1748796453
+grayhatter!~grayhatte@user/grayhatter
+but my comment was more; this is exactly the kind of comment that someone will say, build a lot of infra and a lot more code around the idea headers will be mostly static... then a new feature will be required that requires supporting very dynamic headers, and it'll be a nightmare to implement correctly
+
+1748796491
+grayhatter!~grayhatte@user/grayhatter
+code that depends on assumptions good code IFF thoes assumptions are **ALWAYS** true
+
+1748796504
+grayhatter!~grayhatte@user/grayhatter
+is* good code
+
+1748796869
+Drixtan!~Drixtan@user/Drixtan
+grayhatter: tell me what you see, tell us what is the signature of server_header_buffer here: https://ziglang.org/documentation/0.14.1/std/#std.http.Client.RequestOptions
+
+1748796905
+Drixtan!~Drixtan@user/Drixtan
+so, in your book, that server_header_buffer should have what, an infinite amount of space? 
+
+1748796909
+Drixtan!~Drixtan@user/Drixtan
+what's your trick here mr grayhatter 
+
+1748797019
+grayhatter!~grayhatte@user/grayhatter
+my trick was implementing my own https framework https://srctree.gr.ht/repo/verse/blob/src/headers.zig
+
+1748797051
+grayhatter!~grayhatte@user/grayhatter
+I guess technically https://srctree.gr.ht/repo/verse/blob/src/frame.zig#L209 is a better link
+
+1748797133
+Drixtan!~Drixtan@user/Drixtan
+06:37 < tonitch> Hey, I'm playing with std.http I need to pass a server_header_buffer to RequestOptions when I open a connection. <-- clearly the guy was talking about using std.http 
+
+1748797162
+Drixtan!~Drixtan@user/Drixtan
+he wasn't asking: how do I build my own http framework 
+
+1748797173
+grayhatter!~grayhatte@user/grayhatter
+ahh, I missed the message you were responding to
+
+1748797193
+Drixtan!~Drixtan@user/Drixtan
+but I will check your http framework thou 
+
+1748797223
+grayhatter!~grayhatte@user/grayhatter
+but, IIRC there is/was some bugs in the std.http implementation related to sending headers
+
+1748797254
+grayhatter!~grayhatte@user/grayhatter
+I saw a PR fixing it, but don't remember which version that was included into
+
+1748797575
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+If you are accepting infinite headers just make sure you have a deadline on receiving them...otherwise you can get ddosed by someone just sending endless headers
+
+1748797609
+Drixtan!~Drixtan@user/Drixtan
+wisely said rockorager, wisely said
+
+1748797786
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+there's more where that came from
+
+1748799288
+grayhatter!~grayhatte@user/grayhatter
+zig build: Done: 4041767 lines in  59959ms && zig build --release=fast: Done: 4041767 lines in 1544ms
+
+1748799292
+grayhatter!~grayhatte@user/grayhatter
+this never gets old
+
+1748812356
+norineko!~norineko@user/norineko
+if I have an array of integers, how can I cast that array into an array of enums based on the integers?
+
+1748812381
+norineko!~norineko@user/norineko
+I tried writing a simple function to do it, but I get an error that the .ptr points to comptime var
+
+1748812597
+cancername!~cancernam@user/cancername
+norineko: a for loop with @enumFromInt or, if you want to reinterpret the data in place, @ptrCast, should both work
+
+1748812606
+cancername!~cancernam@user/cancername
+could you share your current code?
+
+1748812631
+norineko!~norineko@user/norineko
+yeah, extracting an example. I can do the loop with enumFromInt if the variable is global, but I can't do it to initialize a global struct instance field
+
+1748812669
+cancername!~cancernam@user/cancername
+norineko: should work with a labeled block anyway, hm.
+
+1748812676
+norineko!~norineko@user/norineko
+ie `pub const myEnumList = enumArray(Pin, .{1,2,3});` but not `pub const StructInstance = MyStruct{.pins = enumArray...`
+
+1748812761
+norineko!~norineko@user/norineko
+https://zigbin.io/16f75d
+
+1748812795
+norineko!~norineko@user/norineko
+can I not take a reference because the pointer is to a comptime var that's discarded?
+
+1748812919
+cancername!~cancernam@user/cancername
+norineko: I think you aren't supposed to take a pointer to a comptime var and store it somewhere since that would be comptime global state which isn't allowed
+
+1748813025
+cancername!~cancernam@user/cancername
+not quite sure about this... the local return is cursed but I guess fine at comptime?
+
+1748813074
+cancername!~cancernam@user/cancername
+norineko: in any case, you can assign the comptime var to a const and return a pointer to that
+
+1748813096
+norineko!~norineko@user/norineko
+like move it out of the struct declaration? 
+
+1748813165
+cancername!~cancernam@user/cancername
+norineko: no, `const real_res = res; return res;`
+
+1748813170
+cancername!~cancernam@user/cancername
+err... return &real_res
+
+1748813178
+norineko!~norineko@user/norineko
+ohh
+
+1748813305
+cancername!~cancernam@user/cancername
+norineko: alternatively, you can do this: https://zigbin.io/c7c59c
+
+1748813375
+norineko!~norineko@user/norineko
+honestly, might just go that route. but this did expand brain
+
+1748813479
+cancername!~cancernam@user/cancername
+:D the more you know!
+
+1748814953
+Drixtan!~Drixtan@user/Drixtan
+am I cursed if I have the habit to rename root.zig for libnamewhatever.zig? What's your take on that? I love to ask the real hard questions...
+
+1748815119
+cancername!~cancernam@user/cancername
+Drixtan: no issue with that IMO
+
+1748815622
+grayhatter!~grayhatte@user/grayhatter
+root.zig technically violates zig's naming conventions
+
+1748815646
+grayhatter!~grayhatte@user/grayhatter
+in other words, you're correct to rename it Drixtan 
+
+1748816282
+cancername!~cancernam@user/cancername
+grayhatter: curious about that
+
+1748817937
+grayhatter!~grayhatte@user/grayhatter
+cancername: Everything is a value, all types are data, everything is context, all logic manages state. Nothing is communicated by using a word that applies to all types.
+
+1748817970
+cancername!~cancernam@user/cancername
+grayhatter: I guess.
+
+1748818169
+grayhatter!~grayhatte@user/grayhatter
+@import("root") != @import("root.zig");
+
