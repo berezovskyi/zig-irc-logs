@@ -1,0 +1,108 @@
+1748843773
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://github.com/LAC-Tech/The-WAL-of-Time/blob/cc353e256163dbb14e34b0b03822bd5c0345de6b/src/core.zig#L9 there's no nicer way of doing this in zig, is there?
+
+1748843898
+LAC-Tech!~lewis@granite-phrase.bnr.la
+in the sense of an enum with a tag you can shove into integers and backout again
+
+1748891277
+triallax!f378378b91@lacerte/triallax
+so, umm, i'm wondering whether Allocator.dupe has to accept a type parameter, can it not be easily extracted from the slice to be duped?
+
+1748892511
+cancername!~cancernam@user/cancername
+triallax: I don't think there's a reason in particular, they could have used anytype too
+
+1748897144
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I guess either way it's going to compile as specialized variants, right?
+
+1748897161
+bblack!~bblack@wikimedia/bblack-WMF
+there must be some optimization rationale or something for the two ways of doing that.
+
+1748897218
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. "fn foo(T: type, x: T) T {}" vs "fn foo(x: anytype) @TypeOf(x) {}" ?
+
+1748897303
+bblack!~bblack@wikimedia/bblack-WMF
+maybe I have to stare at it in a real use-case to understand
+
+1748897426
+bblack!~bblack@wikimedia/bblack-WMF
+just on a surface look, it seems like it makes the dupe() implementation much simpler:
+
+1748897440
+bblack!~bblack@wikimedia/bblack-WMF
+> pub fn dupe(allocator: Allocator, comptime T: type, m: []const T) Error![]T {
+
+1748897484
+bblack!~bblack@wikimedia/bblack-WMF
+vs if m was "anytype", the code would have to explicitly reject cases where it wasn't an []const of some type.
+
+1748897519
+triallax!f378378b91@lacerte/triallax
+well we're talking a difference of what
+
+1748897521
+triallax!f378378b91@lacerte/triallax
+a few lines?
+
+1748897536
+triallax!f378378b91@lacerte/triallax
+compared to not haivng to repeat the type over and over and over while using dupe
+
+1748897578
+bblack!~bblack@wikimedia/bblack-WMF
+constness would be lost info in the interface as well
+
+1748897609
+triallax!f378378b91@lacerte/triallax
+hm, maybe
+
+1748897617
+triallax!f378378b91@lacerte/triallax
+maybe you can force-constify a slice type? idk
+
+1748897622
+bblack!~bblack@wikimedia/bblack-WMF
+but yeah, I still wonder if maybe there's an optimization or compilation-speed reason that the "comptime T: type" pattern is so prevalent, if anytype can fundamentally do all the same tricks.
+
+1748897705
+bblack!~bblack@wikimedia/bblack-WMF
+in the anytype version of dupe, you'd first have to switch on the @TypeOf the argument, compile-error on anything that isn't a slice, check that the children are const, grab the child type.
+
+1748897722
+bblack!~bblack@wikimedia/bblack-WMF
+it is more verbose and ugly if you're doing it all over the stdlib
+
+1748897740
+triallax!f378378b91@lacerte/triallax
+since the start i was talking only about dupe
+
+1748897754
+bblack!~bblack@wikimedia/bblack-WMF
+and there would be some similar complexity in defining the return type, too
+
+1748897770
+triallax!f378378b91@lacerte/triallax
+maybe there's an argument to be made about doing this in general, but i certainly didn't bring it up
+
+1748897772
+bblack!~bblack@wikimedia/bblack-WMF
+it would turn into some expression using whatever typeof magic to un-constify the type of the argument
+
+1748897815
+bblack!~bblack@wikimedia/bblack-WMF
+I'm not even sure how you'd do that, but I bet it can be done
+
+1748897910
+bblack!~bblack@wikimedia/bblack-WMF
+maybe an illuminating exercise would be to implement any anytype'd dupe and nail all those things down
+
+1748907175
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Is there a recommended way to `statFile` a symlink and not what it points to?
+
