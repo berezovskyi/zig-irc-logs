@@ -1,0 +1,328 @@
+1749087077
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is this a pretty typical way to ensure all my nested unit tests run? https://github.com/ghostty-org/ghostty/blob/main/src/main_ghostty.zig#L173-L193
+
+1749087456
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also does this in any way bloat the binary by importing these things twice?
+
+1749088420
+squeek502!~squeek502@user/squeek502
+ezzieyguywuf, you can import 10000000 times and it's the same as importing once
+
+1749088493
+squeek502!~squeek502@user/squeek502
+that pattern for tests is common, there's a helper if you have pub decls: std.testing.refAllDecls which is used in the standard library: https://github.com/ziglang/zig/blob/14873f9a3434a0d753ca8438f389a7931956cf26/lib/std/std.zig#L172-L174
+
+1749089099
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://ziglang.org/documentation/0.14.0/std/#std.array_list.ArrayListAlignedUnmanaged.addOneAssumeCapacity odd design choice. why not return an error? if the argument is you should check the lenght first, well then that's two runtime checks
+
+1749089120
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+squeek502: thanks for the tip squeek502 
+
+1749089396
+squeek502!~squeek502@user/squeek502
+LAC-Tech, by calling that function you're saying you know it has the capacity available, the intention is to pair it with `ensureTotalCapacity`/`ensureUnusedCapacity`
+
+1749089404
+squeek502!~squeek502@user/squeek502
+simple example: https://github.com/ziglang/zig/blob/14873f9a3434a0d753ca8438f389a7931956cf26/lib/std/compress/lzma/decode/lzbuffer.zig#L150-L154
+
+1749090592
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is doing something like https://gist.github.com/karlseguin/c6bea5b35e4e8d26af6f81c22cb5d76b the best/only way to reliably print out the name of each passed test each time I run?
+
+1749090908
+clevor!sid649024@id-649024.hampstead.irccloud.com
+squeek502: I tend to use `appendAssumeCapacity` when I am adding a single item just after creating a BoundedArray.
+
+1749090975
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I could initialize it with a single element and set it, but I don't think readability is impacted.
+
+1749092556
+LAC-Tech!~lewis@granite-phrase.bnr.la
+squeek502: I still don't follow what a simple error code would cost, and would let you handle cases where you want to add but only if there's enough capacity. ohw ell good thing about the zig std lib is that it's so simple you can implement this stuff yourself
+
+1749093220
+squeek502!~squeek502@user/squeek502
+LAC-Tech, there's `addOne` for that, i
+
+1749093224
+clevor!sid649024@id-649024.hampstead.irccloud.com
+LAC-Tech: You can always do `list.append(5) catch unreachable`.
+
+1749093288
+squeek502!~squeek502@user/squeek502
+if you want an API that means 'don't try to allocate, error if there isn't enough capacity', i agree that's missing and i'd like to revive https://github.com/ziglang/zig/pull/18361 at some point
+
+1749093305
+squeek502!~squeek502@user/squeek502
+but that API is mostly useful with `initBuffer`
+
+1749093445
+LAC-Tech!~lewis@granite-phrase.bnr.la
+squeek502: addOne allocates
+
+1749093472
+LAC-Tech!~lewis@granite-phrase.bnr.la
+but yeah that's what I mean.
+
+1749093496
+LAC-Tech!~lewis@granite-phrase.bnr.la
+let's be honest arraylist is not a super complicated data structure and you can just write it yourself. Call it "Vec" and save some keystrokes ;}
+
+1749097358
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: how do you resist the urge to make zig just a tiny bit more complicated?
+
+1749105249
+LAC-Tech!~lewis@granite-phrase.bnr.la
+man lmao
+
+1749105375
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I think it's all in the build system
+
+1749105460
+grayhatter!~grayhatte@user/grayhatter
+lol LAC-Tech so many times I think, if only the language had this one small tiny feature... hey maybe one day
+
+1749105485
+grayhatter!~grayhatte@user/grayhatter
+after the 100th time I thought that, I realized I just re-invented [langage I hate]
+
+1749105995
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I used to think that it'd be a great simplification to not have methods on structs. but then I realised you'd need a new construct to distinguish between structs (records) and structs (modules).
+
+1749129699
+clevor!sid649024@id-649024.hampstead.irccloud.com
+grayhatter: When I asked about the x32 ABI target, I meant something like `x86_64-linux-nonex32`.
+
+1749129739
+clevor!sid649024@id-649024.hampstead.irccloud.com
+There is muslx32, but I don't need a libc.
+
+1749136731
+grayhatter!~grayhatte@user/grayhatter
+clevor: x86-freestanding-none maybe?
+
+1749136957
+clevor!sid649024@id-649024.hampstead.irccloud.com
+maybe not https://usercontent.irccloud-cdn.com/file/Q0hx4A6h/Screenshot_20250605_112228.png
+
+1749138061
+bblack!~bblack@wikimedia/bblack-WMF
+yeah there was an earlier attempt to get rid of it in the kernel, but it never really happened, and there has been x32 kernel commits since then
+
+1749138089
+bblack!~bblack@wikimedia/bblack-WMF
+it's status is maybe "on life support", but it does have some supporters and some distros keeping parts working afaik
+
+1749138184
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I like x32 and had made some assembly programs for it.
+
+1749138779
+bblack!~bblack@wikimedia/bblack-WMF
+but yeah, it is a distinct thing not covered by current triples in zig
+
+1749138859
+bblack!~bblack@wikimedia/bblack-WMF
+(for the non-libc case, I mean)
+
+1749150126
+triallax!f378378b91@lacerte/triallax
+is there an idiomatic way to handle errors in a whole function in one place?
+
+1749150147
+triallax!f378378b91@lacerte/triallax
+similar to a `try` covering the whole method body in e.g. java
+
+1749150178
+triallax!f378378b91@lacerte/triallax
+there's a specific error i want to handle in the same way everywhere in a function
+
+1749150884
+grayhatter!~grayhatte@user/grayhatter
+triallax: are you going to return something in the error case?
+
+1749150897
+triallax!f378378b91@lacerte/triallax
+yes
+
+1749150925
+triallax!f378378b91@lacerte/triallax
+were you going to suggest errdefer?
+
+1749150926
+grayhatter!~grayhatte@user/grayhatter
+then you have to use a function that takes an error and returns the value
+
+1749150944
+grayhatter!~grayhatte@user/grayhatter
+catch |err| return handleError(err);
+
+1749150954
+triallax!f378378b91@lacerte/triallax
+right
+
+1749150969
+triallax!f378378b91@lacerte/triallax
+i thought of that and i also thought of some kind of wrapper function
+
+1749150979
+triallax!f378378b91@lacerte/triallax
+that calls the function with the actual logic and just handles the error
+
+1749150987
+grayhatter!~grayhatte@user/grayhatter
+the more idomatic way is to rewrite your code so that you don't actually wanna do that (because actaully doing that is often bad design)
+
+1749151026
+triallax!f378378b91@lacerte/triallax
+well, i'm unsure if here's a better way of doing what i want to, but do enlighten me if you know
+
+1749151031
+triallax!f378378b91@lacerte/triallax
+i'm implementing error synchronisation in a parser
+
+1749151068
+grayhatter!~grayhatte@user/grayhatter
+I don't know what error synchronization is
+
+1749151119
+triallax!f378378b91@lacerte/triallax
+it's an error recovery strategy, where once you encounter a parsing error, you keep discarding tokens until you reach a point where you can "synchronise"
+
+1749151123
+triallax!f378378b91@lacerte/triallax
+e.g. semicolon
+
+1749151133
+triallax!f378378b91@lacerte/triallax
+and then you can continue parsing to possibly print more errors
+
+1749151156
+grayhatter!~grayhatte@user/grayhatter
+don't use errors for that, make that part of your normal code flow
+
+1749151204
+triallax!f378378b91@lacerte/triallax
+i don't see any better way to handle it than errors though
+
+1749151216
+grayhatter!~grayhatte@user/grayhatter
+switch () { .parse_err_skipping => while (notSafeChar(str[idx]) { idx += 1 } }
+
+1749151273
+triallax!f378378b91@lacerte/triallax
+the parse error still needs to bubble up from wherever it happeened
+
+1749151274
+grayhatter!~grayhatte@user/grayhatter
+you probably need some sort of `continue :switch_label .next_state;` in there for the code I'm thinking of
+
+1749151296
+grayhatter!~grayhatte@user/grayhatter
+your parser taken in a slice of bytes, and returns a slice of tokens, right?
+
+1749151318
+triallax!f378378b91@lacerte/triallax
+at a high level, yes
+
+1749151339
+grayhatter!~grayhatte@user/grayhatter
+create an invalid_syntax_token
+
+1749151363
+grayhatter!~grayhatte@user/grayhatter
+so, either the tokenizer in your parser can return an error, or it can continue
+
+1749151376
+grayhatter!~grayhatte@user/grayhatter
+it can not do both in zig
+
+1749151377
+triallax!f378378b91@lacerte/triallax
+wait, erm
+
+1749151379
+triallax!f378378b91@lacerte/triallax
+i misread your message
+
+1749151387
+triallax!f378378b91@lacerte/triallax
+no, my parser takes in a list of tokens and returns an ast
+
+1749151403
+triallax!f378378b91@lacerte/triallax
+i have a separate stage for tokenising
+
+1749151425
+grayhatter!~grayhatte@user/grayhatter
+so either the tokenizer uses zig errors to return, or it needs to "correctly" tokenize the invalid string, and continue
+
+1749151479
+grayhatter!~grayhatte@user/grayhatter
+the same applies to your parser then
+
+1749151519
+grayhatter!~grayhatte@user/grayhatter
+you either need to encapsulate the error state such that you can return a valid tree that contains an invalid ast block, or you can return a zig error
+
+1749151524
+grayhatter!~grayhatte@user/grayhatter
+you can not return both
+
+1749151533
+triallax!f378378b91@lacerte/triallax
+i am not returning an error from my parser
+
+1749151536
+triallax!f378378b91@lacerte/triallax
+my parser is not a function
+
+1749151546
+triallax!f378378b91@lacerte/triallax
+it's a struct containing dozens of methods, any of which can error
+
+1749151721
+grayhatter!~grayhatte@user/grayhatter
+https://gist.github.com/GrayHatter/9c5e3de4667edf99346a4ea0452efde0
+
+1749151747
+grayhatter!~grayhatte@user/grayhatter
+would that work?
+
+1749151778
+triallax!f378378b91@lacerte/triallax
+hm, yeah
+
+1749151787
+grayhatter!~grayhatte@user/grayhatter
+dope... good luck :)
+
+1749151828
+triallax!f378378b91@lacerte/triallax
+thanks
+
+1749167094
+LAC-Tech!~lewis@granite-phrase.bnr.la
+with comptime, and the unification of structs and modules, does zig really need transitive dependency? just tell the user to provide them themselves and pass it in. version tags (as const variables) can be checked at comtpime.
+
+1749167633
+norineko!~norineko@user/norineko
+is there any difference "under the hood" between writing many small tests vs one larger test?
+
+1749167655
+norineko!~norineko@user/norineko
+could smaller tests be parallelized?
+
+1749167941
+netvor!~netvor@2a00:ca8:a1f:cd0:7d4:e886:1f1:eaf
+can i set a field value by a comptime known name of a field?   IIUC i can get current value using @field but how to *set* it?
+
