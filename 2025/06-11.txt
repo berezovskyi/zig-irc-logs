@@ -1,0 +1,132 @@
+1749602489
+norineko!~norineko@user/norineko
+ /buflist toggle
+
+1749602494
+norineko!~norineko@user/norineko
+whoops
+
+1749658882
+tonitch!~tonitch@user/tonitch
+using std.json.stringify is it possible to get the value of an enum? currently I get the tag name (for instance my object {op: enum(u8){...}, ...} will return {"op":"hello"} instead of {"op":0} that I would like to get
+
+1749659215
+tonitch!~tonitch@user/tonitch
+I got this page but can't really understand the thing about if enum is non-exhaustive
+
+1749659217
+tonitch!~tonitch@user/tonitch
+https://ziglang.org/documentation/master/std/#std.json.stringify.WriteStream.write
+
+1749659384
+torque!~tachyon@user/torque
+in general, you can define a `jsonStringify` method on the enum that writes numbers instead of names
+
+1749659424
+torque!~tachyon@user/torque
+non-exhaustive enums are enumerations that contain unnamed values, see https://ziglang.org/documentation/0.14.1/#Non-exhaustive-enum
+
+1749659624
+bblack!~bblack@wikimedia/bblack-WMF
+this reminds me to say: the other day I was porting some C code that serialized/deserialized some complex struct to transmit it over a pipe to another process.  The old code was ugly and convoluted and hard to translate cleanly.  I ended up just replacing it with std.zon to stringify + parse with whitespace turned off, and it worked out pretty magically and brilliantly :)
+
+1749659738
+bblack!~bblack@wikimedia/bblack-WMF
+(obviously not as compactly, but this is not critical and it's being sent over a unix pipe to a co-operating process anyways)
+
+1749659764
+tonitch!~tonitch@user/tonitch
+so using jsonStringify, I have self and jw. I assume self is the value (in u8?) and jw is the writer. So I should so something like jw.write(self) ? 
+
+1749659804
+tonitch!~tonitch@user/tonitch
+I tried making my enum unnamed and it didn't work tho ^^ i'll investigate later
+
+1749659810
+torque!~tachyon@user/torque
+self is the value as the enum type, you have to use @intFromEnum to get the integer representation
+
+1749659814
+bblack!~bblack@wikimedia/bblack-WMF
+or jw.write(@intFromEnum(self))
+
+1749659828
+tonitch!~tonitch@user/tonitch
+ho, right thanks!
+
+1749660135
+tonitch!~tonitch@user/tonitch
+well... I don't really understand this error as there is the * in *@This() so shouldn't the const be discarded ? 
+
+1749660143
+tonitch!~tonitch@user/tonitch
+https://0x0.st/8E1d.txt
+
+1749660166
+tonitch!~tonitch@user/tonitch
+(if there is enough info to understand the problem)
+
+1749660207
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's complaining that self is *const, not the other way around
+
+1749660417
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the self that you pass in, that is
+
+1749660456
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(which is `value` :P)
+
+1749660520
+tonitch!~tonitch@user/tonitch
+ho wait casting 
+
+1749660528
+tonitch!~tonitch@user/tonitch
+I think the note confuses me
+
+1749660556
+tonitch!~tonitch@user/tonitch
+so "cast discard const" and I casted by removing *
+
+1749661308
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+tonitch: it's saying it can't convert *const T to *T, because that would discard const
+
+1749661338
+tonitch!~tonitch@user/tonitch
+yhea I see 
+
+1749679323
+midgard!~midgard@user/midgard
+i'm baffled that Zig supports @importing ZON directly but it can't do build.zig.zon (#22775). like, that's the only real use for @importing ZON that i can imagine :p
+
+1749679838
+clevor!sid649024@id-649024.hampstead.irccloud.com
+On importing ZON files, I want to be able to import or embed files as static-lifetime variables.
+
+1749684585
+torque!~tachyon@user/torque
+0.14.1 should support importing build.zig.zon directly I believe
+
+1749684809
+torque!~tachyon@user/torque
+hmm
+
+1749684858
+torque!~tachyon@user/torque
+maybe https://github.com/ziglang/zig/pull/22907 didn't end up getting cherry picked to the 0.14.1 branch
+
+1749685110
+torque!~tachyon@user/torque
+ah i guess only a couple of minor fixes from it did
+
+1749685117
+torque!~tachyon@user/torque
+you can always live off of master
+
+1749685334
+torque!~tachyon@user/torque
+it felt like there were a few big changes that came in pretty close to the 0.14 release date that would've benefitted from more time on master to get the rough edges filed down, but so it goes
+
