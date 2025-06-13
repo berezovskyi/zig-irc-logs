@@ -1,0 +1,76 @@
+1749718230
+LAC-Tech!~lewis@granite-phrase.bnr.la
+how can you find unused functions in your zig project?
+
+1749720557
+przmk4!~przmk@user/przmk
+That's something that I could see being in the linter: https://github.com/DonIsaac/zlint
+
+1749720752
+przmk4!~przmk@user/przmk
+I think this might be it: https://github.com/DonIsaac/zlint/blob/main/docs/rules/unused-decls.md Not sure
+
+1749729034
+midgard!~midgard@user/midgard
+is it possible to write a library that's compatible with 0.13 and 0.14? the .name in build.zig.zon should be a string in 0.13 but an enum literal in 0.14, and both versions are unforgiving about it
+
+1749729229
+midgard!~midgard@user/midgard
+(not problematic for me if not, but would have been nice)
+
+1749734466
+przmk4!~przmk@user/przmk
+Different git branches?
+
+1749735055
+tonitch!~tonitch@user/tonitch
+Is there a way to transform an zig type to std.json.Value
+
+1749736940
+bblack!~bblack@wikimedia/bblack-WMF
+tonitch: zig in general doesn't have RTTI.  it would be wierd to serialize a comptime-only "value" (that value being a typename)
+
+1749736999
+bblack!~bblack@wikimedia/bblack-WMF
+but you could, in theory, serialize the @typeInfo() structures, and reconstruct the same type on the other side from its detailed definition, maybe?
+
+1749737223
+tonitch!~tonitch@user/tonitch
+ok maybe I can ask the more general question then ? So basicly i'm doing a discord library in zig. I have to send en receive json data. All data (I summarize a lot) has the form { "op": #, "d": { data depending on op } } (sending and receiving) so when I receive I use jsonparse to a struct where d: std.json.Value but then when I send I have to have a sub structure for d (depending on op) so I would
+
+1749737225
+tonitch!~tonitch@user/tonitch
+like my sub structure to be std.json.Value to set it to d to stringify it to send it ^^
+
+1749737249
+tonitch!~tonitch@user/tonitch
+I've been trying this since yesterday and can't find a way to do that
+
+1749737304
+tonitch!~tonitch@user/tonitch
+an example is the identify payload here : https://discord.com/developers/docs/events/gateway#identifying-example-identify-payload
+
+1749741167
+bblack!~bblack@wikimedia/bblack-WMF
+tonitch: I hesitate to give advice with so little context on your code, but I think you'll need to do some custom jsonParse hooks around that.  I mean, the direction is makes me think is: in your native Zig types, you do a tagged union to represent the different op-structures, and custom parser hook support to look at "op" and turn it into the enum and then parse for a specific union member.
+
+1749741229
+bblack!~bblack@wikimedia/bblack-WMF
+const DiscordOp = enum(u8) { identify = 2, heartbeat = 11, ... };
+
+1749741312
+bblack!~bblack@wikimedia/bblack-WMF
+const DiscordMsg = union(DiscordOp) { identify: IdentifyStruct, gateway_resume: GWResumeStruct, ... }
+
+1749741352
+bblack!~bblack@wikimedia/bblack-WMF
+and have a custom jsonParse() hook that sorts these things out on parse, based on the op field, which struct to deserialize the other parts into from the union.
+
+1749747804
+tonitch!~tonitch@user/tonitch
+okay, I'm just struggling to make it right in both direction. I believe that's the solution I tought about as well but it seemed complicated at first. I'll give it a try maybe it's just scary on the surface haha *hollow laugh*
+
+1749755362
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I think I'd rather pass in 5 comptime fn parameters, than pass in one anytype. the latter is neater at the declaration but so much more annoying to live with in a codebase
+
