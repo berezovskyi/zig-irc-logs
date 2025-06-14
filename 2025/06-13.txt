@@ -1,0 +1,368 @@
+1749779576
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+am I using `std.http.Client` (or httpz?) wrong somehow? https://github.com/ezzieyguywuf/zig-examples/tree/main/httpz_crash in this minimal example, I can `curl -X POST http://127.0.0.1:4042/foo` while the test is sleeping and I get a response, but trying with `std.http.Client` I get "Not Found" - I've examined the two requests using tcpdump and they look identical to me.
+
+1749779698
+grayhatter!~grayhatte@user/grayhatter
+> using httpz instead of verse
+
+1749779701
+grayhatter!~grayhatte@user/grayhatter
+well now I'm not helping
+
+1749779758
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I dunno what is/isn't considered "good" or "stable" so I'm happy to move away from httpz
+
+1749779770
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+("stable(ish)")
+
+1749779790
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: I'm kidding, httpz is probably a lot more stable than verse
+
+1749779800
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1749779811
+grayhatter!~grayhatte@user/grayhatter
+it's also a full http server, where verse is a framework without an internal server implementation
+
+1749779842
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+k
+
+1749779981
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: try and make a curl request when the test isn't running?
+
+1749780039
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but then the server isn't running? 
+
+1749780060
+grayhatter!~grayhatte@user/grayhatter
+I said what I said
+
+1749780070
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'll try
+
+1749780083
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the test is my attempt to hone in on some runtime issues I was observing in a larger project
+
+1749780107
+grayhatter!~grayhatte@user/grayhatter
+I'm assuming curl doesn't return a 404, but returns some json?
+
+1749780344
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea curl still succeeds when server runs on main, just uploaded a commit with the `main` code if you want to try
+
+1749780366
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yes curl returns `{"message":"request succeeded btw"}`
+
+1749780598
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: sorry I got no idea, I can't see the bug
+
+1749780766
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: you can't reproduce it?
+
+1749780773
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh nvm that's not what you said. thank you for taking a look!
+
+1749780786
+grayhatter!~grayhatte@user/grayhatter
+does httpz not have a way to debug incoming reqests? is it seeing both from curl and the test client?
+
+1749780893
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it sees both, I'm adding that now to the minimal example
+
+1749780909
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+when I inspected the raw requests in my non-minimal use-case they looked identical still tho
+
+1749781004
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: does it work if you don't override the headers?
+
+1749781225
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it does not
+
+1749781239
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the header overriding was my attempt to reproduce the curl success
+
+1749781498
+grayhatter!~grayhatte@user/grayhatter
+you said both requests are identical
+
+1749781507
+grayhatter!~grayhatte@user/grayhatter
+are both responeses identical?
+
+1749781518
+grayhatter!~grayhatte@user/grayhatter
+I'd also like to see the tcpdump hex output
+
+1749781548
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+this is the diff of the two requsts from httpz's perspective https://imgur.com/a/f2EhxaG
+
+1749781564
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I `s/{/\r/g` to make it actually legible
+
+1749781584
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+tcpdump coming up
+
+1749781622
+grayhatter!~grayhatte@user/grayhatter
+I don't know what I'm looking at
+
+1749781630
+grayhatter!~grayhatte@user/grayhatter
+ahh, thanks for the s//
+
+1749781653
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I can show `diff -u` if that's easier to parse
+
+1749781772
+grayhatter!~grayhatte@user/grayhatter
+this is, strictly speaking, less helpful than text would be 
+
+1749781797
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+here's the tpcdump https://bpa.st/CUQQ
+
+1749781805
+grayhatter!~grayhatte@user/grayhatter
+either way, I think there's a bug in httpz
+
+1749781881
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+diff of httpz's view of requests https://bpa.st/GVOQ
+
+1749781892
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+😭 I was thinking it might be httpz
+
+1749781908
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I was hoping to find the maintainer here or on discord to chat but maybe I should just open an issue
+
+1749781925
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but also it's so simple like why am I the only one seeing it - is it b/c my server is running in a thread?
+
+1749782022
+grayhatter!~grayhatte@user/grayhatter
+this tcp dump, this is curl followed by the test client, right?
+
+1749782062
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+that's correct
+
+1749782089
+grayhatter!~grayhatte@user/grayhatter
+you're getting back the same data
+
+1749782095
+grayhatter!~grayhatte@user/grayhatter
+no idea why that's not making it into the test
+
+1749782106
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1749782129
+grayhatter!~grayhatte@user/grayhatter
+this is wrong btw, https://github.com/ezzieyguywuf/zig-examples/blob/main/httpz_crash/src/main.zig#L104
+
+1749782135
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+maybe I'm using std.http.Client wrong, or maybe it has smthn to do with the server running in a  different thread
+
+1749782157
+grayhatter!~grayhatte@user/grayhatter
+body_buffer[0..31]
+
+1749782160
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: what's wrong with it and how do I fix it?
+
+1749782161
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh
+
+1749782166
+grayhatter!~grayhatte@user/grayhatter
+but you should be getting the len from read()
+
+1749782174
+grayhatter!~grayhatte@user/grayhatter
+but you said were were getting a 404, and not a crash
+
+1749782176
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I need to get the legth from read
+
+1749782178
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea what you said
+
+1749782193
+grayhatter!~grayhatte@user/grayhatter
+that's probably the crash, but it wouldn't give you a 404
+
+1749782197
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I was getting a crash before I created this minimal example, so that may be related
+
+1749782202
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+right
+
+1749782270
+grayhatter!~grayhatte@user/grayhatter
+I'm also assuming that would panic in debug builds, so it should have told you where the crash was, if that was the crash
+
+1749782363
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea I don't think I ever got that far b/c the `std.http.Client` request ostensibly doesn't make it to the httpz handler
+
+1749782389
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh wait nvm that was gibberish
+
+1749782449
+grayhatter!~grayhatte@user/grayhatter
+it does make it to httpz if this tcp dump is to be believed
+
+1749782587
+grayhatter!~grayhatte@user/grayhatter
+I'll brb, but I'll clone it and see if I can't repo if you don't figure it out before I'm back
+
+1749782752
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍 thanks for your help thus far
+
+1749782893
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+interestingly from httpz's perspective I see that the successful request has `.method_string = {...}` but the failing has `.method_string = null` I wonder why they're different
+
+1749783207
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm that's prob a red-herring, if I run it and _don't_ do the curl command then the `std.http.Client` request has the same `.method_string = {...}`
+
+1749783534
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh sorry the tcpdump output was misleading, it was without the call to `handleFoo`
+
+1749783715
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah neat I can realiably turn the problem on/off by using/not-using (respectively) the httpz router, so it must indeed be a bug in httpz
+
+1749784585
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+opened https://github.com/karlseguin/http.zig/issues/135
+
+1749787942
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+omg
+
+1749787957
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I think it's b/c I define `router` locally in `init` and then it goes out of scope
+
+1749787962
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤦
+
+1749788105
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm actually maybe not looking at the httpz source the router is a member variable of the server - but it's worth testing at least
+
+1749789682
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+huzzah I figured it out! it's because `MyRouterServer.init()` is copying the server it creates, which invalidates (somehow 🤷) the routes that were set up. if instead I create the server on the heap and store the pointer (and only copy the pointer now), then it works 🎉
+
+1749789925
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+posted the solution here https://github.com/karlseguin/http.zig/issues/135#issuecomment-2969016017, I'm happy to accept any ideas if this approach is somehow non-idiomatic or smthn
+
+1749789930
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but for now going to bed :)
+
+1749793942
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://courses.cs.cornell.edu/cs3110/2021sp/textbook/modules/signatures.html I am assuming something like this has been proposed for zig and discussed to death, and probably shot down. though I assume it hasn't been called a "module signature". what do people call it? (wanna search the GH issues)
+
+1749794143
+torque!~tachyon@user/torque
+probably usually called an "interface"
+
+1749794275
+LAC-Tech!~lewis@granite-phrase.bnr.la
+no not a runtime dynamic dispatch thing. a compile time type constraint
+
+1749794315
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ah I see some people are claling them "compile-time interfaces" ok that gives me something
+
+1749794394
+torque!~tachyon@user/torque
+e.g. https://github.com/ziglang/zig/issues/980
+
+1749794404
+torque!~tachyon@user/torque
+or https://github.com/ziglang/zig/issues/20819
+
+1749794406
+torque!~tachyon@user/torque
+etc
+
+1749794457
+torque!~tachyon@user/torque
+there are lots of terms of for the concept, but interfaces are pretty common (though I think this terminology comes from java)
+
+1749794576
+torque!~tachyon@user/torque
+"traits" would be a similar concept (from rust)
+
+1749794609
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I was thinking someting more along the lines of "comptime T: struct {...}", sort of like how you can do for functions. I guess more like traits but zig structs are also modules, which is why I thought ocaml
+
+1749794812
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ahh people keep talking about go in these issues lol. not a good sign. I can see why it won't happen
+
+1749813633
+przmk4!~przmk@user/przmk
+I'm trying to find the page that lists all the compilation targets zig has and their status. I'm kinda sure there was one but I can't seem to find it anymore
+
+1749813645
+przmk4!~przmk@user/przmk
+Maybe I'm mixing it up with a different language
+
+1749818018
+bblack!~bblack@wikimedia/bblack-WMF
+przmk4: it's a per-release thing in the release notes: https://ziglang.org/download/0.14.0/release-notes.html#Support-Table
+
+1749834526
+przmk4!~przmk@user/przmk
+Ooh right, thanks!
+
