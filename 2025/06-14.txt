@@ -1,0 +1,172 @@
+1749888041
+antranigv!~antranigv@bsd.am
+hey. any of the zig devs here? I have a compiler question.
+
+1749888071
+antranigv!~antranigv@bsd.am
+has Zig ever been a Zig->C translator, like, for all of the code, historically?
+
+1749888116
+antranigv!~antranigv@bsd.am
+I have a weird situation. say I have a compiler which takes a file, call it Foo.bar, and translates it to Foo.c, so basically a bar->C translator.
+
+1749888171
+antranigv!~antranigv@bsd.am
+and I want to set a breakpoint at Foo.bar:25. however, that translates to Foo.c:35. How can I "find" the breakpoints?
+
+1749888179
+antranigv!~antranigv@bsd.am
+does my question make sense?
+
+1749888206
+antranigv!~antranigv@bsd.am
+because when I'm in lldb/gdb, it know about the C source file, but I'm looking at my bar source file.
+
+1749891979
+johnLate!~johnlate@miranda.scnr.net
+antranigv: do you mean something this? your tool takes a file foo.bar and generates a file 'foo.c', we simulate this by creating 'foo.c' containing two lines: «#line 42 "foo.bar"» and «int x; ++ ++», then try to compile with 'gcc foo.c -o foo.o' (or clang)
+
+1749892018
+johnLate!~johnlate@miranda.scnr.net
+error message will be: foo.bar:42:8: error: expected identifier or ‘(’
+
+1749897867
+antranigv!~antranigv@bsd.am
+johnLate yes!
+
+1749897900
+antranigv!~antranigv@bsd.am
+I had no idea about #line. I'll check that now
+
+1749897935
+johnLate!~johnlate@miranda.scnr.net
+antranigv: https://gcc.gnu.org/onlinedocs//cpp/Line-Control.html
+
+1749897946
+antranigv!~antranigv@bsd.am
+johnLate you're a life saver
+
+1749897956
+antranigv!~antranigv@bsd.am
+I guess I can add that into my C generator
+
+1749897978
+antranigv!~antranigv@bsd.am
+and then during debugging I can actually try to do bt set Foo.c line something?
+
+1749898008
+antranigv!~antranigv@bsd.am
+johnLate one more question, will this work on clang as well? my main platform is FreeBSD with Clang.
+
+1749898547
+johnLate!~johnlate@miranda.scnr.net
+Just try it. Create a file foo.bar with dummy text, a foo2.c with hello world or something else, preceede every line with «#line $NUMBER "foo.bar"», foo2.c -g -o foo2, lldb foo2, b foo.bar:$LINENUMBER, r... 
+
+1749898646
+johnLate!~johnlate@miranda.scnr.net
+* clang foo2.c -g -o foo2
+
+1749912629
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm this init and deinit functions fails: https://git.sr.ht/~flower/jasm-gui-dvui/tree/osc/item/src/osc.zig#L260
+
+1749912647
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: access of union field 'pointer' while field 'struct' is active
+
+1749920323
+torque!~tachyon@user/torque
+nsm_active_session does not appear to be a pointer, so you can't free it
+
+1749921175
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://usercontent.irccloud-cdn.com/file/7vj4S1GB/Screenshot_20250614_131223.png
+
+1749921913
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+torque: thx, will look at it. Yeah in general I'm wondering when actually use a pointer. When using it with ArrayList I get somewhat confused.
+
+1749928915
+cubedium!~cubedium@user/cubedium
+is there a function in the standard library that formats strings like std.debug.print does?
+
+1749929051
+torque!~tachyon@user/torque
+std.fmt.allocPrint for example
+
+1749929057
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+isn't that just standard formatting, std.fmt?
+
+1749929062
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah
+
+1749929064
+torque!~tachyon@user/torque
+yes
+
+1749929089
+cubedium!~cubedium@user/cubedium
+that seems to work
+
+1749929090
+cubedium!~cubedium@user/cubedium
+thanks!
+
+1749929155
+torque!~tachyon@user/torque
+there's also bufPrint and comptimePrint and a number of other useful functions in the fmt namespace
+
+1749935002
+dutchie!~dutchie@user/dutchie
+also calling .print on std.io.Writer instances
+
+1749936076
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/devlog/2025/#2025-06-14 parallel self-hosted codegen landed
+
+1749936163
+Earnestly!~earnest@user/earnestly
+This is happening faster than I expected
+
+1749936209
+Earnestly!~earnest@user/earnestly
+Really well done, even just having self hosting codegen
+
+1749936508
+andrewrk!~andrewrk@mail.ziglang.org
+it's almost like the faster compiler is helping us make the compiler faster faster :)
+
+1749936639
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: Unfortunately, narser has a segfault on the latest nightly that is only present when using the self-hosted backend. `zig build run -- pack src/` https://github.com/myclevorname/narser
+
+1749937322
+andrewrk!~andrewrk@mail.ziglang.org
+good to know
+
+1749938850
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Bug report submitted
+
+1749939360
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: thanks! it's not quite verified yet though. segfault without trace suggests stack overflow. could it perhaps be testing something deeply nested and using more stack than before?
+
+1749939389
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That was it.
+
+1749939410
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I had allocated a few megabytes via `iterators` in `dumpDirectory` :p
+
+1749939429
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Allocating it on the heap made it work.
+
+1749939516
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It could be a subtask of the stack overflow detection.
+
