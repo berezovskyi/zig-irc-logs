@@ -314,3 +314,43 @@ https://zigbin.io/71436c
 Gliptic!~glip@2a01:4f8:c012:91f3::1
 flower__: you can't free the memory that contains the lock while it's locked, because that's going to segfault when you unlock obviously
 
+1750001445
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, in the best case
+
+1750001496
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but also, locking there isn't going to help, because whatever is contending on that is going to break right after you deinit
+
+1750001531
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+nothing can use it after you deinit, you have to ensure that just can't happen
+
+1750001570
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+same problem btw with exeName(), the lock there is pointless
+
+1750001587
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+returning a slice that isn't protected by the lock
+
+1750001617
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and prettyName()
+
+1750001622
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and label() etc. etc.
+
+1750001701
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+consider what would happen if I do `const name = prettyName();`, then some other thread calls `setPrettyName(...)`, what is going to happen with my `name` slice?
+
+1750001918
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok cool. lot of things to wrap my brain around. thx
+
+1750002028
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in general, the lock must be held for as long as you do _anything_ with a shared resource that the lock is supposed to protect
+
