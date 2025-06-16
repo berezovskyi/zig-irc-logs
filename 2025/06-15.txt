@@ -1,0 +1,488 @@
+1749972271
+LAC-Tech!~lewis@granite-phrase.bnr.la
+std.pos.mmap relying relying on std.heap.page_size_min is interesting to me. are all OS/CPU targets guaranteed to have that be the same?
+
+1749972278
+LAC-Tech!~lewis@granite-phrase.bnr.la
+*std.posix.mmap
+
+1749973736
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: ld.lld: undefined symbol: lo_send_from
+
+1749973758
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+lo_send_from is in the library, seems like a bug in zig tooling
+
+1749973811
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I workaround it by using c code when using lo_send_from method, that compiles
+
+1749980575
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm segfault: https://zigbin.io/3c5000
+
+1749980585
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+General protection exception (no address available)
+
+1749981074
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+when a function is locked with a mutex, the thread waits until the it is unlocked?
+
+1749981163
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the stacktrace is mentioning some lock related stuff ... but maybe I've a memory issue with the c library I use ... 
+
+1749983333
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I tried to make my List thread safe: https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L936
+
+1749983962
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower_, why's the lock not initialized?
+
+1749983976
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+by default I mean
+
+1749984018
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no reason to have undefined as default value
+
+1749984024
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, thx
+
+1749984031
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but I guess you use .init everywhere so that doesn't matter?
+
+1749984050
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I think so
+
+1749984134
+Atque!Atque@user/Atque
+flower__: that's re a mutex. you could look at async, futures, promises, etc., which can be a nice newer option
+
+1749984238
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not seeing how that's relevant
+
+1749984356
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+nfo: oscGuiServerMessage: open session test/one8
+
+1749984356
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+6`NGJ^
+
+1749984443
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to use test/one, in my debug prints it is test/one, but the (open sound server osc) receives: test/one86`NGJ^
+
+1749984461
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+No problems with all the others in the list 
+
+1749984486
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+does that look like a memory issue? Some garbage added to the name?
+
+1749984585
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/main.zig#L201
+
+1749984618
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L380
+
+1749984654
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L923
+
+1749985135
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+all debug prints in my zig code looks good, until I print the value here in this c file: https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/nsm_gui_zig_helpers.h#L27
+
+1749985367
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+sending open for every other item in the list, no problem ... Restart the application ... again only 'test/one' gives the problem 
+
+1749985378
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+looks like printing a string with e.g. printf that isn't null-terminated
+
+1749985430
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so yeah, fprintf
+
+1749985464
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you certain `value` is going to be null-terminated
+
+1749985534
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I call that c function here, with value.ptr: https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L930
+
+1749985563
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and `value` there is null-terminated?
+
+1749985581
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+no I don't think so
+
+1749985589
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so that's not going to work
+
+1749985656
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1749985725
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+adding .ptr to value is correct right? But it needs a null senitel
+
+1749985728
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if the library expects a null-terminated buffer, you should be using a sentinel-terminated slice type (and, well, make sure it actually is null-terminated)
+
+1749985762
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+any idea why the others works fine?
+
+1749985770
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+luck
+
+1749985781
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+bad luck
+
+1749985833
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok thx, I'll fiddle with it
+
+1749985897
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+what can one use for this, add a 0 to []const u8? Let me just ask. 
+
+1749985922
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+[:0]const u8
+
+1749985961
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and yes, it must have a 0 at the end of the slice
+
+1749986039
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I should use [:0]const u8 as type of my list or just convert it when needed for the c function?
+
+1749986197
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as far back as possible I would think
+
+1749986251
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1749986253
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because you can't add the zero terminator there, it needs to be in place before you call the function
+
+1749986279
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and as long as it has the zero terminator, it should have the proper type
+
+1749987076
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+let's see how far the impact is on my code. I get the feeling everything is working just by luck now :)
+
+1749987618
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, that solved the issue.
+
+1749992611
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm I keep having this segfault: https://zigbin.io/b291af
+
+1749992658
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L774
+
+1749992694
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+In other thread: 
+
+1749992696
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/main.zig#L453
+
+1749992709
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/main.zig#L471
+
+1749992942
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is clientslist modified? (added to/removed from)
+
+1749992952
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yes
+
+1749993063
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L960
+
+1749993075
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+via removeItem
+
+1749993110
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the locking in items() is pointless
+
+1749993116
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the other thread is looping through items, wich I tried to lock: https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L986
+
+1749993119
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1749993125
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're returning a slice that is not protected by the lock
+
+1749993158
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you must hold the lock the whole time that slice is being read/written
+
+1749993169
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. during the whole `for`
+
+1749993215
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+alternatively, get rid of .items() completely and access the list only with getItem
+
+1749993241
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but that can also fail because someone could have removed the item you're about to fetch etc.
+
+1749995524
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+looks like it's also an issue to use a lock in a locked code block (even if the locks belongs to different structs)
+
+1749995634
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's not an issue in general
+
+1749995641
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+when they are different locks
+
+1749995782
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1749995898
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, time for a break. ;)
+
+1749996370
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+If I enable the lock here, I get a segfault. https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L131
+
+1749996390
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Ok, first question is if you can lock yourself while you're destroy yourself
+
+1749996418
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and with the lock, here is segfaults:  https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L781
+
+1749996465
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/71436c
+
+1750001434
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower__: you can't free the memory that contains the lock while it's locked, because that's going to segfault when you unlock obviously
+
+1750001445
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, in the best case
+
+1750001496
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but also, locking there isn't going to help, because whatever is contending on that is going to break right after you deinit
+
+1750001531
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+nothing can use it after you deinit, you have to ensure that just can't happen
+
+1750001570
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+same problem btw with exeName(), the lock there is pointless
+
+1750001587
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+returning a slice that isn't protected by the lock
+
+1750001617
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and prettyName()
+
+1750001622
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and label() etc. etc.
+
+1750001701
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+consider what would happen if I do `const name = prettyName();`, then some other thread calls `setPrettyName(...)`, what is going to happen with my `name` slice?
+
+1750001918
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok cool. lot of things to wrap my brain around. thx
+
+1750002028
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in general, the lock must be held for as long as you do _anything_ with a shared resource that the lock is supposed to protect
+
+1750009363
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: I think I got this way of locking from usage in  Go. But there you've a string type, that might be the difference. 
+
+1750009558
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+flower__: the difference is that in go you would not free or modify the returned slice (presumbly)
+
+1750009567
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the GC would free the slice automatically
+
+1750011468
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Gliptic: Does this makes more sense? https://git.sr.ht/~flower/jasm-gui-dvui/commit/7b951257cff734ada0f08455f81891e4ded5baaf
+
+1750011507
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I removed the locks from the individual methods and lock the parts in the code where I access the lists
+
+1750011534
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+maybe, assuming you're locking them everywhere you're accessing the list
+
+1750011540
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and there aren't any recursive locks
+
+1750011648
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but are the locking scopes reduced to the smallest possible?
+
+1750011665
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you seem to have mostly just put a defer in the middle without making an explicit scope
+
+1750011708
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and it's not very obvious that you have to lock this member in order to use the struct
+
+1750011950
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1750012055
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+quite a foot-gun, another option is to not expose these methods _until_ you have locked the struct (which returns another struct with the members on it)
+
+1750012921
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/commit/c9b1c3899218fc64c32f391b8e2c37159e36080a
+
+1750012946
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep, a bit error phrone
+
+1750012961
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, now you're not unlocking on e.g. error
+
+1750012977
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+defer is not the problem
+
+1750013003
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was talking about the scopes
+
+1750013512
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/commit/e63d792d8b228d84d09434f2977d657fbb88f003
+
+1750013805
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, although in the second hunk the scope already ended in the same place
+
+1750014016
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/a48ad7
+
+1750014021
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+line 2 is a new scope?
+
+1750014200
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1750014216
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I said the second hunk 
+
+1750014231
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+/ session list
+
+1750014237
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+// session list
+
+1750014270
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as I can't see the context, I can't see whether the scopes are
+
+1750014280
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/main.zig#L292
+
+1750014309
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, yeah, that's the one I could see, that's why I said that scope was unnecessary
+
+1750014336
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because the scope already ends on line 305
+
+1750014369
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1750014522
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yeah in Go I tried to use channels and goroutines as much as possible, as it was promoted a lot by the designers
+
+1750015012
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+But how can I detect a racecondition now?
+
+1750019225
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Using linker scripts, is it possible to create an ELF file with only segments?
+
