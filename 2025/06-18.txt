@@ -1,0 +1,320 @@
+1750205799
+tonitch!~tonitch@user/tonitch
+yes but I want to parse empty as {} in my case ^^
+
+1750205889
+grayhatter!~grayhatte@user/grayhatter
+tonitch: I understand that; my point was then you shouldn't mark it optional, it's not optional, it's required to be non-null
+
+1750209790
+LAC-Tech!~lewis@granite-phrase.bnr.la
+"error: expected type 'fn (u32, u32) bool', found 'fn (anytype, anytype) bool'" is there a way to coerce functions in zig or do you need to wrap them?
+
+1750210121
+torque!~tachyon@user/torque
+in this case you need to wrap it because functions that take anytype parameters are special
+
+1750210199
+torque!~tachyon@user/torque
+in general you can cast function pointers using ptrCast, but that is probably ill advised for anything except resuscitating type-erased pointers
+
+1750210622
+torque!~tachyon@user/torque
+you can write a function to produce a wrapper for you if you have multiple types you need to wrap it for, e.g. https://zig.godbolt.org/z/esx7qdK6K
+
+1750210666
+torque!~tachyon@user/torque
+(getFoo is not necessary, just there as an additional example)
+
+1750212051
+LAC-Tech!~lewis@granite-phrase.bnr.la
+torque: yeah seems like comptime meta programming is the solution here.
+
+1750212111
+LAC-Tech!~lewis@granite-phrase.bnr.la
+actually something like const U32 = struct { const T = u32; fn eql.. } in the std lib would be ideal. guess one could write it themselves
+
+1750234093
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I just changed a comptime parameter from type to anytype, and it kept working. I clearly don't understand comptime at all
+
+1750249202
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm, if you define a var like: []const u8 and you use dupeZ, you don't get the 0 senitel 
+
+1750249244
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+no warning from zig
+
+1750249891
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean "define a var like", you assign the return value of dupeZ to that?
+
+1750249947
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in which case it's just converting [:0]u8 to []const u8, the null terminator will still be there
+
+1750250027
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not seeing the problem, if your code requires the null terminator, it would take a [:0]const u8 and you cannot assign a []const u8 to that
+
+1750250161
+bblack!~bblack@wikimedia/bblack-WMF
+well, it's a little trickier than that, if you're not keeping a copy elsewhere
+
+1750250181
+bblack!~bblack@wikimedia/bblack-WMF
+if you do something like:
+
+1750250201
+bblack!~bblack@wikimedia/bblack-WMF
+const foo: []const u8 = alloc.dupeZ(u8, ...);
+
+1750250212
+bblack!~bblack@wikimedia/bblack-WMF
+and then later do an alloc.free(foo);
+
+1750250227
+bblack!~bblack@wikimedia/bblack-WMF
+the slice size will be wrong, and you'll get an invalid free panic
+
+1750250306
+bblack!~bblack@wikimedia/bblack-WMF
+in most cases, I'm a big fan of the :0-ness coercing away (so that generic functions that don't care about the sentinel can receive either form as arguments), but this is one case where it's a bit of a footgun if you're not careful.
+
+1750250421
+bblack!~bblack@wikimedia/bblack-WMF
+arguably the immediate result location of the alloc.dupeZ() should need to be [:0], or else information about the slice's real allocated length is immediatley lost.
+
+1750250455
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, I didn't realize free validates the length of the slice but it makes sense
+
+1750250481
+bblack!~bblack@wikimedia/bblack-WMF
+probably some allocators don't care, but the debug one does :)
+
+1750250595
+bblack!~bblack@wikimedia/bblack-WMF
+but there are probably countless other cases where having the :0-ness coerce away from a return value is useful, so I don't have any good ideas about how to make it better.
+
+1750250684
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+this is a little like the C++ implicit conversion to public base class (well, C/C++ has a lot more problematic implicit conversions than that)
+
+1750250786
+bblack!~bblack@wikimedia/bblack-WMF
+I just had a big realization moment about :0-ness yesterday, so the topic is fresh on my mind.  I had been porting a bunch of C code (still working through it), and so I had come to sort of "default" to setting up all my string-like data in structures as "[:0]const u8", because it was easier in the inevitable cases I'm still passing things back and forth from C.
+
+1750250833
+bblack!~bblack@wikimedia/bblack-WMF
+it became a habit/pattern, even if I didn't know I needed a sentinel, just to do it because "why not?"
+
+1750250912
+bblack!~bblack@wikimedia/bblack-WMF
+and then I realized that a lot of alloc/free and errdefer patterns and so-on, get way simpler if you can give all your fields defaults that make sense, and that alloc.free() will NOP on a zero-length slice, thus the common pattern in good Zig code of having struct fields defined like: "foo: []const u8 = &.{},"
+
+1750250944
+bblack!~bblack@wikimedia/bblack-WMF
+(which means any dealloc code can just call free on that, and it doesn't matter if you had reached initializing it yet, because free() is basically a NOP on the static empty slice)
+
+1750250983
+bblack!~bblack@wikimedia/bblack-WMF
+and then I tried to use the same trick with "foo: [:0]const u8 = &.{}", and ran into a bunch of problems, because that's really a slice with storage length 1, and it's not a NOP on free() :)
+
+1750250994
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+:)
+
+1750251603
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm, encoding a multipart/form-data for a pastebin cli client feels a bit daunting, i gotta either hand-roll it or grab curl
+
+1750256771
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Does someone has a (simple) example of using fork() and execvpeZ? 
+
+1750257654
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+messing around with fork, but fork() alone gives me a segmentation fault already: https://zigbin.io/63ce21
+
+1750257669
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+dvui sdl related it seems
+
+1750257698
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+maybe I don't need execvpeZ, but just fork and std.process.Child.spawn
+
+1750257832
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/launch_daemon/item/src/main.zig#L1495
+
+1750258083
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+cancername_: you suggested to fork and then use std.process.Child api right? ^
+
+1750258150
+bblack!~bblack@wikimedia/bblack-WMF
+flower__: are you familiar with the all the pitfalls of raw fork+execve in C?
+
+1750258181
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+bblack: no, not at all, might be a bit too low level for me ...
+
+1750258252
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this is what I want to replicate: https://github.com/linuxaudio/non/blob/master/session-manager/src/session-manager.C#L1401
+
+1750258349
+ifreund!2940d10f8b@user/ifreund
+unless you're doing something special, you shouldn't need to call fork() directly
+
+1750258357
+ifreund!2940d10f8b@user/ifreund
+just use std.process.Child
+
+1750258361
+bblack!~bblack@wikimedia/bblack-WMF
+yeah, that
+
+1750258364
+ifreund!2940d10f8b@user/ifreund
+it calls fork/execve internally
+
+1750258377
+bblack!~bblack@wikimedia/bblack-WMF
+std.process.Child does all the magic the "normal" way and abstracts all those details away
+
+1750258388
+bblack!~bblack@wikimedia/bblack-WMF
+if your job is just "spawn a separate pid running some other executable"
+
+1750258409
+ifreund!2940d10f8b@user/ifreund
+If you are calling fork, you kinda need to understand the details, it's not a "normal function call"
+
+1750258423
+bblack!~bblack@wikimedia/bblack-WMF
+and yeah, using raw fork()/execve() opens you to needing to know a lot of low-level things that matter.
+
+1750258443
+ifreund!2940d10f8b@user/ifreund
+the man pages contain that knowledge if you want to do some reading
+
+1750258506
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the idea was to run it in it's own process without linked to the original parent
+
+1750258512
+bblack!~bblack@wikimedia/bblack-WMF
+I've been writing software that manually uses calls like fork() and execve() in C for years, and I still sometimes screw it up in spectacular ways (and sometimes those spectacles are very subtle and don't show up until you hit some edge case 3 years later)
+
+1750258528
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+But why not try std.process.Child api first indeed
+
+1750258694
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Don't ask me why, but I bought that book The Linux Programming Interface a while ago ... Maybe a bit too enthusiastic back then, lol
+
+1750260706
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I free memory allocated by a c library?
+
+1750260762
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+c_allocator?
+
+1750260773
+dutchie!~dutchie@user/dutchie
+yeah
+
+1750261022
+bblack!~bblack@wikimedia/bblack-WMF
+flower__: std.c.free() ?
+
+1750261232
+bblack!~bblack@wikimedia/bblack-WMF
+AIUI, c_allocator is a different use case: it's for having a normal-acting Zig allocator which is ultimately backed by libc's malloc/free calls, when you're already linking to libc anyways.
+
+1750261316
+bblack!~bblack@wikimedia/bblack-WMF
+if some random C library did normal libc allocations and handed them to your Zig code to free, you probably want std.c.free().
+
+1750262976
+l_!sid543191@id-543191.tinside.irccloud.com
+bblack, thank you for a direct, helpful answer.
+
+1750263007
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Is there a way to run a shell command from the command line as suid/root? Want to try to write something like doas but in zig and call it "soda" lol
+
+1750263160
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok I'll use std.c.free, thx
+
+1750263804
+geenvoud!~geenvoud@user/geenvoud
+JetpackJackson: something like # chown root:root soda && chmod u+s soda
+
+1750263841
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Alright thanks!
+
+1750263904
+geenvoud!~geenvoud@user/geenvoud
+ACTION is not responsible for any losses or damages
+
+1750263910
+geenvoud!~geenvoud@user/geenvoud
+yw :)
+
+1750263914
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Is there a way to add that to build.zig after the program compiles?
+
+1750264192
+geenvoud!~geenvoud@user/geenvoud
+perhaps with another setuid binary that only runs those two commands?
+
+1750264219
+geenvoud!~geenvoud@user/geenvoud
+or with a sudo prompt for each build, which is less fun
+
+1750264282
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Alright I'll have to look into that
+
+1750264639
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Thanks again
+
+1750265430
+bblack!~bblack@wikimedia/bblack-WMF
+"sudo zig install" :)
+
+1750265460
+bblack!~bblack@wikimedia/bblack-WMF
+err wait
+
+1750265472
+bblack!~bblack@wikimedia/bblack-WMF
+"sudo zig build install" :)
+
+1750268174
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Maybe i should test this in a VM first since I *am* still learning lol
+
+1750275007
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+So what's the usual way to do TLS (like creating and inspecting certificates) and HTTPS (client and server) stuff in the Zig world? I come from Go where it's all in the standard library, I think for Zig I'll have to reach for OpenSSL, libcurl, and some sort of HTTP server library, right?
+
+1750275054
+tonitch!~tonitch@user/tonitch
+depend what you want to do but there is a bunch in the std
+
+1750275126
+farhaven!63d4b20b0e@2a03:6000:1812:100::12e8
+Oh indeed, it looks like I missed std.http entirely. Thanks for the hint :)
+
