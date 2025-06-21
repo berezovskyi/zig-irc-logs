@@ -1,0 +1,764 @@
+1750403741
+TheAnachron!~TheAnachr@2001:19f0:6c01:22f6:3395:5b44:f6b2:398f
+hi, I am a maintainer of Void Linux and we're still trying to package zig 0.14, which has issues with the stage3 build: https://github.com/ziglang/zig/issues/23978. Is there anything I/we could do to help? 
+
+1750409616
+Guest3433!~Help@user/RandomBozo
+Could you guys successfully compile wiht musl?
+
+1750409823
+TheAnachron!~TheAnachr@2001:19f0:6c01:22f6:3395:5b44:f6b2:398f
+Based on https://github.com/void-linux/void-packages/pull/54650 it looks like so, yes.
+
+1750410049
+RandomBozo!~Help@user/RandomBozo
+Oh wow that is a difficult problem, it's really hard to tell whether that's an edge case not properly accounted for in Zig's source code or whether that's a GCC or LLVM bug.
+
+1750410240
+RandomBozo!~Help@user/RandomBozo
+I can't think of much you could do outside of testing different versions.
+
+1750410289
+RandomBozo!~Help@user/RandomBozo
+If you find a newer version that works fine, of either GCC or LLVM, it might be a practical solution to ship them with your distro instead, if you're amenable to that.
+
+1750410358
+RandomBozo!~Help@user/RandomBozo
+Outside of that knowing the variance in circumstances would help the maintainers a lot if it's a zig as opposed to a zig's dependencies issue.
+
+1750410526
+RandomBozo!~Help@user/RandomBozo
+So knowing musl works is helpful, the issue says it stopped working when you updated to gcc 14.2.1, but not what your original gcc version was, the one where it worked.
+
+1750410589
+RandomBozo!~Help@user/RandomBozo
+Although saying it occurs when using LLVM 19.1.4 - 19.1.7 helps, and that it occurs when using LLVM as the compiler, I'm assuming by that you meant using Clang?
+
+1750410590
+TheAnachron!~TheAnachr@2001:19f0:6c01:22f6:3395:5b44:f6b2:398f
+We're coming from 13.2.0 if I saw that correctly.
+
+1750410619
+RandomBozo!~Help@user/RandomBozo
+Have you tried using 19.1.0 like alexp suggested?
+
+1750410651
+TheAnachron!~TheAnachr@2001:19f0:6c01:22f6:3395:5b44:f6b2:398f
+tranzystorekk: ping
+
+1750410660
+RandomBozo!~Help@user/RandomBozo
+Putting 13.2.0 working in the issue may be helpful
+
+1750410677
+RandomBozo!~Help@user/RandomBozo
+As much meaningful information as possible is preferred
+
+1750410822
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i havent gotten to it, building llvm on my pc is tedious
+
+1750410834
+RandomBozo!~Help@user/RandomBozo
+Yeah I hear you
+
+1750410845
+RandomBozo!~Help@user/RandomBozo
+It took me like 30 hours to build zig the first time
+
+1750410866
+RandomBozo!~Help@user/RandomBozo
+Some part of the process kept breaking, so I just rebuilt LLVM over 10 times.
+
+1750410903
+RandomBozo!~Help@user/RandomBozo
+Latest works fine on windows with LLVM 20 but that doesn't really help you guys any.
+
+1750417806
+TheAnachron!~TheAnachr@2001:19f0:6c01:22f6:3395:5b44:f6b2:398f
+I do a workaround: I first use a binary release, compiler with that and if it works, I rebuild from source. 
+
+1750418027
+RandomBozo!~Help@user/RandomBozo
+Oh yeah I think I had a lot of trouble building from source properly on Windows so I was forced into installing zig and using that compiler to bootstrap my build.
+
+1750418121
+RandomBozo!~Help@user/RandomBozo
+It's one of the unfortunate aspects of being a in development language, the expectation is sometimes interoperability will be broken.
+
+1750418297
+RandomBozo!~Help@user/RandomBozo
+Although Zig specifically does seem to actively care about that it's why they support so many architectures so early.
+
+1750418317
+RandomBozo!~Help@user/RandomBozo
+It just takes time to research and identify issues.
+
+1750419011
+TheAnachron!~TheAnachr@2001:19f0:6c01:22f6:3395:5b44:f6b2:398f
+I am not talking about using the zig binary but rather LLVM/gcc
+
+1750428100
+netvor!~netvor@node1634.e-brno.net
+thinking about Data Oriented Design,  i heard somewhere that it's better to have things in "large" arrays.  so if i have, say, a `const Brick = struct { position: rl.Vector2}` does that mean that I don't want to have a higher level `fn render() { ... for (bricks) |brick| brick.render(); }` ... but rather ` for (bricks) |brick| rl.drawRectagle(brick.position);` ? 
+
+1750428124
+netvor!~netvor@node1634.e-brno.net
+i mean, does the fact that i use function change much?
+
+1750428174
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+render just calls drawRectangle?
+
+1750428199
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that can just be inlined so there's no difference
+
+1750428210
+netvor!~netvor@node1634.e-brno.net
+i suspect that if i wanted to hyper-optimize the drawing i would keep the array of positions separate and call render on them (which makes no difference in my example)
+
+1750428235
+netvor!~netvor@node1634.e-brno.net
+well it also checks self.alive, etc.  ofc i expect it to grow as i develop it
+
+1750428243
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you would probably keep each component of position in a separate array if so
+
+1750428249
+netvor!~netvor@node1634.e-brno.net
+but so would grow the body of the for function
+
+1750428260
+RandomBozo!~Help@user/RandomBozo
+The advantage is that you'd only store the position
+
+1750428273
+RandomBozo!~Help@user/RandomBozo
+So there's no cache misses because the data in the cache line is smaller
+
+1750428286
+RandomBozo!~Help@user/RandomBozo
+If you have a brick entity with a lot of information attached
+
+1750428293
+RandomBozo!~Help@user/RandomBozo
+It'll cause some misses
+
+1750428311
+netvor!~netvor@node1634.e-brno.net
+but that only makes sense as long as i do pass which only renders, right? and do other things in other passes
+
+1750428313
+RandomBozo!~Help@user/RandomBozo
+Even more if the list of bricks is a list of brick references as opposed to brick structures.
+
+1750428315
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you only access the position for the brick there, yes
+
+1750428338
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+doing struct of arrays also makes it easy to use SIMD for things
+
+1750428361
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. you can do collision detection with SIMD across several bricks at once
+
+1750428404
+RandomBozo!~Help@user/RandomBozo
+Yeah you'd do passes on each data type that's only relevent to that data.
+
+1750428405
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+SoA can also reduce padding
+
+1750428416
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you fields don't align up perfectly
+
+1750428417
+RandomBozo!~Help@user/RandomBozo
+Then you'd get the performance benefit of less cache misses
+
+1750428418
+netvor!~netvor@node1634.e-brno.net
+i suppose i would look for raylib api for that, right?  i tried to look at the math and it's not so easy
+
+1750428426
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*your
+
+1750428471
+netvor!~netvor@node1634.e-brno.net
+(by raylib api was responding to the SIMD mention, or "doing mass renders on arrays")
+
+1750428472
+RandomBozo!~Help@user/RandomBozo
+It's normally easier to get an idea with real examples as opposed to just "Do this like this always"
+
+1750428489
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm not sure what raylib has to do with simd
+
+1750428495
+RandomBozo!~Help@user/RandomBozo
+For instance I think a DoD design wouldn't want you doing self.alive in the same function that renders.
+
+1750428570
+netvor!~netvor@node1634.e-brno.net
+i'm trying to avoid the problem i usually have, which is that my goal of how i want to organize my code tends to flip flop in my head, leading to rewrites or inconsistencies :-/   so that's why i look for "best" solution but it may be it's a fool's game
+
+1750428600
+RandomBozo!~Help@user/RandomBozo
+Best solution doesn't make sense as a strategy
+
+1750428602
+netvor!~netvor@node1634.e-brno.net
+i feel that DoD would want me to have live_bricks: []Brick and dead_bricks: []Brick
+
+1750428610
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there are always trade-offs
+
+1750428616
+RandomBozo!~Help@user/RandomBozo
+Most solutions were best solutions at some point
+
+1750428684
+RandomBozo!~Help@user/RandomBozo
+It depends on what you're doing with the bricks
+
+1750428694
+RandomBozo!~Help@user/RandomBozo
+Do you care if a brick has died
+
+1750428701
+RandomBozo!~Help@user/RandomBozo
+If you don't then you don't care about dead bricks
+
+1750428727
+netvor!~netvor@node1634.e-brno.net
+yeah my example is too poor, ie. i don't really have a goal with the "game" tbh,  the goal is to learn but maybe i'm too impatient
+
+1750428748
+RandomBozo!~Help@user/RandomBozo
+It's more pragmatic to have a problem to solve and work to solving it
+
+1750428759
+RandomBozo!~Help@user/RandomBozo
+Then figuring out the way you're most happy with solving it
+
+1750428769
+RandomBozo!~Help@user/RandomBozo
+Solving problems that don't exist yet is a lot harder
+
+1750428800
+RandomBozo!~Help@user/RandomBozo
+Sometimes also less helpful, because your imaginary problems might never be real problems
+
+1750428809
+netvor!~netvor@node1634.e-brno.net
+so it makes sense to just not care (and perhaps make it a bit more abstracted)  until i hit some point where i know what to optimize for
+
+1750428843
+RandomBozo!~Help@user/RandomBozo
+I don't know for me it's never not caring
+
+1750428859
+RandomBozo!~Help@user/RandomBozo
+But if you're not talking a real example then you're not actually doing anything
+
+1750428868
+netvor!~netvor@node1634.e-brno.net
+i meant "not care" in the sense of not solving the problem that does not exist yet
+
+1750428887
+netvor!~netvor@node1634.e-brno.net
+ie. don't optimize prematurely
+
+1750428913
+RandomBozo!~Help@user/RandomBozo
+At the end of the day the ideal is what you're most happy putting up with and what meets your needs
+
+1750428932
+RandomBozo!~Help@user/RandomBozo
+What was that story about all the dialogue in undertale being a big switch case
+
+1750428967
+RandomBozo!~Help@user/RandomBozo
+So long as it works and he didn't mind editing it all the time that's a fine solution
+
+1750428970
+netvor!~netvor@node1634.e-brno.net
+i heard mention of it but not the story
+
+1750429000
+netvor!~netvor@node1634.e-brno.net
+ok thanks anyway, sorry for the q turning so open-ended :D
+
+1750429025
+netvor!~netvor@node1634.e-brno.net
+s/turning/turning out/  // en is not my 1st lang :D
+
+1750429087
+RandomBozo!~Help@user/RandomBozo
+If you want to practice coding there's lots of websites like code wars and leetcodes you can do real problems without actually having to think of them yourself
+
+1750429133
+netvor!~netvor@node1634.e-brno.net
+yeah i actually did codecrafters (with zig) it's great
+
+1750429195
+RandomBozo!~Help@user/RandomBozo
+Yeah it sucks leetcode doesn't support it yet
+
+1750429199
+netvor!~netvor@node1634.e-brno.net
+but maybe i should also do leetcode or similar, something small and abstract
+
+1750429244
+netvor!~netvor@node1634.e-brno.net
+i did turn out to think a lot about code organization (as i always do, sometimes to the detriment, but can't quite stop it)
+
+1750429336
+RandomBozo!~Help@user/RandomBozo
+Something people often complain about on leetcode is that some problems have specific algorithm solutions, but many of the algorithms you learn are useful in real world contexts.
+
+1750429339
+netvor!~netvor@node1634.e-brno.net
+didn't even know leetcode does not support it, i kinda hoped it would be lang agnostic
+
+1750429379
+RandomBozo!~Help@user/RandomBozo
+Well they run the code on their servers so they need to support them.
+
+1750429404
+RandomBozo!~Help@user/RandomBozo
+I'm not sure how you could do a language agnostic solution when you're timed that doesn't allow cheating.
+
+1750429445
+RandomBozo!~Help@user/RandomBozo
+Granted people can still hard code the answers to all the test cases, but it can be a tedious thing to do by hand with hundreds of test cases.
+
+1750429446
+netvor!~netvor@node1634.e-brno.net
+i'm learning  i just did not know enough about leetcode
+
+1750429555
+netvor!~netvor@node1634.e-brno.net
+btw codecrafters is somewhat lang agnostic, i felt like the "support" is mostly that they have the pipeline and also people who can read the code and help you a bit
+
+1750429675
+RandomBozo!~Help@user/RandomBozo
+Yeah I was thinking of looking into it after you mentioned it supported Zig
+
+1750429697
+RandomBozo!~Help@user/RandomBozo
+I haven't used Zig that much yet and having a website full of problems helps me learn new languages.
+
+1750429826
+bblack!~bblack@wikimedia/bblack-WMF
+honestly, re: DoD and such - unless you're very good at thinking naturally in that way, and already understand the problem domain well enough to know things about the stats of the problems at hand...
+
+1750429828
+netvor!~netvor@node1634.e-brno.net
+i haven't used any low level language, i ended up just bypassing the obligatory C, C++ and went straight to zig :D 
+
+1750429858
+bblack!~bblack@wikimedia/bblack-WMF
+I would just code in whatever style is more natural first to get the logic right and get all your tests passing.  and then look at flipping to DoD as an optimization pass on your code afterwards.
+
+1750429881
+bblack!~bblack@wikimedia/bblack-WMF
+in Zig it's not /that/ hard to do the DoD refactoring after-the-fact.
+
+1750429890
+netvor!~netvor@node1634.e-brno.net
+the quality of Zig is actually what lowered the barrier enough for me, so i owe Zig for opening whole new world for me :'-)
+
+1750429942
+netvor!~netvor@node1634.e-brno.net
+yeah coming from non-typed languages, refactoring in zig is such a blast
+
+1750429954
+RandomBozo!~Help@user/RandomBozo
+Yeah C is quite limited and C++ is ... not limited enough.
+
+1750429960
+RandomBozo!~Help@user/RandomBozo
+Zig is a nice middle ground
+
+1750430032
+netvor!~netvor@node1634.e-brno.net
+and it's growing, fingers crossed (i learned just yesterday that Roc is being rewritten in Zig, yeah)
+
+1750432707
+JetpackJackson!739e7f3d14@user/JetpackJackson
+apologies if this is a dumb question, but how can i efficiently read the contents of a file and randomly pick a line from the file? Im trying to rewrite my rust wordle game in zig but im running into this: https://zigbin.io/19b006
+
+1750432846
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what exactly are you running into
+
+1750432915
+JetpackJackson!739e7f3d14@user/JetpackJackson
+it wont let me index the lines of the file
+
+1750432971
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+"wont let me" doesn't really help
+
+1750432975
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what's the error?
+
+1750433002
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+splitScalar also returns an Iterator, so of course it won't
+
+1750433037
+JetpackJackson!739e7f3d14@user/JetpackJackson
+`error: type 'mem.SplitIterator(u8,.scalar)' does not support indexing`
+
+1750433055
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how do i get an index of some file content split on some delimiter?
+
+1750433056
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+did you read the docs about splitScalar
+
+1750433064
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah i have them open
+
+1750433112
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, so you can see it says "Returns an iterator that iterates over the slices of buffer that are separated by delimiter."
+
+1750433124
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1750433130
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so like what should i use instead
+
+1750433137
+JetpackJackson!739e7f3d14@user/JetpackJackson
+that lets me index the specific line
+
+1750433144
+JetpackJackson!739e7f3d14@user/JetpackJackson
+while splitting on a delimiter
+
+1750433162
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's nothing that will return a slice in the stdlib that I'm aware of
+
+1750433168
+JetpackJackson!739e7f3d14@user/JetpackJackson
+darn
+
+1750433175
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you will have to do it differently
+
+1750433197
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(which is also more efficient)
+
+1750433217
+JetpackJackson!739e7f3d14@user/JetpackJackson
+what would you suggest i do
+
+1750433225
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+iterate using the Iterator
+
+1750433247
+bblack!~bblack@wikimedia/bblack-WMF
+and on each iteration, append to an arraylist of line slices
+
+1750433251
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and use something like reservoir sampling
+
+1750433253
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or that
+
+1750433272
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i thought appending to an arraylist would be inefficient
+
+1750433287
+JetpackJackson!739e7f3d14@user/JetpackJackson
+never heard of resevoir sampling
+
+1750433288
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's what you thought the function did, no?
+
+1750433303
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i guess thats true
+
+1750433304
+bblack!~bblack@wikimedia/bblack-WMF
+oh yeah, I guess if you're picking a random element, it would be more efficient to never build the whole list :)
+
+1750433315
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1750433320
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like in my rust program i did:
+
+1750433334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+```
+
+1750433334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+    let mut dictionary = get_solutions_list(args.length);
+
+1750433334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+    let valid_guesses = get_valid_guesses_list(args.length);
+
+1750433334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+    let mut rng = WyRand::new();
+
+1750433334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+    rng.shuffle(&mut dictionary);
+
+1750433335
+JetpackJackson!739e7f3d14@user/JetpackJackson
+    let solution = dictionary.get(0).unwrap();
+
+1750433335
+JetpackJackson!739e7f3d14@user/JetpackJackson
+```
+
+1750433343
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't even need the whole file in memory to pick a random element, but bit overkill
+
+1750433362
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how can i pick a random element without reading the whole file
+
+1750433377
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im not used to programming this low level lol
+
+1750433382
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+by reading chunks and do reservoir sampling as you go through line by line
+
+1750433402
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or if you know how many lines there are, you could just read until you've found the index you generated
+
+1750433456
+bblack!~bblack@wikimedia/bblack-WMF
+it kinda seems like the rust version does it the inefficient way anyways.
+
+1750433477
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+even more inefficient
+
+1750433480
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+shuffling the whole list
+
+1750433496
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i wrote this a long time ago lol
+
+1750433506
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+shuffling is quite a lot like reservoire sampling in complexity
+
+1750433543
+JetpackJackson!739e7f3d14@user/JetpackJackson
+nvm it was more recent
+
+1750433544
+bblack!~bblack@wikimedia/bblack-WMF
+the simple-yet-inefficient way would be: use the iterator to build a list of slices (one slice per line) by appending to an arraylist
+
+1750433555
+bblack!~bblack@wikimedia/bblack-WMF
+and then pick random numbers to index the list of lines.
+
+1750433599
+bblack!~bblack@wikimedia/bblack-WMF
+(that's still more efficient than shuffling the whole set of lines first)
+
+1750433656
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750433669
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ill use that for now and put a note to look at sampling
+
+1750433671
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thanks
+
+1750434816
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm im trying to get `array.items[0]` and its returning a random number instead of a string 
+
+1750434872
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/eda2b3
+
+1750434901
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like im just kind of lost and i feel dumb that i cant figure this out
+
+1750434919
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: your `arr` is an array of u8
+
+1750434927
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+u8 is an 8-bit integer
+
+1750434934
+JetpackJackson!739e7f3d14@user/JetpackJackson
+when i try changing it it messes up more
+
+1750434954
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and you used appendSlice to add each byte from the line as a separate u8
+
+1750434997
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/f9382e
+
+1750435029
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: why did you change splitScalar?
+
+1750435037
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it was already working
+
+1750435064
+JetpackJackson!739e7f3d14@user/JetpackJackson
+because i thought i had to in order to make it iterate over chunks of u8s and not a single u8 each time?
+
+1750435087
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok its still being weird
+
+1750435091
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+splitScalar always returned slices of T, separated by a T, for whatever T you pass in
+
+1750435099
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, you're doing appendSlice still
+
+1750435136
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750435145
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok now time to figure out the rng stuff
+
+1750435176
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750435187
+JetpackJackson!739e7f3d14@user/JetpackJackson
+my head hurts a bit but i think its slowing making sense
+
+1750435189
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thanks again
+
+1750448603
+norineko!~norineko@user/norineko
+knowing that `realpath` is bad and probably shouldn't be used, how can I get a path to a file that I stored inside a testing.TmpDir? or is realpath the only way?
+
+1750448766
+norineko!~norineko@user/norineko
+I could manually construct the path cwd/.zig-cache/tmp/{sub_path}/file, but that feels... bad.
+
+1750449405
+bblack!~bblack@wikimedia/bblack-WMF
+it does feel bad, but I don't see any other realistic way.  It being a tempdir, you're meant to not really "know" its location, and just interact with it from the Dir and sub_path bits abstractly.
+
+1750449476
+bblack!~bblack@wikimedia/bblack-WMF
+(you do get a pair of Dir objects you can access, which are open on the tmp/ and tmp/{sub_path} directories)
+
+1750450031
+norineko!~norineko@user/norineko
+right, the use case here is that I want to call an external program and pass this temporary file to it
+
+1750450081
+norineko!~norineko@user/norineko
+I guess I could use cwd_dir and just break windows, which was already not a priority for support
+
+1750450096
+norineko!~norineko@user/norineko
+*Child.cwd_dir that is
+
+1750453558
+grayhatter!~grayhatte@user/grayhatter
+why is realpath bad again?
+
+1750456269
+ismael!~ismael@sourcemage/ismael
+sn/11
+
+1750456307
+torque!~tachyon@user/torque
+I think it's mostly because it doesn't exist on all platforms?
+
+1750456433
+torque!~tachyon@user/torque
+ah, no, it's https://github.com/ziglang/zig/issues/19353
+
+1750456701
+torque!~tachyon@user/torque
+unfortunately, using std.fs.path is awkward because it operates purely on strings, but most of std.fs operates on fds 
+
+1750456720
+torque!~tachyon@user/torque
+there's a big impedance mismatch imo right now between those two APIs
+
+1750457135
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I quote args if I want to run a shell command via std.process.Child.run?
+
+1750457539
+torque!~tachyon@user/torque
+depends on how you're invoking the shell
+
+1750457567
+torque!~tachyon@user/torque
+if you're doing like `bash -c` then you need to quote the string the same way you would on the command line
+
+1750459589
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+std.fs.makeDirAbsolute seems to fail with a space in the name on linux
+
+1750459600
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm bedtime here
+
