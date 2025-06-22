@@ -1,0 +1,1180 @@
+1750499299
+squeek502!~squeek502@user/squeek502
+flower__, might want to double check your assumptions, `makeDirAbsolute` is pretty thin wrapper over the `mkdir` syscall on linux
+
+1750499413
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+squeek502: will do, the mkdir unix command will also fail without quotes though
+
+1750499470
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+when there is a space
+
+1750499643
+ifreund!2940d10f8b@user/ifreund
+flower__: running the mkdir command in a shell requires you to deal with shell quoting rules
+
+1750499655
+ifreund!2940d10f8b@user/ifreund
+the raw syscall doesn't require quoting
+
+1750499675
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, merci
+
+1750499707
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I was able to write terrible code yesterday, so that may be it
+
+1750499713
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+heh
+
+1750499769
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but for shell quoting via std.process.Child? You've to do a bufPrint with extra quotes or so?
+
+1750499831
+ifreund!2940d10f8b@user/ifreund
+you don't need to invoke a shell with std.process.Child
+
+1750499841
+ifreund!2940d10f8b@user/ifreund
+you can invoke programs directly
+
+1750499862
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Go has %q: https://gosamples.dev/string-double-quotes/
+
+1750499876
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+what if you want something like cp -r src dst
+
+1750499899
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+then src and dst needs to be quoted
+
+1750499989
+ifreund!2940d10f8b@user/ifreund
+if you run it in a shell yes, if you're not using a shell you don't need to deal with shell quoting
+
+1750500012
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1750500057
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok running this stuff from other then shell is something unusual for me ... a bit magic still
+
+1750500061
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+good to know
+
+1750500298
+ifreund!2940d10f8b@user/ifreund
+perhaps an example would help: `execl("/bin/sh", "/bin/sh", "-c", "cp -r foo bar")` is equivalent to `execl("/bin/cp", "/bin/cp", "-r", "foo", "bar")`
+
+1750500334
+ifreund!2940d10f8b@user/ifreund
+er, I forgot the terminating NULL's of course. Don't know why I did that in C
+
+1750500346
+ifreund!2940d10f8b@user/ifreund
+but you get the idea
+
+1750500618
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1750501562
+Earnestly!~earnest@user/earnestly
+You certainly do not want to be dealing with quotes, including "quoting" functions. Just don't expose your user data to shell evaluation (it is extremely trivial to do this properly)
+
+1750501939
+Earnestly!~earnest@user/earnestly
+flower__: The second execl example ifreund wrote is far better than invoking an entire shell just to run a program once. If you must invoke a shell then never embed user data inside the program code, provide it as arguments. E.g. exec*("sh", "-c", "program code", "argv0", "arg1", "arg2", ...), don't use the exec*v* syscalls or system()-like interfaces that invoke /bin/sh or can invoke /bin/sh
+
+1750502052
+flower__!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Earnestly: cool, thx, will also dive into my older Go code for this
+
+1750502415
+Earnestly!~earnest@user/earnestly
+As an aside, would suggest adding "--" where you can, if the commands support it
+
+1750506081
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+tried testing my project with PIE enabled, suddenly it fails to build
+
+1750506112
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i wonder if it can be some particular module like http being the culprit
+
+1750510873
+braewoods_!~braewoods@user/braewoods
+tranzystorekk, I recall C having issues with PIE if not everything being linked was compiled with it.
+
+1750510883
+braewoods_!~braewoods@user/braewoods
+Maybe something like that is involved.
+
+1750511808
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+thats only native zig code though
+
+1750515772
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is there a better way to get the output of shell commands such as this? https://zigbin.io/7c4db6
+
+1750515995
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+JetpackJackson: Child.collectOutput
+
+1750516028
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://ziglang.org/documentation/0.14.1/std/#std.process.Child.collectOutput
+
+1750516143
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Thanks!
+
+1750517042
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/c34bca now i get this, am i using it wrong
+
+1750517361
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: stdout_test is a type
+
+1750517370
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I think you confused the syntax there
+
+1750517391
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750517455
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok i just found an example on a zig cookbook repo
+
+1750517468
+JetpackJackson!739e7f3d14@user/JetpackJackson
+`    var stderr: std.ArrayListUnmanaged(u8) = .empty;`
+
+1750517468
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i need stuff like this apparently
+
+1750517493
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or .{}
+
+1750517517
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is there a preferred syntax or is it whichever i want
+
+1750517550
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't know, .empty might work with more things, .{} just means "use default values for all fields"
+
+1750517571
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1750517591
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thanks
+
+1750517637
+JetpackJackson!739e7f3d14@user/JetpackJackson
+can i reuse the same variable for the stdout later or do i need to make new clean arraylists each time i want to call some command
+
+1750517665
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, now when I look at it, this doesn't make sense
+
+1750517684
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or I guess you changed the call too
+
+1750517790
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+collectOutput will just append the things to the list you pass in by reference
+
+1750517795
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://github.com/zigcc/zig-cookbook/blob/9a65ccf1ee70912e51a98f444aa0d2f31fb1e310/src/08-02.zig#L25 i followed this
+
+1750517797
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1750517810
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i guess i should make new lists then since i want the output separate
+
+1750517888
+JetpackJackson!739e7f3d14@user/JetpackJackson
+now to apply this to piped commands in my program...
+
+1750518205
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You can set stdin_behavior to .Pipe, and then after you spawn you copy the contents from stdout (or stderr, depending) to the stdin handle
+
+1750518218
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+By stdout, I mean your stdout array list
+
+1750518321
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright ill try that
+
+1750518398
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+eg spawned_cmd.stdin.?.writeAll(stdout_list.items)
+
+1750519189
+grayhatter!~grayhatte@user/grayhatter
+the child proccess API is so weird
+
+1750519228
+grayhatter!~grayhatte@user/grayhatter
+if only there was a reader and writer interface we could use in zig for things like the stdin and stdout of a child process
+
+1750519237
+grayhatter!~grayhatte@user/grayhatter
+oh well... I guess something like that would be impossible
+
+1750519434
+JetpackJackson!739e7f3d14@user/JetpackJackson
+should i use that instead
+
+1750519563
+grayhatter!~grayhatte@user/grayhatter
+JetpackJackson: I was trolling the child process api, not you... there's no reader/writer interface like there should be
+
+1750519571
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1750519586
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i thought you were being sarcastic and saying that there was a reader/writer thing
+
+1750519653
+grayhatter!~grayhatte@user/grayhatter
+yeah, sorry about that... I should have added a bit more context to my joke
+
+1750519683
+JetpackJackson!739e7f3d14@user/JetpackJackson
+its ok, no harm done
+
+1750519702
+grayhatter!~grayhatte@user/grayhatter
+:)
+
+1750519759
+JetpackJackson!739e7f3d14@user/JetpackJackson
+after i do some work that im procrastinating on, im gonna try and refactor my code into functions so that my `main` doesn't look horrible lmao
+
+1750532307
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/588a95 right now i have this bug where if i have a word like "block" as the solution word and I type "bloom", it highlights the second o in bloom as yellow/present in the wrong spot but the first o is already marked as green/correct, should i allocate a bunch of arraylists or something to check whether the letter has been counted or something? this is  a rewrite of one of my rust prog
+
+1750532308
+JetpackJackson!739e7f3d14@user/JetpackJackson
+rams but i think the rust one had the same bug
+
+1750532940
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why would you need "a bunch of arraylists" for that?
+
+1750533009
+JetpackJackson!739e7f3d14@user/JetpackJackson
+in order to match the letters up and check if they were already marked as correct and stuff
+
+1750533027
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's an algorithm that requires no extra storage
+
+1750533041
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh nice which one
+
+1750533053
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the one you're going to figure out :P
+
+1750533064
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750533093
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause like my code rn checks if the letter is present in the word but i need to somehow check if it was marked as correct
+
+1750533099
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+just telling you doesn't seem very educational
+
+1750533124
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750533140
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: how do you know if a letter has been or is going to be marked as green?
+
+1750533156
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+without any extra storage
+
+1750533170
+JetpackJackson!739e7f3d14@user/JetpackJackson
+if the input char at <index> matches the solution char at <index> 
+
+1750533174
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+bingo
+
+1750533208
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but that doesnt help for the "correct letter, wrong spot" cause doing "is letter present" gets me the bug
+
+1750533218
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ohhhhh
+
+1750533221
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait
+
+1750533222
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok
+
+1750533223
+JetpackJackson!739e7f3d14@user/JetpackJackson
+one sec
+
+1750533244
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm lemme see if this works
+
+1750533278
+JetpackJackson!739e7f3d14@user/JetpackJackson
+drat
+
+1750533285
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i thought i had it
+
+1750533462
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm sure you'll get there
+
+1750533475
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i have an idea but it feels weird
+
+1750533581
+JetpackJackson!739e7f3d14@user/JetpackJackson
+drat it works partially
+
+1750533629
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you thinking about the next complication, not involving previously correct letters
+
+1750533654
+JetpackJackson!739e7f3d14@user/JetpackJackson
+drat i think i forgot
+
+1750533680
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: lol
+
+1750533691
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/b64312
+
+1750533705
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I feel so much suspense and I already know how I would do it
+
+1750533784
+JetpackJackson!739e7f3d14@user/JetpackJackson
+agh i feel like im going in circles
+
+1750533792
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: what's the reasoning behind "sol_count == in_count"
+
+1750533808
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like i had it at <=
+
+1750533822
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but it was to not do more yellow chars than was possible
+
+1750533849
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like if theres only 1 occurrence of "b" i shouldnt highlight more "b"s if the only b got marked as green
+
+1750533863
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause the rest would be automatically wrong
+
+1750533876
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is sol_count and in_count not the same values for a given letter, no matter the position you look at?
+
+1750533922
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, this is maybe a roundabout way of showing why this is wrong..
+
+1750533925
+JetpackJackson!739e7f3d14@user/JetpackJackson
+no cause the current char changes in the loop
+
+1750533949
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: but if position 0 and 1, say, are the letter A, will sol_count and in_count not be the same values for position 0 and 1?
+
+1750533958
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sol_count and in_count only depends on the letter, not the position
+
+1750533974
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright makes sense
+
+1750533976
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if one A is yellow, should all be yellow?
+
+1750533988
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and the other way around
+
+1750534002
+JetpackJackson!739e7f3d14@user/JetpackJackson
+no i think official wordle marks extras as gray
+
+1750534016
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+then sol_count and in_count are never enough to decide whether a letter should be yellow or not
+
+1750534025
+JetpackJackson!739e7f3d14@user/JetpackJackson
+drat
+
+1750534066
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i should be able to figure this out more easily and thats bugging me more than the bug itself
+
+1750534090
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: what about you ditch std.mem.count
+
+1750534101
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+to begin with
+
+1750534106
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750534116
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Yeah I wouldn’t count at all
+
+1750534125
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the count doesn't tell you anything
+
+1750534136
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750534162
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+each input letter can set the state of maximum one solution letter
+
+1750534171
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i just need some sort of way to check that it is present but is not marked green
+
+1750534177
+JetpackJackson!739e7f3d14@user/JetpackJackson
+which is why i thought arraylists
+
+1750534224
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ugh i dont wanna do two passes over the word cause thats inefficient
+
+1750534232
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you _know_ whether it's marked green
+
+1750534241
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you had that down
+
+1750534258
+JetpackJackson!739e7f3d14@user/JetpackJackson
+right thats in the first part of my loop
+
+1750534259
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: you're already doing N^2
+
+1750534265
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750534268
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in fact, you're doing two passes per character
+
+1750534275
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so 2*N*N inspections
+
+1750534284
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i
+
+1750534287
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how
+
+1750534291
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.mem.count isn't magic
+
+1750534300
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i removed that
+
+1750534313
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i thought you meant n^2 without mem.count
+
+1750534324
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, but you need a replacement for that logic of course
+
+1750534338
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1750534359
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i shouldnt modify input cause that would cause problems
+
+1750534372
+JetpackJackson!739e7f3d14@user/JetpackJackson
+and adding stuff to more arraylists wont work
+
+1750534391
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+here's an idea: what if instead of looking at whether a letter should be green or yellow, you look at which _other_ letter that a given letter can _turn_ green or yellow
+
+1750534405
+JetpackJackson!739e7f3d14@user/JetpackJackson
+huh??
+
+1750534426
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i dont understand what that means
+
+1750534442
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so, give me an example guess and target word because I'm too lazy to think of one
+
+1750534452
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+foo and bar
+
+1750534461
+JetpackJackson!739e7f3d14@user/JetpackJackson
+guess: bloom, solution: block
+
+1750534469
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause that is what im using to test the bug
+
+1750534493
+JetpackJackson!739e7f3d14@user/JetpackJackson
+with that guess, the b and l are green, the first o is yellow, the rest is gray
+
+1750534503
+JetpackJackson!739e7f3d14@user/JetpackJackson
+or it should be but my brain is not working
+
+1750534504
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok, so, the position 0, in the solution it's a B, which letter _in the guess_ can that B turn green or yellow?
+
+1750534521
+JetpackJackson!739e7f3d14@user/JetpackJackson
+... the B?
+
+1750534524
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes!
+
+1750534531
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's case 1
+
+1750534552
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Huh, that’s backwards from how I would do it
+
+1750534552
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but im going by the index one by one so like
+
+1750534556
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a letter in the solution can turn the letter of the same position in the guess green
+
+1750534583
+JetpackJackson!739e7f3d14@user/JetpackJackson
+huh thats.. interesting
+
+1750534600
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+your example doesn't have an instance of case 2 though
+
+1750534609
+JetpackJackson!739e7f3d14@user/JetpackJackson
+whats case 2?
+
+1750534638
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+guess: HELLO, solution: LIDAR
+
+1750534658
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the L in the solution, what letter can it turn green or yellow?
+
+1750534663
+JetpackJackson!739e7f3d14@user/JetpackJackson
+the first l would be yellow
+
+1750534689
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+actually, I've been explaining this the wrong way around
+
+1750534694
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I would loop through the input. For each input letter, loop the solution. if the solution letter is already marked with some state, skip it. if the solution letter and index match, its correct letter and position. if the solution is the correct letter but wrong position, its marked with that state
+
+1750534719
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but i need something to hold the state
+
+1750534731
+JetpackJackson!739e7f3d14@user/JetpackJackson
+should i make a "Letter" enum or struct or smth?
+
+1750534732
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+then loop the solution and print each letter with its state
+
+1750534734
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+rockorager: there's the sublety with the second case there
+
+1750534755
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+oh?
+
+1750534761
+JetpackJackson!739e7f3d14@user/JetpackJackson
+man no wonder i never fixed the bug in my rust version lol
+
+1750534777
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+JetpackJackson: yeah I think you need to know state throughout
+
+1750534784
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750534801
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: is there a bug in mine?
+
+1750534840
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it depends on how you implement it I guess, but you have to be careful not to "use up" a letter that is actually in the right position for an earlier letter that is in the wrong position
+
+1750534857
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ohh
+
+1750534861
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I see
+
+1750534884
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you have to transfer the state if a later letter is correct letter and pisutin
+
+1750534897
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+position
+
+1750534924
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or just skip letters that are in the right position when you look for letters that are in the wrong position
+
+1750534959
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm now im trying to figure out where to call this enum
+
+1750534967
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+enum?
+
+1750534988
+JetpackJackson!739e7f3d14@user/JetpackJackson
+to hold the state
+
+1750534990
+JetpackJackson!739e7f3d14@user/JetpackJackson
+of a given char
+
+1750535003
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: so like two passes? one to find correct letter plus position, the next to find leftover correct letters
+
+1750535021
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+JetpackJackson: probably it’s a struct that contains the letter and its state
+
+1750535028
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+and the state is an enum
+
+1750535048
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh boy i need to look this up i think
+
+1750535058
+JetpackJackson!739e7f3d14@user/JetpackJackson
+do i need the struct to do your idea
+
+1750535073
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you’re coming from rust?
+
+1750535085
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+rust enum is a tagged union
+
+1750535089
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah, and python
+
+1750535127
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i didnt get super far into the nitty gritty stuff tho
+
+1750535165
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+const State = enum { unmarked, correct_letter, correct_letter_and_position }
+
+1750535222
+JetpackJackson!739e7f3d14@user/JetpackJackson
+do need like some container to hold that tho? cause like i need to store the solution char states and input char states
+
+1750535306
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+how else would you store that state?
+
+1750535336
+JetpackJackson!739e7f3d14@user/JetpackJackson
+idk thats why im asking
+
+1750535343
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+how would you do it in rust or python?
+
+1750535352
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you had a container for each letter, didn't you
+
+1750535368
+JetpackJackson!739e7f3d14@user/JetpackJackson
+no i never fixed the bug in my rust version
+
+1750535370
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*for the letters
+
+1750535419
+JetpackJackson!739e7f3d14@user/JetpackJackson
+idk how id do it in python cause i havent written that kind of thing in python
+
+1750535423
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ah. well yeah I think you need a container (struct) for each letter + state 
+
+1750535437
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750535443
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i put that in
+
+1750535463
+JetpackJackson!739e7f3d14@user/JetpackJackson
+and then a container for solution/input char states right?
+
+1750535468
+JetpackJackson!739e7f3d14@user/JetpackJackson
+this feels very nested
+
+1750535512
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+to do Gliptics two pass yeah you need state for inputs, it’s possible without that though but slightly more complicated
+
+1750535529
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i was doing yours
+
+1750535539
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but ok
+
+1750535550
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i should init the state arrays before my loop
+
+1750535610
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it might help to think about how you would write this so you could test it
+
+1750535621
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+separate your IO from your logic
+
+1750535660
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wdym
+
+1750535661
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750535675
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i need to store the outputs somewhere
+
+1750535677
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+my solution wasn't two pass btw, just each char looking at each other char in the case when it's not in the right position
+
+1750535685
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ah ok
+
+1750535688
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause i was lazy and trying to print the char instantly
+
+1750535718
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how do i init an arraylist with my State enum
+
+1750535745
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and when you look whether a char exists in a different position, you would ignore characters that we know are in the right position (because the solution has the same char)
+
+1750535751
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750535798
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but yeah what container should i store the state enum in
+
+1750535824
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I would creat a struct that contains a letter and a state
+
+1750535825
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what container are you storing the letters in?
+
+1750535836
+JetpackJackson!739e7f3d14@user/JetpackJackson
+havent picked yet
+
+1750535844
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+each letter can be stored as a u8 if you are doing ascii only
+
+1750535853
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm pretty sure you had an array with letters
+
+1750535854
+JetpackJackson!739e7f3d14@user/JetpackJackson
+was setting up a new loop to use as a blank slate
+
+1750535907
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i think i got rid of that
+
+1750535910
+JetpackJackson!739e7f3d14@user/JetpackJackson
+the `                    input_chars_present[index] = char;`?
+
+1750535953
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I meant solution and input
+
+1750535980
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750535981
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1750535992
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so those contain u8 elements
+
+1750535998
+JetpackJackson!739e7f3d14@user/JetpackJackson
+sorry im trying to read the docs for structs and enums
+
+1750536034
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait shouldnt i use a struct that has the state enum + the actual character value
+
+1750536051
+JetpackJackson!739e7f3d14@user/JetpackJackson
+or am i trying to prematurely optimize/second guessing
+
+1750536078
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's what rockorager suggested
+
+1750536118
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750536788
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok now i get https://zigbin.io/23db46
+
+1750536871
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as far as I understand, rockorager suggested you needed state for the solution only, and that state needs to be reset for every guess
+
+1750536970
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750536972
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1750536980
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok ok its the working backwards thing
+
+1750536988
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Gliptic: is it easier with input state too?
+
+1750536995
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I’ve never written a wordle
+
+1750537008
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you only need it for one or the other, don't see why having both would help
+
+1750537022
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I've never done wordle either, but I did mastermind a long time ago
+
+1750537031
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which is pretty much the same
+
+1750537033
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh i love that game
+
+1750537086
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and the only state you _really_ need is a boolean to say whether the character has been used
+
+1750537098
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but
+
+1750537112
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I guess this doubles as presentation
+
+1750537126
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and if so, then it makes sense to put the state in the input
+
+1750537128
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and not the solution
+
+1750537159
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so you only need to remove some code
+
+1750537164
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ohhh yeah you print the guess each round
+
+1750537165
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+lol
+
+1750537166
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+btw, I don't think that std.mem.eql works
+
+1750537180
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or compiles
+
+1750537188
+JetpackJackson!739e7f3d14@user/JetpackJackson
+no it doesnt
+
+1750537198
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+== works quite ok to compare two u8
+
+1750537211
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh wait so i need to have the input be state
+
+1750537214
+JetpackJackson!739e7f3d14@user/JetpackJackson
+drat ok
+
+1750537219
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, well, you already have that
+
+1750537228
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+just need to remove the solution_state_arr
+
+1750537234
+JetpackJackson!739e7f3d14@user/JetpackJackson
+well i just commented it out as we were talking lol
+
+1750537236
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah
+
+1750537303
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok rn i have my array being init'ed with unmarked values
+
+1750537323
+JetpackJackson!739e7f3d14@user/JetpackJackson
+and the input chars
+
+1750537369
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait but then i have to reset it each time
+
+1750537375
+JetpackJackson!739e7f3d14@user/JetpackJackson
+the input changes
+
+1750537383
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so shouldnt i do solution instead
+
+1750537398
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you already do though, you create the input array for every guess
+
+1750537413
+JetpackJackson!739e7f3d14@user/JetpackJackson
+one sec lemme check the paste
+
+1750537419
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(lacking some deinits there)
+
+1750537425
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750537444
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(but you can ignore that, it's not going to run out of memory in 6 guesses)
+
+1750537452
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1750537473
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok so then in my loop set state based on whether the chars match or not right?
+
+1750537570
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, yeah
+
+1750537594
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+btw, there's a thing you can do to avoid the "var index: u32 = 0; ... index += 1;" pattern
+
+1750537646
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+look at the examples for `for` in the docs
+
+1750537797
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1750537840
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh the "multi object for" looks nice
+
+1750537885
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+specifically the "To access the index of iteration"
+
+1750538072
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1750540260
+JetpackJackson!739e7f3d14@user/JetpackJackson
+this is embarrassing i think im stuck again https://zigbin.io/dd7288
+
+1750540466
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i keep running into the "how do i check whether solution contains char but not at the same position"
+
+1750542576
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how do i fix this
+
