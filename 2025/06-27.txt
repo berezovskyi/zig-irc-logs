@@ -1,0 +1,228 @@
+1750982437
+LAC-Tech!~lewis@granite-phrase.bnr.la
+anyway I can avoid adding "-freference-trace=16" every time I call the big binary? an env var or something
+
+1751001162
+grayhatter!~grayhatte@user/grayhatter
+why are you using refrence-trace=16?
+
+1751008708
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: to get more things in my stacktrace, by default it's almost nothing
+
+1751009696
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: why?
+
+1751010559
+LAC-Tech!~lewis@granite-phrase.bnr.la
+IDFK man I just love reading stacktraces. what are you trying to get at?
+
+1751010596
+grayhatter!~grayhatte@user/grayhatter
+I'm trying to think of ways to help you avoid using reference-trace, I don't know why you'd need 16, so I'm asking
+
+1751033861
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is there a way to use a variable in a format specifier for padding? like if i have some value for how much padding i want, is there a way to use that value in a format specifier?
+
+1751033996
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like  in `try stdout.print("|{s:<40}|", .{"foo"});` , is there a way to not hardcode the number?
+
+1751035164
+ifreund!2940d10f8b@user/ifreund
+the format string must be comptime known, as you can see from the function signature
+
+1751035536
+JetpackJackson!739e7f3d14@user/JetpackJackson
+darn
+
+1751038008
+torque!~tachyon@user/torque
+JetpackJackson: https://github.com/ziglang/zig/blob/master/lib/std/fmt.zig#L2724-L2730
+
+1751038054
+bblack!~bblack@wikimedia/bblack-WMF
+JetpackJackson: but if your padding value is comptime-known, you could still abstract it a bit and get it out of the raw fmt string constant...
+
+1751038083
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. as a string:
+
+1751038084
+bblack!~bblack@wikimedia/bblack-WMF
+    const PadLen = "40";
+
+1751038085
+bblack!~bblack@wikimedia/bblack-WMF
+    std.debug.print("|{s:<" ++ PadLen ++ "}|", .{"foo"});
+
+1751038101
+torque!~tachyon@user/torque
+please look at my link, fmt accepts runtime padding values by using a placeholder 
+
+1751038120
+bblack!~bblack@wikimedia/bblack-WMF
+oh heh, I didn't see your line while I was off copypasting :)
+
+1751038132
+torque!~tachyon@user/torque
+no reason to come up with convoluted workarounds for functionality that exists
+
+1751038137
+torque!~tachyon@user/torque
+ah very good
+
+1751038148
+torque!~tachyon@user/torque
+it's not a well-advertized feature
+
+1751038306
+bblack!~bblack@wikimedia/bblack-WMF
+another related thing in this area I didn't realize until today: it's possible to use the fmt stuff at comptime, thus building fmt strings using fmt
+
+1751038312
+bblack!~bblack@wikimedia/bblack-WMF
+ziglang.org/documentation/master/std/#std.fmt.comptimePrint
+
+1751038334
+torque!~tachyon@user/torque
+yes, comptimePrint is very useful
+
+1751038555
+JetpackJackson!739e7f3d14@user/JetpackJackson
+torque: thanks!! that looks perfect
+
+1751043481
+olabaz!~Guest48@user/olabaz
+hey, I asked this question on Zig discord but I'm confused by the response. Essentially I want to call Zig through a different lang by building a library and calling it through FFI of my lang. The function I want to call is tcpConnectToHost which returns a !Stream. How can I wrap this function so that I only deal with c types?
+
+1751043813
+bblack!~bblack@wikimedia/bblack-WMF
+olabaz: well basically the FFI stuff is going to be C ABI I assume
+
+1751043883
+bblack!~bblack@wikimedia/bblack-WMF
+you'll have to write a wrapper function over tcpConnectToHost which has the callconv(.c) attribute, and its arguments and return types will all have to be C-compatible things (so not, directly, things like Zig Errors and normal Zig struts/slices/etc)
+
+1751043919
+bblack!~bblack@wikimedia/bblack-WMF
+extern/packed structs would work.  you may have to provide some other error indicataor, return a pointer which can be null on error, or whatever is appropriate.
+
+1751043996
+ifreund!2940d10f8b@user/ifreund
+you can also return an opaque pointer to any zig type, but you can only accrss the contents from the Zig side of the ABI
+
+1751044039
+olabaz!~olabaz@user/olabaz
+how would I turn a std.net.Stream to a ctype? I guess I have to allocate a pointer and set it's contents?
+
+1751044041
+ifreund!2940d10f8b@user/ifreund
+this is useful if all you want to do with the result of a zig function is pass it back to a different zig function
+
+1751044128
+bblack!~bblack@wikimedia/bblack-WMF
+olabaz: the answer to that question really depends on a lot of other things.  In the general case, non-Zig code can't directly access the data or methods of a std.net.Stream or any other normal Zig stuff...
+
+1751044153
+bblack!~bblack@wikimedia/bblack-WMF
+but: note that std.net.Stream is really just an abstraction container with methods, and it contains only a "andle: posix.socket_t,"
+
+1751044154
+olabaz!~olabaz@user/olabaz
+ifreund: yes, that should be all I need to do. I don't plan to access the Zig stuff outside of Zig
+
+1751044167
+bblack!~bblack@wikimedia/bblack-WMF
+and posix.socket_t is really just an abstraction of a regular file descriptor (a C integer)
+
+1751044185
+bblack!~bblack@wikimedia/bblack-WMF
+so you could totally just pass off the handle as a regular fd for C-side code to do things with for a bit.
+
+1751044249
+bblack!~bblack@wikimedia/bblack-WMF
+(and even re-construct the Stream object from such an fd that came from C-land)
+
+1751044316
+olabaz!~olabaz@user/olabaz
+bblack: what if I was on windows? wouldn't std.net.Stream work anyway but not use a posix_t?
+
+1751044377
+bblack!~bblack@wikimedia/bblack-WMF
+olabaz: I was assuming an actually-posixy system, but the details are probably similar on Windows.  lib/std/posix.zig defines socket_t as:
+
+1751044380
+bblack!~bblack@wikimedia/bblack-WMF
+pub const socket_t = if (native_os == .windows) windows.ws2_32.SOCKET else fd_t;
+
+1751044726
+olabaz!~olabaz@user/olabaz
+yeah, I wanted it to be more portable, that's why I didn't want to just work with the fd
+
+1751051906
+olabaz!~olabaz@user/olabaz
+I am getting incorrect alignment error when casting a *anyopaque using:     const stream_ptr_cast: *std.net.Stream = @ptrCast(@alignCast(stream_ptr));
+
+1751051921
+olabaz!~olabaz@user/olabaz
+Is this not the correct way?
+
+1751052007
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the problem is stream_ptr was allocated probably
+
+1751052010
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*is how
+
+1751052016
+olabaz!~olabaz@user/olabaz
+yes std.c.malloc
+
+1751052266
+olabaz!~olabaz@user/olabaz
+how to fix it?
+
+1751052546
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I would have thought std.c.malloc would make it sufficiently aligned, but maybe not
+
+1751052973
+bblack!~bblack@wikimedia/bblack-WMF
+olabaz: what does the malloc call look like?
+
+1751053052
+bblack!~bblack@wikimedia/bblack-WMF
+(maybe try to isolate this in test zig code: just do the malloc and the cast there without passing through non-zig stuff and see if alignment still fails)
+
+1751053167
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+^
+
+1751053361
+olabaz!~olabaz@user/olabaz
+    const stream_ptr = std.c.malloc(@sizeOf(std.net.Stream));
+
+1751053361
+olabaz!~olabaz@user/olabaz
+    return stream_ptr.?;
+
+1751053682
+olabaz!~olabaz@user/olabaz
+bblack: here is the full code I'm working on: https://gist.github.com/gitabaz/cd42b9930f33d3471ce35fbd326bd4d9
+
+1751053900
+erock!~erock@pico/erock
+are there any guides or guidance here on how i could import `forkpty` inside zig?
+
+1751053989
+erock!~erock@pico/erock
+this is how im doing it now: https://erock.pastes.sh/forkpty.zig
+
+1751066064
+grayhatter!~grayhatte@user/grayhatter
+erock: that seems like a fine way of going about it
+
