@@ -1,0 +1,424 @@
+1751120875
+JetpackJackson!739e7f3d14@user/JetpackJackson
+do yall have any tips for how i can check for things like unfreed memory or just bad memory management with allocators and the like?
+
+1751122145
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: std.heap.DebugAllocator will tell you if something wasn't deallocated when you .deinit() it
+
+1751122244
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so would i replace my `    const allocator = std.heap.page_allocator;` with that?
+
+1751122269
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+probably, page_allocator is not really a good idea for generic use
+
+1751122297
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(it rounds up all allocations to a multiple of the page size, and does a syscall for each one)
+
+1751122334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751122339
+JetpackJackson!739e7f3d14@user/JetpackJackson
+what should i use instead
+
+1751122446
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm im trying to use the DebugAllocator but it wants a config
+
+1751122450
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, DebugAllocator is a good start
+
+1751122453
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: .{}
+
+1751122472
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thanks
+
+1751122482
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm now all my allocator calls are being weird
+
+1751122504
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+probably because you didn't fetch the actual Allocator
+
+1751122512
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/1b6602
+
+1751122515
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't pass DebugAllocator itself as an Allocator
+
+1751122524
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.allocator()
+
+1751122534
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there should be examples
+
+1751122557
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah i just got it
+
+1751122583
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait hmm
+
+1751122590
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok lemme look at the examples
+
+1751123005
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/919d79
+
+1751123084
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you didn't look at examples, did you
+
+1751123099
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there are a bunch of things wrong here, what is "init"?
+
+1751123104
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i couldnt find ones with the DebugAllocator
+
+1751123119
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+look at any other allocator
+
+1751123126
+JetpackJackson!739e7f3d14@user/JetpackJackson
+the doc said to use init
+
+1751123131
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, but what is it?
+
+1751123141
+JetpackJackson!739e7f3d14@user/JetpackJackson
+idk
+
+1751123146
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im sorry
+
+1751123160
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+is it a variable? is it a function?
+
+1751123166
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i dont know
+
+1751123169
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ok..
+
+1751123171
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i dont know why im doing it
+
+1751123175
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im sorry
+
+1751123206
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the answer: it's a function
+
+1751123211
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and how do you call functions?
+
+1751123223
+JetpackJackson!739e7f3d14@user/JetpackJackson
+with ()?
+
+1751123225
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1751123263
+JetpackJackson!739e7f3d14@user/JetpackJackson
+its saying its not a function
+
+1751123278
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/e1545a
+
+1751123307
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+okay, sorry, it's not a function :P
+
+1751123318
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was sure it was before
+
+1751123342
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+anyway, so you're calling .allocator(), what type does `self` have in that method?
+
+1751123348
+JetpackJackson!739e7f3d14@user/JetpackJackson
+sorry im running zig master, i probably shouldve mentioned that
+
+1751123357
+JetpackJackson!739e7f3d14@user/JetpackJackson
+um lemme look
+
+1751123376
+JetpackJackson!739e7f3d14@user/JetpackJackson
+it just says self
+
+1751123382
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, it says *Self
+
+1751123394
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751123396
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so, that is not *const Self
+
+1751123413
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but its empty so its not getting *Self or *const Self
+
+1751123426
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's getting *const Sef
+
+1751123427
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause i have `const allocator = std.heap.DebugAllocator(.{}).init.allocator();`
+
+1751123428
+Gliptic!~glip@2a01:4f8:c012:91f3::1
++l
+
+1751123442
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so how do i make it *Self
+
+1751123443
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.heap.DebugAllocator(.{}).init is not a variable
+
+1751123462
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it cannot be coerced into a *Self
+
+1751123518
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+to use .allocator(), you must call it on a variable that is live at least as long as you're using the returned allocator
+
+1751123560
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i guess ill use my arena allocator for that? the one that grabs the env vars in my program?
+
+1751123566
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is that correct to do?
+
+1751123582
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+arena allocator is a different allocator, and has nothing to do with env vars
+
+1751123588
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and arena allocator wraps another allocator
+
+1751123599
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you wanted to make a DebugAllocator here
+
+1751123611
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so never mind about ArenaAllocator
+
+1751123633
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah but it wants an input so idk how to give it *Self when i havent made the allocator yet
+
+1751123640
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how do you get a variable of type DebugAllocator that you can call .allocator() on?
+
+1751123668
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+JetpackJackson: it wants a *DebugAllocator, which is a different type
+
+1751123692
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you already created one with init, but it's not a variable
+
+1751123697
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not mutable
+
+1751123755
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is this right then? https://zigbin.io/0d471e
+
+1751123835
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+bingo
+
+1751123851
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait fr?
+
+1751123983
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1751124007
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it's not complete
+
+1751124032
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+when you're done with your DebugAllocator, what do you do?
+
+1751124057
+JetpackJackson!739e7f3d14@user/JetpackJackson
+deinit?
+
+1751124088
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how do i get the leaks to display? i swear i just saw an example but now i cant find it, it had if-else in it
+
+1751124120
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+did you try .deinit then?
+
+1751124143
+JetpackJackson!739e7f3d14@user/JetpackJackson
+its saying the value is ignored
+
+1751124169
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh wait, yeah, you need to call detectLeaks()
+
+1751124172
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok it still works
+
+1751124173
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751124196
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok i ran it with `defer _ = mut_alloc.deinit()` and it printed the leaks
+
+1751124197
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+apparently I'm not using this one enough to keep up with it
+
+1751124206
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh, it did?
+
+1751124246
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1751124253
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+right, it depends on the .safety config, which is default true
+
+1751124257
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i had a missing deinit() for an arraylist
+
+1751124261
+JetpackJackson!739e7f3d14@user/JetpackJackson
+now its all clean
+
+1751124263
+JetpackJackson!739e7f3d14@user/JetpackJackson
+woohoo
+
+1751124325
+JetpackJackson!739e7f3d14@user/JetpackJackson
+should i keep the DebugAllocator or should i use the ArenaAllocator
+
+1751124346
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ArenaAllocator is a completely different beast, and it just wraps another allocator
+
+1751124355
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(such as DebugAllocator)
+
+1751124357
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1751124358
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm 
+
+1751124367
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i might need to rewrite my env var code then
+
+1751124390
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/98b630
+
+1751124430
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, using ArenaAllocator with page_allocator is fine as far as I know
+
+1751124544
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1751124553
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thank you very much for your help
+
+1751124567
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, might still be inefficient, looks like it's allocating smaller blocks than I thought
+
+1751124747
+JetpackJackson!739e7f3d14@user/JetpackJackson
+should i send my whole code? so that its not an XY problem
+
+1751124771
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/c7872f
+
+1751124962
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+since you're making the DebugAllocator anyway, you might as well use it in the ArenaAllocator
+
+1751125002
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1751125215
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i originally wanted to use a word wrapping library so that i wouldnt have to do the line lengths but i couldnt get it to work
+
+1751152307
+grayhatter!~grayhatte@user/grayhatter
+I'm working with bitflags defined via a C API where a u16 has overlapping bitflags returned... is there a better way to express this that I'm not thinking of? https://zigbin.io/2a10db
+
