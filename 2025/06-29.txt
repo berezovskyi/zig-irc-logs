@@ -1,0 +1,312 @@
+1751163779
+norineko!~norineko@user/norineko
+something appears to be corrupting an array that I'm allocating, any idea where to start to look?
+
+1751163802
+norineko!~norineko@user/norineko
+i @memset it when initializing but then upon later reuse it's not the same
+
+1751164106
+norineko!~norineko@user/norineko
+nothing is modifying it by name between when I initialize and when it's read
+
+1751164234
+Drixtan!~Drixtan@user/Drixtan
+modifying it by name? do you mind sharing the code on zigbin.io
+
+1751164684
+norineko!~norineko@user/norineko
+it's the `pt` variable https://zigbin.io/686e8e 
+
+1751164783
+norineko!~norineko@user/norineko
+sorry, that example isn't self contained and doesn't compile (var instead of const for the pt value inside the init fn)
+
+1751166600
+torque!~tachyon@user/torque
+I think this may be an issue with your arena allocator living on the stack
+
+1751166625
+torque!~tachyon@user/torque
+I am not sure it copies properly into result? not sure
+
+1751167166
+norineko!~norineko@user/norineko
+that was it! using result.arena instead was the move.
+
+1751168126
+grayhatter!~grayhatte@user/grayhatter
+norineko: you should avoid using Self when you can
+
+1751168151
+norineko!~norineko@user/norineko
+oh, interesting, I thought it was preferred to keep things uniform?
+
+1751168168
+grayhatter!~grayhatte@user/grayhatter
+line 59: the "correct" way to write that return type is `GAL` instead of Self
+
+1751168200
+norineko!~norineko@user/norineko
+I guess most of the code I've looked at has used const Self = @This() but that's probably because it was all generic
+
+1751168203
+grayhatter!~grayhatte@user/grayhatter
+it's prefered to keep things as simple as possible, in this case Self is another layer of indirection that's not required
+
+1751168307
+grayhatter!~grayhatte@user/grayhatter
+Self is really useful when you don't know the fully qualified name the compiler is gonna choose, but in this case, you do know it :)
+
+1751168329
+norineko!~norineko@user/norineko
+I guess you'd have to be aware of what scope you're in, which could be confusing... sounds logical
+
+1751168357
+grayhatter!~grayhatte@user/grayhatter
+what's an OLMC?
+
+1751168439
+norineko!~norineko@user/norineko
+Output Logic Macrocell, which is a core primitive of GAL/PLDs.
+
+1751168474
+norineko!~norineko@user/norineko
+This is a rewrite of a program I hacked together in Rust a year ago which aims to provide modern Verilog support for GAL16V8 and GAL22V10 chips using Yosys
+
+1751168634
+grayhatter!~grayhatte@user/grayhatter
+I keep telling myself I'll learn PLD or FPGA... everytime I start I go "nope, I don't not have time for *this* rabbit hole" :D
+
+1751169412
+torque!~tachyon@user/torque
+a fun trick you can do with arena allocators to avoid the fact that they don't copy nicely is to allocate them with the allocator they wrap. then to free you deinit the arena and use the child allocator to free it
+
+1751169452
+torque!~tachyon@user/torque
+and with this usage you only need to store the allocator interface pointer
+
+1751170030
+norineko!~norineko@user/norineko
+ooo that's interesting, i found the ArenaAllocator.State as well which can be promoted to a full ArenaAllocator by passing it the child allocator, very neat
+
+1751204848
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/30ab2d how can i make sure that the contents of `stdout_model.items` is returned before it gets `deinit`ed? i have defer set but it's returning empty unless i use allocator.dupe which i dont want to do because its leaking memory.
+
+1751205270
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you want to return the items you don't want to deinit
+
+1751205321
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+however, there is toOwnedSlice()
+
+1751205339
+JetpackJackson!739e7f3d14@user/JetpackJackson
+if i remove the deinit it leaks
+
+1751205340
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which makes deinit do nothing
+
+1751205345
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ill try ownedslice
+
+1751205355
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, because you're not deallocating the memory you return
+
+1751205364
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you still need to do that
+
+1751205387
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1751205396
+JetpackJackson!739e7f3d14@user/JetpackJackson
+zig documentation time
+
+1751205494
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you cannot return .items and then attempt to deallocate that, because it has the wrong size for the allocation
+
+1751205503
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751205513
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hence .toOwnedSlice()
+
+1751205547
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but easiest would be to return the actually ArrayList
+
+1751205552
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751205689
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm its not letting me return ArrayListUnmanaged
+
+1751205741
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+of course it does, if you change the return type
+
+1751205749
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im trying 
+
+1751205779
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/09a599
+
+1751205806
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, are you maybe missing something?
+
+1751205815
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how did you refer to that type elsewhere?
+
+1751205862
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ArrayListUnmanaged(u8)
+
+1751205884
+JetpackJackson!739e7f3d14@user/JetpackJackson
+OH
+
+1751205898
+JetpackJackson!739e7f3d14@user/JetpackJackson
+std.
+
+1751205968
+JetpackJackson!739e7f3d14@user/JetpackJackson
+now how do i access the items of the returned list outside of the function
+
+1751205989
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait
+
+1751205990
+JetpackJackson!739e7f3d14@user/JetpackJackson
+nvm
+
+1751206033
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+btw, the naming convention for functions is dromedaryCaseLikeThis
+
+1751206227
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1751206249
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm its still not returning
+
+1751206281
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/2675c5
+
+1751206439
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751206443
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i think i fixed it
+
+1751206611
+JetpackJackson!739e7f3d14@user/JetpackJackson
+moved the deinit to outside the function 
+
+1751206633
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/9308b0
+
+1751208059
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm my program seems a bit slower now, is there a good way to benchmark potentially slow parts of my code? rn im running `time <program>`
+
+1751209159
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/d00990
+
+1751210402
+JetpackJackson!739e7f3d14@user/JetpackJackson
+heres my whole program, how can i improve its speed? https://zigbin.io/387ff0
+
+1751216863
+braewoods_!~braewoods@user/braewoods
+JetpackJackson, no idea, but i can say this: try to minimize how much you rely on fork + exec combos. Those can get expensive to do.
+
+1751216888
+braewoods_!~braewoods@user/braewoods
+You do those whenever you execute an external program. It's better to just make the system calls directly or so.
+
+1751216920
+braewoods_!~braewoods@user/braewoods
+It's unavoidable at times but fork + exec is a giant part of why shell can be have awful performance.
+
+1751217890
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1751217932
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i would like to change the get-system-memory to the sysinfo calls but the values i get from that are different from /proc/meminfo or `free` so i havent
+
+1751219440
+braewoods_!~braewoods@user/braewoods
+JetpackJackson, you could look at lcdproc's source code to find out how it processes meminfo, assuming you can read C.
+
+1751219477
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i can try
+
+1751221759
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm i see where they read /proc/meminfo and they read the sections but i dont see them doing math with it/subtracting memory values 
+
+1751221763
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ill keep looking
+
+1751221798
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751221802
+JetpackJackson!739e7f3d14@user/JetpackJackson
+found it
+
+1751224043
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm i rewrote my memory-getting functions to just call one function to loop through the file and get the two values i want but it didnt seem to help much
+
+1751224508
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is it better to use readToEndAlloc instead of `cat`?
+
+1751226194
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i think my pkgs function is one of the slowdowns
+
+1751226646
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is there a better way to get the count of files in a directory other that iterating over the dir?
+
+1751226647
+JetpackJackson!739e7f3d14@user/JetpackJackson
+or running `stat`?
+
+1751228852
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Ok found the statx call
+
