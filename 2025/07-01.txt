@@ -1,0 +1,368 @@
+1751332333
+torque!~tachyon@user/torque
+I think I saw this come up somewhat recently as an issue with 16-bit platforms?
+
+1751332349
+torque!~tachyon@user/torque
+not sure if it was on zulip or the issue tracker
+
+1751332387
+torque!~tachyon@user/torque
+if I am recalling correctly, the compiler does not like it when `usize` is less than 32 bits
+
+1751335580
+JetpackJackson!739e7f3d14@user/JetpackJackson
+How can I fix it?
+
+1751335753
+torque!~tachyon@user/torque
+easiest way is probably to get a 32-bit microcontroller tbh
+
+1751335929
+cancername_!~cancernam@user/cancername
+and that is why implicit conversions to and from usize/isize should not be allowed!
+
+1751335975
+torque!~tachyon@user/torque
+found the issue: https://github.com/ziglang/zig/issues/22985
+
+1751336111
+torque!~tachyon@user/torque
+but in all seriousness maybe check out an rpi pico. idk if you have experience programming microcontrollers, but the atmega chips the arduinos use are kind of quirky and they are much more resource-constrained than cost competitive dev boards with modern chips on them
+
+1751336191
+torque!~tachyon@user/torque
+(i wonder if microzig has support for the nxp chips the teensy family uses
+
+1751336194
+torque!~tachyon@user/torque
+)
+
+1751336198
+clevor!sid649024@id-649024.hampstead.irccloud.com
+24-bit pointers my beloved
+
+1751336358
+torque!~tachyon@user/torque
+you love strange things
+
+1751336727
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The Zilog eZ80 has 24-bit pointers.
+
+1751336901
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Rust cannot model 24-bit pointers natively and I don't want to have to resort to crates for these kinds of things, so I had switched to Zig.
+
+1751337068
+torque!~tachyon@user/torque
+well, in theory you can just patch compiler_rt for zig
+
+1751337105
+torque!~tachyon@user/torque
+there's an mr linked to the issue I linked, but it caused other CI failures, and I personally love mainstream bandwagoneering so you won't ever find me sticking my neck out for weird old hardware
+
+1751337454
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The TI-84 Plus CE Python is pretty much mainstream.
+
+1751337563
+torque!~tachyon@user/torque
+that sounds heretical. TI calculators should only be programmed in ti basic or direct assembly. nothing else
+
+1751337706
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Said calculator can also be programmed in C.
+
+1751337749
+torque!~tachyon@user/torque
+sorry, that wasn't on the list
+
+1751337984
+JetpackJackson!739e7f3d14@user/JetpackJackson
+torque: I'll look into it, I just have a bunch of nanos though so I wanted to try zig on them
+
+1751338118
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Wow a pico 2 is 5 bucks??
+
+1751338124
+JetpackJackson!739e7f3d14@user/JetpackJackson
+What's the catch??
+
+1751338205
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I got the original soon after the launch date, and the catch was that I had no use for it and gave it to a friend of mine.
+
+1751338229
+torque!~tachyon@user/torque
+I haven't used one but I've heard good things about it. the pio is very powerful for digital signal processing
+
+1751338796
+torque!~tachyon@user/torque
+speaking of obsolete things, I have a collection of several Intel Edisons that I got for free. rest in peace, the bizarre era of intel trying to get a piece of that delicious iot market
+
+1751364112
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+you can check if a variable is null, can you also check if a variable is undefined and can that be used in the same way as people use null?
+
+1751364444
+neurocyte!~neurocyte@user/neurocyte
+flower_: you cannot (reliably) check for undefined. undefined literally means it has an unknown value, so it can legally be anything. in practice undefined values have very different actual values depending on the build type among other things and you should never assume anything about them.
+
+1751364446
+Affliction!affliction@idlerpg/player/affliction
+At runtime the value is... undefined, since you're pretty much asking the compiler to not bother initializing the underlying memory.
+
+1751364466
+Affliction!affliction@idlerpg/player/affliction
+Values known to be undefiend at comptime will be a compile error iirc
+
+1751364489
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm I see
+
+1751364565
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so null has still it's use in Zig
+
+1751364601
+neurocyte!~neurocyte@user/neurocyte
+yes, null is well defined
+
+1751364616
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+e.g. it's not the goal to write zig code without using null values
+
+1751364647
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+(as null is sometimes mentioned as biggest mistake in the history of software)
+
+1751364662
+Affliction!affliction@idlerpg/player/affliction
+null can only be used with optional types
+
+1751364679
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I know
+
+1751364699
+neurocyte!~neurocyte@user/neurocyte
+null itself is not evil, null as an implicit special value of a point is very evil and zig does not have it
+
+1751364704
+Affliction!affliction@idlerpg/player/affliction
+so, you'll know a value can be null, and have to handle that case.
+
+1751364706
+neurocyte!~neurocyte@user/neurocyte
+pointer
+
+1751364735
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1751364850
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Sometimes I return a error in my code, while there is not really a error, just to handle that case in a different way. People would probably return null in that case in C code. 
+
+1751364931
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L1171
+
+1751364947
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+add that thing to the list if it's not already there
+
+1751364957
+neurocyte!~neurocyte@user/neurocyte
+for functions that may or may not return a value you should probably use an optional value in zig, not an error
+
+1751364990
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok
+
+1751364995
+Affliction!affliction@idlerpg/player/affliction
+Well, the error type is useful for when you want to signal what went wrong.
+
+1751365014
+Affliction!affliction@idlerpg/player/affliction
+But yeah, if it's just, depending on how the function's called, there might not be a usable result, then optionals make sense.
+
+1751365056
+Affliction!affliction@idlerpg/player/affliction
+Naturally, there's always a time and a place where both make sense, so you have the WTF operator: !?Thing
+
+1751365104
+Affliction!affliction@idlerpg/player/affliction
+for situations where "Something went wrong, couldn't get data, here's why.", "Successfully got no data.", and "Here's the data." make sense.
+
+1751365135
+ifreund!2940d10f8b@user/ifreund
+flower_: the problem with NULL in C and other languages is that all pointer types may be null
+
+1751365148
+ifreund!2940d10f8b@user/ifreund
+expressing nullability in the type system as done in zig fixes this
+
+1751365172
+ifreund!2940d10f8b@user/ifreund
+dereferencing a null pointer gains explicit syntax
+
+1751365178
+Affliction!affliction@idlerpg/player/affliction
+Yeah, in zig, you know by the type, if there could be null, and are forced to handle thep ossibility.
+
+1751365232
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pretty cool language feature isn't?
+
+1751365250
+ifreund!2940d10f8b@user/ifreund
+In a way, you can see C as farther in the "dynamically typed" direction on the dynamic/static typing axis than zig
+
+1751365293
+ifreund!2940d10f8b@user/ifreund
+not having generics in C also leads to widespread use of type-erased pointers for example
+
+1751365312
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1751365325
+Affliction!affliction@idlerpg/player/affliction
+yup, and when you're interop'ing with C, you can use ?*Thing for C pointers which might be null.
+
+1751365344
+Affliction!affliction@idlerpg/player/affliction
+pointers which the API guarantees aren't null, can use *Thing as usual.
+
+1751369289
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+I have build Zig using CMake like so: `cmake -B build -G Ninja -DCMAKE_BUILD_TYPE=Release && cmake --build build --config Release`.
+
+1751369289
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+I found `./build/zig2` binary and use it for my project like so: `zig build run`.
+
+1751369289
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+It panics with `no dependency named 'opencl' in 'build.zig.zon'.`
+
+1751369289
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+However, my `build.zig.zon` has `.dependency = .{ .opencl = .{ ... } }`.
+
+1751369289
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Is there a new format for `build.zig.zon`?
+
+1751369290
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+My `build.zig` uses dependency like so:
+
+1751369292
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+```zig
+
+1751369295
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+b.dependency("opencl", .{}).module("opencl");
+
+1751369297
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+```
+
+1751369429
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+It works with released nightly Zig, but not with locally built Zig.
+
+1751369540
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+There is `build/stage3/bin/zig`! I will use this binary then.
+
+1751369548
+ifreund!2940d10f8b@user/ifreund
+yes, that is the correct one
+
+1751369800
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+How to make recompilation faster? It starts recompilation from stage1.wasm
+
+1751369855
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+I expect something like under a minute recompilation to test changes to SPIR-V codegen
+
+1751370002
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Should I rebuild with `zig build`?
+
+1751370314
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Hmm, after another `cmake --build` my stage3/bin/zig wasn't updated, will try to delete it and run again...
+
+1751371148
+ifreund!2940d10f8b@user/ifreund
+ivanstepanovftw: yes, once you have bootstrapped to stage3 using cmake you can rebuild that stage3 compiler
+
+1751371186
+ifreund!2940d10f8b@user/ifreund
+certain changes to language features may require rebootstrapping, but you probably won't have to worry about that
+
+1751371698
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+I am trying to fix issue 24281 by myself. Currently, `cmake --build` compiles stage3 with 1 CPU, so any suggestion to my workflow to increase productivity would be nice.
+
+1751372028
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+20 minutes stage3
+
+1751372127
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Finally, I have fixed the bug...
+
+1751372745
+ifreund!2940d10f8b@user/ifreund
+ivanstepanovftw: you don't need to re-bootstrap using cmake every time you rebuild, just use zig build directly
+
+1751372761
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Thank you!
+
+1751372764
+ifreund!2940d10f8b@user/ifreund
+also there are many build options that can be used to reduce compile time
+
+1751372770
+ifreund!2940d10f8b@user/ifreund
+check out `zig build --help`
+
+1751372850
+ifreund!2940d10f8b@user/ifreund
+https://github.com/ziglang/zig/wiki/Contributing
+
+1751376818
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+I want to discuss how "printf" should look like for SPIR-V. Should it be `@spirvPrintf` or `std.debug.print` that at comptime checks for `stage2_spirv`/etc., formats the string and calls `printf` from `.@"OpenCL.std"`? printf from SPIR-V requires to `importExtendedSet`, how can I do this from std.debug.print itself?
+
+1751377609
+ifreund!2940d10f8b@user/ifreund
+ivanstepanovftw: I'd suggest asking on the Zulip, I don't think the other people working on spirv specifically are active on IRC
+
+1751377610
+ifreund!2940d10f8b@user/ifreund
+https://zsf.zulipchat.com/
+
+1751387970
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Am I right that --release=small reduces codegen time, but increases link time?
+
+1751388046
+ivanstepanovftw!~quassel@user/ivanstepanovftw
+Compared to debug.
+
+1751388391
+ifreund!2940d10f8b@user/ifreund
+I wouldn't expect that to be the case
+
