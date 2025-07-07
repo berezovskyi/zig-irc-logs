@@ -1,0 +1,216 @@
+1751763478
+daurnimator!~daurnimat@vultr.daurnimator.com
+Just watched the roadmap stream
+
+1751763548
+meidam!~meidam@user/meidam
+nice
+
+1751763559
+meidam!~meidam@user/meidam
+I watched it yesterday
+
+1751763573
+meidam!~meidam@user/meidam
+The future seems bright
+
+1751763587
+daurnimator!~daurnimat@vultr.daurnimator.com
+I like the idea of the io vtable. But a few questions that came up in my mind:
+
+1751763589
+daurnimator!~daurnimat@vultr.daurnimator.com
+1. I would probably have reached for a global/threadlocal io vtable rather than passing it around; will have to think about it more/try it out
+
+1751763681
+daurnimator!~daurnimat@vultr.daurnimator.com
+2. how likely is it that you can provide a cut down io vtable for some specific child function call. e.g. you might only want to provide sleep() and futexLock()/futexUnlock() for some call. I guess that requires knowing the internal implementation of what you're calling. Or perhaps its just discoverable via compile errors? e.g. "child function needs fileRead"
+
+1751763704
+daurnimator!~daurnimat@vultr.daurnimator.com
+3. I have the feeling that the io vtable will suplant posix and finally provide us with a satisfactory solution to deprecating that namespace! :)
+
+1751763801
+daurnimator!~daurnimat@vultr.daurnimator.com
+4. I still don't quite understand how the io vtable relates to async: to me it feels like a great improvement; but I'd still want make of the vtable calls to *be* async? i.e. I want the caller to yield up the stack and then resume; rather than have callers provide continuation functions
+
+1751769444
+Affliction!affliction@idlerpg/player/affliction
+"I would probably have reached for a global/threadlocal io vtable rather than passing it around" Done that with allocators when I was very new to zig. Might end up doing it with I/O in a fast refactor pass, before I get a chance to refactor "properly".
+
+1751769513
+Affliction!affliction@idlerpg/player/affliction
+Even python's supposedly "easy" async hurt my head, so I'm still not sure about it as a concept in general. But, that seems to just be my dinosaur brain not able to learn new tricks.
+
+1751769544
+Affliction!affliction@idlerpg/player/affliction
+I guess, I do need to have an understanding of the abstraction layer below the one I'm working at, maybe Zig will help me understand what's actually going on. Time will tell!
+
+1751775960
+StopNGo!~StopNGo@p4fe1de8c.dip0.t-ipconnect.de
+I actually share that sentiment: Async has, for the longest time, felt alien to me (I chiefly have academic and TMP-leaning background in C++), and I'm still not sure if it's _really_ the correct approach. I just didn't have much of a problem -- much of aversion -- say, splitting up communication to make it fit into continuation functions for IOCPs (though I've never finished the project, so who knows
+
+1751775962
+StopNGo!~StopNGo@p4fe1de8c.dip0.t-ipconnect.de
+if what I've written would have worked).
+
+1751776319
+StopNGo!~StopNGo@p4fe1de8c.dip0.t-ipconnect.de
+People on that Async mindset are making it seem like the biggest flaw ever, "can't work with that code" level, and it's giving me a strong sense of those dreadful "clean-code", "code smells", idiomaticism vibes. As long as it's optional, I might elect to ignore it same as I didn't touch the harder "OOP" (C++ OOP, not Smalltalk OOP) stuff in my code.
+
+1751776456
+StopNGo!~StopNGo@p4fe1de8c.dip0.t-ipconnect.de
+I'm not sure it will remain optional, though, Andrew made it sound very fundamental. I also not too glad there will apparently be mandatory indirect function calls when there's more than one such object? You can insist all you want how IO operations are expensive, anyways, it does seem to violate the optimality pradigm.
+
+1751776810
+Affliction!affliction@idlerpg/player/affliction
+I can see how it can make certain state machines a lot more straight forward, most of my struggles are with structuring the program so you don't end up with an explosion of async functions.
+
+1751776845
+Affliction!affliction@idlerpg/player/affliction
+At the end of the day, a boring old event loop is easy for me to understand. Perhaps that's because it's what I grew up with.
+
+1751777622
+torque!~tachyon@user/torque
+if you understand a boring old event loop, I'm kind of curious what parts of python's asyncio made your head hurt
+
+1751777729
+torque!~tachyon@user/torque
+the main advantage to me of that style of async io is the ability to a) read/write asynchronous code in a way that reads the same way as procedural code, which I find easier to reason about than callbacks
+
+1751777800
+torque!~tachyon@user/torque
+and b) the fact that it syntactically emphasizes where the possible context switches are (compared to e.g. threading), which makes it much easier to notice and reason about possible race conditions etc
+
+1751778105
+Affliction!affliction@idlerpg/player/affliction
+I guess, it's just what I'm used to. It's been a few years (~ when python 3 was largely ready, but twisted hadn't yet been ported) so I don't recall the exact troubles I had. I know I ended up with many functions ending up async, since they or something they called ended up replying, or doing other I/O.
+
+1751778165
+Affliction!affliction@idlerpg/player/affliction
+In the event loop version, they'd call an abstraction over send() which just queued the reply, for the event loop to send as much as it can on the next iter.
+
+1751778279
+Affliction!affliction@idlerpg/player/affliction
+I do agree with what you said, in theory. In practice though, I did end up making a mess that I could no longer reason about. Pretty much ended up resting on the python 2 version (which, back then, I think was a handrolled select() loop) until twisted was ready for python 3.
+
+1751779456
+torque!~tachyon@user/torque
+not sure I'd consider using a huge chunk of middleware like twisted to really be standard asyncio any more 
+
+1751779488
+torque!~tachyon@user/torque
+but most of what I've done has been talking directly over serial ports or tcp/udp sockets
+
+1751823014
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Do you all have some tips for sort of working my way up to making a status bar? Like I'm looking at the zig-wayland example and theres some parts of the code that I'm confused on and I want to make sure that I start off with the basics instead of jumping straight in to trying to make this huge project
+
+1751830781
+torque!~tachyon@user/torque
+I mean you can try starting with a simpler project to get familiar with the language and learn more about it, or you can go whole hog in on trying to build the thing you want to make and just learn along the way
+
+1751830821
+torque!~tachyon@user/torque
+there's no reason you can't ask questions (here or elsewhere, maybe some wayland dev channel is appropriate for questions related to that aspect) about things you don't understand
+
+1751831764
+JetpackJackson!739e7f3d14@user/JetpackJackson
+True
+
+1751831768
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Alright thank you
+
+1751838413
+JetpackJackson!739e7f3d14@user/JetpackJackson
+is there a way to somehow run different functions in parallel without async? im thinking of having some function that "watches" the other functions (workspace-getter, battery state-getter, etc) and then updates the bar if any one of those change, but i need some way to run the different "getters" at the same time
+
+1751838834
+ifreund!2940d10f8b@user/ifreund
+you should probably just run them all in series one after the other
+
+1751838863
+JetpackJackson!739e7f3d14@user/JetpackJackson
+the issue is that my workspace getter is blocking the rest cause it reads the niri socket EventStream
+
+1751838883
+ifreund!2940d10f8b@user/ifreund
+ah, you are looking for an event loop
+
+1751838908
+ifreund!2940d10f8b@user/ifreund
+the poll man page should get you started
+
+1751838958
+ifreund!2940d10f8b@user/ifreund
+basically, you want to wait for some event to happen on some fd in a set (including the Wayland connection fd)
+
+1751838968
+JetpackJackson!739e7f3d14@user/JetpackJackson
+fd?
+
+1751838994
+ifreund!2940d10f8b@user/ifreund
+file descriptor
+
+1751838999
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751839005
+ifreund!2940d10f8b@user/ifreund
+here's a primitive example: https://codeberg.org/ifreund/waylock/src/commit/322f81c231ca8af30ad8dda3e39f4778be0e438b/src/Lock.zig#L166
+
+1751839023
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh nice thank you
+
+1751839028
+ifreund!2940d10f8b@user/ifreund
+just 2 fds, the Wayland connection and a pipe
+
+1751839092
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright ill have to look more into that
+
+1751839094
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thanks again!
+
+1751839095
+ifreund!2940d10f8b@user/ifreund
+libwayland makes you do a fair bit of ceremony around this to deal with multi threading, if you're wondering what all that stuff is about
+
+1751839103
+ifreund!2940d10f8b@user/ifreund
+no problem!
+
+1751839104
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ohh ok
+
+1751841247
+torque!~tachyon@user/torque
+a basic event loop is probably the right call for this sort of thing but in general threads are also a way to perform work in parallel without "async" 
+
+1751841464
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Oh ok good to know! Ive never coded anything with threads or polling before tbh
+
+1751841490
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Well OK I did once but it was in java and it was for a class
+
+1751845150
+smlavine!~smlavine@sourcehut/user/smlavine
+Hello -- does anyone know how I can view nicely formatted docs for this project? https://github.com/vrischmann/zig-sqlite
+
+1751845310
+torque!~tachyon@user/torque
+I think most of it is probably in the readme
+
+1751845350
+torque!~tachyon@user/torque
+the sqlite api is quite small, most of it is in the actual SQL queries which are the same irrespective of language (and are fairly well document on the sqlite website)
+
