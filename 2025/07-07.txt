@@ -1,0 +1,588 @@
+1751852147
+smlavine!~smlavine@sourcehut/user/smlavine
+torque: Is there not a common way to view generate docs a la <https://ziglang.org/documentation/master/std/> for a given library?
+
+1751854173
+torque!~tachyon@user/torque
+I believe there is build system integration for it, but it's not particularly useful if the code doesn't have doc comments in it. 
+
+1751854216
+torque!~tachyon@user/torque
+the build system integration is opt-in though I believe (i.e. you have to specifically support it in build.zig)
+
+1751854354
+Drixtan!~Drixtan@user/Drixtan
+add something like this: https://zigbin.io/78e08c
+
+1751895055
+JetpackJackson!739e7f3d14@user/JetpackJackson
+maybe im misunderstanding polling, but how can i get the polling to watch a custom function? right now the poll function just exits and prints 0 so i think im missing something cause i want it to watch my functions
+
+1751897021
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: the poll() system call isn't for watching "functions," it's for waiting for a file descriptor in a set to become readable/writable without blocking
+
+1751897094
+ifreund!2940d10f8b@user/ifreund
+your goal is to wait for the next event across a collection of event sources, including the wayland socket and the niri socket
+
+1751897132
+ifreund!2940d10f8b@user/ifreund
+when poll tells you that the wayland socket is readable without blocking, you then read from it and process those events
+
+1751897146
+ifreund!2940d10f8b@user/ifreund
+when poll tells you that the niri socket is readable without blocking you do the same
+
+1751897169
+ifreund!2940d10f8b@user/ifreund
+in this way, the only time your program blocks in a syscall is when it calls poll()
+
+1751897216
+ifreund!2940d10f8b@user/ifreund
+you're not running functions at the same time, you're running them one after another in series without blocking incoming events
+
+1751897262
+ifreund!2940d10f8b@user/ifreund
+(running functions at the same time can be done with threads, but trust me those are *far* more complex and come with lots of fun, incredibly confusing thing like data races
+
+1751899942
+mortmann!~mortmann@p57b29e86.dip0.t-ipconnect.de
+and threads can create pipes, so you get file descriptors to use with poll().
+
+1751900162
+ifreund!2940d10f8b@user/ifreund
+if you communicate between threads only using pipes, you should probalby use separate process rather than threads
+
+1751901113
+mortmann!~mortmann@p57b29e86.dip0.t-ipconnect.de
+even tho pipes are not made for threads, wouldnt threads still be faster to create/destroy, context switch, lower on mem usage?
+
+1751902377
+mortmann!~mortmann@p57b29e86.dip0.t-ipconnect.de
+processes/fork() are simpler to implement, so yes, its the better general recommendation.
+
+1751904807
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok so do i just pick random numbers to use for the file descriptors? i get what you're saying but im still a bit fuzzy on how to link the file descriptor to the output of the niri socket or the clock function (cause that one isnt a socket)
+
+1751904884
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like i get that like i have a set of events that i want to watch for, but since i have them in functions im trying to figure out how to use poll to do the stuff you said
+
+1751904893
+JetpackJackson!739e7f3d14@user/JetpackJackson
+sorry i only just saw this all now
+
+1751905195
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: a socket is a file descriptor
+
+1751905205
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1751905227
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so how would i get a file descriptor for my clock function (which just gets the time and prints it)?
+
+1751905257
+ifreund!2940d10f8b@user/ifreund
+For a clock, you would want to render whatever the current time is every time you draw a new frame
+
+1751905279
+ifreund!2940d10f8b@user/ifreund
+and the wayland server will tell you when to draw a new frame
+
+1751905304
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh.
+
+1751905307
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i was just like
+
+1751905317
+JetpackJackson!739e7f3d14@user/JetpackJackson
+using this library i found for the time
+
+1751905322
+JetpackJackson!739e7f3d14@user/JetpackJackson
+"zeit"
+
+1751905346
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i didnt realize that i was gonna have to like
+
+1751905354
+JetpackJackson!739e7f3d14@user/JetpackJackson
+do a wayland connection thingy
+
+1751905506
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/29571e heres my code
+
+1751906023
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it would be best to persist your timezone for zeit
+
+1751906038
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+it's not expensive, but does have cost to load and parse the timezone file each frame
+
+1751906141
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright ill try that
+
+1751906349
+JetpackJackson!739e7f3d14@user/JetpackJackson
+okay cool that works, now to figure out this socket fd stuff
+
+1751906374
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i feel like i need a "file descriptors and sockets for dummies" book tbh
+
+1751906384
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im used to thinking in functions that do things
+
+1751906489
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+in unix, "everything is a file" which means "everything has a file descriptor"
+
+1751906517
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+File descriptors have properties which the OS can monitor, ie "readable", "writeable". If a file descriptor is "readable" there is data to read on it. That's a "pollable" event
+
+1751906540
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+IE you can "poll" a file descriptor, meaning when it becomes "readable" your poll call will return
+
+1751906555
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Sockets are files
+
+1751906586
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so do i have to like output the functions to some file to get the file descriptor to work?
+
+1751906751
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/4cc0f3
+
+1751906784
+JetpackJackson!739e7f3d14@user/JetpackJackson
+this is just outputting "a different thing happened" on the two different polls so i think im holding it wrong
+
+1751906845
+ifreund!2940d10f8b@user/ifreund
+you're hitting the timeout, nothing is writing to fd 0 or fd 1
+
+1751906850
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you've set 0 and 1 as fds
+
+1751906852
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+you are polling fd = 0 and fd = 1
+
+1751906862
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+fd 0 is stdin, fd 1 is stdout
+
+1751906868
+ifreund!2940d10f8b@user/ifreund
+(by default)
+
+1751906901
+ifreund!2940d10f8b@user/ifreund
+if you were to write to the stdin of your program while it is running, you would see "a thing happened on 1"
+
+1751906936
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ohh
+
+1751906959
+ifreund!2940d10f8b@user/ifreund
+I said the wrong number, but you get the idea :D
+
+1751906963
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+You could poll the fd of the wayland server to get when you need to draw a frame, or you could make a timerfd which would be "readable" at some interval you specify.
+
+1751906965
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok so should i set those to different numbers or should i actually have my functions write to stdin somehow?
+
+1751906990
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The timerfd would be for your clock, but you can have different fds for different events
+
+1751907023
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: you should use the file descriptors for the wayland socket and the niri socket, along with what ever else you want to read events from
+
+1751907672
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Alright I'll have to figure out what number those are
+
+1751908400
+mortmann!~mortmann@p57b29e86.dip0.t-ipconnect.de
+if you want to call a print time function in fixed intervals, set the timeout for the poll, so the event loop ticks not only on fd events but also after specified amount of time
+
+1751909552
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: for wayland, you would call libwayland's wl_display_get_fd() function (wayland.client.wl.Display.getFd() in zig-wayland)
+
+1751909573
+ifreund!2940d10f8b@user/ifreund
+this will give you the fd opened by libwayland in wl_display_connect()
+
+1751909787
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok ill try that
+
+1751909788
+JetpackJackson!739e7f3d14@user/JetpackJackson
+thanks
+
+1751911283
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok i have this now: https://zigbin.io/62349d
+
+1751911405
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why is fd 5 hardcoded?
+
+1751911576
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause im just putting it there until i get the other stuff working
+
+1751911595
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, I wouldn't put random junk into your program
+
+1751911609
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok ill comment it out for now
+
+1751911614
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+just pass 2 entries in the pollfds
+
+1751911857
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/cf068a
+
+1751912088
+ifreund!2940d10f8b@user/ifreund
+that would be expected if there are no incoming events
+
+1751912093
+ifreund!2940d10f8b@user/ifreund
+try creating a wl_registry
+
+1751912100
+ifreund!2940d10f8b@user/ifreund
+(before you poll())
+
+1751912246
+JetpackJackson!739e7f3d14@user/JetpackJackson
+what do i put for the client, version, and id parameters for that?
+
+1751912441
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: you are looking at the libwayland-server API, you want the libwayland-client API
+
+1751912448
+ifreund!2940d10f8b@user/ifreund
+wl_display_get_registry()
+
+1751912484
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok
+
+1751912490
+ifreund!2940d10f8b@user/ifreund
+wayland.client.wl.Disply.getRegistry()
+
+1751912495
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm its still not printing
+
+1751912544
+ifreund!2940d10f8b@user/ifreund
+yes, you need to send the request to the server in order to get a reply
+
+1751912562
+ifreund!2940d10f8b@user/ifreund
+wl_display_flush()
+
+1751912678
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok cool
+
+1751912715
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm the wayland poll is printing "a thing happened" and the niri poll is printing "a different thing happened" 
+
+1751912739
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and what does that mean?
+
+1751912784
+JetpackJackson!739e7f3d14@user/JetpackJackson
+that im not doing something right
+
+1751912797
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what did you expect to happen?
+
+1751912821
+JetpackJackson!739e7f3d14@user/JetpackJackson
+to have it print "a thing happened" cause niri things are happening
+
+1751912854
+ifreund!2940d10f8b@user/ifreund
+I don't know how the niri socket protocol works, you may very well need to ask the server to send you events in order to get anything
+
+1751912861
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751912863
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oops
+
+1751912869
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i have to send "EventStream"
+
+1751912875
+JetpackJackson!739e7f3d14@user/JetpackJackson
+which i do in my niri function
+
+1751912886
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but how to connect it to the function
+
+1751912906
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and it's not obvious that _both_ sockets would have input at the same time
+
+1751912922
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you no longer have a loop
+
+1751912979
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wdym
+
+1751913114
+ifreund!2940d10f8b@user/ifreund
+the data sent by the wayland server might become readable by your program before the data sent by the niri server or vice-versa
+
+1751913146
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751913150
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how do i fix that
+
+1751913161
+ifreund!2940d10f8b@user/ifreund
+you don't, this is not a problem this is how things work
+
+1751913183
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+by keep doing poll in a loop
+
+1751913234
+ifreund!2940d10f8b@user/ifreund
+your "main loop" or "event loop" is calling poll repeatedly in a loop and processing what ever events arrive for as long as your program keeps running
+
+1751913280
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751913286
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(except that the loop was commented out in the last paste)
+
+1751913318
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh oops 
+
+1751913354
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm maybe ill have to look more at the niri wiki or smth
+
+1751913370
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so what do i do with my clock and niri-workspace-getter functions?
+
+1751913458
+ifreund!2940d10f8b@user/ifreund
+like I said earlier, forget about the clock function. The correct way to draw a clock is to draw the current time whenever you render a new frame
+
+1751913495
+ifreund!2940d10f8b@user/ifreund
+there is no need to wait for clock "events" and trigger drawing from there
+
+1751913514
+ifreund!2940d10f8b@user/ifreund
+the wayland server will tell you when to draw using frame callbacks on your wl_surface
+
+1751913569
+ifreund!2940d10f8b@user/ifreund
+As for the niri stuff, you probably want to store a copy of the niri state you recieve over the niri socket
+
+1751913589
+ifreund!2940d10f8b@user/ifreund
+then draw that saved state when you render a new frame, 
+
+1751913645
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1751913675
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i was waiting to do the drawing-a-bar stuff so i was having all my functions go to stdout
+
+1751913788
+ifreund!2940d10f8b@user/ifreund
+well you can also log whenever you recieve an event while testing
+
+1751913799
+ifreund!2940d10f8b@user/ifreund
+libwayland can even do it for you if you set WAYLAND_DEBUG=1
+
+1751913987
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1751914202
+JetpackJackson!739e7f3d14@user/JetpackJackson
+cause niri has EventStream which outputs a stream of events as they happen so i thought i needed to use that
+
+1751918356
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i hate that i keep getting stumped so easily with all this stuff
+
+1751919949
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok i squished together my code with the code from the hello-wayland-kitty-image stuff and now when i switch windows it prints when stuff happens until i close out the cat picture
+
+1751920045
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/3e3ef0
+
+1751920107
+JetpackJackson!739e7f3d14@user/JetpackJackson
+it only does stuff if one of the windows is the image tho
+
+1751920232
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: the display.dispatch() is not compatible with your custom poll() event loop
+
+1751920247
+ifreund!2940d10f8b@user/ifreund
+display.dispatch() is doing its own poll() internally and will block
+
+1751920250
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1751920253
+JetpackJackson!739e7f3d14@user/JetpackJackson
+drat
+
+1751920255
+ifreund!2940d10f8b@user/ifreund
+you want to only ever block in your poll()
+
+1751920280
+JetpackJackson!739e7f3d14@user/JetpackJackson
+should i get rid of the cat stuff then
+
+1751920323
+ifreund!2940d10f8b@user/ifreund
+you don't have to, you just need to integrate the wayland reading/writing/event dispatching into your event loop
+
+1751920332
+ifreund!2940d10f8b@user/ifreund
+which you will have to do at some point to make a bar
+
+1751920339
+ifreund!2940d10f8b@user/ifreund
+see waylock for an example of how to do so
+
+1751920357
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright thank you
+
+1751921010
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i feel weird copying stuff from your code
+
+1751921130
+ifreund!2940d10f8b@user/ifreund
+Copy the license if it makes you feel better, I don't know if this event loop stuff is really copyrightable though
+
+1751921147
+ifreund!2940d10f8b@user/ifreund
+there's not very many correct ways to write it
+
+1751921163
+ifreund!2940d10f8b@user/ifreund
+do focus on trying to understand what the code does rather than copying bindly though
+
+1751921202
+ifreund!2940d10f8b@user/ifreund
+see also the docs for the libwayland functions: https://wayland.freedesktop.org/docs/html/apb.html
+
+1751921216
+ifreund!2940d10f8b@user/ifreund
+wl_display_prepare_read_queue()
+
+1751921230
+ifreund!2940d10f8b@user/ifreund
+in particular the docs for that function describe how to integrate into your own event loop
+
+1751921301
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright ill go look
+
+1751922938
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im trying to make a queue like in the example but it only prints one event when i run it
+
+1751923201
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm wait
+
+1751923334
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok nope its being weird now
+
+1751923929
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/026a9b
+
+1751923942
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im sorry for asking all these dumb questions
+
+1751925202
+JetpackJackson!739e7f3d14@user/JetpackJackson
+and the cancelRead seems to completely stop the loop
+
+1751925218
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i think ive made myself more confused than when i started
+
+1751925220
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im sorry
+
