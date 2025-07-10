@@ -1,0 +1,940 @@
+1752022763
+LAC-Tech!~lewis@granite-phrase.bnr.la
+is there anyway to catch a whole switch statement? maybe there's n cases that can all through an error and I want to handle those with one block
+
+1752022831
+blackbeard420!blackbeard@2600:3c03::f03c:91ff:fe92:3f2a
+if i have a []const u8 string, whats the best way to do something like strcpy(). to copy it to a [256]u8 fixed size array? currently im using allocator.dupe() to get a copy but would like to avoid the allocation.
+
+1752022856
+LAC-Tech!~lewis@granite-phrase.bnr.la
+@memcpy?
+
+1752022868
+blackbeard420!blackbeard@2600:3c03::f03c:91ff:fe92:3f2a
+ah jeez i missed that. my bad thanks!
+
+1752022886
+blackbeard420!blackbeard@2600:3c03::f03c:91ff:fe92:3f2a
+exactly what i was looking for
+
+1752029074
+rvrb!~rvrb@156.146.51.228
+LAC-Tech is this what you are looking for? https://zig.fly.dev/p/bmyMBL7cnQL
+
+1752029373
+rvrb!~rvrb@156.146.51.228
+or alternatively, if you wanted to handle the error: https://zig.fly.dev/p/TTF-qdacuzW
+
+1752029375
+LAC-Tech!~lewis@granite-phrase.bnr.la
+rvrb: ahh you have to assign it to a result
+
+1752029393
+rvrb!~rvrb@156.146.51.228
+you don't have to, that's just if you use the switch as an expression
+
+1752029415
+rvrb!~rvrb@156.146.51.228
+er, wait, yeah you do; the point is to catch the switch's evaluation value
+
+1752029545
+rvrb!~rvrb@156.146.51.228
+if that doesn't work, the other option is to just wrap it in a block and `break :blk error` and catch the block's value, same idea
+
+1752029591
+rvrb!~rvrb@156.146.51.228
+the point being that errors aren
+
+1752029605
+rvrb!~rvrb@156.146.51.228
+ugh, keyboard - errors aren't thrown, they're evaluated/passed/returned
+
+1752030584
+LAC-Tech!~lewis@granite-phrase.bnr.la
+right. so I ended up putting it into its' own function. including throwing a "quit" error. not really an error, but I imagine it's fast in zig because they're just ints
+
+1752031129
+grayhatter!~grayhatte@user/grayhatter
+has anyone seen `thread 18195 panic: reached unreachable code` and `aborting due to recursive panic`
+
+1752032868
+grayhatter!~grayhatte@user/grayhatter
+is it normal a stringarrayhashmapunmanaged wouldn't survive a fork?
+
+1752037800
+LAC-Tech!~lewis@granite-phrase.bnr.la
+well, I've nerd sniped myself into writing a TUI library
+
+1752038034
+jan0sch!~jan0sch@user/jan0sch
+Good luck! ;-)
+
+1752038059
+LAC-Tech!~lewis@granite-phrase.bnr.la
+thanks! "I'll just use a few control codes" he said to himself, naiively
+
+1752038565
+ifreund!2940d10f8b@user/ifreund
+grayhatter: is the allocator you are using fork-safe?
+
+1752038596
+ifreund!2940d10f8b@user/ifreund
+especially if your program is mutithreaded, there are tons of footguns around fork()
+
+1752038747
+ifreund!2940d10f8b@user/ifreund
+I didn't have a good article on fork-safety off the top of my head, this one looks decent though: https://mikeash.com/pyblog/friday-qa-2012-01-20-fork-safety.html
+
+1752040088
+torque!~tachyon@user/torque
+LAC-Tech, have you checked out https://github.com/rockorager/libvaxis
+
+1752041100
+LAC-Tech!~lewis@granite-phrase.bnr.la
+torque: yeah we exchanged a lot of messages and I still couldn;'t figure out "hello world". so clarly it's not the lib for me lol
+
+1752043526
+grayhatter!~grayhatte@user/grayhatter
+ifreund: zig's GPA... but help me out here, how can an allocator not be fork safe?
+
+1752043576
+grayhatter!~grayhatte@user/grayhatter
+I'm simply fork'ing to the background, and the parent exits after opening, and writing the child pid
+
+1752043905
+ifreund!2940d10f8b@user/ifreund
+grayhatter: is your program single-threaded or not?
+
+1752043921
+ifreund!2940d10f8b@user/ifreund
+If it is single-threaded then I may be off the mark
+
+1752043952
+grayhatter!~grayhatte@user/grayhatter
+it's completly single threaded
+
+1752044011
+ifreund!2940d10f8b@user/ifreund
+I definitely can't explain it without seeing code then :D
+
+1752044121
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/benevolence/blob/src/main.zig#L105
+
+1752044138
+grayhatter!~grayhatte@user/grayhatter
+panic is here https://srctree.gr.ht/repo/benevolence/blob/src/main.zig#L284
+
+1752044143
+grayhatter!~grayhatte@user/grayhatter
+but only if it's in the background
+
+1752044559
+ifreund!2940d10f8b@user/ifreund
+grayhatter: huh, I don't spot anything fishy from a quick skim
+
+1752044574
+ifreund!2940d10f8b@user/ifreund
+The next things I'd try personally would be using the libc allocator
+
+1752044578
+ifreund!2940d10f8b@user/ifreund
+and using valgrind
+
+1752044599
+ifreund!2940d10f8b@user/ifreund
+also, what exactly does it crash on?
+
+1752044613
+ifreund!2940d10f8b@user/ifreund
+like, is it segfaulting? or some zig safety check?
+
+1752044629
+grayhatter!~grayhatte@user/grayhatter
+when running in foreground, it doesn't crash, when running in background, it crashes on that getOrPut line
+
+1752046525
+grayhatter!~grayhatte@user/grayhatter
+eventually, I'm just gonna start assuming that every bug in my code is unreachable in the stdlib 
+
+1752046527
+grayhatter!~grayhatte@user/grayhatter
+https://github.com/ziglang/zig/blob/master/lib/std/debug/MemoryAccessor.zig#L62
+
+1752046539
+grayhatter!~grayhatte@user/grayhatter
+/ own pid is always valid
+
+1752046544
+grayhatter!~grayhatte@user/grayhatter
+this feels related
+
+1752048781
+grayhatter!~grayhatte@user/grayhatter
+can confirm, the cached pid is from the parent, not the child, linux returns ESRCH because the parent has already exited
+
+1752048939
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: operator < not allowed for type '[:0]const u8'
+
+1752049006
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I try to sort with a lessThen fn
+
+1752049030
+meidam!~meidam@user/meidam
+not lessThan?
+
+1752049090
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah lessThan
+
+1752049355
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://www.openmymind.net/Sorting-Strings-in-Zig/
+
+1752049358
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm
+
+1752049706
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that website is golden, thx openmymind
+
+1752050976
+ifreund!2940d10f8b@user/ifreund
+grayhatter: nice fined
+
+1752050978
+ifreund!2940d10f8b@user/ifreund
+*find
+
+1752065183
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/594568 alright this is where im at now, callgrind is still showing a lot of calls tho
+
+1752067268
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: nice! I don't see anything obviously wrong in the wayland parts this time, I can't speak to the niri things though
+
+1752067282
+ifreund!2940d10f8b@user/ifreund
+what does callgrind show exactly?
+
+1752067365
+JetpackJackson!739e7f3d14@user/JetpackJackson
+it says that libwayland-client was called 1325 times if im reading this right
+
+1752067552
+JetpackJackson!739e7f3d14@user/JetpackJackson
+hmm i should figure out how to get the cat to display up at the top like a real bar and then figure out how to write text on the bar
+
+1752067555
+JetpackJackson!739e7f3d14@user/JetpackJackson
+and also the clock
+
+1752067844
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: I think your problem is that you aren't reading all data available on the niri socket after poll returns
+
+1752067854
+ifreund!2940d10f8b@user/ifreund
+you only read one line
+
+1752067898
+ifreund!2940d10f8b@user/ifreund
+instead, you should use a non-blocking read and keep reading until you get EAGAIN
+
+1752067913
+ifreund!2940d10f8b@user/ifreund
+when you get EAGAIN, then it's time for you to wait in poll() again
+
+1752067974
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok
+
+1752067988
+ifreund!2940d10f8b@user/ifreund
+if you haven't read all the data available on the niri socket, then calling poll() like that to wait until there is more data to read is kinda pointless and just wastes CPU
+
+1752067995
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i dont want all the niri events though, cause like every time i change window focus thats an event
+
+1752068031
+ifreund!2940d10f8b@user/ifreund
+I don't know how the niri protocol works. You may very well have to read and discard even the events you don't care about if they don't give you a way to filter
+
+1752068042
+JetpackJackson!739e7f3d14@user/JetpackJackson
+bummer
+
+1752068067
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah its either EventStream or manually calling the socket with the specific event but id have to get the timing right
+
+1752071797
+JetpackJackson!739e7f3d14@user/JetpackJackson
+maybe i should look at adding the clock now to get my mind off the niri stuff
+
+1752073399
+ezzieyguywuf!~wolfgangs@user/ezzieyguywuf
+just watched the 2025 roadmap video a few days ago, I think the new IO stuff sounds great!
+
+1752073406
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/f5dfad how am i supposed to get/set a layer shell surface without having one already? i think im holding it wrong but im looking at creek and zelbar to see how they do it and also the wayland docs and im still kinda confused
+
+1752073437
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like instead of the cat being a normal window, i want it to be like a normal bar that has its own space on the screen
+
+1752073759
+ezzieyguywuf!~wolfgangs@user/ezzieyguywuf
+it reminds me a lot of how IO is done in haskell
+
+1752074568
+pkal!~user@2a02:810d:868a:3900:8372:3acd:37fc:ffb6
+What is the best way to do something like fetch-and-add (i.e. atomically increment, lock inc) in Zig, given a memory location to say a u32?
+
+1752074647
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I assume std.atomic.fetchAdd?
+
+1752074677
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ehm, I mean std.atomic.Value.fetchAdd
+
+1752074715
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or @atomicRmw with .Add if you want to do it outside Value
+
+1752075870
+pkal!~user@2a02:810d:868a:3900:8372:3acd:37fc:ffb6
+Thanks, I remember reading about atomicRmw but I dismissed it; will take another look!
+
+1752077854
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how can i put my text that im printing to stdout onto the surface/buffer/picture of the cat?
+
+1752077863
+JetpackJackson!739e7f3d14@user/JetpackJackson
+also im having issues with the clock
+
+1752080257
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+JetpackJackson: what's your clock issue?
+
+1752080337
+JetpackJackson!739e7f3d14@user/JetpackJackson
+just trying to get a timer going with a file descriptor so i can poll it and update properly
+
+1752080363
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like do i use your library or do i use posix for clock stuff?
+
+1752080442
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/a954f7
+
+1752080447
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i feel stupid again
+
+1752080605
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Your types are wrong, you need to use std.os.linux.timerfd_clockid_t (which is an enum and contains MONOTONIC also)
+
+1752080641
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+my library will handle the local time and time formatting, and optionally you can grab the timestamp with it too (but that is just calling std.time.timestamp()
+
+1752080836
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1752080875
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i just keep going in circles i think trying to figure out how to update/draw properly and how to get the workspaces to display on the buffer and how to get the buffer to sit right and etc
+
+1752081104
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I don't know the entire wayland render flow. I think it tells you when you can draw / commit a new frame?
+
+1752081107
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But you don't *have* to
+
+1752081151
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Consider your bar: there are events that change the information on it. Each event that does that triggers an update of the pixels
+
+1752081168
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Those events are.... time passage (clock), workspace change (niri), etc
+
+1752081201
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1752081280
+ifreund!2940d10f8b@user/ifreund
+the correct way to drive drawing would be to draw in response to frame callbacks from wayland unless you have nothing new to draw
+
+1752081306
+ifreund!2940d10f8b@user/ifreund
+in which case wait until you have something new to draw
+
+1752081325
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright so i *do* have to check the wayland events then...
+
+1752081353
+ifreund!2940d10f8b@user/ifreund
+well, yeah to draw a window you are going to have to do a lot of wayland events/requests
+
+1752081376
+JetpackJackson!739e7f3d14@user/JetpackJackson
+how can i poll the clock every minute/have the clock be polled properly cause rn its not printing stuff when i poll it
+
+1752081410
+ifreund!2940d10f8b@user/ifreund
+I would not "poll the clock" at all, it's a waste of CPU. Instead just check the current time when rendering and draw that
+
+1752081456
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im guessing i need some sort of struct for all this then
+
+1752081478
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/79bfac also i figured out nicer logging 
+
+1752081480
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ifreund: unless you have no new events and multiple minutes pass
+
+1752081485
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+not relevant if drawing each frame though
+
+1752081520
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i dont have any events cause i cant figure out how to draw on the cat/update the image/do stuff to that buffer
+
+1752081522
+JetpackJackson!739e7f3d14@user/JetpackJackson
+its just static
+
+1752081584
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ifreund will know better, but I believe when you get the wayland event to draw you are allowed to write to that shared memory
+
+1752081610
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+and then you commit it - telling wayland you aren't going to touch it again
+
+1752081731
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: maybe you need some more resources. Some people find https://wayland-book.com quite helpful as an introduction
+
+1752081736
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+But yeah for the clock you can just track the time of the last frame. If delta_t > 60s (assuming you have 1 minute resolution)
+
+1752081781
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ive looked at bits of that site but ill look at it more
+
+1752081787
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i need to figure out frames cause i dont even have those in my code
+
+1752081826
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok im trying to attach the cat buffer again to the surface when i change workspaces as a test but nothing is changing
+
+1752082800
+grayhatter!~grayhatte@user/grayhatter
+ifreund: just fyi https://github.com/ziglang/zig/pull/24376 also thanks for your help debugging :)
+
+1752082863
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it really was an unreachable in std...
+
+1752082877
+ifreund!2940d10f8b@user/ifreund
+grayhatter: thank you for the patch!
+
+1752082890
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: it always is
+
+1752082895
+grayhatter!~grayhatte@user/grayhatter
+(rarely is)
+
+1752084551
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright i can resize the cat but i think my code is not great https://zigbin.io/05bdba
+
+1752085282
+JetpackJackson!739e7f3d14@user/JetpackJackson
+this is gonna be a long project lmao
+
+1752089434
+triallax!~triallax@lacerte/triallax
+hi folks
+
+1752089506
+triallax!~triallax@lacerte/triallax
+zig fails to build my project on ReleaseSafe, and the error doesn't give me much to go on
+
+1752089519
+triallax!~triallax@lacerte/triallax
+https://0x0.st/s/-BEkNGU_-NKmTT1F4aiQ4Q/8GCA.txt
+
+1752089532
+triallax!~triallax@lacerte/triallax
+other build modes succeed
+
+1752089584
+triallax!~triallax@lacerte/triallax
+how do i get started on debugging this? or does anyone know a fix?
+
+1752089908
+ifreund!2940d10f8b@user/ifreund
+first step is to copy the command that terminated unexpectedly and run it independently from the build system
+
+1752089920
+ifreund!2940d10f8b@user/ifreund
+you'll have to delete the --listen arg at the end
+
+1752089950
+ifreund!2940d10f8b@user/ifreund
+and see if you can get any more information out of it, you might need a debug compiler and gdb 
+
+1752089955
+triallax!~triallax@lacerte/triallax
+i have lldb on hand
+
+1752089966
+triallax!~triallax@lacerte/triallax
+but by debug compiler you mean?
+
+1752089983
+ifreund!2940d10f8b@user/ifreund
+a zig compiler built with debug info
+
+1752089987
+triallax!~triallax@lacerte/triallax
+right
+
+1752089992
+triallax!~triallax@lacerte/triallax
+oh, it segfaults
+
+1752090021
+triallax!~triallax@lacerte/triallax
+inb4 it needs bigger stack
+
+1752090336
+grayhatter!~grayhatte@user/grayhatter
+triallax: I've seen the exact same issue I'd be very interested in what you learn
+
+1752090665
+triallax!~triallax@lacerte/triallax
+yes, i'm taking a look
+
+1752091114
+triallax!~triallax@lacerte/triallax
+meanwhile while zig is building i'm gonna try bisecting my code
+
+1752091121
+triallax!~triallax@lacerte/triallax
+because i recall this issue was not there before
+
+1752091154
+triallax!~triallax@lacerte/triallax
+found a good commit :')
+
+1752092286
+kenrap!~kenrap@user/kenrap
+triallax: 👍
+
+1752092394
+triallax!~triallax@lacerte/triallax
+i did find the commit but it has many changes so it's hard for to to pin down what's causing the failure :D
+
+1752092403
+triallax!~triallax@lacerte/triallax
+i'll just wait for zig to finish building for now
+
+1752093146
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: did you get a disas in the debugger pointing at what assembly instruction was faulting?
+
+1752093151
+andrewrk!~andrewrk@mail.ziglang.org
+and a stack trace
+
+1752093171
+triallax!~triallax@lacerte/triallax
+i think i got a trace but it's fairly useless because no symbols
+
+1752093606
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Just watched this,  https://www.youtube.com/watch?v=M9UWgw_aW28  and am thankful that your solution to making builds fast isn't AWS credits.
+
+1752093621
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+<3
+
+1752094258
+dsal!sid13060@id-13060.lymington.irccloud.com
+I don't quite understand optionals.  If I have a struct with an optional array, does it have space for the array?  If so, how do I use it?
+
+1752094410
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. https://ziglang.org/documentation/0.14.1/#if-with-Optionals
+
+1752094591
+dsal!sid13060@id-13060.lymington.irccloud.com
+The specific thing I'm trying to do is initialize a value if it's null.  I have reached a line of code where I know it's null and want it to be not null.
+
+1752094627
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you assign the value to it, that's it
+
+1752094716
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+T is automatically converted to ?T
+
+1752094940
+triallax!~triallax@lacerte/triallax
+andrewrk: i have a proper trace now
+
+1752094950
+triallax!~triallax@lacerte/triallax
+it's in llvm, a sec
+
+1752094993
+dsal!sid13060@id-13060.lymington.irccloud.com
+Gliptic: Ok, so in my case, it seems `a.field = undefined` seems to do what I want.
+
+1752095009
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+eh, I doubt it..
+
+1752095010
+triallax!~triallax@lacerte/triallax
+not quite
+
+1752095028
+triallax!~triallax@lacerte/triallax
+setting a variable with a pure array type to undefined is fine, but a nullable one, probably not
+
+1752095045
+triallax!~triallax@lacerte/triallax
+something like @splat(undefined) maybe
+
+1752095048
+triallax!~triallax@lacerte/triallax
+i forgot the exact syntax
+
+1752095048
+dsal!sid13060@id-13060.lymington.irccloud.com
+Heh, well it _seems_ to do what I want.
+
+1752095110
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+pretty sure that will wholly undefined, so you can't say it's "non-null"
+
+1752095114
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*will be
+
+1752095118
+triallax!~triallax@lacerte/triallax
+yep
+
+1752095158
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as triallax said, if you want an array where the elements are undefined, you'll have to do @splat, or perhaps @as([N]T, undefined)
+
+1752095165
+triallax!~triallax@lacerte/triallax
+std.mem.zeroes works too
+
+1752095171
+triallax!~triallax@lacerte/triallax
+maybe
+
+1752095182
+dsal!sid13060@id-13060.lymington.irccloud.com
+Well, it's working as I expect…  What is this doing if not what I want?
+
+1752095210
+triallax!~triallax@lacerte/triallax
+it can set the null bit to whatever the hell it wants
+
+1752095210
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+dsal: you're setting the flag part as undefined
+
+1752095217
+triallax!~triallax@lacerte/triallax
+(which can and does differ between build modes)
+
+1752095241
+dsal!sid13060@id-13060.lymington.irccloud.com
+Oh.  Weird.   OK.  This is a good opportunity for a build break.  Let me see if a different mode fails.
+
+1752095253
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it doesn't necessarily break
+
+1752095271
+triallax!~triallax@lacerte/triallax
+that's the thing, there are zero guarantees around what value undefined has
+
+1752095274
+triallax!~triallax@lacerte/triallax
+so don't rely on it
+
+1752095280
+triallax!~triallax@lacerte/triallax
+it may or may not break
+
+1752095313
+triallax!~triallax@lacerte/triallax
+andrewrk: https://0x0.st/s/4yo4918W8c1c-nLgPZFD6A/8Dr2.txt
+
+1752095329
+dsal!sid13060@id-13060.lymington.irccloud.com
+Yeah, it does work in all the cases.  I'd really want an error around here because this is intuitive…
+
+1752095416
+dsal!sid13060@id-13060.lymington.irccloud.com
+Plain @splat doesn't work, but @as does, so I'll just go with that.
+
+1752095433
+triallax!~triallax@lacerte/triallax
+possible llvm bug? not sure
+
+1752095513
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: oh this might be an llvm bug indeed
+
+1752095531
+andrewrk!~andrewrk@mail.ziglang.org
+the way to debug this is to generate .ll file and then use llvm-reduce 
+
+1752095620
+triallax!~triallax@lacerte/triallax
+i'm not familiar with .ll files, how do i get that?
+
+1752095802
+triallax!~triallax@lacerte/triallax
+bingo
+
+1752095824
+triallax!~triallax@lacerte/triallax
+i have a labeled switch in my code
+
+1752095829
+triallax!~triallax@lacerte/triallax
+i switch that to a good ol while loop
+
+1752095830
+triallax!~triallax@lacerte/triallax
+issue goes away
+
+1752097274
+rvrb!~rvrb@156.146.51.228
+I'm working on resuscitating a project that creates Zig bindings for Godot. I'm thinking about a perf thing. I know the answer is always "try both and benchmark it", but I wanted to check here for gut feelings on something first
+
+1752097292
+rvrb!~rvrb@156.146.51.228
+right now, the code is binding callbacks for each type with comptime generics. so each type is getting its own monomorphized version of each callback function. it works, but it is way complicated of an implementation and maintaining it sucks
+
+1752097300
+rvrb!~rvrb@156.146.51.228
+I am partial to ripping that all out and just attaching a VTable to the type's userdata. anyone have gut feelings about this?
+
+1752097426
+triallax!~triallax@lacerte/triallax
+i mucked around and got bitcode and know how to use llvm-reduce now, but i don't know what script to pass
+
+1752099532
+blackbeard420!blackbeard@2600:3c03::f03c:91ff:fe92:3f2a
+rvrb im new to zig but long time working with godot's c++. got a link to the project?
+
+1752099716
+triallax!~triallax@lacerte/triallax
+god finally i figured out what llvm thing to run to get the crash
+
+1752099721
+triallax!~triallax@lacerte/triallax
+that took a lot of messing around
+
+1752099963
+andrewrk!~andrewrk@mail.ziglang.org
+it always takes me forever too
+
+1752100090
+rvrb!~rvrb@156.146.51.228
+blackbeard420: be forewarned, it's extremely high churn right now. we forked godot-zig since the maintainer is MIA. https://github.com/gdzig/gdzig
+
+1752100107
+triallax!~triallax@lacerte/triallax
+after some messing around i also got the right llvm-reduce command
+
+1752100110
+triallax!~triallax@lacerte/triallax
+now we wait
+
+1752100131
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: nice, impressed that you took the time and managed to go this far
+
+1752100151
+triallax!~triallax@lacerte/triallax
+always up for learning something new :)
+
+1752100161
+andrewrk!~andrewrk@mail.ziglang.org
+after the reduction is done it will either be a zig llvm backend bug or an upstream llvm bug
+
+1752100251
+triallax!~triallax@lacerte/triallax
+how long should i expect it to take?
+
+1752100362
+andrewrk!~andrewrk@mail.ziglang.org
+maybe 20 mins? you should be able to observe the .ll file shrinking while it works
+
+1752100379
+triallax!~triallax@lacerte/triallax
+ok, probably going to grab a meal while i wait then
+
+1752100388
+andrewrk!~andrewrk@mail.ziglang.org
+I'll make tea :)
+
+1752100394
+triallax!~triallax@lacerte/triallax
+nice!
+
+1752102191
+triallax!~triallax@lacerte/triallax
+the idea of an automatic test case reducer fascinates me
+
+1752102197
+triallax!~triallax@lacerte/triallax
+maybe i'll write one for my next project
+
+1752102203
+triallax!~triallax@lacerte/triallax
+(possibly in zig :D)
+
+1752102350
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: ah you may be interested to know that project is already started! we have 'zig reduce'
+
+1752102366
+andrewrk!~andrewrk@mail.ziglang.org
+the basic design is in place but it needs more kinds of reductions added
+
+1752102370
+triallax!~triallax@lacerte/triallax
+nice, that's great to know
+
+1752102384
+andrewrk!~andrewrk@mail.ziglang.org
+it's one of the "jit commands" so you can try out edits to it without recompiling zig
+
+1752102406
+triallax!~triallax@lacerte/triallax
+i meant more writing one for my own curiousity so it likely wouldn't be anything super sophisticated
+
+1752102435
+andrewrk!~andrewrk@mail.ziglang.org
+yeah it's a pretty fun concept
+
+1752102460
+triallax!~triallax@lacerte/triallax
+i've been enjoying zig a lot in my current project but i admit managing memory manually gets tiring after a while :)
+
+1752102480
+andrewrk!~andrewrk@mail.ziglang.org
+a related concept that is kind of the inverse is fuzzing + smith, in which you generate random bytes and then convert those random bytes into meaningful inputs to test, combined with a genetic algorithm and code coverage as the fitness function
+
+1752102500
+triallax!~triallax@lacerte/triallax
+yeah, very interesting stuff
+
+1752102548
+andrewrk!~andrewrk@mail.ziglang.org
+be sure to try out some of the memory management tricks that make it less annoying (and better perf anyway)
+
+1752102563
+triallax!~triallax@lacerte/triallax
+hm, like?
+
+1752102573
+andrewrk!~andrewrk@mail.ziglang.org
+arenas
+
+1752102578
+triallax!~triallax@lacerte/triallax
+right yeah
+
+1752102579
+andrewrk!~andrewrk@mail.ziglang.org
+clever use of arrays and array hash map
+
+1752102595
+triallax!~triallax@lacerte/triallax
+these parts i'm actually fine with
+
+1752102596
+triallax!~triallax@lacerte/triallax
+for context
+
+1752102622
+triallax!~triallax@lacerte/triallax
+it's a language implementation, and for the actual running of the program i use reference counting
+
+1752102632
+triallax!~triallax@lacerte/triallax
+but 1. from profiling i see that takes up a lot of time 2. it's annoying
+
+1752102645
+triallax!~triallax@lacerte/triallax
+i'm probably going to write a small precise gc for that part
+
+1752102647
+andrewrk!~andrewrk@mail.ziglang.org
+you could try gc instead
+
+1752102649
+triallax!~triallax@lacerte/triallax
+yep
+
+1752102703
+triallax!~triallax@lacerte/triallax
+however, interestingly enough, even with reference counting and an extremely unopimised vm it's still faster than most of the other implementations i've tried
+
+1752102711
+triallax!~triallax@lacerte/triallax
+so that's neat
+
+1752103004
+triallax!~triallax@lacerte/triallax
+i'm also quite interested in the fuzzing aspect i know for zig it's still a wip
+
+1752103018
+triallax!~triallax@lacerte/triallax
+at some point i'm probably going to just integrate with afl++
+
