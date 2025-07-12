@@ -130,3 +130,71 @@ I have fifo.LinearFifo deleted in the wrangle-writer-buffering branch, which is 
 grayhatter!~grayhatte@user/grayhatter
 eg https://ziglang.org/documentation/master/std/#std.io.Writer.sendFile
 
+1752282054
+andrewrk!~andrewrk@mail.ziglang.org
+dear lord I just accidentally created a "firefox tab group" for the first time
+
+1752282264
+torque!~tachyon@user/torque
+I guess the way you know to look at `.err` for context vs `.seek_err` is just based on what methods have been called?
+
+1752282340
+andrewrk!~andrewrk@mail.ziglang.org
+the seek functions are primarily interested in seek_err
+
+1752282353
+andrewrk!~andrewrk@mail.ziglang.org
+they use it to avoid pointlessly attempting subsequent seeks\
+
+1752282379
+torque!~tachyon@user/torque
+I'm not sure I really understand how the top level thing that has e.g. the file writer and that context gets coupled to lower level code working on the interface? I guess the idea is the low level mostly only cares if a call succeeds or fails otherwise it bails up to the high level?
+
+1752282397
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I'm using writevAll extensively in verse, is using the writer likely to be faster over exposing the downstream writev?
+
+1752282443
+torque!~tachyon@user/torque
+ah, so err is the main external-facing context field and the other ones are largely internal (I figured that out myself for the sendfile errors at least, but those return 0 instead of the error)
+
+1752282444
+andrewrk!~andrewrk@mail.ziglang.org
+I'm sorry, I'm afraid I don't understand either question
+
+1752282567
+grayhatter!~grayhatte@user/grayhatter
+how confident are you in the pref improvements in the new API? If I'm using writev with the old vtable api, is it likely the new API will be faster given the new API would memcpy the large io_vect into the buffer? or is unlikely to be faster?
+
+1752282611
+torque!~tachyon@user/torque
+I think I answered my question in my head after thinking about it further
+
+1752282667
+torque!~tachyon@user/torque
+basically anything that is interacting with the interface (vtable) instead of a specific writer like a FileWriter would need to be written in such a way that it doesn't have special behavior coupled to certain types of writers
+
+1752282703
+torque!~tachyon@user/torque
+so it's pretty much always reasonable to return generic errors up to the layers that actually do have the specialized thing and can care about how it failed
+
+1752282749
+andrewrk!~andrewrk@mail.ziglang.org
+re: perf improvements: strange question. I provided perf data points and made no claims about perf otherwise
+
+1752282802
+andrewrk!~andrewrk@mail.ziglang.org
+well, I claimed that the 20% worse perf compared to manual buffering is due to missed devirtualization. is that what you are asking me about my confidence of?
+
+1752282838
+torque!~tachyon@user/torque
+it's an interesting pattern and I will be interested to play around with it when 0.15.0 is released and I start updating things
+
+1752282844
+torque!~tachyon@user/torque
+but I still want error payloads!
+
+1752282886
+andrewrk!~andrewrk@mail.ziglang.org
+yeah I know
+
