@@ -1,0 +1,888 @@
+1752193774
+LAC-Tech!~lewis@granite-phrase.bnr.la
+is there anyway to comptime concatenate an array of comptime strings at... comp time? (feels weird saying comp time so much)
+
+1752194000
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: did string ++ other_string not work?
+
+1752194040
+triallax!~triallax@lacerte/triallax
+a loop with that should work i think
+
+1752194062
+triallax!~triallax@lacerte/triallax
+but also once https://github.com/ziglang/zig/issues/1291 is a thing you could use std.mem.concat as well
+
+1752194086
+grayhatter!~grayhatte@user/grayhatter
+var full_slice: []const u8 = ""; for (array_of_slices) |each| full_slice = full_slice ++ each;
+
+1752194088
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://github.com/LAC-Tech/todostack/blob/c5acaa1e7c82ebdf9bd29361ac5b1e0fd16659cd/src/term.zig#L70 I have that. though maybe it's fine, not sure what ++ in a loop does
+
+1752194103
+triallax!~triallax@lacerte/triallax
+why do you think it might not be fine?
+
+1752194114
+triallax!~triallax@lacerte/triallax
+it works in a loop the same as it does outside
+
+1752194178
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I guess just my instincts from doing this at runtime needing lots of reallocation. but I guess that can't happen here
+
+1752194185
+LAC-Tech!~lewis@granite-phrase.bnr.la
+ok nvm
+
+1752194192
+LAC-Tech!~lewis@granite-phrase.bnr.la
+thanks for the sanity check
+
+1752194198
+grayhatter!~grayhatte@user/grayhatter
+each use of @This() should be Term
+
+1752194208
+triallax!~triallax@lacerte/triallax
+i get that gut feeling, but it should be fine afaik
+
+1752194213
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: why
+
+1752194273
+grayhatter!~grayhatte@user/grayhatter
+because Term is more specific than @This()
+
+1752194294
+grayhatter!~grayhatte@user/grayhatter
+or because that's the dialect of zig
+
+1752194307
+LAC-Tech!~lewis@granite-phrase.bnr.la
+but then if I rename it I have to rename all the parameters. (I think it was originally TUI lol)
+
+1752194327
+triallax!~triallax@lacerte/triallax
+if you use zls it should rename fine i think
+
+1752194342
+triallax!~triallax@lacerte/triallax
+but also i usually do const Self = @This(), though i admit that really isn't that different from just using @This() directly
+
+1752194346
+grayhatter!~grayhatte@user/grayhatter
+1) that's a good thing, it should be painful to bulk change an api like that
+
+1752194348
+triallax!~triallax@lacerte/triallax
+it's a common pattern though
+
+1752194361
+LAC-Tech!~lewis@granite-phrase.bnr.la
+just seems like an odd thing to do. rust is &self, javascript is this. why is Zig special here?
+
+1752194379
+grayhatter!~grayhatte@user/grayhatter
+2) it's easy to make that change, as triallax mentioned, there is plenty of ways, you just gotta learn the tools 
+
+1752194409
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I still have no idea what this is suppoesd to buy me.
+
+1752194459
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: https://zigbin.io/66d5e8 which function is easier to understand the context?
+
+1752194514
+grayhatter!~grayhatte@user/grayhatter
+you have the option of embedding useful information into the function, or not embedding useful information... why would you choose to make your code harder to read/understand?
+
+1752194567
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: you should write code that's easier to read, not easier to write... both anyone else who ever uses your code will thank you.... but more importantly future you, will also thank you
+
+1752194629
+grayhatter!~grayhatte@user/grayhatter
+as to why zig is different, zig wants to be a language of code that is easy to maintain. &self is less eaiser to maintain, and spot bugs or issues, than &term
+
+1752194665
+grayhatter!~grayhatte@user/grayhatter
+and I'll omit my feelings on rust, but javascript is an example of what **never** to do
+
+1752194678
+grayhatter!~grayhatte@user/grayhatter
+js takes every chance it gets to make the wrong decision
+
+1752194759
+grayhatter!~grayhatte@user/grayhatter
+I used to write self a lot, hold over from writing python... I don't regret breaking that habit, and I'm frustrated reading my old zig code that still uses self... it's just better having names that mean something
+
+1752194855
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I'll see if the rename works. if it doesn't I am sticking with @This() :) PS: I don't mind javascript
+
+1752194954
+LAC-Tech!~lewis@granite-phrase.bnr.la
+rename does work. ok that looks alright
+
+1752195002
+grayhatter!~grayhatte@user/grayhatter
+once you get used to using a good language, js becomes more and more annoying... you'll get there one day
+
+1752195106
+grayhatter!~grayhatte@user/grayhatter
+I guess I should stop assuming that's true for everyone... I do know people who blame others when they ship broken code. I just try to pretend they don't exist 
+
+1752195182
+torque!~tachyon@user/torque
+I think `self` as a convention for the variable name of the first argument of a "method" is fine and makes sense. it gives more context that it is a method-like call, and if you are looking at the body of the function with no context, the name doesn't really matter anyway, since what you can do with it is defined by its type
+
+1752195257
+grayhatter!~grayhatte@user/grayhatter
+what do you mean what you can do with it is defined by its type?
+
+1752195281
+torque!~tachyon@user/torque
+I don't really find `term.wrangleThing()` to be inherently more legible than `self.wrangleThing()`, since what actually matters is `wrangleThing` which is non-local information anyway
+
+1752195287
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I've used a lot of good languages. JS is honestly not bad. B- maybe. And didn't you say before you wrote python? clearly you have no taste and are not a good judge
+
+1752195300
+torque!~tachyon@user/torque
+it appears you have mis spelt "F-"
+
+1752195329
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I know it's like systems dev meme now
+
+1752195345
+grayhatter!~grayhatte@user/grayhatter
+python is a reasonable scripting language, it makes very few mistakes... js is full of design bugs
+
+1752195346
+torque!~tachyon@user/torque
+yes, I am a card-carrying member of the javascript haters club
+
+1752195350
+LAC-Tech!~lewis@granite-phrase.bnr.la
+people who never complain about shellscript but have anyeurisms over ES6
+
+1752195357
+torque!~tachyon@user/torque
+I absolutely hate bash also fwiw
+
+1752195360
+grayhatter!~grayhatte@user/grayhatter
+same
+
+1752195363
+andrewrk!~andrewrk@mail.ziglang.org
+I like ES5 tho
+
+1752195363
+LAC-Tech!~lewis@granite-phrase.bnr.la
+well, at least that's consistent
+
+1752195378
+andrewrk!~andrewrk@mail.ziglang.org
+that's probably my most boomer take
+
+1752195386
+torque!~tachyon@user/torque
+I would maybe rather write js than shell, but why would i hurt myself like that either way
+
+1752195393
+grayhatter!~grayhatte@user/grayhatter
+torque and I agree on few things, js and bash being painful should tell you something
+
+1752195441
+LAC-Tech!~lewis@granite-phrase.bnr.la
+would much rather use ES6 than python for scripting. for one thing it's a lot faster. it has a better drop in static typing system, the eco system is bigger, bun is really good. Also, it's the native language of the most widely deployed VM on earth - the web browser. and any zig programmer surely appreciates JS's object literals ;)
+
+1752195472
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: that's some grade A+ copium you've got there
+
+1752195482
+torque!~tachyon@user/torque
+lol
+
+1752195505
+torque!~tachyon@user/torque
+i compile all of my zig programs to web assembly so that i can run them in my favorite software, the web braowser
+
+1752195532
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what's the WASM -> DOM interaction like now? or do you just do GUIs in webGL or w/e?
+
+1752195557
+grayhatter!~grayhatte@user/grayhatter
+"it's the most popular" is on par with "it's not literally illegal to say" as far as arguments in support of something 
+
+1752195570
+torque!~tachyon@user/torque
+not an expert but I believe you roll it yourself or you use a library that rolled it themselves or you give up and just render everything to a canvas
+
+1752195590
+LAC-Tech!~lewis@granite-phrase.bnr.la
+but you can't manipulate the dom from within WASM, right?
+
+1752195596
+andrewrk!~andrewrk@mail.ziglang.org
+torque's message out of context is funny
+
+1752195628
+grayhatter!~grayhatte@user/grayhatter
+torque: is trolling, but that's literally what sphaerophoria is doing
+
+1752195660
+grayhatter!~grayhatte@user/grayhatter
+well, not the 2nd half, but same idea
+
+1752195677
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: yeah they're trying to add garbage collection to wasm to make that more natural 🤮
+
+1752195690
+LAC-Tech!~lewis@granite-phrase.bnr.la
+scripting lang tier list: scheme > lua > js > ruby > python
+
+1752195691
+grayhatter!~grayhatte@user/grayhatter
+I also think, I would unironically rather compile zig to wasm over writing JS
+
+1752195709
+andrewrk!~andrewrk@mail.ziglang.org
+I'm happy with the "web framework" that I came up with re: wasm and js
+
+1752195711
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: oh wow. so it'd share a GC with the browser, or its own separate one?
+
+1752195718
+andrewrk!~andrewrk@mail.ziglang.org
+I use it for my music player and for zig autodocs
+
+1752195739
+andrewrk!~andrewrk@mail.ziglang.org
+basically you put everything in wasm, *except* don't try to do dom manipulation across the FFI
+
+1752195885
+LAC-Tech!~lewis@granite-phrase.bnr.la
+the zig docs are so slow to load though. like seconds. I manually manipulate all my URLs to have specific version numbers so I don't have to wait
+
+1752195901
+grayhatter!~grayhatte@user/grayhatter
+the music player is amazing... zig autodocs are, usually fantastic
+
+1752195922
+grayhatter!~grayhatte@user/grayhatter
+yeah, the start up latency of the autodocs are quite painful
+
+1752195987
+andrewrk!~andrewrk@mail.ziglang.org
+I think that's the fetching of the source tarball
+
+1752195999
+LAC-Tech!~lewis@granite-phrase.bnr.la
+btw I decided on (self: Term). cleareer than @This() but self reminds me I am in a method
+
+1752196018
+andrewrk!~andrewrk@mail.ziglang.org
+why do you need to be reminded that you are in a method?
+
+1752196070
+grayhatter!~grayhatte@user/grayhatter
+because it's hard to understand accents when you're new to code?
+
+1752196094
+LAC-Tech!~lewis@granite-phrase.bnr.la
+now that is a philiosophical question. in ocaml they'd just use "t" for the type the module was built around. I liked that convention
+
+1752196109
+torque!~tachyon@user/torque
+the variable should be named "aduwhoiiwdiuwndkjasndsefbsiduknjkwadbawbdkj" so that there is a very low chance of it accidentally colliding with other variable names
+
+1752196141
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: are we still doing this? I am not new to coding. can we stop?
+
+1752196217
+torque!~tachyon@user/torque
+I'm not a fan of having any identifier shorter than 3 characters, mostly because it makes searching or renaming obnoxious
+
+1752196220
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: oh... I'm sorry for assuming.. you said you like js which I assumed meant you were new
+
+1752196242
+grayhatter!~grayhatte@user/grayhatter
+usually once someone tries a language other than JS, they start hating JS
+
+1752196292
+andrewrk!~andrewrk@mail.ziglang.org
+ACTION likes JS
+
+1752196332
+grayhatter!~grayhatte@user/grayhatter
+yeah, but you also built zig... so I can forgive you for that one lapse in judgement 
+
+1752196342
+grayhatter!~grayhatte@user/grayhatter
+no one is perfect
+
+1752196397
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I asked you to stop
+
+1752196443
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: I think "self: Bar" is better than "bar: Bar", because if you rename bar to Foo, then you have to go and clean up all the bar param names. so laziness wins. ok AFK now
+
+1752196457
+grayhatter!~grayhatte@user/grayhatter
+you realize me having a different opinion from you isn't meant as a personal attack right?
+
+1752196602
+andrewrk!~andrewrk@mail.ziglang.org
+the call out was reasonable, the apology was fine, you guys were very close to achieving a truce
+
+1752196611
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: what's your generalize take on nix?
+
+1752196674
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: ah yeah I agree that's the tradeoff
+
+1752196681
+grayhatter!~grayhatte@user/grayhatter
+I wanna suggest adding "patches" or the concept of an "overlay" to build.zig.zon, but don't wanna invest time in it if it's unlikely to be accepted
+
+1752196695
+andrewrk!~andrewrk@mail.ziglang.org
+I used to distro hop every year or so. when I switched to nixos ... 10 years ago, I stopped because it is good enough
+
+1752196724
+andrewrk!~andrewrk@mail.ziglang.org
+dear lord I'm old :-/
+
+1752196732
+grayhatter!~grayhatte@user/grayhatter
+the idea or goal I have in mind, would be I want to apply a small patch to the stdlib, and have build.zig apply it for me, before compiling
+
+1752196772
+grayhatter!~grayhatte@user/grayhatter
+I think that idea, generalized to being able to "patch" any library would be a very powerful tool/feature
+
+1752196788
+andrewrk!~andrewrk@mail.ziglang.org
+what you are describing is a fork, and the ideal situation is for the patches to be upstreamed. it's against upstream's best interest to make it easier for forks to hold on to patches rather than sending them
+
+1752196830
+grayhatter!~grayhatte@user/grayhatter
+I realize I'm describing a fork... I think forks are more powerful of a feature than how they are being used
+
+1752196854
+grayhatter!~grayhatte@user/grayhatter
+it's part of why I'm building srctree, because I don't like the effect github is having on code centralization
+
+1752196923
+grayhatter!~grayhatte@user/grayhatter
+I think the idea of being able to share patchsets, that anyone can pick and choose from to customize their software is a good thing
+
+1752196965
+andrewrk!~andrewrk@mail.ziglang.org
+to put it more succinctly, the featureset you are asking for is a shitty version of a fork. just use a fork for this purpose - actual source control, branching, diff tools, etc
+
+1752196972
+grayhatter!~grayhatte@user/grayhatter
+right now, no one can build/use benevolence in debug mode because of a bug in std lib, if I could include a small patch that would allow anyone to build and use my code
+
+1752197206
+grayhatter!~grayhatte@user/grayhatter
+I realize it's a strictly worse version of a fork, but maintaining a fork is much more work than maintaining a patch set. In my ideal, patches would be short lived and could be upstreamed in the next version. But more in the short term, it would be much easier to build and deloy code without needing to work around upstream bugs, instead you can just fix upstream bugs out of band, or out of step with
+
+1752197208
+grayhatter!~grayhatte@user/grayhatter
+their normal release cycle
+
+1752197221
+grayhatter!~grayhatte@user/grayhatter
+but fair enough, I'm assuming it wouldn't be accepted as a feature
+
+1752197672
+andrewrk!~andrewrk@mail.ziglang.org
+maintaining a patch set *is* a fork. it's just a matter of what tools you are or aren't using to maintain the patch set
+
+1752197701
+andrewrk!~andrewrk@mail.ziglang.org
+I'm saying use git or mercurial or svn or jj, not zig
+
+1752198126
+grayhatter!~grayhatte@user/grayhatter
+for the stdlib example, the git solutions would be the user installing their own version of stdlib, vendoring zig's stdlib as a 3rd party module like git-submodule, or somehow rolling the whole stdlib as a custom dependency?
+
+1752198199
+grayhatter!~grayhatte@user/grayhatter
+or for a 1 line change to an existing library, I'd have to host a remotely accessable fork; or vendor the upstream lib somewhere into the src/build directory where I could apply the patch?
+
+1752198479
+grayhatter!~grayhatte@user/grayhatter
+I also assume, doing it that way wouldn't be able to take advantage or reuse zig's package/dependency caching?
+
+1752215128
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I really enjoyed making a dependency free TUI producitivy app in zig. I think I will make another one to automate git. like lazy git but even lazier, because it wants me to press multiple keys for git commit -am which is just silly
+
+1752215170
+andrewrk!~andrewrk@mail.ziglang.org
+cool
+
+1752215209
+andrewrk!~andrewrk@mail.ziglang.org
+I was thinking about making some productivity apps using seizer: https://ziggit.dev/t/seizer-wayland-application-framework/6788
+
+1752215505
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what sort of productivity app?
+
+1752215535
+andrewrk!~andrewrk@mail.ziglang.org
+email
+
+1752215548
+andrewrk!~andrewrk@mail.ziglang.org
+I'm so mad at thunderbird
+
+1752215591
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I wanted to like thunderbird, I really did.
+
+1752218560
+przmk4!~przmk@user/przmk
+What's wrong with thunderbird?
+
+1752218806
+ifreund!2940d10f8b@user/ifreund
+I need to try out seizer at some point. It's trying to do something I've wanted to get around to doing myself someday in the far future when my TODO list theoretically became empty :D
+
+1752218854
+ifreund!2940d10f8b@user/ifreund
+doing the xkb stuff from scratch in zig is the part I never wanted to do though, props to them
+
+1752219507
+przmk4!~przmk@user/przmk
+Just wanted to say that I'm really grateful for the way the Zig community is handled. There's a forum, active chats on irc and matrix, and not only discord. It's something that would make me go with Zig if I wasn't already sold on it
+
+1752226964
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah decentralized is the best approach
+
+1752241530
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+andrewrk: I have slowly been working on an email app 😂
+
+1752241564
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I have a really nice sync engine for jmap right now
+
+1752241812
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+gmail is my next target - they have a similar data model, but need to access over imap so I have to write all that code unfortunately
+
+1752242300
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+The idea is to create the sync engine as a library so an email app could be built relatively easily - you always talk to the sync engine, it handles the stuff with the network and protocols
+
+1752242402
+ifreund!2940d10f8b@user/ifreund
+rockorager: what providers support jmap currently?
+
+1752242430
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ifreund: fastmail, I believe thundermail will be using the stalwart server which also supports jmap
+
+1752242435
+meidam!~meidam@user/meidam
+Is it a gui app? Or a tui one? Or headless?
+
+1752242709
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+meidam: right now it's just headless
+
+1752242734
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Lots to do on it
+
+1752242757
+meidam!~meidam@user/meidam
+Okay, cool
+
+1752242775
+meidam!~meidam@user/meidam
+And not in a public repository yet
+
+1752242807
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Not public yet, no
+
+1752242850
+meidam!~meidam@user/meidam
+Cool cool
+
+1752242863
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+jmap is an easy first target because 1. I use it and 2. I can use std.http and std.json haha
+
+1752242956
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: tui, right?
+
+1752242981
+andrewrk!~andrewrk@mail.ziglang.org
+oh that discussion already happened, never mind :)
+
+1752243019
+meidam!~meidam@user/meidam
+I also think it would be cool to have a tui version
+
+1752243084
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+https://asciinema.org/a/4BAXppwjWyloaDGUrScsXSUg9
+
+1752243111
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+so that's just outputting message IDs of matched results
+
+1752243119
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+Everything is sync'd to sqlite
+
+1752243214
+ifreund!2940d10f8b@user/ifreund
+hmm, with `pub usingnamspace @cImport(` finally dead I guess it's time to stop using @cImport() entirely and check out the translate-c build step
+
+1752243295
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: there's a smaller next step: just change the imports to add `.c` at the end
+
+1752243333
+andrewrk!~andrewrk@mail.ziglang.org
+not sure the package is ready tbh, it needs some better integrations with how include paths and library paths are handled
+
+1752243371
+ifreund!2940d10f8b@user/ifreund
+ah, yeah I guess I could just do that as well :D
+
+1752243398
+ifreund!2940d10f8b@user/ifreund
+I was thinking of using the upstream clang-based std.Build.Step.TranslateC not the separate aro-based package for now
+
+1752243457
+ifreund!2940d10f8b@user/ifreund
+It was pleasing to delete all the pointless usingnamespace conditional inclusion in the zig-wlroots bindings
+
+1752248015
+JetpackJackson!739e7f3d14@user/JetpackJackson
+How can I convert an xdg surface to a layer shell surface? I'm trying to look at code for bars that work (creek, zelbar) but I don't wanna copy them but I can't get the cat to display as a layer shell instead of a regular window
+
+1752248069
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: don't create an xdg surface at all, create a layer surfaces instead?
+
+1752248759
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but if i remove the xdg stuff the cat no longer shows up and stuff
+
+1752248865
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i cant create anything using LayerShellV1.getLayerSurface cause i cant fill in all the fields cause i havent made the surface yet
+
+1752248925
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: you do need a wl_surface, you don't need an xdg_surface
+
+1752248948
+ifreund!2940d10f8b@user/ifreund
+in fact, there cannot be and xdg_surface associated with the wl_surface, that would be a protocol error
+
+1752248976
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright
+
+1752249037
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but i cant create layer surfaces or shells cause i dont have all the parameters
+
+1752249117
+ifreund!2940d10f8b@user/ifreund
+are you missing the fact that you have to bind the layer shell global advertised by the registry?
+
+1752249153
+JetpackJackson!739e7f3d14@user/JetpackJackson
+... possibly
+
+1752249166
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i was using your *listener function thingys
+
+1752249175
+JetpackJackson!739e7f3d14@user/JetpackJackson
+but those are for xdg 
+
+1752249195
+ifreund!2940d10f8b@user/ifreund
+https://wayland-book.com/registry.html
+
+1752249228
+ifreund!2940d10f8b@user/ifreund
+what parameters do you think you are missing?
+
+1752249246
+ifreund!2940d10f8b@user/ifreund
+also, maybe look how some other layer shell client obtains them?
+
+1752249258
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i have
+
+1752249274
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ive looked at creek and zelbar and its just not getting through my thick skull ig
+
+1752249589
+bblack!~bblack@wikimedia/bblack-WMF
+the breaking changes to std.fmt / std.io / etc are quite a PITA to work through on existing code :P
+
+1752249743
+ifreund!2940d10f8b@user/ifreund
+bblack: for me they haven't taken as much time as getting rid of my std.linked_list usage :D
+
+1752249788
+ifreund!2940d10f8b@user/ifreund
+bblack: you should try out `zig build --watch` if you haven't yet by the way
+
+1752249792
+ifreund!2940d10f8b@user/ifreund
+it's really nice
+
+1752249995
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ugh now im missing wl.Output
+
+1752250044
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: you can pass null for that if you don't care which output your layer surface shows up on
+
+1752250053
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh
+
+1752250060
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i just added it to my context struct thingy
+
+1752250062
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh well
+
+1752250229
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh dear its erroring now
+
+1752250283
+JetpackJackson!739e7f3d14@user/JetpackJackson
+failed to dispatch wayland events: EINVAL
+
+1752250389
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/6c74c6
+
+1752250469
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+are you supposed to destroy the `pool` while you have buffers created from it?
+
+1752250497
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(I know nothing about wl)
+
+1752250536
+ifreund!2940d10f8b@user/ifreund
+destroying the pool then is fine
+
+1752250618
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+aight
+
+1752250631
+JetpackJackson!739e7f3d14@user/JetpackJackson
+what did i do wrong
+
+1752250636
+ifreund!2940d10f8b@user/ifreund
+JetpackJackson: reading the protocol text for the get_layer_surface request should help you figure out at least one of the things you did wrong
+
+1752250716
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ok im reading it
+
+1752250747
+JetpackJackson!739e7f3d14@user/JetpackJackson
+what do i put for serial for the ackConfigure then
+
+1752250752
+JetpackJackson!739e7f3d14@user/JetpackJackson
+for the layer_surface
+
+1752250845
+JetpackJackson!739e7f3d14@user/JetpackJackson
+and theres no commit() in the layer surface so im not sure how im supposed to do the commit
+
+1752250862
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait existing surface
+
+1752250871
+JetpackJackson!739e7f3d14@user/JetpackJackson
+no wait im confused again 
+
+1752251052
+JetpackJackson!739e7f3d14@user/JetpackJackson
+now im getting EPROTO
+
+1752251532
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/14bdb2
+
+1752251986
+JetpackJackson!739e7f3d14@user/JetpackJackson
+now its saying stuff about anchors but i set them
+
+1752257078
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i dont know how to fix it
+
+1752273682
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+.:19:53:33:. < andrewrk> what makes it seem similar to zig? <- I was thinking the "use the language to build it" feature, and explicit memory allocation (though in jai I guess there's a default allocator stored in some sort of "context")
+
+1752273707
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+plus primeagen likes both lol
+
+1752273711
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+idk probably I'm just being silly
+
+1752276582
+LAC-Tech!~lewis@granite-phrase.bnr.la
+after learning zig, I basically either want A) to allocate everything up front or B) make every allocation cheap and let a garbage collector deal with it. anything inbetween just feels painful now.
+
+1752276606
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(probably influenced by Tigerbeetle propaganda as well ;))
+
+1752276669
+triallax!~triallax@lacerte/triallax
+my feeling after using zig for a while is that it makes allocations _feel_ expensive (as they are relatively speaking), and that seeps into the way i do things in a way that doesn't happen in other languages i've used
+
+1752276710
+triallax!~triallax@lacerte/triallax
+but i'm sure that's not a particularly unique nor insightful take from me
+
+1752276741
+andrewrk!~andrewrk@mail.ziglang.org
+maybe sometimes it's a bit obsessive, but in general I think it's a nice trend: try to be resource efficient. respect the users' time and resources
+
+1752276770
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+allocation golf
+
+1752276856
+triallax!~triallax@lacerte/triallax
+i think for me this feeling has compounded since i spent some time recently improving my allocation error handling
+
+1752276873
+triallax!~triallax@lacerte/triallax
+now instead of the relatively palatable try's strewn around it's `catch oom()` for anything that can allocate
+
+1752276874
+triallax!~triallax@lacerte/triallax
+and it adds up
+
+1752276900
+triallax!~triallax@lacerte/triallax
+i completely understand and agree with the reasoning for explicit allocation failure handling but part of me still wishes for my use case i didn't have to do it so often
+
+1752276950
+triallax!~triallax@lacerte/triallax
+certainly for my use case it's not something i ever have to worry about
+
+1752276959
+triallax!~triallax@lacerte/triallax
+beyond bailing out
+
+1752276975
+andrewrk!~andrewrk@mail.ziglang.org
+well you should be able to generally use `try` everywhere and mostly put your catch oom() in one place
+
+1752277069
+triallax!~triallax@lacerte/triallax
+yes that would ease things a bit
+
+1752277139
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I feel like RAII without GC is the uncanny valley. With a good GC alloctions are very cheap because they pre-allocate a bunch from the system at startup.
+
+1752277157
+triallax!~triallax@lacerte/triallax
+but part of me kinda feels it's wrong to propagate errors while not having proper errdefers to free stuff
+
+1752277186
+triallax!~triallax@lacerte/triallax
+even though it technically wouldn't be needed in this case cuz we'll be bailing out anyway, just not at the immediate error location
+
+1752277405
+triallax!~triallax@lacerte/triallax
+definitely me overthinking ig
+
+1752277791
+andrewrk!~andrewrk@mail.ziglang.org
+just think of it as writing reusable code for which you could change your mind about memory management later
+
+1752277870
+andrewrk!~andrewrk@mail.ziglang.org
+if you don't have other kinds of errors you can also put `errdefer @panic("oom");` at the top and have an infallible return type
+
+1752277889
+triallax!~triallax@lacerte/triallax
+that's a trick i never thought of
+
+1752277904
+andrewrk!~andrewrk@mail.ziglang.org
+or `errdefer oom();` to keep it even shorter. but that's going to bite your ass if you introduce another kind of failure and forget to update the return type
+
+1752277917
+triallax!~triallax@lacerte/triallax
+probably i'd use a switch on the error
+
+1752277928
+triallax!~triallax@lacerte/triallax
+but i think i might've read that's being considered for removal?
+
+1752277958
+triallax!~triallax@lacerte/triallax
+indeed https://github.com/ziglang/zig/issues/23734
+
+1752278372
+LAC-Tech!~lewis@granite-phrase.bnr.la
+https://ziglang.org/documentation/0.14.1/std/#std.mem.splitBackwardsScalar oh my god little utitlies like this make my day
+
