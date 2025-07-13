@@ -1,0 +1,692 @@
+1752278410
+andrewrk!~andrewrk@mail.ziglang.org
+std.mem has some goodies in it for sure
+
+1752280048
+grayhatter!~grayhatte@user/grayhatter
+#23734 is so disapointing 
+
+1752280166
+andrewrk!~andrewrk@mail.ziglang.org
+better to save the complexity budget for something more rewarding
+
+1752280254
+grayhatter!~grayhatte@user/grayhatter
+that's an interesting observation... I'm having trouble applying it here though
+
+1752280439
+grayhatter!~grayhatte@user/grayhatter
+I think I agree but I'm having a hard time imagining what that more rewarding construct is
+
+1752280581
+andrewrk!~andrewrk@mail.ziglang.org
+the absence of the complexity, no additional construct
+
+1752280753
+grayhatter!~grayhatte@user/grayhatter
+actually, I now think I was wrong to target #23734 I think my objection is more towards the theme of errors losing first class status
+
+1752280818
+grayhatter!~grayhatte@user/grayhatter
+there are a bunch of cases where either I don't understand the language well enough, or working with errors is harder than working with other language features, e.g. enums or structs
+
+1752280824
+torque!~tachyon@user/torque
+<andrewrk> better to save the complexity budget for something more rewarding <-- sounds like errors with payloads attached to them are back on the menu!!!!!!
+
+1752280848
+grayhatter!~grayhatte@user/grayhatter
+torque: so I also want that... but I'm REALLY glad zig prevents me from doing that
+
+1752280927
+grayhatter!~grayhatte@user/grayhatter
+error with a payload encourages the anti-pattern to manage all errors in a single place, instead of as close as possible to the error source
+
+1752280942
+torque!~tachyon@user/torque
+I mean you can trivially do it with `fn Error(comptime T: type, comptime E: type) type { return union(enum) { some: T, err: E }` and then you're just like rust and you don't have any of the nice syntax sugar that `try` gives you
+
+1752280961
+grayhatter!~grayhatte@user/grayhatter
+it does make for less reusablable code though, so I do understand wanting to use the pattern
+
+1752280999
+torque!~tachyon@user/torque
+there are many cases where you don't need it and there are many cases where it is extremely useful
+
+1752281037
+torque!~tachyon@user/torque
+some cliched phrase about having it and not needing it vs needing it and not having it. It does make it kind of impossible to blindly merge error sets though
+
+1752281079
+grayhatter!~grayhatte@user/grayhatter
+try is great... but the fact that I can't use `var t: Thing = .init() catch |err| { noreturn };` where I can use `try .init()` hurt more than error.Name{payload}
+
+1752281140
+torque!~tachyon@user/torque
+going to invest my complexity budget into the stock market where it will surely grow unbounded and finally I will have enough for the things I want
+
+1752281151
+andrewrk!~andrewrk@mail.ziglang.org
+torque: have you had a chance to see the new std.Io.Writer / std.Io.Reader patterns with respect to error handling?
+
+1752281155
+torque!~tachyon@user/torque
+or perhaps I will just take it to vegas and play some poker
+
+1752281176
+torque!~tachyon@user/torque
+I haven't looked at them particularly closely yet, no
+
+1752281222
+grayhatter!~grayhatte@user/grayhatter
+I was just studying your gist andrewrk, `defer _ = future.cancel(io) catch {}` is really tripping me up
+
+1752281223
+andrewrk!~andrewrk@mail.ziglang.org
+I think it turned out quite nicely. in particular, the interface has very limited error sets with useful distinctions that you actually would want to switch on and handle differently. and then the implementation is expected to assign the more specific error code to the implementation state
+
+1752281243
+andrewrk!~andrewrk@mail.ziglang.org
+this is distinct from the std.Io stuff that grayhatter just brought up, which I am also happy to discuss :)
+
+1752281294
+andrewrk!~andrewrk@mail.ziglang.org
+cancel() and await() are the same apart from requesting cancellation 
+
+1752281733
+torque!~tachyon@user/torque
+hmm, at the risk of admitting I am too lazy to go through the writergate pr, do you have any good examples of handling reader or writer errors with the new system?
+
+1752281800
+andrewrk!~andrewrk@mail.ziglang.org
+yeah, sure, of course I don't expect you to comb that ridiculous diff in search for the pattern I'm describing
+
+1752281812
+grayhatter!~grayhatte@user/grayhatter
+with writeableSlice() existing, does that mean io.Fifo is going bye bye... yes, yes it is (listed at to be deleted in the PR)
+
+1752281839
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/blob/681d324c49e7cdc773cc891ea49ed69dd03c23c7/lib/std/fs/File.zig#L1707-L1710
+
+1752281885
+andrewrk!~andrewrk@mail.ziglang.org
+at the callsite you usually handle error.WriteFailed without caring exactly what went wrong. but the creator of the stream has access to that info via file_writer.err
+
+1752281898
+grayhatter!~grayhatte@user/grayhatter
+from an error state, I like this api I lot better
+
+1752281922
+torque!~tachyon@user/torque
+hmm, this is kind of interesting
+
+1752281929
+andrewrk!~andrewrk@mail.ziglang.org
+I have fifo.LinearFifo deleted in the wrangle-writer-buffering branch, which is kind of like my "todo list" diff
+
+1752281932
+grayhatter!~grayhatte@user/grayhatter
+eg https://ziglang.org/documentation/master/std/#std.io.Writer.sendFile
+
+1752282054
+andrewrk!~andrewrk@mail.ziglang.org
+dear lord I just accidentally created a "firefox tab group" for the first time
+
+1752282264
+torque!~tachyon@user/torque
+I guess the way you know to look at `.err` for context vs `.seek_err` is just based on what methods have been called?
+
+1752282340
+andrewrk!~andrewrk@mail.ziglang.org
+the seek functions are primarily interested in seek_err
+
+1752282353
+andrewrk!~andrewrk@mail.ziglang.org
+they use it to avoid pointlessly attempting subsequent seeks\
+
+1752282379
+torque!~tachyon@user/torque
+I'm not sure I really understand how the top level thing that has e.g. the file writer and that context gets coupled to lower level code working on the interface? I guess the idea is the low level mostly only cares if a call succeeds or fails otherwise it bails up to the high level?
+
+1752282397
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I'm using writevAll extensively in verse, is using the writer likely to be faster over exposing the downstream writev?
+
+1752282443
+torque!~tachyon@user/torque
+ah, so err is the main external-facing context field and the other ones are largely internal (I figured that out myself for the sendfile errors at least, but those return 0 instead of the error)
+
+1752282444
+andrewrk!~andrewrk@mail.ziglang.org
+I'm sorry, I'm afraid I don't understand either question
+
+1752282567
+grayhatter!~grayhatte@user/grayhatter
+how confident are you in the pref improvements in the new API? If I'm using writev with the old vtable api, is it likely the new API will be faster given the new API would memcpy the large io_vect into the buffer? or is unlikely to be faster?
+
+1752282611
+torque!~tachyon@user/torque
+I think I answered my question in my head after thinking about it further
+
+1752282667
+torque!~tachyon@user/torque
+basically anything that is interacting with the interface (vtable) instead of a specific writer like a FileWriter would need to be written in such a way that it doesn't have special behavior coupled to certain types of writers
+
+1752282703
+torque!~tachyon@user/torque
+so it's pretty much always reasonable to return generic errors up to the layers that actually do have the specialized thing and can care about how it failed
+
+1752282749
+andrewrk!~andrewrk@mail.ziglang.org
+re: perf improvements: strange question. I provided perf data points and made no claims about perf otherwise
+
+1752282802
+andrewrk!~andrewrk@mail.ziglang.org
+well, I claimed that the 20% worse perf compared to manual buffering is due to missed devirtualization. is that what you are asking me about my confidence of?
+
+1752282838
+torque!~tachyon@user/torque
+it's an interesting pattern and I will be interested to play around with it when 0.15.0 is released and I start updating things
+
+1752282844
+torque!~tachyon@user/torque
+but I still want error payloads!
+
+1752282886
+andrewrk!~andrewrk@mail.ziglang.org
+yeah I know
+
+1752282958
+torque!~tachyon@user/torque
+thanks
+
+1752283052
+grayhatter!~grayhatte@user/grayhatter
+I want switch on error groups more :D
+
+1752283183
+torque!~tachyon@user/torque
+the irony of complaining about the limitations in zig's error handling is it's still the best error handling I've used, in general
+
+1752283248
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+switching on error groups would be amazing
+
+1752283309
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: my question was trying to build a heuristic for what perf change I should expect if/when I convert my current io_vec implementation to use the new io.Writer instead. Does the expected perf improvements apply equally to all devirtualization? or only in some cases? i.e. do you know if I'm more or less likely to see a positive change, knowing that I'm already using writev instead of just
+
+1752283311
+grayhatter!~grayhatte@user/grayhatter
+buffered write?
+
+1752283339
+grayhatter!~grayhatte@user/grayhatter
+I'm getting the heuristic that the qustion I'm asking is to ambigous to have a good answer and I'll just have to test it for myself 
+
+1752283408
+torque!~tachyon@user/torque
+I didn't realize the proposal for switching on error sets was from 2019
+
+1752283411
+torque!~tachyon@user/torque
+a fine vintage
+
+1752283437
+grayhatter!~grayhatte@user/grayhatter
+but there doesn't seem to be as large of an advantage to using the new Writer struct with io_vec, compared with the previous API... in other words, It's safe to assume that if I don't see a perf improvement, it's not because I did something stupid and/or wrong
+
+1752283458
+torque!~tachyon@user/torque
+ah one of the famous "unaccepted but not actually nuked" proposals at that
+
+1752283492
+torque!~tachyon@user/torque
+this has no comments on it either which I assume means it is universally beloved since there is nothing to argue about
+
+1752283645
+grayhatter!~grayhatte@user/grayhatter
+me seeing the accepted tag was removed https://gr.ht/i/look-away.png
+
+1752284239
+torque!~tachyon@user/torque
+was there ever discussion about allowing both _ and else into switch for non-exhaustive enums? I have run into a case where it would be nice to treat "all named values" separately from "any unnamed value" in the same switch prong
+
+1752284444
+torque!~tachyon@user/torque
+er, in the same switch statement
+
+1752284467
+torque!~tachyon@user/torque
+I guess this would be a significant semantics change at this point, but did this come up at all when non-exhaustive enums were introduced?
+
+1752290458
+andrewrk!~andrewrk@mail.ziglang.org
+torque: I don't have the issue # handy but pretty sure that's an accepted proposal
+
+1752290531
+grayhatter!~grayhatte@user/grayhatter
+I find it impressive that zig can build it self faster that srctree can :/
+
+1752290647
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: this one? https://github.com/ziglang/zig/issues/2473
+
+1752291887
+andrewrk!~andrewrk@mail.ziglang.org
+no
+
+1752291913
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I was a big fan of Result type, which I first used in F# over a decade ago. but then you run into the issue of having to nest them. it doesn't scale
+
+1752292128
+andrewrk!~andrewrk@mail.ziglang.org
+with regards to zig error codes, the key thing to remember is that they are primarily for control flow
+
+1752292183
+andrewrk!~andrewrk@mail.ziglang.org
+that's why it makes sense to do something like store diagnostics and then return a more general `error.ParseFail` or similar
+
+1752292588
+grayhatter!~grayhatte@user/grayhatter
+I'm mmaping a file into a fixed buffer stream, is there an cannon way to do this with the new std.io.Reader?
+
+1752292737
+grayhatter!~grayhatte@user/grayhatter
+is there any reason I can't create a Reader using failing as the vtable?
+
+1752293096
+andrewrk!~andrewrk@mail.ziglang.org
+std.io.Reader.fixed
+
+1752293107
+grayhatter!~grayhatte@user/grayhatter
+<3
+
+1752294447
+andrewrk!~andrewrk@mail.ziglang.org
+mm actually that doesn't work because for mmio you need the pointer reads/writes to be volatile
+
+1752294477
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose for reading it, it works fine, assuming the data is const
+
+1752294976
+LAC-Tech!~lewis@granite-phrase.bnr.la
+any idea how you'd debug something that's printing to the console? I tried lldb but well, it wants to print to the console too
+
+1752295123
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: does lldb support remote debugging like gdb?
+
+1752295148
+grayhatter!~grayhatte@user/grayhatter
+you'd start the bin under test in one terminal, and the debugging session in a 2nd
+
+1752295241
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: redirect the output to a different file, or attach the debugger from a different terminal
+
+1752295475
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: for reading it seems significantly slower :/
+
+1752295713
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: andrewrk thanks, I'll look up remote debugging and attaching
+
+1752296273
+grayhatter!~grayhatte@user/grayhatter
+that's a *really* rough delta https://gist.github.com/GrayHatter/2c39a09f23c02818a0a381988b2c4a5c
+
+1752296935
+andrewrk!~andrewrk@mail.ziglang.org
+let me guess, you didn't pass a buffer
+
+1752297035
+grayhatter!~grayhatte@user/grayhatter
+Reader.fixed(mmap_file_slice);
+
+1752297131
+andrewrk!~andrewrk@mail.ziglang.org
+can you link me to your new code
+
+1752297230
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/benevolence/blob/src/File.zig
+
+1752297241
+grayhatter!~grayhatte@user/grayhatter
+I can push to github too if that'd be helpful
+
+1752297259
+grayhatter!~grayhatte@user/grayhatter
+https://srctree.gr.ht/repo/benevolence/commit/91301ca3
+
+1752297263
+andrewrk!~andrewrk@mail.ziglang.org
+line_buffer is dead code
+
+1752297293
+andrewrk!~andrewrk@mail.ziglang.org
+`var reader = &file.interface`  should be const 
+
+1752297294
+grayhatter!~grayhatte@user/grayhatter
+yes, there's also an `if (true) return;` line in main.zig... this commit has some bugs
+
+1752297372
+grayhatter!~grayhatte@user/grayhatter
+that's technically unreachable, because initStdin() in currently not implemented correctly
+
+1752297398
+andrewrk!~andrewrk@mail.ziglang.org
+you've introduced an additional unnecessary runtime branch with src
+
+1752297420
+andrewrk!~andrewrk@mail.ziglang.org
+the *std.Io.Reader already supports both kinds of things
+
+1752297575
+grayhatter!~grayhatte@user/grayhatter
+would src be better as a pointer to a 2nd struct member?
+
+1752297578
+andrewrk!~andrewrk@mail.ziglang.org
+stat is redundant with std.fs.File.Reader
+
+1752297597
+andrewrk!~andrewrk@mail.ziglang.org
+file is redundant with std.fs.File.Reader
+
+1752297670
+andrewrk!~andrewrk@mail.ziglang.org
+I don't see anything that would cause a slowdown of that magnitude
+
+1752297679
+andrewrk!~andrewrk@mail.ziglang.org
+which path is this taking, mmap or file?
+
+1752297702
+grayhatter!~grayhatte@user/grayhatter
+this is mmap, file is only used for stdin, and is untested so far
+
+1752297807
+grayhatter!~grayhatte@user/grayhatter
+stat isn't used with Reader, it's only used in the mmap case
+
+1752297822
+grayhatter!~grayhatte@user/grayhatter
+err, I mean isn't used with file.Reader
+
+1752297847
+andrewrk!~andrewrk@mail.ziglang.org
+I would expect this to perform significantly better than before since your delimiter detection is now calling into the highly optimized std.mem.indexOfScalar
+
+1752297965
+grayhatter!~grayhatte@user/grayhatter
+yeah, I don't understand the slow down either
+
+1752297988
+andrewrk!~andrewrk@mail.ziglang.org
+I suggest to profile the difference and report back
+
+1752298137
+grayhatter!~grayhatte@user/grayhatter
+that'll have to be tomorrow-me's job... the only thing I remember from the last time using `perf` is that I hated it the whole time, so I'm gonna need more patience than I have tonight :D
+
+1752298265
+grayhatter!~grayhatte@user/grayhatter
+`-rwxr-xr-x 1 grayhatter grayhatter  12M Jul 11 22:05 benevolence` `-rwxr-xr-x 1 grayhatter grayhatter 3.0M Jul  6 15:04 benevolence.old`
+
+1752298298
+grayhatter!~grayhatte@user/grayhatter
+the binary is 4x larger too, so it seems like I've changed too many variables at the same time here 
+
+1752318205
+ifreund!2940d10f8b@user/ifreund
+zig build --watch is pretty handy for writing unit tests as well :)
+
+1752321850
+m0tionsikk!~m0tionsik@user/m0tionsikk
+I'm currently writing code for a microprocessor with an FPU (Floating Point Unit) which is disabled by default and needs to be enabled by setting some bits at a specific address. Accessing any FPU registers before this procedure will generate a hard fault. However, in release mode the Zig compiler emits instructions that access these registers at the very beginning of my main function - before the FPU is 
+
+1752321858
+m0tionsikk!~m0tionsik@user/m0tionsikk
+enabled. I was able to work around this by moving everything except the FPU setup procedure into a separate function and - via @call - enforcing that this function never be inlined. Is this the way to go about this? Or are there methods to prevent the compiler from emitting certain instructions before a given point in the code?
+
+1752333054
+grayhatter!~grayhatte@user/grayhatter
+ifreund: surely you mean zig build test --watch
+
+1752340784
+andrewrk!~andrewrk@mail.ziglang.org
+m0tionsikk: I find this confusing because you can clearly see that start.zig does nothing when targeting freestanding
+
+1752340878
+andrewrk!~andrewrk@mail.ziglang.org
+can you share a snippet to demonstrate the issue?
+
+1752340907
+andrewrk!~andrewrk@mail.ziglang.org
+but without looking at anything, yes that seems a sensible solution
+
+1752341207
+m0tionsikk!~m0tionsik@user/m0tionsikk
+andrewrk: Ok I should probably mention that I am using microzig, but I fail to see how this affects my problem. Using SWD I am able to see that as soon as the microzig startup code calls my main function there's a vpush instruction with the {d8-d15} registers, which - as I understand - are the FPU registers on an ARM Cortex M4 core.
+
+1752341245
+andrewrk!~andrewrk@mail.ziglang.org
+ah, well the microzig folks are much more knowledgable than me on this stuff, have you tried asking them?
+
+1752341301
+m0tionsikk!~m0tionsik@user/m0tionsikk
+It slooks like they only have a discord channel and discord wants my phone number, which I don't want to give them ;)
+
+1752341391
+m0tionsikk!~m0tionsik@user/m0tionsikk
+I don't think my problem is specific to microzig though. Or do you just mean they're more knowledgable on embedded stuff in general?
+
+1752341667
+andrewrk!~andrewrk@mail.ziglang.org
+I don't either. yeah I just meant in general. that's fine, I'm not on discord either
+
+1752341673
+andrewrk!~andrewrk@mail.ziglang.org
+I can help you get to the bottom of this
+
+1752342073
+m0tionsikk!~m0tionsik@user/m0tionsikk
+andrewrk: I mean it's not really a big problem because my solution works perfectly well, but I was just wondering. Obviously the compiler doesn't know that about the FPU or its state. It just emits FPU instructions when told to do so. I assume there's no way to tell a compiler to not emit specific instructions before a certain point? 
+
+1752342422
+grayhatter!~grayhatte@user/grayhatter
+I would assume the way to fix this would be adding providing a custom .Naked entry function/block that can set up the hardware before jumping into main?
+
+1752342585
+m0tionsikk!~m0tionsik@user/m0tionsikk
+grayhatter: I think that's basically what I did. I created a separate function that just configures the FPU and calls my "actual" main function with @call(.never_line, ...)
+
+1752342620
+m0tionsikk!~m0tionsik@user/m0tionsikk
+never_inline*
+
+1752342691
+grayhatter!~grayhatte@user/grayhatter
+is the never_inline actually required?
+
+1752342796
+m0tionsikk!~m0tionsik@user/m0tionsikk
+I tried it and yes, otherwise the "actual" main gets inlined and the vpush instructions "bubbles up" to before the FPU setup procedure again.
+
+1752342829
+grayhatter!~grayhatte@user/grayhatter
+interesting, that's not what I would have expected
+
+1752342882
+m0tionsikk!~m0tionsik@user/m0tionsikk
+I'm trying to put together an example on godbolt, but I can't get it to emit a vpush instruction right now
+
+1752346405
+torque!~tachyon@user/torque
+<andrewrk> torque: I don't have the issue # handy but pretty sure that's an accepted proposal
+
+1752346410
+torque!~tachyon@user/torque
+dug around and it's https://github.com/ziglang/zig/issues/12250
+
+1752346417
+torque!~tachyon@user/torque
+which I somehow hadn't seen before
+
+1752346426
+torque!~tachyon@user/torque
+also looks like someone opened an mr for this on thursday. cool
+
+1752349337
+przmk4!~przmk@user/przmk
+If you had to pick a TUI library for zig right now, what would it be? I've looked a little at libvaxis but it's not yet compatible with 0.15
+
+1752349771
+fleischie!~fleischie@vm069.de
+I'd use libvaxis and patched it to work with zig 0.15. :O
+
+1752350574
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I've got no idea why this build is so scuffed, my best guess is the version of zigc I was using isn't optimizing the same, because the perf data from the 0.14 shows the majority of the time spent in memcpy, and the pref from the new build lists all the functions (and seems to take as long as a debug build)
+
+1752350713
+grayhatter!~grayhatte@user/grayhatter
+I'm sure I used `zig build --release=fast` for both, I triple checked and saw the `zig build ReleaseFast native` line so I'm out of ideas for what I might have done wrong here
+
+1752350924
+andrewrk!~andrewrk@mail.ziglang.org
+the --release flag is for distro maintainers, pretty sure you shouldn't be using it
+
+1752351786
+grayhatter!~grayhatte@user/grayhatter
+feels odd that it's listed above -Doptimize=ReleaseFast
+
+1752351854
+grayhatter!~grayhatte@user/grayhatter
+it's also easier to remember and type than -Doptimize=ReleaseFast so how did distro maintainers get better flags than users/developers?
+
+1752352243
+rvrb!~rvrb@156.146.51.228
+does anyone know of an established pattern for interfacing with C/C++ libraries that allocate internally? I'm not enjoying having the implicit allocations right next to Zig style allocator passing and all that. naming the constructor/destructor `init`/`deinit` makes it even less obvious that they're allocating, since you're not passing allocators
+
+1752352244
+rvrb!~rvrb@156.146.51.228
+in
+
+1752352447
+rvrb!~rvrb@156.146.51.228
+for context I am working on Godot wrappers for Zig. Godot allocates freaking everywhere, and in many ways that are not obvious. so I would really like a good way to make memory management clearer in the API
+
+1752352525
+grayhatter!~grayhatte@user/grayhatter
+rvrb: perhaps define a GodotAllocator that your wrapper can expose?
+
+1752352549
+rvrb!~rvrb@156.146.51.228
+yeah I was about to say -- I was considering taking a `gallocator: GodotAllocator` and just throwing it away (`_ = galloactor;`) but that would be confusing if they tried to do something clever with it
+
+1752352693
+grayhatter!~grayhatte@user/grayhatter
+I assume godot uses the c_allocator?
+
+1752352758
+rvrb!~rvrb@156.146.51.228
+I assume so, but I'm not sure exactly. it does expose alloc/realloc/free functions, so I was planning to write a `GodotAllocator` with those eventually
+
+1752352892
+grayhatter!~grayhatte@user/grayhatter
+either way, it does seem a bit weird to require an allocator in your api just to throw it away... but, on the other hand, there may come a time where don't actually throw it away, or godot may expose an api for their internal allocator/gc that you want to interface with, and you'll be forced to either rewrite your whole api, and make the wrapper users completely rewrite a lot of code, or do something
+
+1752352894
+grayhatter!~grayhatte@user/grayhatter
+way worse, and way more hacky... personally, I think passing around a GodotAllocator that gets thrown away in most cases is a small price to pay to for the possible advantages in the future
+
+1752352961
+grayhatter!~grayhatte@user/grayhatter
+I can imagine a use where someone would want to free and or allocate in a way that godot approves of... having an existing allocator that can do that sounds like a good idea/policy to just have
+
+1752352972
+grayhatter!~grayhatte@user/grayhatter
+there's something to be said for optimizing for least surprise 
+
+1752353113
+rvrb!~rvrb@156.146.51.228
+it's interesting because you're defining your own types that interface with theirs. they do let you manage your type's memory, but you store an `*Object` pointer that they manage. so `MyType.init` needs to allocate an `*Object` in their allocator and your own object in your own allocator
+
+1752353129
+rvrb!~rvrb@156.146.51.228
+kind of a mess
+
+1752353265
+rvrb!~rvrb@156.146.51.228
+I think the price might be worth it, I am going to explore it more. it makes it really clear who needs to deallocate the thing
+
+1752353356
+rvrb!~rvrb@156.146.51.228
+Godot is infamous for memory leaks, and while I can't fix the internals, I would like the extensions written in Zig to not bear the same reputation
+
+1752353603
+przmk4!~przmk@user/przmk
+fleischie No other choice huh. Will try thx
+
+1752353716
+rvrb!~rvrb@156.146.51.228
+another option is just prefixing every allocating method with `alloc` - `allocInit`, etc. anyways if someone knows of a good example of a library that has dealt with this I would love to take a look
+
+1752360962
+andrewrk!~andrewrk@mail.ziglang.org
+https://kristoff.it/blog/zig-new-async-io/
+
+1752362031
+triallax!~triallax@lacerte/triallax
+are you not supposed to access a variable on the rhs of an assignment if it's being assigned to on the lhs?
+
+1752362064
+triallax!~triallax@lacerte/triallax
+i've been debugging an odd issue for the past 30 minutes that seems to be caused by me doing this and i'm wondering if it's not supposed to be allowed
+
+1752362474
+triallax!~triallax@lacerte/triallax
+actually now that i'm thinking about it this would be a very strange thing to disallow
+
+1752363151
+rvrb!~rvrb@156.146.51.228
+I'm interested about the implication of this IO as an interface with WASI; does WASI just turn into an IO implementation? that would be cool
+
+1752363358
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: yeah pretty much
+
+1752363369
+rvrb!~rvrb@156.146.51.228
+I like this
+
+1752363429
+andrewrk!~andrewrk@mail.ziglang.org
+I think wasm32-freestanding is even more interesting
+
+1752363474
+andrewrk!~andrewrk@mail.ziglang.org
+WASI support can be included in a more general Io implementation, but with freestanding, you kind of need the application to determine that behavior
+
+1752363502
+rvrb!~rvrb@156.146.51.228
+wasix can be a library (:
+
+1752363675
+rvrb!~rvrb@156.146.51.228
+freestanding WASM binary with graceful IO degradation?
+
+1752364343
+rvrb!~rvrb@156.146.51.228
+great blog post
+
