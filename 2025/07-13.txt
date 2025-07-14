@@ -1,0 +1,720 @@
+1752365403
+triallax!~triallax@lacerte/triallax
+i think i might know what's going on
+
+1752365410
+triallax!~triallax@lacerte/triallax
+roughly at least
+
+1752365466
+triallax!~triallax@lacerte/triallax
+the variable i'm assigning to has a struct type that is quite big (just checked, it's 208 bytes)
+
+1752365485
+triallax!~triallax@lacerte/triallax
+er, actually a union enum type
+
+1752365489
+triallax!~triallax@lacerte/triallax
+but anyway
+
+1752365559
+mortmann!~mortmann@p5dcb21f2.dip0.t-ipconnect.de
+beware of the blog post will make you color blind
+
+1752365578
+triallax!~triallax@lacerte/triallax
+this is the part of the code in question: https://0x0.st/s/wxsajCeaC-HMFDf8cWapvg/8Dl2.txt
+
+1752365602
+triallax!~triallax@lacerte/triallax
+by the time the full_span bit is run it seems like at least part of lhs will have already been overwritten, leading to bogus results
+
+1752365631
+triallax!~triallax@lacerte/triallax
+if i move the full_span line to the start the issue goes away
+
+1752365688
+grayhatter!~grayhatte@user/grayhatter
+triallax: I'm not sure what you're trying to do, but this almost certainly isn't it
+
+1752365718
+triallax!~triallax@lacerte/triallax
+if you're going to review my code, that's not what i'm asking for
+
+1752365732
+triallax!~triallax@lacerte/triallax
+i'm trying to debug what seems to be a zig issue
+
+1752365770
+grayhatter!~grayhatte@user/grayhatter
+you're modifying the lhs, while using lhs as the assignment
+
+1752365785
+triallax!~triallax@lacerte/triallax
+are you saying that something like lhs = lhs + 1 is invalid then?
+
+1752365797
+grayhatter!~grayhatte@user/grayhatter
+triallax: that's not what you're doing
+
+1752365831
+triallax!~triallax@lacerte/triallax
+i'm not entirely sure how it's different
+
+1752365856
+grayhatter!~grayhatte@user/grayhatter
+you're doing lhs[some_offset] = lhs[overlapping_offset]
+
+1752365908
+grayhatter!~grayhatte@user/grayhatter
+also, `lhs = lhs + 1` is valid if lhs is something that can be an atomic modification
+
+1752365939
+triallax!~triallax@lacerte/triallax
+i see what you're getting at but this is still really surprising behavior if intended
+
+1752365947
+triallax!~triallax@lacerte/triallax
+it took me a while to track down where the bogus values were coming from
+
+1752366034
+grayhatter!~grayhatte@user/grayhatter
+IIRC zig doesn't promise that operations to happen in any specific order
+
+1752366085
+grayhatter!~grayhatte@user/grayhatter
+moving that full_span assignment to the top only fixes it today, tomorrow if the compiler thinks doing it last would be faster, it'll be allowed to, and your bug will be back
+
+1752366099
+triallax!~triallax@lacerte/triallax
+that's not my fix to be clear
+
+1752366109
+triallax!~triallax@lacerte/triallax
+i jus meant that's how i confirmed my theory
+
+1752366116
+triallax!~triallax@lacerte/triallax
+i'm aware it's not ideal
+
+1752366300
+grayhatter!~grayhatte@user/grayhatter
+if your variable can't fit into a register (like a struct with 208 bytes) the compiler will treat it like a pointer... so in this case, it'll do some portion of the writes, it'll call full_span(), (which I assume resolves into another pointer?) then it'll call extend(), one or both I'm sure modify lhs inbetween the the operations requested
+
+1752366364
+grayhatter!~grayhatte@user/grayhatter
+if you want to resolve a variable to use on the rhs, you have to instruct zig to "reserve memory" to do that, otherwise zig will "correctly" try to avoid what seems to be a needless memory copy
+
+1752366369
+grayhatter!~grayhatte@user/grayhatter
+for some definitions of correct
+
+1752366482
+grayhatter!~grayhatte@user/grayhatter
+IIRC there's an issue discussing something very similar to this, let me see if I can find it
+
+1752366833
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I need to checkout the IO stuff. and the fizz stuff, I see it in the default zig init app now
+
+1752366838
+LAC-Tech!~lewis@granite-phrase.bnr.la
+*fuzz
+
+1752367108
+grayhatter!~grayhatte@user/grayhatter
+triallax: I don't think this is the issue I was remembering, but it's close https://github.com/ziglang/zig/issues/12251 
+
+1752367150
+grayhatter!~grayhatte@user/grayhatter
+I recall there being one that had a simpler description, because there's a lot more detail in this one that I remember... not sure if that'd be better or worse :P
+
+1752367163
+triallax!~triallax@lacerte/triallax
+that seems to be what i'm running into at first glance
+
+1752367283
+grayhatter!~grayhatte@user/grayhatter
+there are a number of issues that describe your issue, or something similar
+
+1752368652
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: fuzz stuff is going to be super useful but it's not worth checking out yet
+
+1752369938
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: thanks that saves me some time. I saw the seed getting added to tests though which is already huge
+
+1752381947
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: this is a pretty good blog post; it was really hard for me to follow along with (assuming a personal issue), having more examples for the Io interface on ziglang.org/learn/ would be super useful
+
+1752382154
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why do std.compress.xz and std.compress.gzip have decompress methods, but std.compress.zstd only has a decompressor method?
+
+1752382278
+grayhatter!~grayhatte@user/grayhatter
+clevor: non-standardized API that no one has needed to fix yet
+
+1752382419
+grayhatter!~grayhatte@user/grayhatter
+why does blocking IO execute on `io.async(...)` and not on `io.await()`?
+
+1752383274
+clevor!sid649024@id-649024.hampstead.irccloud.com
+grayhatter: https://kristoff.it/blog/zig-new-async-io/ at the bottom
+
+1752383300
+grayhatter!~grayhatte@user/grayhatter
+clevor: that's literally the blog I was talking about... I didn't find the examples useful
+
+1752383744
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1752383761
+clevor!sid649024@id-649024.hampstead.irccloud.com
+🤦
+
+1752384064
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: ziglang.org code snippets track the latest tagged release
+
+1752384117
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: I have that API entirely reworked in a branch. getting that branch to test std lib tests, now that's another matter
+
+1752385062
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: a hypothetical blocking IO implementation could do either. however, to do it in await rather than async would require some kind of dynamic allocation strategy for storing the closure.
+
+1752385075
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: that suggestion wasn't meant for prior to 0.15 :)
+
+1752385106
+andrewrk!~andrewrk@mail.ziglang.org
+trying to put that data into the Future would work if functions had a way to initialize a return value that is not copied but already in the caller stack
+
+1752388769
+KieranXD!~kieran@user/KieranXD
+hi
+
+1752388778
+KieranXD!~kieran@user/KieranXD
+whats the best way to learn zig
+
+1752389013
+grayhatter!~grayhatte@user/grayhatter
+KieranXD: writing zig code
+
+1752389041
+grayhatter!~grayhatte@user/grayhatter
+I learned zig by writing apps I wanted to use, but a lot of people really like and enjoy working through ziglings
+
+1752389053
+grayhatter!~grayhatte@user/grayhatter
+https://codeberg.org/ziglings/exercises
+
+1752389153
+grayhatter!~grayhatte@user/grayhatter
+is `anyopaque == ?anyopaque` 
+
+1752389245
+grayhatter!~grayhatte@user/grayhatter
+oh, no it's not... I just didn't complete the type resolution 
+
+1752389386
+grayhatter!~grayhatte@user/grayhatter
+is io.select() not expected to be used in a loop?
+
+1752391232
+deadmarshal_!deadmarsha@deadmarshal.nastycode.com
+https://youtu.be/XJkUeOs4-xo
+
+1752391884
+grayhatter!~grayhatte@user/grayhatter
+pro tip, exercise extreme caution before you complain about the intent of other people... more often than not, you're just telling on yourself
+
+1752392047
+grayhatter!~grayhatte@user/grayhatter
+cute video, very misleading, mostly wrong too I think?
+
+1752392180
+KieranXD!~kieran@user/KieranXD
+grayhatter: thanks
+
+1752392227
+grayhatter!~grayhatte@user/grayhatter
+KieranXD: <3
+
+1752392413
+KieranXD!~kieran@user/KieranXD
+also lol
+
+1752392456
+KieranXD!~kieran@user/KieranXD
+@ deadmarshal_: 
+
+1752393491
+anjan!f328a705f9@2a03:6000:1812:100::f
+Hey yall, I am not able to import this file in my zig program: https://github.com/9fans/plan9port/blob/master/include/ndb.h
+
+1752393499
+anjan!f328a705f9@2a03:6000:1812:100::f
+I keep getting too many errors emitted
+
+1752393594
+anjan!f328a705f9@2a03:6000:1812:100::f
+https://paste.sr.ht/~anjan/35820a7beade0d5a4a66d71814b82903f59702dc
+
+1752393601
+anjan!f328a705f9@2a03:6000:1812:100::f
+any idea what Im doing wrong?
+
+1752393618
+grayhatter!~grayhatte@user/grayhatter
+well for one, that paste is 0 bytes
+
+1752395610
+grayhatter!~grayhatte@user/grayhatter
+anjan: your paste has no data, it's hard to help without seeing any of the errors
+
+1752395640
+anjan!f328a705f9@2a03:6000:1812:100::f
+grayhatter: https://paste.sr.ht/~anjan/b239c23ea9d8c7b85159ecabb292621c0283ae99
+
+1752395830
+grayhatter!~grayhatte@user/grayhatter
+anjan: no idea, these errors don't provide enough information out of context, other than, you're including/compiling it incorrectly 
+
+1752395892
+grayhatter!~grayhatte@user/grayhatter
+the fact that AUTOLIB(ndb) is the first line, (which is probably a macro?) but that macro isn't defined in this file is where I'd start
+
+1752396021
+grayhatter!~grayhatte@user/grayhatter
+looks like you need include/u.h first?
+
+1752396082
+grayhatter!~grayhatte@user/grayhatter
+there's a comment here "Funny-named symbols to tip off 9l to autolink" makes me think you're in for a bad time of trying to build/link against plan9port 
+
+1752396123
+anjan!f328a705f9@2a03:6000:1812:100::f
+grayhatter: h
+
+1752396138
+anjan!f328a705f9@2a03:6000:1812:100::f
+ya, Im trying to make a statically linked binary
+
+1752396144
+anjan!f328a705f9@2a03:6000:1812:100::f
+using plan9 stuff
+
+1752396189
+anjan!f328a705f9@2a03:6000:1812:100::f
+ya, I may have to read the INSTALL
+
+1752396895
+grayhatter!~grayhatte@user/grayhatter
+looks like a fun project though
+
+1752396913
+anjan!f328a705f9@2a03:6000:1812:100::f
+grayhatter: it's my 3rd rewrite of this progject
+
+1752396936
+anjan!f328a705f9@2a03:6000:1812:100::f
+but ya, I am having alot of fun
+
+1752396953
+anjan!f328a705f9@2a03:6000:1812:100::f
+I want to write a contact manager using nbd as the database
+
+1752396970
+LAC-Tech!~lewis@granite-phrase.bnr.la
+zig has no concept of a range struct, correct? just a syntax like [m..n]
+
+1752397071
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: you mean a subset of the bytes that make up a struct?
+
+1752397167
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I mean [m..n] is not some value you can pass around
+
+1752397271
+grayhatter!~grayhatte@user/grayhatter
+oh, no the index syntax `[m..n]` isn't it's own thing, it's only valid as part of on object
+
+1752397300
+grayhatter!~grayhatte@user/grayhatter
+.{ m, n }; as a tuple exists, but I'm pretty sure that's not what you meant
+
+1752397341
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah I just had a funcvtion that returned a "range", and I was just using struct {usize, usize~
+
+1752397463
+grayhatter!~grayhatte@user/grayhatter
+why do you wanna pass the range instead of just passing the slice itself?
+
+1752397547
+LAC-Tech!~lewis@granite-phrase.bnr.la
+it's another thing that calculates ranges for a thing with a slice... nevermind
+
+1752397741
+grayhatter!~grayhatte@user/grayhatter
+if you still wanna use .{ start, end } might be worth creating an `inline fn slicer(slice: T, range: struct { usize, usize })` might get you a bit closer to the syntax you want
+
+1752397752
+grayhatter!~grayhatte@user/grayhatter
+assuming you don't already :D
+
+1752397838
+grayhatter!~grayhatte@user/grayhatter
+but I'm out good luck y'all
+
+1752397841
+grayhatter!~grayhatte@user/grayhatter
+ACTION &
+
+1752397955
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I swear "function colours" is an imaginary thing people made up to confuse themselves. Mabye I'm too FP brained
+
+1752423096
+rvrb!~rvrb@156.146.51.228
+heh, I nearly lost my mind when top post in HN thread was saying "it is function coloring! there are functions that take IO and functions that don't!". if that's how we're defining function colors, then I guess every programming language is a rainbow, and the term has no meaning 🌈
+
+1752424433
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech, rvrb: I expressed a similar frustration to my wife this morning and she replied, "oh! is that where different parts of the code get colored, like the word 'function'?"
+
+1752424464
+triallax!~triallax@lacerte/triallax
+amazing
+
+1752424468
+rvrb!~rvrb@156.146.51.228
+lol
+
+1752424802
+rvrb!~rvrb@156.146.51.228
+I'm not sure why I still bother with HN at this point. I guess I occasionally find valuable conversation, but more often than not I am just getting enraged at confidently incorrect cargo culting
+
+1752425056
+rvrb!~rvrb@156.146.51.228
+for me the only thing TBD about this implementation is how it works out when I am hands on with it as a library author. basically, the last bit of the article: how do I reason with code that may or may not be async or sync, how to avoid 'programming errors' as its put in the article
+
+1752425079
+rvrb!~rvrb@156.146.51.228
+I don't know what I have been taking for granted by having two distinct worlds
+
+1752426525
+kenrap!~kenrap@user/kenrap
+Is there a way to grab the file name from a std.fs.File?
+
+1752426547
+andrewrk!~andrewrk@mail.ziglang.org
+kenrap: that's generally not a portable or well-advised operation
+
+1752426568
+kenrap!~kenrap@user/kenrap
+Understood
+
+1752427469
+grayhatter!~grayhatte@user/grayhatter
+rvrb: I wrote a dns daemon so I could block HN because I kept reading out of habit; it *used* to be great with more intersting stories and mostly insightful comments. These days it's just creamsicle reddit, hn dosen't wanna hear your opinion, they want to hear theirs in a condesending tone of voice
+
+1752427541
+grayhatter!~grayhatte@user/grayhatter
+which would be less objectionable if, as you pointed out, wasn't confidently incorrect
+
+1752431693
+grayhatter!~grayhatte@user/grayhatter
+I'm creating a library, is it reasonable to check if values passed in are equal to undefined when in debug mode? for some reason I feel like that's disallowed?
+
+1752431745
+torque!~tachyon@user/torque
+why would you want to do this
+
+1752431754
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+assuming undefined always have the "undefined" bit pattern? sounds like a bad idea
+
+1752431792
+torque!~tachyon@user/torque
+also assuming the `undefined` bit pattern does not map to an in-range value
+
+1752431800
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah
+
+1752431819
+rvrb!~rvrb@156.146.51.228
+yeah undefined is undefined, "A == undefined" tries to define undefined
+
+1752431845
+andrewrk!~andrewrk@mail.ziglang.org
+checking if something is undefined is only valid to do for the purpose of safety check implementation, and it has false negatives
+
+1752431893
+grayhatter!~grayhatte@user/grayhatter
+because I want the library I'm making to be "type safe" and the mistake I almost made was `list: []T = alloc(T, len); list[0].name = name;` where I just added a new field to T, so now it needs to be `list[0].name = name; list[0].href = href;` or ideally `list[0] = .{ .name = name, .href = href, }` and I'd like to be able to catch this mistake in more places if possible
+
+1752431942
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's why you use the second pattern
+
+1752432048
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: that's a nice idea, sadly past me wasn't as smart as current me, and I've already made that mistake in a few places
+
+1752432127
+rvrb!~rvrb@156.146.51.228
+yeah, it might now be obvious, but I guess higher level the mistake was that you were not actually initializing a T. you were accessing a field (but immediately setting it) on uninitialized data
+
+1752432391
+grayhatter!~grayhatte@user/grayhatter
+please correct me if I'm wrong but when `if T = struct { name: []const u8 }; `var t: *T = alloc.create(T);` then `t.* = .{name = name};` and `t.name = name;` are both equivilant, right?
+
+1752432719
+rvrb!~rvrb@156.146.51.228
+practically, yes
+
+1752432738
+rvrb!~rvrb@156.146.51.228
+but abstractly, reading the code, they mean different things to me
+
+1752432803
+rvrb!~rvrb@156.146.51.228
+the intent of the former being to initialize a pointer holding a T, the intent of the latter to initialize a field holding slice
+
+1752432838
+rvrb!~rvrb@156.146.51.228
+the result being the problem you encountered when adding a new field to T
+
+1752432880
+andrewrk!~andrewrk@mail.ziglang.org
+if you think you want to check if something is undefined, what you actually want is optional
+
+1752433015
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Does your wife program outside of the contributions shown on Github?
+
+1752433148
+andrewrk!~andrewrk@mail.ziglang.org
+not much, but she's trying to learn a little python for use with ArcGIS and js for using leaflet and other web map stuff
+
+1752433384
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My nephew is interested in programming but his dad is worried about security in the network, so I gave him an old laptop recently.
+
+1752433465
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I showed him Zig and its langref, but I think he needs to learn a little more about pointers and such.
+
+1752433469
+grayhatter!~grayhatte@user/grayhatter
+clevor: lol, doesn't that make the network less secure?
+
+1752433493
+rvrb!~rvrb@156.146.51.228
+GIS is a good gateway for programming
+
+1752433496
+clevor!sid649024@id-649024.hampstead.irccloud.com
+His dad was fine with it. Maybe if he has it offline?
+
+1752433546
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Counterintuitively, he is only a few years younger than me.
+
+1752433556
+clevor!sid649024@id-649024.hampstead.irccloud.com
+(the nephew)
+
+1752433999
+Betal!~Betal@user/betal
+any recommendation on how to store CIDR networks? i want to be able to check if a given IP is in the list of networks. Probably related with radix tree or patricia tree
+
+1752434589
+grayhatter!~grayhatte@user/grayhatter
+Betal: I just saw an interesting go lib that claims to be more performant than the standard. Is that way you're asking? or are you just looking for a simple way to store and check? 
+
+1752435080
+Betal!~Betal@user/betal
+grayhatter: I made an go app that does what I want using the github.com/yl2chen/cidranger (not sure if you saw this one)
+
+1752435096
+Betal!~Betal@user/betal
+but iam trying to learn zig, so I want to do the same in zig :P
+
+1752435159
+grayhatter!~grayhatte@user/grayhatter
+Betal: it'd be super cool to have a version of https://github.com/gaissmai/bart in zig
+
+1752435199
+Betal!~Betal@user/betal
+grayhatter: maybe a simple way to store and check, I want to load a bunch of CIDR (loading from file), then compare against user input to see if the given IP is in one CIDR or not
+
+1752435606
+grayhatter!~grayhatte@user/grayhatter
+Betal: you can treat the IP as u32, mask off the subnet and cmp like an int
+
+1752442179
+bblack!~bblack@wikimedia/bblack-WMF
+has anyone looked before at getting useable symbols defined for std.c.stdin (and stdout, stderr)?  They'd be extern *std.c.FILE pointers.  I poked at this a bit, and it's pretty trivial to make it work for Linux, FreeBSD, and a few others (they have some kind of extern "FILE*" pointers, one for each of the 3 standard streams).  But some like NetBSD and OpenBSD are challenging.  Their C libraries basically 
+
+1752442185
+bblack!~bblack@wikimedia/bblack-WMF
+define them more like: "struct { ... bunch of complex stuff that may vary by-arch ... } FILE; extern FILE __sF[3]; #define stdin (&__sF[0]; #define stdout (&__sF[1]); #define stderr (&__sF[2]);"
+
+1752442237
+bblack!~bblack@wikimedia/bblack-WMF
+so because it's an extern array and macros taking addresses of array elements, we'd have to know the actual byte size of their respective FILE structs (and how it varies by arch and/or by-version, ugh)
+
+1752442308
+bblack!~bblack@wikimedia/bblack-WMF
+the main reason I'm even looking at this is the std.c.freopen() use-case (to set the stdio streams to /dev/null when "daemonizing".  If you're linking other C libraries that might try to use them...)
+
+1752442321
+bblack!~bblack@wikimedia/bblack-WMF
+it seems like a huge rabbithole :/
+
+1752442446
+bblack!~bblack@wikimedia/bblack-WMF
+I wonder if it's good-enough to replace application usage of freopen() for these purposes with dup2() of a /dev/null description over STDIN_FILENO (if that would affect the stdio FILE* streams similarly to freopen(), without having to use freopen())
+
+1752442451
+bblack!~bblack@wikimedia/bblack-WMF
+maybe I should look into that path
+
+1752442464
+bblack!~bblack@wikimedia/bblack-WMF
+s/description/descriptor/ :)
+
+1752442627
+LAC-Tech!~lewis@granite-phrase.bnr.la
+rvrb: lobste.rs is a bit nicer than HN, imo. Though I find my best tech convos get done on X - I think the nature of a huge micro-blogging site means the people who see my posts and vice versa are interested in the same stuff.
+
+1752442712
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: I'm convinced "function colours" are just monads. I've put it out there, we'll see if someone who knows more than me can give a good explanation :)
+
+1752445230
+rvrb!~rvrb@156.146.51.228
+my read on function coloring after that comment thread is that a smart person who works in PL made an insightful and easily digestible observation 10 years ago that a lot of people that do not work on PL use to sound smart when flaming each other about their favorite PLs
+
+1752445283
+rvrb!~rvrb@156.146.51.228
+and yeah I read lobsters too, I'm just a tech news junky and HN moves so quickly I can spam F5. it's a habit I should break
+
+1752445340
+lemons!~doggie@user/doggie-:49517
+what's a PL
+
+1752445348
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Programming language
+
+1752445407
+lemons!~doggie@user/doggie-:49517
+oh
+
+1752445480
+rvrb!~rvrb@156.146.51.228
+the Lobste.rs thread was a lot more interesting, in any case
+
+1752445778
+rvrb!~rvrb@156.146.51.228
+it's just frustrating because I think Zig is doing something extremely interesting in this space. maybe it's not completely groundbreaking, maybe it is, but it's pretty unique. and it's in a production language, so it's going to get beat to hell by real use cases. there are real tradeoffs in the design that are worth discussing, and yet everyone is
+
+1752445778
+rvrb!~rvrb@156.146.51.228
+caught up on one sentence in the blog post and arguing semantics about it
+
+1752445807
+rvrb!~rvrb@156.146.51.228
+harumph. preaching to the choir in here. gonna step away from the computer
+
+1752446793
+Profpatsch!~Profpatsc@user/Profpatsch
+trying to compile zig from a nightly compiler binary release, and running `zig build --release=fast -fincremental` it seems to work fine, but gets stuck in the LLVM Emit Object stage for … a long time
+
+1752446817
+Profpatsch!~Profpatsc@user/Profpatsch
+I haven’t managed to wait for it to finish yet
+
+1752446831
+Profpatsch!~Profpatsc@user/Profpatsch
+it seems to spin in 4096 byte mmaps according to strace
+
+1752446960
+Profpatsch!~Profpatsc@user/Profpatsch
+I guess it’s doing stuff, just very slowly
+
+1752446977
+grayhatter!~grayhatte@user/grayhatter
+I don't think ReleaseFast and -fincremental are compatible? I thought incremental was only useful for debug?
+
+1752446988
+Profpatsch!~Profpatsc@user/Profpatsch
+I had the same thing without fincremental
+
+1752447030
+grayhatter!~grayhatte@user/grayhatter
+right, because the llvm optimization step is what takes the longest
+
+1752447030
+Profpatsch!~Profpatsc@user/Profpatsch
+Seems to use one CPU thread at 100%
+
+1752447040
+grayhatter!~grayhatte@user/grayhatter
+yeah, that sounds like llvm
+
+1752447091
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One time, I tried to do -fincremental, --watch, and tests, and it kept trying to recompile over and over again because my code failed to compile.
+
+1752447152
+grayhatter!~grayhatte@user/grayhatter
+is there a way to mark a run step as has no side effects?
+
+1752447193
+grayhatter!~grayhatte@user/grayhatter
+I'm compiling a bin to generate an output file of structs, and it rebuilds itself every single time, even when there are no changes
+
+1752448339
+grayhatter!~grayhatte@user/grayhatter
+`zig build -fincremental` takes longer to re-build than `zig build` does am I doing something stupid?
+
+1752448749
+Profpatsch!~Profpatsc@user/Profpatsch
+wait how do the zig compiler devs work
+
+1752448767
+Profpatsch!~Profpatsc@user/Profpatsch
+if you have to wait 10+ minutes for llvm emit every time you want to test the thing
+
+1752449207
+andrewrk!~andrewrk@mail.ziglang.org
+Profpatsch: `--watch -fincremental -Dno-bin` gives me about 50ms between saving and seeing the results
+
+1752449432
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: I agree completely, there are plenty of actually interesting tradeoffs to discuss
+
+1752449544
+rvrb!~rvrb@156.146.51.228
+heh, I'm writing a blog rant that I will inevitable not publish
+
+1752449562
+rvrb!~rvrb@156.146.51.228
+(I didn't step away)
+
