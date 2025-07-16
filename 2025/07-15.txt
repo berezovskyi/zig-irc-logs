@@ -1,0 +1,540 @@
+1752538704
+rvrb!~rvrb@156.146.51.228
+I agree. when I sit down and design my own higher-than-systems-level language, it always just ends up looking a lot like Zig with a few extras. like, types as (runtime) values, ref/heap types, and some weird ideas I have. like Zig but with C#'s memory/span for memory management?
+
+1752538800
+rvrb!~rvrb@156.146.51.228
+I've tried many times to POC it. by the time I get to codegen I burn out and have no idea what I am doing. I'm really good at writing parsers now, though
+
+1752539036
+rvrb!~rvrb@156.146.51.228
+maybe that's a project for Zig Day. I don't really know what scope of project to bring there tbh
+
+1752539304
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: the first 30min of ice breaker and 30min chatting about what to work on, I wager will get some creative juices flowing
+
+1752540105
+LAC-Tech!~lewis@granite-phrase.bnr.la
+rvrb: I think a great proof of concept would be "REPL calculator". ATM I start up node. which sucks as a calculator, ie 0.2 + 0.1 is wrong because it uses IEEE 754 floating numbers (great for a systems lang, an awful choice for a scripting lang)
+
+1752561752
+ifreund!2940d10f8b@user/ifreund
+andrewrk: hahaha
+
+1752572318
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I'm using a plain *.zig file for configuration at the moment. Can this file be 'converted' to a *.zon file? https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/config.zig
+
+1752573884
+Affliction!affliction@idlerpg/player/affliction
+Sure, you'd have a struct with those constants as fields, the .zon would be a literal instance of that struct, that you then @import() (or parse at runtime, as needed)
+
+1752573909
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, will try
+
+1752573917
+Affliction!affliction@idlerpg/player/affliction
+hm, actually, can you call those dvui functions from zon?
+
+1752574247
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep, those dvui functions and that command https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/config.zig#L8 raises questions
+
+1752574279
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+that command can be something like paths in build.zig.zon I guess
+
+1752574309
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+those dvui functions could be use hex numbers as string literals
+
+1752574319
+Affliction!affliction@idlerpg/player/affliction
+line 8 would either have to be given a fixed size, or a slice.
+
+1752574358
+Affliction!affliction@idlerpg/player/affliction
+sure, the enums would Just Work, though you'd specify eg: .red and .green
+
+1752575653
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: type '[][]const u8' is not available in ZON
+
+1752576014
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so not sure how I can convert line 8 to a zon config file
+
+1752576028
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+pub const patchbay_command = [_][]const u8{"patchance-jasm"};
+
+1752576063
+Affliction!affliction@idlerpg/player/affliction
+flower_: how about []const []const u8 ?
+
+1752576079
+Affliction!affliction@idlerpg/player/affliction
+the outer slice needs to be const too
+
+1752576112
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Affliction: seems to build
+
+1752576121
+Affliction!affliction@idlerpg/player/affliction
+Great! Ship it! :D
+
+1752576222
+Profpatsch!~Profpatsc@user/Profpatsch
+ Okay so I think I figured out why zig stage3 is trying to link against the wrong libc++
+
+1752576225
+Profpatsch!~Profpatsc@user/Profpatsch
+> gcc --print-file-name libstdc++.so.6
+
+1752576227
+Profpatsch!~Profpatsc@user/Profpatsch
+/nix/store/l7d6vwajpfvgsd3j4cr25imd1mzb7d1d-gcc-14.3.0-lib/lib/libstdc++.so.6
+
+1752576237
+Profpatsch!~Profpatsc@user/Profpatsch
+> clang --print-file-name libstdc++.so.6
+
+1752576239
+Profpatsch!~Profpatsc@user/Profpatsch
+libstdc++.so.6
+
+1752576247
+Profpatsch!~Profpatsc@user/Profpatsch
+For some reason clang cannot find the gcc libstdc++.so
+
+1752576287
+Profpatsch!~Profpatsc@user/Profpatsch
+and the build.zig falls back to clang libc++ if it can’t find the gcc one (around line 827)
+
+1752576344
+Profpatsch!~Profpatsc@user/Profpatsch
+this might be a nixpkgs setup problem where clang is not configured correctly though
+
+1752576568
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/config_zon/item/src/config.zon
+
+1752576592
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/config_zon/item/src/main.zig#L33
+
+1752581080
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://www.youtube.com/watch?v=AiSl4vf40WU I'm awaiting the release of this future video
+
+1752584859
+Profpatsch!~Profpatsc@user/Profpatsch
+I did it! https://gist.github.com/Profpatsch/41e649ecc947b06b9311b7d1a0924999 This is the diff I made
+
+1752584894
+Profpatsch!~Profpatsc@user/Profpatsch
+So basically forced `gcc --print-file-name` for libstdc++ and added an RPATH to the library dir
+
+1752584921
+Profpatsch!~Profpatsc@user/Profpatsch
+I have no clue how to upstream that though and I suspect it’s actually a bug at the intersection of nixpkgs/clang
+
+1752584947
+Profpatsch!~Profpatsc@user/Profpatsch
+But still, I don’t think the “use lc++ and pray” method in build.zig is particularly great, it took me a long time to figure out what went wrong here
+
+1752584977
+Profpatsch!~Profpatsc@user/Profpatsch
+fwiw https://discourse.nixos.org/t/c-and-libstdc-not-available/39126/13?u=profpatsch
+
+1752585025
+Profpatsch!~Profpatsc@user/Profpatsch
+Question out of experienced pain: will the build compilation start using -fincremental at some point? Waiting 2+ minutes each time I changed the build script was kind of painful
+
+1752585538
+ifreund!2940d10f8b@user/ifreund
+Profpatsch: indeed, that seems like a nixpkgs bug to me :/
+
+1752585624
+ifreund!2940d10f8b@user/ifreund
+as for build.zig build times, it should be very fast if you are building it with a optimized compiler using the non-llvm x86 backend
+
+1752585653
+Profpatsch!~Profpatsc@user/Profpatsch
+So e.g. not stage2?
+
+1752585654
+ifreund!2940d10f8b@user/ifreund
+the non-llvm x86_64 backend was only recently enabled by default for debug builds though
+
+1752585698
+ifreund!2940d10f8b@user/ifreund
+stage2 is as stripped down as a compiler as is can be while still being able to build stage3
+
+1752587055
+Profpatsch!~Profpatsc@user/Profpatsch
+Question about GetOrPut: it returns a new entry if none existed
+
+1752587062
+Profpatsch!~Profpatsc@user/Profpatsch
+But what if the entry is then not set?
+
+1752587076
+ifreund!2940d10f8b@user/ifreund
+then you have an entry with an undefined value in your map
+
+1752587102
+Profpatsch!~Profpatsc@user/Profpatsch
+… Which is gonna produce UB in release mode?
+
+1752587113
+ifreund!2940d10f8b@user/ifreund
+only if you branch on the undefined value
+
+1752587128
+ifreund!2940d10f8b@user/ifreund
+it's probably not a good idea though, yeah
+
+1752587143
+ifreund!2940d10f8b@user/ifreund
+also it's illegal behavior in all build modes
+
+1752587196
+Profpatsch!~Profpatsc@user/Profpatsch
+https://github.com/ziglang/zig/blob/master/lib/std/Build/Watch.zig#L171
+
+1752587204
+Profpatsch!~Profpatsc@user/Profpatsch
+It doesn’t look to me like this value is ever set
+
+1752587260
+Profpatsch!~Profpatsc@user/Profpatsch
+I guess it kinda is ok if you never try to access it? But still kinda scary
+
+1752587284
+ifreund!2940d10f8b@user/ifreund
+Profpatsch: in that case the value has type void
+
+1752589009
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Anyone have any experience building Zig on RISC-V/musl? Looks like I can't build it on my BananaPi BPI-F3 because compiler_rt.c is messed up. Here's the log from building the Gentoo package, https://0x0.st/8kAf.log%20%23%20em (~300k line text file), but it happens when manually clone the repo and try to build from source, too. Should I file an issue on Github?
+
+1752589052
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I also don't actually have access to that machine at this second since I'm at work, but I figured I'd ask right now. I was going to try look into it more when I get home
+
+1752589072
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://paste.gentoo.zip/d1awdWpp oh and here's that compiler_rt.c
+
+1752593144
+Profpatsch!~Profpatsc@user/Profpatsch
+If I’m trying to change something in std.Build, what’s the recommended way to test the changes? build stage4 in release mode and then build a stage5 in debug mode? background: https://github.com/ziglang/zig/pull/24113#issuecomment-3073984347
+
+1752596750
+ifreund!2940d10f8b@user/ifreund
+Profpatsch: you shouldn't even need to rebuild the compiler to test std.Build changes as long as `zig env` of the compiler points to the standard library copy you have modified
+
+1752596802
+ifreund!2940d10f8b@user/ifreund
+for more general information on testing see https://github.com/ziglang/zig/wiki/Contributing#directly-testing-the-standard-library-with-zig-test
+
+1752599087
+m0tionsikk!~m0tionsik@user/m0tionsikk
+I'm writing some code for an arm cortex m4 and I want to write inline assembly to make use of the 'vcvt.s32.f32' instruction to convert a float to fixed point. I almost have what I want, but the compiler doesn't use the register that the input value is in.
+
+1752599097
+m0tionsikk!~m0tionsik@user/m0tionsikk
+At https://godbolt.org/z/xW5xGq4z6 you can see that line 11 loads the value into the s0 register, but the vcvt instruction below uses the s2 register. According to the docs the input and output register have to be the same, though. So it should just use s0 or wherever the input is located.
+
+1752599432
+m0tionsikk!~m0tionsik@user/m0tionsikk
+I assume this is related to the constraints (at least that's what they seem to be called) in quotation marks, but I'm not sure what I have to specify so it doesn't use a different register.
+
+1752599856
+andrewrk!~andrewrk@mail.ziglang.org
+if you can specify a specific register, that's one way to do it
+
+1752599885
+andrewrk!~andrewrk@mail.ziglang.org
+example: https://github.com/ziglang/zig/blob/0.14.1/lib/std/os/linux/x86_64.zig#L21-L22
+
+1752600473
+m0tionsikk!~m0tionsik@user/m0tionsikk
+andrewrk: awesome, thank you! Are there any downsides to using a fixed register vs letting the compiler choose the one it deems appropriate?
+
+1752600549
+andrewrk!~andrewrk@mail.ziglang.org
+well, the fixed register is ideal when you're trying to match a calling convention, such as in the example code here. as for your use case, it seems better to allow the compiler to pick an arbitary register but I don't know the constraint syntax to accomplish that
+
+1752600602
+bblack!~bblack@wikimedia/bblack-WMF
+I'm trying to x-compile from my x86_64 linux host to freebsd (same-cpu)... and then copying the resulting binary into a qemu-hosted x86_64 freebsd 14.3 image to try to run it.
+
+1752600603
+andrewrk!~andrewrk@mail.ziglang.org
+until now we basically matched LLVM inline asm syntax/semantics but starting to forge our own path. for example, here's one step in that direction: https://github.com/ziglang/zig/pull/24419
+
+1752600652
+bblack!~bblack@wikimedia/bblack-WMF
+inside freebsd, ldd on the binary shows an entry for "ld-elf.so.1" that it can't find, which is why it doesn't start.
+
+1752600664
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: -target native-freebsd.14.3
+
+1752600711
+andrewrk!~andrewrk@mail.ziglang.org
+that's a surprising problem to have, since the ld path on freebsd is completely standard
+
+1752600728
+bblack!~bblack@wikimedia/bblack-WMF
+yeah
+
+1752600744
+bblack!~bblack@wikimedia/bblack-WMF
+native- didn't change anything (I had x86_64-freebsd.14.3)
+
+1752600751
+bblack!~bblack@wikimedia/bblack-WMF
+there is a /libexec/ld-elf.so.1
+
+1752600761
+andrewrk!~andrewrk@mail.ziglang.org
+do the freebsd binaries on ziglang.org/download work in this environment?
+
+1752600768
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm good question, will try
+
+1752600857
+andrewrk!~andrewrk@mail.ziglang.org
+looks like zig is using /libexec/ld-elf.so.1 to me: https://github.com/ziglang/zig/blob/0cb558ba3abb0ac7b48c1a30c9a13c924f950172/lib/std/Target.zig#L2439-L2448
+
+1752600888
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: yes, those binaries work.  and if I run "ldd" from inside FreeBSD on the downloaded zig compiler, it lacks an entry for ld-elf.so.1
+
+1752600904
+bblack!~bblack@wikimedia/bblack-WMF
+it's just the ones I'm building that are borked
+
+1752600958
+andrewrk!~andrewrk@mail.ziglang.org
+are you creating a debug binary? I wonder if this is a problem with our elf linker vs lld
+
+1752600991
+andrewrk!~andrewrk@mail.ziglang.org
+try building it with -fllvm -flld
+
+1752601090
+bblack!~bblack@wikimedia/bblack-WMF
+much better, that got past the ld-elf issue
+
+1752601111
+bblack!~bblack@wikimedia/bblack-WMF
+I now get an illegal instruction when it runs, but I'm sure that's just something with my target selection + qemu that I can sort out
+
+1752601179
+andrewrk!~andrewrk@mail.ziglang.org
+good to know, thanks for mentioning it
+
+1752601204
+andrewrk!~andrewrk@mail.ziglang.org
+there are a lot of issues with the elf linker... I'm going to have to significantly rework it, I think
+
+1752601301
+bblack!~bblack@wikimedia/bblack-WMF
+yeah full success now, with -fllvm -flld, and matching up qemu and build target cpus properly.  thanks!
+
+1752601645
+m0tionsikk!~m0tionsik@user/m0tionsikk
+andrewrk: Aha, so with "=[x]" as the output constraint it seems to work :) 
+
+1752601970
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: it's nice to have both options until we can surpass llvm functionality :)
+
+1752607814
+Profpatsch!~Profpatsc@user/Profpatsch
+andrewrk: one thing I noticed with the ELFs that the zig linker produces, it triggers an assert in patchelf
+
+1752607903
+Profpatsch!~Profpatsc@user/Profpatsch
+example: > patchelf --add-rpath /nix/store/l7d6vwajpfvgsd3j4cr25imd1mzb7d1d-gcc-14.3.0-lib/lib ./stage3/bin/zig
+
+1752607905
+Profpatsch!~Profpatsc@user/Profpatsch
+patchelf: patchelf.cc:795: void ElfFile<Elf_Ehdr, Elf_Phdr, Elf_Shdr, Elf_Addr, Elf_Off, Elf_Dyn, Elf_Sym, Elf_Verneed, Elf_Versym>::rewriteSectionsExecutable() [with Elf_Ehdr = Elf64_Ehdr; Elf_Phdr = Elf64_Phdr; Elf_Shdr = Elf64_Shdr; Elf_Addr = long unsigned int; Elf_Off = long unsigned int; Elf_Dyn = Elf64_Dyn; Elf_Sym = Elf64_Sym; Elf_Verneed = Elf64_Verneed; Elf_Versym = short unsigned int]:
+
+1752607907
+Profpatsch!~Profpatsc@user/Profpatsch
+Assertion `startAddr % getPageSize() == startOffset % getPageSize()' failed.
+
+1752608095
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/src/osc.zig#L389
+
+1752608106
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I could use Zigs orelse here probably
+
+1752613468
+rvrb!~rvrb@156.146.51.228
+our project does bindgen from a huge JSON file that Godot exports describing the entire interface available. their intent with that design is backward/forward compatibility for Godot extensions and ease of bindgen maintenance. right now our build pipleine has an executable target (the binding generator), a run step (run the generator), an install
+
+1752613468
+rvrb!~rvrb@156.146.51.228
+step copying the generated code into the hand written codebase, and then a library target for the final result
+
+1752613533
+rvrb!~rvrb@156.146.51.228
+it works, but it is slow -- 200 MB of text generated -- and that drives me crazy. wondering if there is a way to more tightly integrate the actual bindgen process into the build pipeline for optimal caching
+
+1752613590
+rvrb!~rvrb@156.146.51.228
+like can my build.zig parse the JSON file and define artifacts from it? or is that crazy?
+
+1752613850
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: is it a build step doing that parsing? in such case it should be cached and only rerun if it changes
+
+1752613875
+andrewrk!~andrewrk@mail.ziglang.org
+your description sounds like it's already doing that
+
+1752613921
+andrewrk!~andrewrk@mail.ziglang.org
+well, I'm a bit confused about the part about copying it into your codebase
+
+1752614015
+rvrb!~rvrb@156.146.51.228
+I am confused too, I need to think about how to explain this better before I respond
+
+1752614054
+ifreund!2940d10f8b@user/ifreund
+rvrb: you might be interested in having a look at zig-wayland for an example of generating code as a build step
+
+1752614064
+rvrb!~rvrb@156.146.51.228
+thank you, I will
+
+1752614072
+ifreund!2940d10f8b@user/ifreund
+there's no need to install the generated code for other packages to use it
+
+1752614072
+ifreund!2940d10f8b@user/ifreund
+https://codeberg.org/ifreund/zig-wayland
+
+1752614179
+ifreund!2940d10f8b@user/ifreund
+usage looks like this: https://codeberg.org/ifreund/zig-wayland/src/commit/65b01fb69148013eea882c8222a82a1d96a6241b/example/hello/build.zig#L10-L12
+
+1752614467
+rvrb!~rvrb@156.146.51.228
+this is great, I am gonna dig in
+
+1752615140
+rvrb!~rvrb@156.146.51.228
+the bit about copying into our codebase is a hack to making developing around the generated code easier, but I am beginning to suspect that if we better follow this example, ZLS will work better?
+
+1752615336
+andrewrk!~andrewrk@mail.ziglang.org
+what are the pain points with your current workflow?
+
+1752615353
+andrewrk!~andrewrk@mail.ziglang.org
+you mentioned that it's slow, but that's only when you need to update it right?
+
+1752615453
+ifreund!2940d10f8b@user/ifreund
+not sure if ZLS would work better, I don't use it myself
+
+1752615504
+ifreund!2940d10f8b@user/ifreund
+one advantage of this approach is that the build system caching will automatically regenerate if the input files to the code generator change
+
+1752615516
+rvrb!~rvrb@156.146.51.228
+simplifying somewhat, we have "framework" code and "generated" code. when I first started contributing to this codebase, they had a cyclical dependency, and we couldn't generate the autodocs because of an infinite recursion loop. as part of untangling that, currently the generated code gets dumped into the "framework" source folder. before doing
+
+1752615516
+rvrb!~rvrb@156.146.51.228
+this, we couldn't get any autocompletion, or ZLS intellisense stuff
+
+1752615593
+rvrb!~rvrb@156.146.51.228
+on top of this, I just added an -- extremely hacky, yes -- "mixin" system that the code generator uses to embed hand-written Zig into code generated Zig, so we can avoid maintaining Zig in multiline string literals for a better development workflow
+
+1752615601
+ifreund!2940d10f8b@user/ifreund
+rvrb: hmm, maybe that's similar to how zig-wayland inserts some non-generated code snippets into the generated code output?
+
+1752615621
+rvrb!~rvrb@156.146.51.228
+here is a mixin: https://github.com/gdzig/gdzig/blob/master/gdzig_bindings/builtin/Array.mixin.zig
+
+1752615665
+ifreund!2940d10f8b@user/ifreund
+all the files in src/ except for scanner.zig and xml.zig are inputs to the generator and spit out byte-for byte as part of the generated code output
+
+1752615673
+rvrb!~rvrb@156.146.51.228
+here's the portion of the build pipeline that generates the code: https://github.com/gdzig/gdzig/blob/a89cd9a0daff9f563e3390e37e0867ee33dd9ef4/build.zig#L256-L287
+
+1752615712
+rvrb!~rvrb@156.146.51.228
+you can see I have "has_side_effects = true" because, well, it has side effects because it's a cyclical hack
+
+1752615738
+rvrb!~rvrb@156.146.51.228
+ifreund: do you inline that code? we have structs we have to add methods to
+
+1752615818
+rvrb!~rvrb@156.146.51.228
+andrewrk: so to answer your question, it's slow because the way I have it setup right now is a hack requiring has_side_effects = true, and it needs to rerun entirely on every build
+
+1752615872
+ifreund!2940d10f8b@user/ifreund
+rvrb: kinda? but your "mixin" thing seems more advanced
+
+1752615909
+rvrb!~rvrb@156.146.51.228
+advanced is a nice word for it :)
+
+1752615973
+ifreund!2940d10f8b@user/ifreund
+rvrb: well, I really don't like the amount of zig code in format strings in my scanner.zig
+
+1752615975
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: aha, well that's a concrete suggestion I can make then, try to get rid of has_side_effects = true. I'm certain you can do it
+
+1752615999
+ifreund!2940d10f8b@user/ifreund
+it's really kinda fragile but I have a good snapshot test now and the bugs seem to be worked out
+
+1752616002
+andrewrk!~andrewrk@mail.ziglang.org
+fix the cyclical hack and I think you will have your improved workflow
+
+1752616034
+ifreund!2940d10f8b@user/ifreund
+(I think following the zig-wayland example is probably the way to get rid of the has_side_effects = true)
+
+1752616041
+rvrb!~rvrb@156.146.51.228
+right; I am just trying to suss out how to approach untangling that; and I feel like tighter integration into the build tooling would do it
+
+1752616106
+rvrb!~rvrb@156.146.51.228
+ifreund: if that mixin concept inspires you and you find a way to do what I'm trying to do there without the hack, let me know
+
+1752616427
+ifreund!2940d10f8b@user/ifreund
+rvrb: well unless I'm missing something I don't think there's really much difference at the build system level between your "mixins" and the source files zig-wayland's code generator slurps up and spits out in the middle of the generated code
+
