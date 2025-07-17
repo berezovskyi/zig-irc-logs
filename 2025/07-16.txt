@@ -1,0 +1,124 @@
+1752626629
+rvrb!~rvrb@156.146.51.228
+yeah you're right. whether it's string literals, or what I am doing, the issue is a dependency cycle. it's unavoidable in this domain. generated and non-generated code depend on each other. I have high demands for full ZLS support which makes it a challenge. now that I can see that I can't break the cycle, I think I have a solution
+
+1752627290
+andrewrk!~andrewrk@mail.ziglang.org
+even if they depend on each other, I think you should be able to make has_side_effects false 
+
+1752627612
+rvrb!~rvrb@156.146.51.228
+yeah that's what I mean - I have to break it into phased to remove side effects
+
+1752627673
+rvrb!~rvrb@156.146.51.228
+I was just stuck on trying to break the cycle so I wasn't getting anywhere
+
+1752686005
+rvrb!~rvrb@156.146.51.228
+alright, I actually have a grasp on this now. I would like to only run my `runArtifact` step when the contents of a temporary directory acting as input to that command have changed. it's currently always running.
+
+1752686025
+rvrb!~rvrb@156.146.51.228
+(even with no has_side_effects)
+
+1752686309
+rvrb!~rvrb@156.146.51.228
+the build.zig code in question: https://github.com/gdzig/gdzig/blob/2eecc3e721958bde5656b6a7ffdc141cba0febb8/build.zig#L258-L279
+
+1752686548
+rvrb!~rvrb@156.146.51.228
+so I'd basically like to `Run.addFileInput` for an entire `LazyPath` directory, I think
+
+1752686781
+rvrb!~rvrb@156.146.51.228
+nope. I figured it out. it works beautifully. thank you for letting me rubber duck you.
+
+1752687271
+triallax!~triallax@lacerte/triallax
+bonk
+
+1752687272
+triallax!~triallax@lacerte/triallax
+anytime
+
+1752689635
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: nice!
+
+1752692542
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm how do I make createFile fail if file already exists?
+
+1752692557
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+truncate = false;
+
+1752692567
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but doesn't return a error if it exists afaik
+
+1752692636
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to create a file, if that succeeds, copy a template file to that same path. As alternative of using Stat
+
+1752692787
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm there is also copyFile
+
+1752692799
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to use it in the build script
+
+1752693137
+andrewrk!~andrewrk@mail.ziglang.org
+flower_: exclusive
+
+1752693146
+andrewrk!~andrewrk@mail.ziglang.org
+not sure how you saw truncate but not exclusive
+
+1752693167
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+andrewrk: I saw it, but thought it was the description of the default
+
+1752693211
+andrewrk!~andrewrk@mail.ziglang.org
+aha
+
+1752693344
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm yeah description could be a bit better: If set to true ensures that this open call creates the file, otherwise causes error.PathAlreadyExists to be returned.
+
+1752693349
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but maybe it's me
+
+1752694903
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+what are the options here? https://ziglang.org/documentation/master/std/#std.fs.Dir.CopyFileOptions
+
+1752694946
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+"The path already exists and the CREAT and EXCL flags were provided."
+
+1752694958
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://ziglang.org/documentation/master/std/#std.fs.Dir.copyFile
+
+1752695087
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+or does the build system has a way to copy a template config file if it doesn't exists yet?
+
+1752695894
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+First step is to make it work I guess: https://git.sr.ht/~flower/jasm-gui-dvui/tree/suckless_build/item/build.zig#L57
+
+1752708720
+rvrb!~rvrb@156.146.51.228
+seems like the std zon parser doesn't support StringArrayHashMapUnmanaged, or I'm doing something wrong; is there any map it does support right now?
+
+1752710129
+rvrb!~rvrb@156.146.51.228
+the answer is no it does not right now (#22775), and I think the approach when needed is to basically just write your own parser on top of Ast.parse in zon mode
+
