@@ -1,0 +1,552 @@
+1752725930
+inverted_rabbit!76716c35d9@server.worlio.com
+Anybody familiar with Zmpl here? I'm so frustrated at this thing that I don't know if it's being dumb or I'm being dumb.
+
+1752725949
+inverted_rabbit!76716c35d9@server.worlio.com
+I would ask Jetzig people but they seem all stuck on Discord.
+
+1752725992
+inverted_rabbit!76716c35d9@server.worlio.com
+Sorry for just asking, let me get a pastebin.
+
+1752726802
+inverted_rabbit!76716c35d9@server.worlio.com
+https://txt.t0.vc/DKQA
+
+1752726802
+inverted_rabbit!76716c35d9@server.worlio.com
+Error: [zmpl] [error:ZmplUnknownDataReferenceError] Unknown data reference: `.user_info`
+
+1752726802
+inverted_rabbit!76716c35d9@server.worlio.com
+I have this somewhat simple mess right now that doesn't work and I cannot figure out why, and it seems to always be the same object and only that object with the issue. I feel like I'm completely missing half the stuff I should know from Zmpl because everything I'm doing here feels like a hack (ZmplValue, testing a bool, not taking advantage of an optional). I cannot seem to figure out why 'user_info'
+
+1752726802
+inverted_rabbit!76716c35d9@server.worlio.com
+ is unknown and everything else isn't.
+
+1752726812
+inverted_rabbit!76716c35d9@server.worlio.com
+Sorry for the multi-message. I forget I'm using IRC sometimes.
+
+1752727088
+norineko!~norineko@user/norineko
+so I have a binary file with a known format/padding. I want to be able to interpret this using zig structs, and I think I want extern structs? packed structs lack arrays which I would like.
+
+1752727140
+norineko!~norineko@user/norineko
+is @ptrCast() preferred over extern union { data MyType, bytes [123]u8 };?
+
+1752728589
+Affliction!affliction@idlerpg/player/affliction
+norineko: extern structs, yeah. packed structs are more for when you want bitfields due to how they're implemented.
+
+1752728631
+Affliction!affliction@idlerpg/player/affliction
+I'd probably favor the union over casting though. Bit more clear what's going on.
+
+1752728687
+Affliction!affliction@idlerpg/player/affliction
+Also, don't forget to consider endianness of what you're running on, even if that's checked at comptime.
+
+1752728718
+norineko!~norineko@user/norineko
+and for having i.e a byte followed by a u32, would I do struct { first: u8, second: u32 align(1) }; ?
+
+1752728727
+Affliction!affliction@idlerpg/player/affliction
+Generally I'd favor explicit deserialization if this isn't particularly hot code.
+
+1752728755
+Affliction!affliction@idlerpg/player/affliction
+Good point, actually. Something I'd need to verify for myself tbh.
+
+1752728787
+norineko!~norineko@user/norineko
+yeah, I realized I could just test that myself~
+
+1752728820
+norineko!~norineko@user/norineko
+by explicit deserialization do you mean actually manually reading off each field by offset?
+
+1752728828
+Affliction!affliction@idlerpg/player/affliction
+indeed
+
+1752728845
+Affliction!affliction@idlerpg/player/affliction
+That way you're forced to take endianness, alignment, etc into account.
+
+1752728859
+norineko!~norineko@user/norineko
+the challenge is i am lazy
+
+1752728866
+Affliction!affliction@idlerpg/player/affliction
+We've all been there :)
+
+1752728945
+norineko!~norineko@user/norineko
+if I were being more hacky about it I would use something like Python's construct library, but maybe something similar to that wouldn't be too difficult to write in zig...
+
+1752729185
+norineko!~norineko@user/norineko
+I guess there's readStruct()? 
+
+1752729250
+Affliction!affliction@idlerpg/player/affliction
+oh yeah, forgot that existed
+
+1752729306
+Affliction!affliction@idlerpg/player/affliction
+anyway, just tested it, works as expected: https://bpa.st/GHZRDVZDMWZZOQ45BMMKFSKGZY
+
+1752729315
+Affliction!affliction@idlerpg/player/affliction
+Figured it would, but, didn't want to be confidently wrong just in case :)
+
+1752729377
+Affliction!affliction@idlerpg/player/affliction
+But yeah, I'd throw a comptime check that the endianness we're running on matches the file format's in too. You never know.
+
+1752729441
+norineko!~norineko@user/norineko
+the file format is little endian which was nice of them
+
+1752729480
+Affliction!affliction@idlerpg/player/affliction
+Yeah, as are the vast majority of the platforms you'll probably encounter today.
+
+1752729495
+norineko!~norineko@user/norineko
+no network byte order nonsense here!
+
+1752736562
+andrewrk!~andrewrk@mail.ziglang.org
+Affliction: var reader: std.Io.Reader = .fixed(&raw); const t = try reader.takeStruct(T, .little);
+
+1752736604
+andrewrk!~andrewrk@mail.ziglang.org
+depends on a bug fix which isn't merged yet (https://github.com/ziglang/zig/pull/24472)
+
+1752736616
+Affliction!affliction@idlerpg/player/affliction
+oh, nice
+
+1752736719
+andrewrk!~andrewrk@mail.ziglang.org
+good night
+
+1752738799
+dutchie!~dutchie@user/dutchie
+hm, are unbuffered Readers impossible? I tried https://zigbin.io/183a45 but it hits an assertion that the buf is non-empty
+
+1752738838
+dutchie!~dutchie@user/dutchie
+maybe it's just a bad idea, but I want to read from stdin in a TUI application
+
+1752739002
+dutchie!~dutchie@user/dutchie
+(question for the future: what's the best way to read UTF-8 characters? .peekByte() then read std.unicode.utf8ByteSequenceLength bytes?)
+
+1752739029
+dutchie!~dutchie@user/dutchie
+(then dealing with invalid utf-8 seems like a pain, but I guess a necessary pain)
+
+1752741466
+braewoods!~braewoods@user/braewoods
+dutchie, why are you trying to use utf8 for this? utf32 is generally preferable if you need easy indexing or so.
+
+1752741508
+braewoods!~braewoods@user/braewoods
+iirc, that's what ncurses ends up doing.
+
+1752741995
+dutchie!~dutchie@user/dutchie
+is there a way to ask the terminal to send inputs in a different encoding? I was just assuming you get whatever the locale sends (which I'm assuming will always be utf-8)
+
+1752743301
+braewoods!~braewoods@user/braewoods
+dutchie, no it'll be utf8 but you can convert it transparently.
+
+1752743336
+braewoods!~braewoods@user/braewoods
+The trick is being able to handle partial utf8 until you have a complete sequence.
+
+1752743500
+dutchie!~dutchie@user/dutchie
+yeah, that's basically what I meant
+
+1752743517
+dutchie!~dutchie@user/dutchie
+I don't really need to index, just read a "whole character" and dispatch based on the input
+
+1752744154
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+First time I use chatGPT: but doesn't have the right answer it seems: 
+
+1752744156
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/ca3abb
+
+1752744197
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://zigbin.io/c94e71
+
+1752744214
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+The path already exists and the CREAT and EXCL flags were provided.
+
+1752744233
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I do that for std.fs.Dir.CopyFileOptions?
+
+1752744343
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+e.g. pass the CREAT and EXCL flags
+
+1752744758
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+"There is no built-in support for O_EXCL (fail if file exists) in copyFile." quote=chatGPT
+
+1752745244
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+quite a thing, the fact that chatGPT can spit out wrong answers with confidence.
+
+1752745495
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://git.sr.ht/~flower/jasm-gui-dvui/tree/develop/item/build.zig#L55
+
+1752745978
+neurocyte!~neurocyte@user/neurocyte
+dutchie: reading whole utf-8 codepoints is probably the least of your problems. if you're going to read tty input for a TUI you'll eventually need a proper finite state machine. for some inspiration see the libvaxis input parser: https://github.com/rockorager/libvaxis/blob/main/src/Parser.zig
+
+1752746023
+dutchie!~dutchie@user/dutchie
+mm, this is a "just for fun" hobby project so I'm not too worried about making it totally bulletproof. but interested to learn how to do things
+
+1752746040
+dutchie!~dutchie@user/dutchie
+and still kind of surprised unbuffered takeByte doesn't work!
+
+1752746376
+braewoods!~braewoods@user/braewoods
+dutchie, or you can just use a C library that already handles most basic terminal interactions like ncurses.
+
+1752746405
+dutchie!~dutchie@user/dutchie
+where's the fun in that
+
+1752746415
+braewoods!~braewoods@user/braewoods
+ok, have fun reinventing that wheel. :D
+
+1752746423
+dutchie!~dutchie@user/dutchie
+the libvaxis parser looks like the sort of thing I'll aim for eventually
+
+1752746436
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm if you can set the .exlusive flag for createFile(), which returns a error if file exists, would you ever need some lock file mechanism like flock?
+
+1752746466
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+there are much better libraries then ncurses these days I would think. libvaxis is one of them I think.
+
+1752746516
+neurocyte!~neurocyte@user/neurocyte
+libvaxis is way better than ncurses. ncurses is horrible.
+
+1752746604
+dutchie!~dutchie@user/dutchie
+for now, while (true) switch (try stdin.takeByte()) { ... }; works well enough
+
+1752746651
+braewoods!~braewoods@user/braewoods
+*nom nom nom*
+
+1752746657
+braewoods!~braewoods@user/braewoods
+It's taking a bite. :)
+
+1752746731
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm there is flock and fcntl in here: https://ziglang.org/documentation/master/std/#src/std/fs/Dir.zig
+
+1752748230
+braewoods!~braewoods@user/braewoods
+flower_, just keep in mind those are purely *advisory*. the kernel doesn't force applications to abide by them.
+
+1752748282
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+braewoods: who are those? flock?
+
+1752748292
+braewoods!~braewoods@user/braewoods
+flock and fcntl style file locks.
+
+1752748309
+braewoods!~braewoods@user/braewoods
+they only have meaning in applications that use them.
+
+1752748321
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm 
+
+1752748324
+braewoods!~braewoods@user/braewoods
+If an application opens a file that has no knowledge of such locks, it does nothing.
+
+1752748342
+braewoods!~braewoods@user/braewoods
+It's basically just locks for cooperating programs.
+
+1752748361
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+interesting
+
+1752748365
+braewoods!~braewoods@user/braewoods
+You may have to use file system permissions if you need something more mandatory.
+
+1752748435
+braewoods!~braewoods@user/braewoods
+Ironically there's some cases on unix clones where file exclusion is normal, it can only be open in one process at a time.
+
+1752748462
+braewoods!~braewoods@user/braewoods
+But it's generally not the norm. And there's no real way to force it either. You have to rely entirely on cooperative assumptions.
+
+1752748485
+braewoods!~braewoods@user/braewoods
+flock() is what I would recommend if it's available.
+
+1752748498
+braewoods!~braewoods@user/braewoods
+It's much simpler. fcntl works on file ranges and such.
+
+1752748508
+braewoods!~braewoods@user/braewoods
+flock can also be applied to directories in some implementations.
+
+1752748537
+braewoods!~braewoods@user/braewoods
+I've known C software that uses flock on a working directory to check if another process is currently working in it.
+
+1752748580
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Here they implemented locking: https://github.com/jackaudio/new-session-manager/commit/b19f4584736c99ed9b8586c4e6b71d01f8325854
+
+1752748618
+braewoods!~braewoods@user/braewoods
+ah, lock files.
+
+1752748623
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I left it out in my implementation as locking seems to be not that simple
+
+1752748655
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+with raceconditions and such
+
+1752748790
+braewoods!~braewoods@user/braewoods
+eh, i suppose so? might not be a problem if only a single instance will be running.
+
+1752748818
+braewoods!~braewoods@user/braewoods
+but that's something flock can help with, if it's done before the file is written to.
+
+1752748835
+braewoods!~braewoods@user/braewoods
+Or just use O_EXCL.
+
+1752748849
+braewoods!~braewoods@user/braewoods
+only the first process to create it will be able to proceed.
+
+1752748857
+braewoods!~braewoods@user/braewoods
+But that won't help for stale lock files.
+
+1752748873
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+running multiple instances is a rare case. For now I try to enforce that two instances doesn't use the same 'project root dir'
+
+1752748911
+braewoods!~braewoods@user/braewoods
+It wouldn't be a bad idea to have an advisory safeguard in case it happens by accident though.
+
+1752748972
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+to prevent stale lock file, they use the xdg $XDG_RUNTIME_DIR 
+
+1752748994
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+not sure how crossplatform that is, probably linux only
+
+1752749019
+braewoods!~braewoods@user/braewoods
+It's part of the Free Desktop XDG specification. So probably most X or Wayland based environments.
+
+1752749043
+braewoods!~braewoods@user/braewoods
+It's not Linux specific.
+
+1752749054
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+In theory right?
+
+1752749067
+braewoods!~braewoods@user/braewoods
+Yea. There's defined fallback behavior if it's undefined.
+
+1752749097
+braewoods!~braewoods@user/braewoods
+But it is true all unix clones have an environment. So there's no reason it can't be implemented.
+
+1752749118
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and on Windows?
+
+1752749126
+braewoods!~braewoods@user/braewoods
+It has no meaning there.
+
+1752749141
+braewoods!~braewoods@user/braewoods
+You'd probably want to use some Windows ism.
+
+1752749166
+braewoods!~braewoods@user/braewoods
+Free Desktop only applies to POSIX type platforms.
+
+1752749176
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see, yeah such things I wanted to avoid having to deal with at the moment
+
+1752749180
+braewoods!~braewoods@user/braewoods
+Or environments. Native Win32 ain't one of them.
+
+1752749181
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+what do you think of lock files?
+
+1752749216
+braewoods!~braewoods@user/braewoods
+Eh. Depends what you're doing with them.
+
+1752749241
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+they create a dir, that should be racecondition save you would think
+
+1752749262
+braewoods!~braewoods@user/braewoods
+Lock files don't necessarily create a directory.
+
+1752749274
+braewoods!~braewoods@user/braewoods
+Some programs just use one that is assumed to already exist.
+
+1752749308
+braewoods!~braewoods@user/braewoods
+I'm mostly familiar with lock files from shell scripts, where they are basically mandatory.
+
+1752749401
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+you can't use mkDir as lock mechanism?
+
+1752749416
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+as it would fail if already exists
+
+1752749447
+braewoods!~braewoods@user/braewoods
+Maybe? But you can't store data in a directory directly.
+
+1752749457
+braewoods!~braewoods@user/braewoods
+It's largely arbitrary how you implement these things.
+
+1752749487
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Looking for the most simple reliable option I guess
+
+1752749496
+braewoods!~braewoods@user/braewoods
+If you're going to go to this much trouble, you might want to also insert files to store information.
+
+1752749524
+braewoods!~braewoods@user/braewoods
+You could also insert a named unix socket to communicate with the owning process.
+
+1752749528
+braewoods!~braewoods@user/braewoods
+if that's somehow useful.
+
+1752749548
+braewoods!~braewoods@user/braewoods
+Some people create a client / server model.
+
+1752749592
+braewoods!~braewoods@user/braewoods
+Like a central process handles all operations and the clients just make requests.
+
+1752749612
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+This system I'm working on is already some sort of client / server model using open sound control (udp)
+
+1752749637
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but then you need something for communication between multiple servers
+
+1752749659
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+e.g. the locking should occur when multiple servers are active
+
+1752749691
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+but then you'll need a master server or so probably
+
+1752749708
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+and how do other servers find it
+
+1752749728
+braewoods!~braewoods@user/braewoods
+If it's a LAN only thing, probably zeroconf or w/e.
+
+1752749763
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+avahi
+
+1752749777
+braewoods!~braewoods@user/braewoods
+yea but it's part of something called zero configuration, iirc.
+
+1752749795
+braewoods!~braewoods@user/braewoods
+https://en.wikipedia.org/wiki/Zero-configuration_networking
+
+1752749809
+braewoods!~braewoods@user/braewoods
+Avahi is just one implementation.
+
+1752749841
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I see
+
+1752750023
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, I stored your comments about locking, maybe at some point I'll implement some locking system if it proofs to be better
+
+1752750829
+braewoods!~braewoods@user/braewoods
+flower_, just be sure to read the actual documentation.
+
+1752751658
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+braewoods: will do, thx
+
