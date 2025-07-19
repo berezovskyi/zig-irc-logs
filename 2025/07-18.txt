@@ -1,0 +1,224 @@
+1752796956
+bblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/93d20c/run
+
+1752796978
+bblack!~bblack@wikimedia/bblack-WMF
+^ it seems like Zig doesn't yet try to pack cases like these efficiently? I would've thought it could make that be 4 bytes, not 8.
+
+1752797011
+bblack!~bblack@wikimedia/bblack-WMF
+(or is there something I'm missing, like a "packed union(enum)"?)
+
+1752797097
+triallax!~triallax@lacerte/triallax
+i think packed union(enum) isn't a thing
+
+1752797119
+triallax!~triallax@lacerte/triallax
+packed unions are though, so you could have a packed struct with a one-bit tag and then a u31 payload
+
+1752797132
+triallax!~triallax@lacerte/triallax
+well i just realised that doesn't use a union at all, but you get my point
+
+1752797145
+triallax!~triallax@lacerte/triallax
+if the payload could be different types then yes you'd need a union there ig
+
+1752797264
+bblack!~bblack@wikimedia/bblack-WMF
+yeah in my "real" example, it was two differently-typed (for type-safety reasons) enum(u31) values
+
+1752797331
+bblack!~bblack@wikimedia/bblack-WMF
+but yeah, I can do it manually with e.g. : packed struct { which: u1, value: packed union { first: enum_u31_type1, second: enum_u31_type2 } }
+
+1752797361
+bblack!~bblack@wikimedia/bblack-WMF
+I was just surprised that the stock tagged unions didn't sort it out efficiently if the tag type is a u1 enum.
+
+1752797375
+triallax!~triallax@lacerte/triallax
+a packed union(enum) would be nice
+
+1752797406
+triallax!~triallax@lacerte/triallax
+soon i'm planning to implement nan boxing for my vm and i'm going to have to have to manually have a tag and payload in
+
+1752797444
+triallax!~triallax@lacerte/triallax
+well actually, since the sign bit is separated from the highest mantissa bits, maybe a packed union(enum) wouldn't work there anyway...
+
+1752817091
+LAC-Tech!~lewis@granite-phrase.bnr.la
+triallax: yeah you can't do packed union(enum), which sucks. You have to switch manually like some kind of medieval peasant or C programmer.
+
+1752817122
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: I saw an old post of yours on lobste.rs, and I thought I had written it. Disturbing!
+
+1752817325
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(can't find it now but it was pro zig propaganda, safety etc)
+
+1752826429
+triallax!~triallax@lacerte/triallax
+LAC-Tech: eh c programmers would use bitmasks and such which are a little more tricky than using a packed enum in zig for the tag field
+
+1752830081
+LAC-Tech!~lewis@granite-phrase.bnr.la
+triallax: I mean you have to exlicitly make a packed struct, with a tag field, and union field, and sort of do it manually
+
+1752830093
+LAC-Tech!~lewis@granite-phrase.bnr.la
+like how C does tagged unions
+
+1752830121
+LAC-Tech!~lewis@granite-phrase.bnr.la
+or rather - what C programmers have to resort to, inorder to do tagged unions
+
+1752830178
+ifreund!2940d10f8b@user/ifreund
+triallax: what you can do is have a function on your nanbox type that returns a tagged union
+
+1752834976
+triallax!~triallax@lacerte/triallax
+ifreund: that would be the most idiomatic thing to do indeed, but i'll have to see if it has a performance cost compared to simple bitmasking
+
+1752835020
+triallax!~triallax@lacerte/triallax
+LAC-Tech: yeah but there's actual type safety when you switch on the tag (compiler tells you if you forgot some cases)
+
+1752835042
+triallax!~triallax@lacerte/triallax
+and also using the wrong union payload is checked illegal behavior i believe
+
+1752835276
+triallax!~triallax@lacerte/triallax
+ok i'm going to correct myself on the first count, -Wswitch-enum is a thing
+
+1752838147
+triallax!~triallax@lacerte/triallax
+what's the idiomatic and portable way to get an integer value with all its bits set?
+
+1752839038
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+trialla, for unsigned std.math.maxInt would do
+
+1752839052
+triallax!~triallax@lacerte/triallax
+that's what i'm doing now but something shorter would be nice
+
+1752852356
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+const i = std.math.maxInt(u32);
+
+1752852357
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+:D
+
+1752856268
+clevor!sid649024@id-649024.hampstead.irccloud.com
+`~0`
+
+1752856279
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Might work
+
+1752856413
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't do ~ on comptime_int
+
+1752856433
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it'd have to be ~@as(u32, 0), still fewer characters I guess
+
+1752856510
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and that also works for signed integers
+
+1752858242
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Aww
+
+1752866411
+palanix!~palanix@2a02:3100:5e8f:b000:96a2:a9fc:1daf:a7
+will IO be added to zig zen (like memory)?
+
+1752866840
+andrewrk!~andrewrk@mail.ziglang.org
+https://kristoff.it/blog/asynchrony-is-not-concurrency/
+
+1752871007
+LAC-Tech!~lewis@granite-phrase.bnr.la
+triallax: there's type safety if you do union(enum). but those can't be packed. if you want a predictable size of the union, you have to resort to the C style solution, is what I mean.
+
+1752871235
+LAC-Tech!~lewis@granite-phrase.bnr.la
+andrewrk: yeah saw that on lobsters. never really had a mental model for asynchrony.
+
+1752871259
+LAC-Tech!~lewis@granite-phrase.bnr.la
+there's probably a 45 year old paper that's been xeroxed at a jaunty angle that has a super precise definition everyone forgot
+
+1752872950
+tjf!~deckard@user/deckard
+(possibly dumb question) is there any difference between @as(f32, x) and @as(f32, @floatFromInt(x)) for some integer x?
+
+1752873070
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the former will only work for constants
+
+1752873134
+tjf!~deckard@user/deckard
+oh of course thank you
+
+1752873147
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, unless the integer is small enough
+
+1752873165
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+e.g. u16 -> f32 will work just with @as
+
+1752873184
+tjf!~deckard@user/deckard
+right just tried with a var u64 and it failed as expected
+
+1752873188
+tjf!~deckard@user/deckard
+makes sense
+
+1752873195
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+i.e. it only works if the conversion is lossless
+
+1752873254
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no wait, I'm wrong
+
+1752873263
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it only works with constants
+
+1752873614
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(I just sometimes wish it allowed lossless conversions)
+
+1752874785
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That looks like https://github.com/ziglang/zig/issues/18614
+
+1752874820
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yep
+
+1752874916
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+although I wouldn't mind if it required an explicit @as
+
+1752875639
+clevor!sid649024@id-649024.hampstead.irccloud.com
+In https://github.com/ziglang/zig/issues/3380, what if there was an `endian()` keyword as a type modifier like `align`?
+
