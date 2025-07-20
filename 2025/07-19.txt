@@ -1,0 +1,344 @@
+1752883786
+kenrap!~kenrap@user/kenrap
+Isn't asynchronous programming just a type of concurrency? My understanding is, while all of async is concurrency, but not all of concurrency is async.
+
+1752884937
+andrewrk!~andrewrk@mail.ziglang.org
+kenrap: if you're responding to the post I linked earlier - seems like you're missing the point? 
+
+1752884992
+andrewrk!~andrewrk@mail.ziglang.org
+point being that there are some use cases that can be solved with only asynchrony, while other use cases require concurrency
+
+1752885054
+andrewrk!~andrewrk@mail.ziglang.org
+think carefully about the two examples that were presented in the article - saving independent files, vs a client/server, and you'll see the difference that is being presented
+
+1752886577
+kenrap!~kenrap@user/kenrap
+Got it now.
+
+1752943678
+rvrb!~rvrb@156.146.51.228
+I've been trying to understand that article.. this kind of thing usually only sticks when I am hands on with it. but is the idea that 'asynchrony' describes a lack of dependencies between tasks, and 'concurrency'/'parallelism' describes a capability of execution?
+
+1752943750
+rvrb!~rvrb@156.146.51.228
+I'm not sure if thinking about it in terms of dependencies is missing something
+
+1752944301
+rvrb!~rvrb@156.146.51.228
+traditional code runs step-by-step in order. dependencies between steps are implicitly sequenced. most async/await implementations will break that order by coupling to promises, dragging along a concurrent execution model. the proposal being to separate those ideas. async/await merely breaks the dependency chain, and does not prescribe the
+
+1752944301
+rvrb!~rvrb@156.146.51.228
+execution model
+
+1752945763
+triallax!~triallax@lacerte/triallax
+i just got a really confusing error message because i accidentally used || instead of or
+
+1752945794
+triallax!~triallax@lacerte/triallax
+https://0x0.st/s/u-BExcYb1JTYkWD0vxHmAA/8d36.txt
+
+1752945804
+triallax!~triallax@lacerte/triallax
+presumably it tried to treat dumb as an error type
+
+1752945822
+triallax!~triallax@lacerte/triallax
+can this be improved? it took me a minute before i figured it out and i suspect someone newer to zig might take much longer
+
+1752945823
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I've done that more than one
+
+1752945833
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*once
+
+1752949548
+rvrb!~rvrb@156.146.51.228
+still thinking about all of this asynchrony stuff, if what I said is right -- and I will add a disclaimer that I am still kind of a novice at them -- I see a lot of parallels between this and atomics
+
+1752950068
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: sounds like you understand correctly
+
+1752950132
+andrewrk!~andrewrk@mail.ziglang.org
+really, nobody has to worry about this stuff if they don't want to. you can just write normal, synchronous code, but now you have to use std.Io.File instead of std.fs.File, and nothing else changes really
+
+1752950151
+andrewrk!~andrewrk@mail.ziglang.org
+meanwhile an application developer who cares about this stuff can now use your library even when they're using an event loop
+
+1752950159
+andrewrk!~andrewrk@mail.ziglang.org
+that's the main purpose of all this
+
+1752950204
+rvrb!~rvrb@156.146.51.228
+what if your library is calling `asyncConcurrent`, though? is that designed to be uncommon in library code or something? I asked Loris this just now on Lobsters, same questions; https://lobste.rs/s/oeuohp/asynchrony_is_not_concurrency#c_1wtqr1
+
+1752950311
+rvrb!~rvrb@156.146.51.228
+answering my own question, I think maybe the point of the design is that opting into asynchronity does not preclude synchronity; but requiring concurrency will, as usual
+
+1752950329
+rvrb!~rvrb@156.146.51.228
+preclude -> exclude?
+
+1752950413
+rvrb!~rvrb@156.146.51.228
+dumbing it down for myself more.. it is possible to write a library that doesn't care if it is concurrent or not; but if you write a library needs to be concurrent, of course the runtime must be
+
+1752950553
+andrewrk!~andrewrk@mail.ziglang.org
+here's a snippet from the doc comments of `asyncConcurrent`: /// This has stronger guarantee than `async`, placing restrictions on what kind of `Io` implementations are supported. By calling `async` instead, one allows, for example, stackful single-threaded blocking I/O.
+
+1752950591
+rvrb!~rvrb@156.146.51.228
+unrelated, gonna head over to central library now to check out the space. lmk if there's anything you want me to look out for
+
+1752950613
+andrewrk!~andrewrk@mail.ziglang.org
+point being: your code is more reusable if you avoid that function
+
+1752950616
+andrewrk!~andrewrk@mail.ziglang.org
+nice!
+
+1752950738
+andrewrk!~andrewrk@mail.ziglang.org
+generally, a package in the ecosystem should avoid asyncConcurrent if possible
+
+1752950834
+rvrb!~rvrb@156.146.51.228
+that makes sense, I think it’s coming together now
+
+1752950839
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Are there any plans for ranged integers in the near future?
+
+1752951111
+rvrb!~rvrb@156.146.51.228
+I’m thinking about it in terms of a DAG and it seems like the server client example actually has a required blocking moment when the server opens its socket that the client depends on, which would signal the need for concurrency. I guess I’m wondering if there’s other ways to model that
+
+1752954303
+bblack!~bblack@wikimedia/bblack-WMF
+rvrb: generally the act of listen()ing on a server socket tells the kernel "this socket now accepts connections", which can happen during synchronous normal socket setup code.  then afterwards you can have the server async accept connections (which may already be queued up at the kernel level by then) and have the client async make connections to it.
+
+1752954367
+bblack!~bblack@wikimedia/bblack-WMF
+all that is to say: the act of making the server socket be capable of accepting connections is something that happens once up front, and is independent of the more async/eventloop io stuff of accepting and handling said connections.
+
+1752955689
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/24510 thoughts?
+
+1752956406
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+I’m a fan
+
+1752956462
+kenrap!~kenrap@user/kenrap
+Yeah, a juicy main would help automate the usual main setup.
+
+1752956589
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+is there a benefit to providing an arena and an allocator?
+
+1752956650
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+seeing as it’s two lines to make my own from the default allocator I mean
+
+1752956662
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+make + cleanup
+
+1752956665
+andrewrk!~andrewrk@mail.ziglang.org
+presumably the arena would be used by the arg parser, so then it's just being exposed
+
+1752956679
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+ah I see
+
+1752956679
+andrewrk!~andrewrk@mail.ziglang.org
+but the general purpose one is kind of an afterthought
+
+1752956706
+andrewrk!~andrewrk@mail.ziglang.org
+oh right but I want to make it so that unused fields are deleted
+
+1752956887
+kenrap!~kenrap@user/kenrap
+You might want to add that extra context in there to reduce confusion
+
+1752957917
+andrewrk!~andrewrk@mail.ziglang.org
+good point
+
+1752958782
+triallax!~triallax@lacerte/triallax
+juicy main sounds great and i'm also very thirsty right now :)
+
+1752958789
+triallax!~triallax@lacerte/triallax
+time to drink some water
+
+1752958867
+triallax!~triallax@lacerte/triallax
+i'd ended up writing my own arg parser for my project ages ago, admittedly that was pretty fun
+
+1752958875
+triallax!~triallax@lacerte/triallax
+but a builtin one is something i always thought was lacking
+
+1752959641
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: `os` should be a switch statement and not a union.
+
+1752959666
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Or maybe a tagged unio
+
+1752959668
+clevor!sid649024@id-649024.hampstead.irccloud.com
+oops
+
+1752959818
+andrewrk!~andrewrk@mail.ziglang.org
+on second thought it would just be a different type depending on the target os
+
+1752965299
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: https://github.com/ziglang/zig/pull/24511
+
+1752965320
+triallax!~triallax@lacerte/triallax
+oh, that's really nice to see
+
+1752965454
+triallax!~triallax@lacerte/triallax
+this code is a little bit too much for me to navigate, what are the implications on the generated assembly?
+
+1752965995
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: the implications are that 1. you won't experience the bug and 2. you'll get something closer to while (true) switch()
+
+1752966026
+andrewrk!~andrewrk@mail.ziglang.org
+however presumably LLVM will fix their bug someday
+
+1752966030
+triallax!~triallax@lacerte/triallax
+unfortunate but nothing we can do about it i guess
+
+1752966041
+triallax!~triallax@lacerte/triallax
+well maybe i dive into the llvm issue when i feel like it
+
+1752966070
+andrewrk!~andrewrk@mail.ziglang.org
+or maybe someday zig grows its own optimizations and we beat llvm at their own game :)
+
+1752966083
+triallax!~triallax@lacerte/triallax
+looking forward to it :)
+
+1752966113
+triallax!~triallax@lacerte/triallax
+just using labeled switch for my vm with releasefast extends the build time a lot which is annoying
+
+1752966119
+triallax!~triallax@lacerte/triallax
+wait let me measure it
+
+1752966151
+triallax!~triallax@lacerte/triallax
+21 seconds ;-;
+
+1752966156
+triallax!~triallax@lacerte/triallax
+with hot cache
+
+1752966389
+triallax!~triallax@lacerte/triallax
+speaking of the cache
+
+1752966398
+triallax!~triallax@lacerte/triallax
+is it supposed to grow unbounded?
+
+1752966408
+triallax!~triallax@lacerte/triallax
+i have to nuke it regularly because it gets to 10G
+
+1752966539
+andrewrk!~andrewrk@mail.ziglang.org
+yeah GC isn't implemented yet
+
+1752966554
+triallax!~triallax@lacerte/triallax
+noted
+
+1752966563
+triallax!~triallax@lacerte/triallax
+i have plenty of space so it's not a big deal
+
+1752966607
+triallax!~triallax@lacerte/triallax
+just don't like the idea of my tiny little zig project taking up 10G :D
+
+1752966747
+kenrap!~kenrap@user/kenrap
+If I want to use valgrind for finding memory leaks, do I just temporarily switch my allocator to use the std.heap.c_allocator?
+
+1752966780
+triallax!~triallax@lacerte/triallax
+yes
+
+1752966784
+kenrap!~kenrap@user/kenrap
+Nice
+
+1752966806
+triallax!~triallax@lacerte/triallax
+there's also a valgrind option you can set on the module in build.zig for example
+
+1752966811
+triallax!~triallax@lacerte/triallax
+make it configurable via a build option or something
+
+1752966828
+kenrap!~kenrap@user/kenrap
+Even nicer. Is there a link to that?
+
+1752966837
+triallax!~triallax@lacerte/triallax
+that doesn't set the allocator for you
+
+1752966848
+triallax!~triallax@lacerte/triallax
+i'm actually not sure what it does exactly
+
+1752966933
+kenrap!~kenrap@user/kenrap
+Is there a way to do a comptime check to switch the allocator on zig build?
+
+1752966962
+triallax!~triallax@lacerte/triallax
+i do this in my code
+
+1752966984
+triallax!~triallax@lacerte/triallax
+https://0x0.st/s/hBl8xcYWKO3p07rHsAQ6IQ/8dI9.txt
+
+1752966987
+kenrap!~kenrap@user/kenrap
+Thanks
+
