@@ -1,0 +1,104 @@
+1753017151
+Profpatsch!~Profpatsc@user/Profpatsch
+I’m running  stage3/bin/zig build -p stage4 -Dno-lib -Dno-bin -fincremental --watch
+
+1753017175
+Profpatsch!~Profpatsc@user/Profpatsch
+but when I edit std/Build/Watch.zig, it does not pick up the change. What am I doing wrong?
+
+1753017202
+Profpatsch!~Profpatsc@user/Profpatsch
+(btw I solved the issue with --watch not working by updating to a newer kernel (fanotify did not work with btrfs until like 6.8)
+
+1753022509
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im having an issue trying to set up a wayland layer shell in zig: https://zigbin.io/197510. what am i doing wrong here?
+
+1753028323
+meator!~meator@user/meator
+Hey. I'd like to understand what makes zig's cross compilation special. I'm a C/C++ developer. My current understanding of it is that it's just LLVM (to my knowledge a plain clang or clang++ can already cross compile to all arches on its own). But Zig bundles some headers and other important things that would be traditionally found in a target compiled sysroot, which removes the need for a sysroot.
+
+1753028339
+meator!~meator@user/meator
+This is true for select architectures documented in https://ziglang.org/download/0.14.0/release-notes.html#Support-Table
+
+1753028457
+meator!~meator@user/meator
+Do architectures which do not have 🟢 for libc still require sysroots? What about libstdc++?
+
+1753030321
+andrewrk!~andrewrk@mail.ziglang.org
+meator: zig provides libc++ in source form, compiled lazily for the target configuration
+
+1753030379
+andrewrk!~andrewrk@mail.ziglang.org
+the next release, coming soon, has many of those libc dots turn green
+
+1753030448
+meator!~meator@user/meator
+And those architectures do not require a sysroot for successful crosscompilation, right?
+
+1753030507
+andrewrk!~andrewrk@mail.ziglang.org
+correct
+
+1753030571
+andrewrk!~andrewrk@mail.ziglang.org
+in fact you can package up C/C++ dependencies so that they are consistently available across platforms, insulating your build from system shenanigans
+
+1753030592
+andrewrk!~andrewrk@mail.ziglang.org
+here are some dependencies already available in such manner: https://github.com/allyourcodebase/
+
+1753030629
+andrewrk!~andrewrk@mail.ziglang.org
+if you depend on things this way, 1. you always get the same version, and 2. you avoid differences in platforms (good luck telling a windows user to apt-get install something)
+
+1753030682
+andrewrk!~andrewrk@mail.ziglang.org
+and 3. if you need to make adjustments to a dep you can easily fork it and change it and move along, without begging your system maintainer to make changes and then waiting 3 years
+
+1753030980
+meator!~meator@user/meator
+And this would require porting my dependency's build systems to Zig's build system, which itself uses Zig. I assume that Zig's build system can handle pure C/C++ projects from what I've seen in the linked org.
+
+1753031123
+meator!~meator@user/meator
+And the dependant would also have to have a Zig build system?
+
+1753031335
+meator!~meator@user/meator
+I am not knowledgeable of the Zig ecosystem, so I don't really see myself using these systems. But having a handy C/C++ cross compiler which happens to support the Zig programming language would be easier to adapt to my workflow for me.
+
+1753032334
+andrewrk!~andrewrk@mail.ziglang.org
+well, if you try it out, I'm happy to answer more questions
+
+1753039541
+Profpatsch!~Profpatsc@user/Profpatsch
+Regarding my problem from above, I added `--zig-lib-dir ../lib` as suggested in https://ziggit.dev/t/which-standard-library-is-used-when-building-the-zig-compiler/5073/9 and now it picks up changes I make to the library in the watcher
+
+1753039553
+Profpatsch!~Profpatsc@user/Profpatsch
+I thought maybe --Dno-lib would already take care of that
+
+1753041261
+andrewrk!~andrewrk@mail.ziglang.org
+it's the opposite, -Dno-lib means you don't have an extra copy of lib/ so it picks up changes you make to lib/ in the source tree
+
+1753041272
+andrewrk!~andrewrk@mail.ziglang.org
+which is usually desirable 
+
+1753041495
+Profpatsch!~Profpatsc@user/Profpatsch
+but it didn’t until I added --zig-lib-dir
+
+1753041501
+Profpatsch!~Profpatsc@user/Profpatsch
+so I’m confused
+
+1753041562
+ifreund!2940d10f8b@user/ifreund
+maybe you built once without -Dno-lib and had a stale lib dir sitting around from that
+
