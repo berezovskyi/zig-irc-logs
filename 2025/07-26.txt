@@ -498,3 +498,91 @@ looking for read or two before I post on Ziggit
 torque!~tachyon@user/torque
 at the end when you show the backing implementation, it is missing the `client` field. is this intentional?
 
+1753564195
+torque!~tachyon@user/torque
+I believe that's intended to be a simplified demo, but I think it would be interesting to show the full type
+
+1753564434
+rvrb!~rvrb@156.146.51.228
+If I understand correctly, yes it is intentional - all of the data is contiguously stored behind the pointer
+
+1753564550
+torque!~tachyon@user/torque
+to be more clear as to my question, in the example, you have `const Connection = ResizableStruct(struct { client: Client, host: ... });` but when you describe what this gets resolved to you just show `const Connection = struct { ptr: [*]u8, lens: struct { host: usize, ... } };`
+
+1753564578
+rvrb!~rvrb@156.146.51.228
+yeah; we don't need to store the lengths of client because it's comptime known. only the arrays would need to be on that lens struct
+
+1753564592
+rvrb!~rvrb@156.146.51.228
+the actual client value would be stored at the beginning of the data referenced at the ptr
+
+1753564601
+torque!~tachyon@user/torque
+sure, but you presumably also have to store offsets somewhere
+
+1753564618
+rvrb!~rvrb@156.146.51.228
+no - they are calculated by the values and the comptime known lengths of the elements and fields
+
+1753564623
+rvrb!~rvrb@156.146.51.228
+by the length values*
+
+1753564638
+torque!~tachyon@user/torque
+do you not allow interleaved variable length and fixed-length fields?
+
+1753564650
+torque!~tachyon@user/torque
+I guess you can reorder it so that all of the variable length data is at the end
+
+1753564658
+rvrb!~rvrb@156.146.51.228
+I ran out of steam by the end (writing is hard!), eating lunch now. but I may try to add simplifiedc implementation for the four methods in that example
+
+1753564670
+rvrb!~rvrb@156.146.51.228
+it does allow interleaving
+
+1753564700
+torque!~tachyon@user/torque
+no worries
+
+1753564714
+rvrb!~rvrb@156.146.51.228
+right now the implementation expects the struct to be layout = .auto and will sort the fields by alignment (like MultiArrayList) - the data behind the pointer does not have a defined layout
+
+1753564729
+torque!~tachyon@user/torque
+I think the explanation of why the resultant struct can be so minimal could be embellished
+
+1753564739
+rvrb!~rvrb@156.146.51.228
+yeah that makes sense, thank you
+
+1753564750
+torque!~tachyon@user/torque
+not sure I understand the "sort by alignment"
+
+1753564764
+torque!~tachyon@user/torque
+oh, nevermind
+
+1753564771
+torque!~tachyon@user/torque
+yeah I get it now. interesting
+
+1753564778
+rvrb!~rvrb@156.146.51.228
+I greatly appreciate you taking the time to give feedback :)
+
+1753564832
+torque!~tachyon@user/torque
+it's definitely not intuitive to me that you need so little runtime information (just one usize per dynamic field) to represent any possible ResizableStruct
+
+1753564836
+torque!~tachyon@user/torque
+it's a cool result though
+
