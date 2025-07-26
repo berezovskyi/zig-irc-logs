@@ -1,0 +1,864 @@
+1753402152
+triallax!~triallax@lacerte/triallax
+i had a similar use case recently
+
+1753402194
+triallax!~triallax@lacerte/triallax
+i'd also like to know the ideal way to do this
+
+1753402279
+andrewrk!~andrewrk@mail.ziglang.org
+maybe try std.meta.TrailerFlags
+
+1753403602
+triallax!~triallax@lacerte/triallax
+hm, i don't see how that allows for a "dynamically-sized" type?
+
+1753404937
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: yeah I guess it's more for a when you have a specific kind of dynamically sized type, but it's not solving for i.e. a struct with a dynamically sized field in the middle of it
+
+1753404973
+triallax!~triallax@lacerte/triallax
+i still don't see how it can solve it for any kind, can you explain?
+
+1753404980
+triallax!~triallax@lacerte/triallax
+feel like i'm missing something
+
+1753405014
+andrewrk!~andrewrk@mail.ziglang.org
+it's an abstraction for when you have A,B,C,... and depending on a bit set, you have or don't have each of A,B,C,...
+
+1753405030
+andrewrk!~andrewrk@mail.ziglang.org
+so it's dynamic in the sense that the bit set is dynamic 
+
+1753405034
+triallax!~triallax@lacerte/triallax
+right
+
+1753405041
+triallax!~triallax@lacerte/triallax
+but it can't be of an arbitrary size
+
+1753405073
+andrewrk!~andrewrk@mail.ziglang.org
+right it only helps if you have a fixed set of possible configurations
+
+1753405078
+triallax!~triallax@lacerte/triallax
+mhm
+
+1753405080
+andrewrk!~andrewrk@mail.ziglang.org
+so, not applicable to your use case it sounds like
+
+1753405086
+triallax!~triallax@lacerte/triallax
+i was thinking more in the vein of c's flexible array members
+
+1753405112
+triallax!~triallax@lacerte/triallax
+i suspect for rvrb too
+
+1753405122
+andrewrk!~andrewrk@mail.ziglang.org
+yeah bad suggestion, sorry
+
+1753405177
+triallax!~triallax@lacerte/triallax
+the way i did it was with std.mem.alignForward and some good old pointer arithmetic, but it didn't feel very clean
+
+1753405202
+triallax!~triallax@lacerte/triallax
+i ended up scrapping the thing anyway for unrelated reasons though so i didn't have the chance to explore it much further
+
+1753405218
+andrewrk!~andrewrk@mail.ziglang.org
+I could imagine a nice abstraction using type reflection where you give a struct, and there's a special type `Dynamic`, you pass a struct with such fields to the function and it gives you back a type that has helpers for allocation, field access, etc
+
+1753405251
+andrewrk!~andrewrk@mail.ziglang.org
+pub fn DynamicallySizedStruct(comptime Fields: type) type { ... }
+
+1753405254
+triallax!~triallax@lacerte/triallax
+oh that would be really nice
+
+1753405257
+andrewrk!~andrewrk@mail.ziglang.org
+implementation left as an exercise for the reader :P
+
+1753405287
+triallax!~triallax@lacerte/triallax
+for context i was playing around with the idea of eliminating double pointer indirection from a reference-counted string
+
+1753405300
+triallax!~triallax@lacerte/triallax
+i.e. shove the reference count directly before/after the slice in memory
+
+1753405526
+triallax!~triallax@lacerte/triallax
+i might have gotten too clever with my implementation too
+
+1753405544
+triallax!~triallax@lacerte/triallax
+i wrote a wrapper around `std.ArrayList` to account for the reference count as well
+
+1753405557
+triallax!~triallax@lacerte/triallax
+it was pretty fun but maybe not the best idea
+
+1753405621
+triallax!~triallax@lacerte/triallax
+it's a little bit of a shame you can't do realloc but like increase size backwards
+
+1753415319
+rvrb!~rvrb@156.146.51.228
+spitballing, but what about `fn DynamicallySizedStruct(comptime known_sized_types: anytype) type { ... }` for arbitrarily spaced data. maybe solving for a not existing use case
+
+1753415417
+rvrb!~rvrb@156.146.51.228
+aka `const Packet = DynamicallySizedStruct(.{PackedHeader, PacketFooter})`; not sure if you could implement such a thing
+
+1753415420
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: my idea was to use the struct fields as the comptime known sized types
+
+1753415428
+rvrb!~rvrb@156.146.51.228
+oh!
+
+1753415433
+rvrb!~rvrb@156.146.51.228
+that makes sense
+
+1753415436
+rvrb!~rvrb@156.146.51.228
+then you have enum tag
+
+1753415473
+andrewrk!~andrewrk@mail.ziglang.org
+DynamicallySizedStruct(struct{packed_header: PackedHeader, dynamically_sized_buffer: X, packed_footer: PackedFooter})
+
+1753415492
+andrewrk!~andrewrk@mail.ziglang.org
+where X is a specially provided type by this vaporware code that gives you a runtime known []u8
+
+1753415532
+andrewrk!~andrewrk@mail.ziglang.org
+point being you could have arbitrarily many fields in the struct and arbitrarily many dynamically sized buffers
+
+1753415543
+andrewrk!~andrewrk@mail.ziglang.org
+and the struct type layout is a nice way to communicate that information
+
+1753415569
+rvrb!~rvrb@156.146.51.228
+yeah I like that. I'll play around with that idea because I am stuck and bored with what I am working on (:
+
+1753415683
+rvrb!~rvrb@156.146.51.228
+can even have a `View` type that  is `struct{packed_header: *PackedHeader, dynamically_sized_buffer: []const u8, packed_footer: *PackedFooter}` or something
+
+1753415724
+rvrb!~rvrb@156.146.51.228
+oh. I am just repeating you
+
+1753415727
+rvrb!~rvrb@156.146.51.228
+I'm catching up
+
+1753415762
+andrewrk!~andrewrk@mail.ziglang.org
+all good! :D
+
+1753415960
+rvrb!~rvrb@156.146.51.228
+can you make named type aliases? like can you make `Dynamic` a comptime comparable (`T == Dynamic`) alias of []u8
+
+1753415965
+rvrb!~rvrb@156.146.51.228
+I think the answer is no but just checking
+
+1753415981
+rvrb!~rvrb@156.146.51.228
+single element tuple type?
+
+1753416039
+rvrb!~rvrb@156.146.51.228
+might as well just make it a struct. carry on
+
+1753416096
+andrewrk!~andrewrk@mail.ziglang.org
+I mean you can just do `const Dynamic = []u8;` but I'm not sure how that helps at all
+
+1753416130
+andrewrk!~andrewrk@mail.ziglang.org
+it has to be != to be useful in this case
+
+1753416149
+rvrb!~rvrb@156.146.51.228
+yeah, just looking for a `fn read(buf: []u8) T` so your struct you pass in can have methods
+
+1753416401
+andrewrk!~andrewrk@mail.ziglang.org
+mmm I'm not sure how valuable that is
+
+1753416450
+rvrb!~rvrb@156.146.51.228
+yeah I am realizing this as I draft some stuff
+
+1753416826
+rvrb!~rvrb@156.146.51.228
+something vaguely like this I guess? https://zigbin.io/f609ad
+
+1753416859
+rvrb!~rvrb@156.146.51.228
+then you can read `Header`, get len, read footer with that len
+
+1753416995
+andrewrk!~andrewrk@mail.ziglang.org
+why not more simply an empty struct for UnknownBytes?
+
+1753417044
+rvrb!~rvrb@156.146.51.228
+fair, I don't even know if what I did would work, but the idea was to just make sure it doesn't get created
+
+1753417119
+andrewrk!~andrewrk@mail.ziglang.org
+is it necessary to avoid storing the lengths of runtime-known fields in the type next to `bytes`?
+
+1753417131
+andrewrk!~andrewrk@mail.ziglang.org
+because if you store those you can get a more convenient API
+
+1753417176
+andrewrk!~andrewrk@mail.ziglang.org
+actually you should make that API regardless, because then you can make the more hardcore API construct the type that has the additional info as the implementation
+
+1753417370
+andrewrk!~andrewrk@mail.ziglang.org
+it's probably reasonable to store all the runtime known lengths in this struct. so that means you store the base pointer, and then 1 length per runtime-known-size field. that means you only store a pointer if a regular struct is passed 
+
+1753417372
+rvrb!~rvrb@156.146.51.228
+well you have to know which field on the compile time types has the length of those fields, don't you?
+
+1753417411
+andrewrk!~andrewrk@mail.ziglang.org
+consider that bytes: []u8 stores too much information, in the case that KnownSizeType has no UnknownBytes fields
+
+1753417482
+andrewrk!~andrewrk@mail.ziglang.org
+you want `base: [*]align(A) u8` where A is @max() of alignment of all fields types, and then an array of only the lengths of runtime-sized fields
+
+1753417527
+rvrb!~rvrb@156.146.51.228
+oh, I think I follow now
+
+1753417565
+andrewrk!~andrewrk@mail.ziglang.org
+then your get() function doesn't need buffer_sizes, which is way nicer
+
+1753417588
+rvrb!~rvrb@156.146.51.228
+right, this struct is basically the `[*]u8` from when I first asked the question but with some extra comptime info, and what you're proposing, storing the runtime lengths as they are fetched
+
+1753417592
+andrewrk!~andrewrk@mail.ziglang.org
+also suggest to use std.meta.FieldEnum rather than string for field names
+
+1753417606
+rvrb!~rvrb@156.146.51.228
+I was going to ask about that - a meta question, I never know which is the idiomatic thing
+
+1753417641
+andrewrk!~andrewrk@mail.ziglang.org
+yeah I mean the runtime lengths have to be stored *somewhere*, if you can make that somewhere be this struct, then you get a nicer API
+
+1753417668
+andrewrk!~andrewrk@mail.ziglang.org
+or at least if you don't mind paying that cost
+
+1753417682
+rvrb!~rvrb@156.146.51.228
+so I guess the ideas is you can `header = packet.get(.header); packet.lengths[0] = header.len` or something
+
+1753417759
+andrewrk!~andrewrk@mail.ziglang.org
+I'm not following with that second statement
+
+1753417762
+rvrb!~rvrb@156.146.51.228
+I don't actually even need this anymore, the question was kind of hypothetical in the first place when I was trying to design something, so at this point I am doing it just because it sounds fun
+
+1753417825
+andrewrk!~andrewrk@mail.ziglang.org
+oh you're trying to make this struct match an ABI; not create a general purpose utility type
+
+1753417865
+rvrb!~rvrb@156.146.51.228
+I will clarify with a question; how do you propose populating the runtime lengths? since the packet header contains the length you have to first read the header
+
+1753417904
+rvrb!~rvrb@156.146.51.228
+well ok there's several cases here AXB where A/B are known, you can get the length automatically
+
+1753417905
+andrewrk!~andrewrk@mail.ziglang.org
+create/destroy methods that take an allocator
+
+1753417935
+rvrb!~rvrb@156.146.51.228
+but AXBXC you have no idea where B is in the middle without knowing more about how the thing is encoded
+
+1753417965
+rvrb!~rvrb@156.146.51.228
+but that is I think a usecase not worth solving for
+
+1753417981
+andrewrk!~andrewrk@mail.ziglang.org
+I think the general purpose utility use case is handy. the ABI matching one, not so much
+
+1753418345
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Hello :)
+
+1753419181
+rvrb!~rvrb@156.146.51.228
+it took me a bit to understand what you meant by ABI vs utility case. you don't think something like this would be useful for dealing with, for example, deserializing files, packets, and so on?
+
+1753419192
+rvrb!~rvrb@156.146.51.228
+hi noam
+
+1753420408
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: I think when you're deserializing, generally you need a conditional check before any runtime-known sized thing to make sure it is within acceptable limits, so you kinda have to break the struct up anyway, at which point you could use the utility type for returning the parsed data, but you wouldn't use it for directly deserializing the stream
+
+1753420410
+andrewrk!~andrewrk@mail.ziglang.org
+does that make sense?
+
+1753420729
+rvrb!~rvrb@156.146.51.228
+andrewrk: yeah, it does, thank you. and the more I am thinking about this as a utility for non-ABI the more I can see how that would be useful for other reasons than I was originally imagining. I think it can be even further improved with a little more meta programming and make the UnknownBytes itself a generic `DynamicArray(T)`
+
+1753420758
+rvrb!~rvrb@156.146.51.228
+then you get something roughly like this https://zigbin.io/6231c5
+
+1753420781
+rvrb!~rvrb@156.146.51.228
+I already see some mistakes in that, but you get the idea
+
+1753421162
+rvrb!~rvrb@156.146.51.228
+this is actually way more useful for my original usecase anyways
+
+1753421313
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: I think we cracked the case
+
+1753421329
+andrewrk!~andrewrk@mail.ziglang.org
+we dreamed up some great vaporware :D
+
+1753421356
+rvrb!~rvrb@156.146.51.228
+attempting to implement it right now, hah. we'll see if I can push anything before I fall asleep
+
+1753426949
+rvrb!~rvrb@156.146.51.228
+attempting to implement it right now, hah. we'll see if I can push anything before I fall asleep
+
+1753426966
+rvrb!~rvrb@156.146.51.228
+er, oops. moving too quickly with my keyboard :/
+
+1753427020
+rvrb!~rvrb@156.146.51.228
+anyways I got a basic test case passing. about to push it up
+
+1753428101
+rvrb!~rvrb@156.146.51.228
+still just a proof of concept. I will gratefully accept code review, I do not pretend to be an expert https://github.com/tristanpemble/zig-dst
+
+1753428238
+rvrb!~rvrb@156.146.51.228
+andrewrk: collaborating on that was fun, and made me look forward to Zig Day even more! I am very excited to meet other Zig developers and jam out some ideas
+
+1753428263
+andrewrk!~andrewrk@mail.ziglang.org
+yeah! good little preview of what it will be like. and I still need to respond to your email!
+
+1753428286
+rvrb!~rvrb@156.146.51.228
+no worries, not pressing
+
+1753428306
+andrewrk!~andrewrk@mail.ziglang.org
+some minor review: prefer create/destroy rather than init/deinit when allocating the memory (just a convention)
+
+1753428337
+rvrb!~rvrb@156.146.51.228
+wait, really? is that newer thing, or am I just that oblivious to that
+
+1753428370
+rvrb!~rvrb@156.146.51.228
+thinking ArrayList.initCapacity etc
+
+1753428374
+andrewrk!~andrewrk@mail.ziglang.org
+init/deinit for returning T, create/destroy for allocating *T
+
+1753428401
+andrewrk!~andrewrk@mail.ziglang.org
+oh and since it's a pointer you don't need var
+
+1753428410
+andrewrk!~andrewrk@mail.ziglang.org
+because you don't reassign my_type
+
+1753428420
+andrewrk!~andrewrk@mail.ziglang.org
+it's a nice readme example tho
+
+1753428422
+rvrb!~rvrb@156.146.51.228
+ah but this is returning T which contains ptr/lens
+
+1753428438
+rvrb!~rvrb@156.146.51.228
+it's kind of like a .. multi-slice?
+
+1753428452
+andrewrk!~andrewrk@mail.ziglang.org
+ohhh interesting
+
+1753428459
+andrewrk!~andrewrk@mail.ziglang.org
+looking at the source now
+
+1753428476
+andrewrk!~andrewrk@mail.ziglang.org
+ah yes in this case I think init is a good choice
+
+1753428479
+andrewrk!~andrewrk@mail.ziglang.org
+sorry!
+
+1753428483
+rvrb!~rvrb@156.146.51.228
+np
+
+1753428501
+andrewrk!~andrewrk@mail.ziglang.org
+this is quite lovely
+
+1753428525
+rvrb!~rvrb@156.146.51.228
+I am flattered
+
+1753428550
+rvrb!~rvrb@156.146.51.228
+I can imagine the API growing tremendously but the general idea is pretty cool (thanks to your input) - it's basically a super slice or something
+
+1753428790
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: ah, one suggestion: rather than specifying .{ 2, 4 } it would be better to specify by name: .{ .first = 2, .second = 4 }
+
+1753428803
+rvrb!~rvrb@156.146.51.228
+oh, that would make so many things much easier
+
+1753428818
+rvrb!~rvrb@156.146.51.228
+was not happy with tracking the tuple position
+
+1753428872
+rvrb!~rvrb@156.146.51.228
+alright well I will jam on that and develop it some more in the morning. time for bed. triallax: take a peek if you're still interested
+
+1753428878
+andrewrk!~andrewrk@mail.ziglang.org
+yeah here's a flow chart for whether tuples are a good idea: * are you implementing formatted printing? yes -> yes, no -> no
+
+1753428892
+andrewrk!~andrewrk@mail.ziglang.org
+kidding, mostly :P
+
+1753428900
+andrewrk!~andrewrk@mail.ziglang.org
+good night!
+
+1753428902
+rvrb!~rvrb@156.146.51.228
+hahaha, it makes its point
+
+1753429029
+andrewrk!~andrewrk@mail.ziglang.org
+btw here's one place I would definitely use this API: https://github.com/ziglang/zig/blob/8c4482ed78fb651c0288f0cd2bdaf328564c6a49/lib/std/http/Client.zig#L240-L359
+
+1753429644
+rvrb!~rvrb@156.146.51.228
+oh, very cool. well if you think it's worth developing into something for std I would be quite happy to help
+
+1753429695
+ifreund!2940d10f8b@user/ifreund
+ACTION read dst as daylight savings time
+
+1753429722
+rvrb!~rvrb@156.146.51.228
+hah - I want to rename it to DynamicallySizedStruct or RuntimeSizedStruct or something anyways
+
+1753429746
+rvrb!~rvrb@156.146.51.228
+DST is just the acronym I was used to seeing in Rust community
+
+1753429848
+ifreund!2940d10f8b@user/ifreund
+hmm, yeah I can't come up with a better name off the top of my head
+
+1753429867
+ifreund!2940d10f8b@user/ifreund
+maybe structured slice
+
+1753429899
+ifreund!2940d10f8b@user/ifreund
+pretty cool in any case!
+
+1753429994
+rvrb!~rvrb@156.146.51.228
+thanks! Andrew basically designed it in a few sentences while I tried to keep up :P
+
+1753433796
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One thing I have yet to try is Zig→C→Zig→C→…
+
+1753446909
+triallax!~triallax@lacerte/triallax
+andrewrk rvrb: that seems _really_ cool
+
+1753446923
+triallax!~triallax@lacerte/triallax
+much more ergonomic interface
+
+1753447021
+triallax!~triallax@lacerte/triallax
+though the `my_type` bit is a litte confusing
+
+1753447149
+triallax!~triallax@lacerte/triallax
+ok i was looking at the old pastebin
+
+1753447156
+triallax!~triallax@lacerte/triallax
+the github repo one looks better
+
+1753447246
+triallax!~triallax@lacerte/triallax
+now if you could add an array list thing on top... :D
+
+1753447250
+triallax!~triallax@lacerte/triallax
+unsure if a good idea
+
+1753447441
+triallax!~triallax@lacerte/triallax
+certainly makes sense for my referenc-counted string use case but i don't know if it can be generailsed well
+
+1753456627
+rvrb!~rvrb@156.146.51.228
+triallax: can you be more specific? are you suggesting being able to work with each DynamicArray like an ArrayList, essentially?
+
+1753456674
+triallax!~triallax@lacerte/triallax
+i don't know
+
+1753456695
+triallax!~triallax@lacerte/triallax
+for my example it could be a single ArrayList(u8) for the whole struct
+
+1753456703
+triallax!~triallax@lacerte/triallax
+but like i said that wouldn't generalise
+
+1753456898
+rvrb!~rvrb@156.146.51.228
+hahah. I am trying to imagine the expanded API for this type. it would be easy for me to invent use cases, but prefer to be led by real ones. I'm gonna study the one andrewrk shared
+
+1753456937
+triallax!~triallax@lacerte/triallax
+i think you can ignore it honestly
+
+1753456950
+triallax!~triallax@lacerte/triallax
+it's not necessary an "invented" use case because i actually did it
+
+1753456961
+triallax!~triallax@lacerte/triallax
+but it could well be considered out of scope
+
+1753456998
+rvrb!~rvrb@156.146.51.228
+I meant it earnestly - if you can firm up the use case let me know. the growable lists thing is something I am thinking about, but I'm not sure it makes sense here
+
+1753457262
+triallax!~triallax@lacerte/triallax
+no promises but i will have a think about it
+
+1753457275
+triallax!~triallax@lacerte/triallax
+i'm less motivated to push it through since i ended up scrapping that code
+
+1753461041
+rvrb!~rvrb@156.146.51.228
+well, it's using a struct for lengths now, which is a much nicer API. the more I sit with this, the less API I think it needs. the point is not to be a collection type, but a utility for pointer arithmetic. I don't really know what else it would need
+
+1753461277
+rvrb!~rvrb@156.146.51.228
+I can see a case for resize
+
+1753461655
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+i'm pretty new to zig and systems programming. since lots of pro here, wanted to ask a newbie question. is zig something that really shines in use-cases which benefit from extremely low latency and real-time scenarios?
+
+1753461915
+rvrb!~rvrb@156.146.51.228
+I am not a RT/low latency person, but my understanding is that it basically boils down to bounded/deterministic execution. Zig's design around allocators is really good for that. allocations are always explicit and informed. there's a FixedBufferAllocator in the standard library, and plenty of other useful utilities
+
+1753461940
+rvrb!~rvrb@156.146.51.228
+past the allocations, I can't speak to, and someone with actual experience in RT would be more informed
+
+1753462080
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+Interesting, and a deterministic execution means predictable outcomes, which can be valuable for low latency real-time systems as it might help avoid random spikes.
+
+1753462127
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+also from what i understand, zig is something i can leverage when i was to remove the bloat from existing systems and just code the use-case i want and perfect it.
+
+1753462287
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+blazing fast cold starts as well coz there is no runtime needed
+
+1753462418
+rvrb!~rvrb@156.146.51.228
+what kinds of existing systems are you working with?
+
+1753462461
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+None, to be honest. I'm trying to figure out something to build with zig
+
+1753462505
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+trying to figure out where zig shines.....or lets say, things which are possible ONLY with zig.
+
+1753462591
+rvrb!~rvrb@156.146.51.228
+I'll qualify my input with that I am also still learning Zig, and would not yet call myself a systems developer on a job application (but I am working on it!)
+
+1753462608
+rvrb!~rvrb@156.146.51.228
+however, it sounds like the things you are interested in are exactly what Zig is good at :)
+
+1753462629
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+yea, it really excites me when i listen stuff like how Bun uses Zig to slap Node.js in the face with 10x speed. 
+
+1753462646
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+it makes me think there is real scope of innovation with what zig can do
+
+1753462678
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+but again, i tried to compare it with plain vanilla C language and all i could understsand was, that zig is more convenient version of C. 
+
+1753462689
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+still couldn't figure out something only zig can do, and c can't.
+
+1753462942
+rvrb!~rvrb@156.146.51.228
+I think you can probably do pretty much anything in Zig that you can in C, it's just about how expressive, readable, and maintainable the resulting code would be
+
+1753463036
+rvrb!~rvrb@156.146.51.228
+Zig does a lot to help you write code that avoids a lot of the pitfalls of manually managing memory, like buffer overflows, use after free, and so on
+
+1753463090
+rvrb!~rvrb@156.146.51.228
+as someone who went through Rust first before Zig in my journey of learning systems level programming, I think it's the most approachable way to learn it (very subjective opinion!)
+
+1753463146
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+Yes, i was gonna start with rust as well, but i've decided to go with zig. More control. More simplicity.
+
+1753463167
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+I think C still relies on LLVM and zig is first language to ditch LLVM, right?
+
+1753463201
+rvrb!~rvrb@156.146.51.228
+there are some "why"s of Zig's design that didn't make sense to me until Rust beat it into me in its own way, but I later grew to appreciate the elegance of Zig's approach to those same problems
+
+1753463343
+rvrb!~rvrb@156.146.51.228
+Zig's self hosted compiler backends are still in development, I think x86_64 is on by default in Debug. I think aarch64 just landed and is not on by default. so, it depends on your machine. short answer: Apple Silicon, not yet but soon; Intel/AMD, only in debug builds
+
+1753463421
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+ohhh. only in debug builds? can't do release builds with anything yet?
+
+1753463434
+rvrb!~rvrb@156.146.51.228
+I think you can opt in to it, I don't know if that's recommended yet
+
+1753463443
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+Ah
+
+1753463474
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+to be honest, i dont really know what advantages or disadvantages using LLVM vs no LLVM has...
+
+1753463521
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+i'm assuming, no LLVM = more deterministic, lesser overhead, faster compiles, leaner builds. 
+
+1753463550
+rvrb!~rvrb@156.146.51.228
+if you haven't seen it: https://ziglang.org/devlog/2025/#2025-06-08
+
+1753463654
+timefractal7!~timefract@static.39.8.9.5.clients.your-server.de
+wow awesome
+
+1753464455
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: re: naming: I think ResizableStruct is a nice name, although a primary use case might be never resizing it
+
+1753464495
+rvrb!~rvrb@156.146.51.228
+was about to say; bike shedding names for this DST type; how about just `DynamicStruct` and `DynamicArray`?
+
+1753464521
+rvrb!~rvrb@156.146.51.228
+hm ResizableStruct is cool too
+
+1753464530
+andrewrk!~andrewrk@mail.ziglang.org
+timefractal7: before I created zig I was working on a digital audio workstation, and before that, a music player. low latency and realtime are definitely areas where zig shines
+
+1753464597
+andrewrk!~andrewrk@mail.ziglang.org
+not having a garbage collector, for instance, is a good start. first class SIMD support. good type ergonomics around bit packing. making allocations painfully obvious and thereby preventing accidental nondeterminism
+
+1753464626
+andrewrk!~andrewrk@mail.ziglang.org
+Io as an interface is an upcoming change that will also make it easy to detect accidental use of, well, I/O, in your realtime path
+
+1753464835
+rvrb!~rvrb@156.146.51.228
+`SizableStruct`?
+
+1753464901
+andrewrk!~andrewrk@mail.ziglang.org
+DynamicStruct is pretty good
+
+1753464910
+andrewrk!~andrewrk@mail.ziglang.org
+a little vague 
+
+1753464926
+rvrb!~rvrb@156.146.51.228
+yeah I find the word dynamic to be vague generally
+
+1753465229
+andrewrk!~andrewrk@mail.ziglang.org
+I'd explore making the dynamically sized fields, resizable, and then go with ResizableStruct
+
+1753465662
+rvrb!~rvrb@156.146.51.228
+yeah, I think this really only needs init/deinit/resize/remap/get/getConst(?), and I am partial to making offsetOf/sizeOf private helpers to keep the interface small
+
+1753465687
+rvrb!~rvrb@156.146.51.228
+the ? on getConst being - constness and the appropriate APIs to expose related to it is something I confuse myself about consistently
+
+1753465739
+rvrb!~rvrb@156.146.51.228
+it seems like it's not necessary here, because this is a value type containing a mutable pointer; it doesn't make sense right?
+
+1753465890
+andrewrk!~andrewrk@mail.ziglang.org
+I think the type makes the most sense with mutable pointers and trying to make a const version is more trouble than it's worth
+
+1753485023
+rvrb!~rvrb@156.146.51.228
+this got tricky with alignment. since fields are ordered as given, you can throw off alignment of later fields. I think the choices available are add padding when necessary, sort fields, or just return unaligned pointers. the right answer seems non-obvious to me
+
+1753485066
+rvrb!~rvrb@156.146.51.228
+like imagine `struct { a: ResizableArray(u8), b: ResizableArray(u64) }` with lengths `.{ .a = 2, .b = 1 }`; sure the struct is aligned to 8 bytes but the u64 is now off alignment by 2 bytes
+
+1753485137
+triallax!~triallax@lacerte/triallax
+you can't use something like std.mem.alignForward?
+
+1753485155
+rvrb!~rvrb@156.146.51.228
+sure, that would be the padding solution
+
+1753485265
+rvrb!~rvrb@156.146.51.228
+maybe I need to look at @typeInfo(T).@"struct".layout and decide with that? .auto = sort, .extern/.packed = unaligned?
+
+1753485369
+rvrb!~rvrb@156.146.51.228
+tbh packed should be illegal, that makes no sense
+
+1753485565
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: I recommend to sort descending by alignment, like MultiArrayList does
+
+1753485605
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/blob/0.14.1/lib/std/multi_array_list.zig#L174
+
+1753485658
+rvrb!~rvrb@156.146.51.228
+extern makes no sense either, come to think of it
+
+1753485682
+rvrb!~rvrb@156.146.51.228
+ok, yeah that seems right to me
+
+1753485835
+andrewrk!~andrewrk@mail.ziglang.org
+you might still need padding for the size() method, to maintain the property that putting two of them in memory next to each other will give correct alignment for the second one
+
+1753485876
+andrewrk!~andrewrk@mail.ziglang.org
+and size() should report the actual size such that you could @memcpy the thing. so that means you still possibly need padding at the end 
+
+1753485904
+andrewrk!~andrewrk@mail.ziglang.org
+alignForward to the alignment of the data structure, which is the max() of alignment of all the fields
+
+1753486009
+andrewrk!~andrewrk@mail.ziglang.org
+size() is offsetof(last_field) + alignForward(alignof(last_field) + sizeof(last_field), max(alignof(all the fields)))
+
+1753486043
+andrewrk!~andrewrk@mail.ziglang.org
+and hiding that annoying expression is what makes this type handy!
+
+1753487173
+rvrb!~rvrb@156.146.51.228
+ha, got it. thank you
+
