@@ -1,0 +1,548 @@
+1753673749
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i swear i saw a zig AST explorer website posted somewhere recently (last week-ish), it's not https://astexplorer.net/ but another one
+
+1753673756
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+anyone know what I am talking about and have a link to it?
+
+1753679380
+squeek502!~squeek502@user/squeek502
+tsujp, https://ziggit.dev/t/zig-ast-explorer/11066
+
+1753690203
+LAC-Tech!~lewis@granite-phrase.bnr.la
+rvrb: most people I've mentioned zig to have been curious. It's not like I'm evangelizing, but people naturally ask "why" and when I explain why a few have tried it out. So I think there's just a few people who yap very loudly, and most people aren't engaged in language holy wars.
+
+1753690452
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: what's the benefit in writing "const Self = @This();" ?
+
+1753700816
+hadronized!~hadronize@2001:41d0:a:fe76::1
+LAC-Tech: it has several useful properties, and the main one I noticed while writing code myself is when writing anonymous struct, for instance when generating structs from comptime functions
+
+1753712849
+bblack!~bblack@wikimedia/bblack-WMF
+is there any design thoughts already (or existing idioms I'm not aware of) to thread zig unit tests? I cobbled something together on my own, by essentially insode of test{}, using std.Thread to spawn a bunch of thread functions (which would have otherwise been separate test{} blocks) and then join them up after.  It even kinda works, modulo needing to catch the test errors and report to stderr which named 
+
+1753712855
+bblack!~bblack@wikimedia/bblack-WMF
+test-function they happened in, but seems clunky and not-intended.
+
+1753712862
+bblack!~bblack@wikimedia/bblack-WMF
+s/insode/inside/
+
+1753712932
+bblack!~bblack@wikimedia/bblack-WMF
+(I have a bunch of tests that are slow to execute in Debug mode, and slow to compile as separate compilation units in release modes.  they can be threaded, so this seemed like the pathway to get them executing faster overall)
+
+1753713050
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+bblack: have you read https://www.openmymind.net/Using-A-Custom-Test-Runner-In-Zig/
+
+1753713152
+bblack!~bblack@wikimedia/bblack-WMF
+rockorager: nope, thanks, will read :)
+
+1753713361
+bblack!~bblack@wikimedia/bblack-WMF
+rockorager: thanks, that was the link I needed :)
+
+1753714895
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I didn’t know we could do such a thing, very nice :)
+
+1753723741
+rvrb!~rvrb@156.146.51.228
+now, I wish I could somehow host the test runner inside of another process. would be great if I could write a Godot extension test runner so I can do integration tests inside a running Godot game. have not figured out the best approach there
+
+1753723776
+rvrb!~rvrb@156.146.51.228
+I think ultimately I just need to push them to support Godot as a library and have the testrunner invoke it
+
+1753723777
+andrewrk!~andrewrk@mail.ziglang.org
+🤔
+
+1753723845
+rvrb!~rvrb@156.146.51.228
+there's movement on it luckily, so all hope is not lost. https://github.com/godotengine/godot-proposals/issues/6267 https://github.com/migeran/libgodot_project
+
+1753723869
+andrewrk!~andrewrk@mail.ziglang.org
+I suppose the build runner could be modified to support any child process that supports the zig protocol, although I don't want to add any ABI stability to it
+
+1753723958
+rvrb!~rvrb@156.146.51.228
+it's _probably_ not worth supporting this use-case.. we just have no way to test our binding code without spawning Godot, which is clumsy and annoying
+
+1753724046
+rvrb!~rvrb@156.146.51.228
+probably exposing myself as a C noob, maybe this is common, but Godot's extension API is kind of interesting in that the header literally has no functions to link to; it's just function pointer types. you provide the name of your entrypoint and then at extension startup lookup all function pointers using a function pointer passed into the
+
+1753724046
+rvrb!~rvrb@156.146.51.228
+entrypoint
+
+1753724129
+rvrb!~rvrb@156.146.51.228
+it's great in theory for forward/backward compatibility of extensions - you can decide which functions to call at runtime based on whether they're available, your extension works even if the address of the functions move. it sucks for testing my bindings.
+
+1753724257
+ifreund!2940d10f8b@user/ifreund
+graphics APIs like opengl also do that kind of thing
+
+1753724302
+ifreund!2940d10f8b@user/ifreund
+I'm not sure if the benefits are really worth all the accidental complexity
+
+1753724335
+rvrb!~rvrb@156.146.51.228
+yeah. I feel like the WASM component model also addresses the same problem with a different approach, right?
+
+1753724365
+andrewrk!~andrewrk@mail.ziglang.org
+it certainly throws a monkey wrench into the question, "how much stack space do I need to allocate?" (including for your main process)
+
+1753724422
+andrewrk!~andrewrk@mail.ziglang.org
+if these things were done with engineering discipline, then the API for fulfilling these function pointers would specify the maximum stack usage that implementations were allowed to use
+
+1753726246
+rvrb!~rvrb@156.146.51.228
+I'm still trying to catch up with all of that conversation on the HN thread regarding VLAs, the lack of them being critical to IO - I mostly get it, but haven't internalized it fully. is what you're saying that in the case that the actual maximum stack size can't be calculated (C function pointers, recursion, maybe others), it will degrade into,
+
+1753726246
+rvrb!~rvrb@156.146.51.228
+um, heap allocated stack frames (does that term even make sense?) to avoid stack overflows?
+
+1753726402
+rvrb!~rvrb@156.146.51.228
+no, I found the answer to my question in that thread: "Otherwise, there is a default upper bound stack value, overridable via user annotation"
+
+1753726448
+andrewrk!~andrewrk@mail.ziglang.org
+it's also critical to not crashing due to stack overflow
+
+1753726494
+andrewrk!~andrewrk@mail.ziglang.org
+in general, we have settled for a heuristics based approach to not crashing in the presence of recursion, for instance
+
+1753726575
+andrewrk!~andrewrk@mail.ziglang.org
+$ rustc 100_000_left_curly_braces.rs
+
+1753726581
+andrewrk!~andrewrk@mail.ziglang.org
+error: rustc interrupted by SIGSEGV
+
+1753726683
+andrewrk!~andrewrk@mail.ziglang.org
+note: rustc unexpectedly overflowed its stack! this is a bug
+
+1753726709
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what is the behavior of zig here? it detects that the recursion is too deep and abort compiling?
+
+1753726727
+hadronized!~hadronize@2001:41d0:a:fe76::1
+aborts*
+
+1753726740
+andrewrk!~andrewrk@mail.ziglang.org
+100_000_curly.zig:1:1: error: expected type expression, found '{'
+
+1753726745
+andrewrk!~andrewrk@mail.ziglang.org
+followed by printing the entire source file lol
+
+1753726757
+andrewrk!~andrewrk@mail.ziglang.org
+but it's vulnerable to the same problem
+
+1753726768
+andrewrk!~andrewrk@mail.ziglang.org
+it just has more efficient stack usage so the limit is higher
+
+1753726793
+rvrb!~rvrb@156.146.51.228
+is that the parser's stack, because recursive descent? I wrote a parser using a hand written finite automaton, because idk, I just wanted to, and I basically just set an upper bound on the stack array that seemed reasonable. not sure if that is what you're talking about
+
+1753726795
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that made me think, I was very interested in a feature of something called @call, if I recall correctly, that was able to validate (read: not compile if not guaranteed) that a function call was tail-recursive; I need to check the state of that thing because it was a really goo didea
+
+1753726800
+hadronized!~hadronize@2001:41d0:a:fe76::1
+good idea*
+
+1753726817
+rvrb!~rvrb@156.146.51.228
+er, sorry, push down automaton? idk terms, I taught myself this shit
+
+1753726845
+andrewrk!~andrewrk@mail.ziglang.org
+in the future there will be a breaking change, the compiler won't allow recursion without @newStackCall or similar
+
+1753726862
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so compiler-guided recursion
+
+1753726877
+andrewrk!~andrewrk@mail.ziglang.org
+yeah you'll have to provide an alternate stack
+
+1753726906
+andrewrk!~andrewrk@mail.ziglang.org
+or the same stack, but handling failure
+
+1753726943
+rvrb!~rvrb@156.146.51.228
+neat
+
+1753727122
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: btw, have you seen my message from yesterday or the day before in here regarding devirtualization? I was wondering about the concerns with regard to e.g. dynamically loaded function pointers doing IO
+
+1753727212
+andrewrk!~andrewrk@mail.ziglang.org
+what was the question specifically?
+
+1753727393
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I was wondering about how devirtualization would work in presence of function pointers coming from runtime, since we could imagine loading an IO implementation from runtime, but the compiler won’t know about it, so would it still devirtualize the Io interface and then when trying to use tho dynamically loaded one, we would get a panic or something?
+
+1753727510
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I also figure that if restricted function pointer types get accepted, such devirtualization would work whatever the interface that uses such proposal, not only Io (so in theory it could be put on Allocator etc. if only one allocator is used)
+
+1753727746
+andrewrk!~andrewrk@mail.ziglang.org
+are you asking about how https://github.com/ziglang/zig/issues/23367 will interact with dynamic linking?
+
+1753727832
+andrewrk!~andrewrk@mail.ziglang.org
+sorry I still don't understand the question
+
+1753727956
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yes mainly
+
+1753727989
+hadronized!~hadronize@2001:41d0:a:fe76::1
+from what I understand, that thing works only if the compiler is able to know what function is getting a restricted function pointer type at compile time
+
+1753728027
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if it comes from runtime, it cannot, so I was wondering whether that would be UB or whether it would just not be devirtualized for the runtime version, but still be for whatever was visible by the compiler at comptime
+
+1753728283
+andrewrk!~andrewrk@mail.ziglang.org
+whether what would be UB?
+
+1753728546
+hadronized!~hadronize@2001:41d0:a:fe76::1
+using a function pointer from runtime taking an Io interface 
+
+1753728593
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think it’s fine if the function just uses the interface, but what if it instantiates a wrapper above Io (like to log everything, I don’t know)?
+
+1753728658
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m not saying it would be a smart thing to do, because I think it would make sense to be able to load function pointers at runtime taking an Io interface and have devirtualized calls on them based on the IO implementation picked in the main of the program
+
+1753728668
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but I’m wondering about edge cases like that 
+
+1753729652
+andrewrk!~andrewrk@mail.ziglang.org
+are you talking about code across a dynamic linking boundary that calls into an Io implementation, or that *is* an Io implementation?
+
+1753729953
+hadronized!~hadronize@2001:41d0:a:fe76::1
+dynamic linking, or even dynamic loading (via dlopen for instance); you pass it your Io interface that is picked by the user (that thing would be devirtualized from my understanding), and then that function calls another function by wrapping the interface into its own Io implementation
+
+1753730333
+ifreund!2940d10f8b@user/ifreund
+I feel like there's some kind of lower level misunderstanding here, like e.g. what devirtualization is
+
+1753730420
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund: from my understanding, it’s just a way to replace the function pointers used by the interface by the real implementation, so everytime an Io is passed, there is no need to lookup the function pointers in the VTable, and instead use the concrete ones
+
+1753730435
+hadronized!~hadronize@2001:41d0:a:fe76::1
+from your ThreadPool / GreenThreading / WhateverIO implementation
+
+1753730477
+andrewrk!~andrewrk@mail.ziglang.org
+I still don't really understand the question, can you make it hyper specific, perhaps with a code example?
+
+1753730481
+ifreund!2940d10f8b@user/ifreund
+yes, and so why do you think that it matters if there is a call to a runtime function pointer before the call to something in a vtable?
+
+1753730531
+ifreund!2940d10f8b@user/ifreund
+s/runtime/unrestricted function pointer/
+
+1753730537
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ifreund: I’m wondering about how it would work if we have two Io implementations, but one is not visible by the compiler
+
+1753730550
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess it would still probably work, actually?
+
+1753730557
+andrewrk!~andrewrk@mail.ziglang.org
+compile error: restricted function pointers means all implementations are visible to the compiler
+
+1753730571
+hadronized!~hadronize@2001:41d0:a:fe76::1
+since it would be devirtualized when passing the Io to the runtime function, but then the runtime function code would still think it’s not devirtualized?
+
+1753730583
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: ah really?
+
+1753730587
+andrewrk!~andrewrk@mail.ziglang.org
+however, your implementation that is visible to the compiler could obviously do anything, including calling extern functions
+
+1753730606
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, so that’s what I was thinking about
+
+1753730610
+ifreund!2940d10f8b@user/ifreund
+and devirtualization doesn't to an interface when passing it to a function
+
+1753730618
+ifreund!2940d10f8b@user/ifreund
+it happens at the call sites of virtual functions
+
+1753730625
+ifreund!2940d10f8b@user/ifreund
+*doesn't happen
+
+1753730636
+ifreund!2940d10f8b@user/ifreund
+er, that's a confusing typo fix, I give up
+
+1753730640
+hadronized!~hadronize@2001:41d0:a:fe76::1
+oh that makes much more sense
+
+1753730661
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I think my first intuition was correct though
+
+1753730686
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you pass an Io to a function that you get from runtime, like from *GetProcAddr, for instance
+
+1753730700
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and that such runtime function wraps the Io into its own implementation
+
+1753730721
+hadronized!~hadronize@2001:41d0:a:fe76::1
+inside that function, any subsequent calls to the Io’s methods won’t be devirtualized
+
+1753730746
+hadronized!~hadronize@2001:41d0:a:fe76::1
+actually, I’m wondering how it would work for libs now
+
+1753730829
+andrewrk!~andrewrk@mail.ziglang.org
+you're thinking about this stuff backwards
+
+1753730868
+andrewrk!~andrewrk@mail.ziglang.org
+but rather than spending hours trying to explain it I'm just gonna get back to implementing it
+
+1753731250
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the fact that I can’t really make you understand my question is a big sign that I do not understand the topic enough, so I’ll go back read that proposal :)
+
+1753731518
+rvrb!~rvrb@156.146.51.228
+is there a better way to force the alignment on this zero sized type? https://zigbin.io/1c9519
+
+1753731930
+ifreund!2940d10f8b@user/ifreund
+rvrb: that looks fine to me :)
+
+1753731937
+ifreund!2940d10f8b@user/ifreund
+is there even a different option?
+
+1753731965
+rvrb!~rvrb@156.146.51.228
+that's my question; I just don't like the useless field. not a huge deal but was wondering if there was another way
+
+1753732032
+ifreund!2940d10f8b@user/ifreund
+alignment of a zero sized type seems strange though, I wouldn't be terribly surprised if the compiler ignores it or something
+
+1753732034
+ifreund!2940d10f8b@user/ifreund
+beware
+
+1753732063
+rvrb!~rvrb@156.146.51.228
+yeah I think I might be observing that right now, heh. it just in theory makes the logic a little easier for how I am using it
+
+1753732203
+ifreund!2940d10f8b@user/ifreund
+maybe it should be a compile error...
+
+1753732572
+rvrb!~rvrb@156.146.51.228
+seems ok: https://zigbin.io/9761a5/run
+
+1753732577
+rvrb!~rvrb@156.146.51.228
+think I am seeing something else
+
+1753732641
+andrewrk!~andrewrk@mail.ziglang.org
+it's a little confusing to have an aligned, zero sized type
+
+1753732724
+rvrb!~rvrb@156.146.51.228
+it's mostly to avoid having to calculate it myself by checking FieldType.Element; if you think depending on that behavior is not sound then I can just do that
+
+1753732787
+rvrb!~rvrb@156.146.51.228
+but the idea is that `[N]T` has `align(@alignOf(T))` so I forced it here since this represents a marker type for a runtime sized array
+
+1753732939
+rvrb!~rvrb@156.146.51.228
+forces the struct that contains it to align to it, and simplifies my logic calculating everything else from there
+
+1753733599
+bblack!~bblack@wikimedia/bblack-WMF
+so, while my C brain always wants to pass "large" constant arguments to functions by-const-pointer, Zig docs say we should prefer passing them by-value as a const param, and letting the compiler figure out if references make sense at compile-time (makes sense!).
+
+1753733648
+bblack!~bblack@wikimedia/bblack-WMF
+but, leaving aside the obvious corner cases where you're doing actual pointer comparisons/math on some "foo: *const Bar" argument, when *is* it a good idea to use a const pointer as an argument?
+
+1753733668
+bblack!~bblack@wikimedia/bblack-WMF
+because I thought the answer might be "pretty much never", but I do see some sprinkled examples in zig stdlib
+
+1753733736
+bblack!~bblack@wikimedia/bblack-WMF
+especially, a lot of iterator functions seem to use "fn iterator(self: *const Self)", when it seems like it wouldn't buy you anything?
+
+1753733778
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: decision on that was reversed due to aliasing problems, so, back to C brain for this at least
+
+1753733786
+bblack!~bblack@wikimedia/bblack-WMF
+oh, nevermind, I see why the iterators have it, they do copy the pointer into the iterator struct
+
+1753733802
+andrewrk!~andrewrk@mail.ziglang.org
+I'll audit the langref
+
+1753733872
+rvrb!~rvrb@156.146.51.228
+is this the relevant issue? https://github.com/ziglang/zig/issues/5973
+
+1753733977
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: this is the part that made me think "let the zig compiler figure it out for you" was the preferred option, although I guess it doesn't explicitly say that: https://ziglang.org/documentation/master/#Pass-by-value-Parameters 
+
+1753734500
+bblack!~bblack@wikimedia/bblack-WMF
+quite a rabbithole, that and all related issues.  fascinating reading so far :)
+
+1753734866
+triallax!~triallax@lacerte/triallax
+what's the difference between -Doptimize=<mode> and --release=<mode> for zig build? and is one of them preferred?
+
+1753735547
+bblack!~bblack@wikimedia/bblack-WMF
+ok so I guess for now we're at this point: https://github.com/ziglang/zig/issues/5973#issuecomment-2380332493 , which I take to mean PRO still exists (which is why there hasn't been any perf imperative to update a bunch of stdlib member functions to use "self: *const Self" yet), but eventually this will all change, and it's better to start thinking/acting more like C for now in new code (use explicit const 
+
+1753735553
+bblack!~bblack@wikimedia/bblack-WMF
+ptrs where they'd make sense to your C-brain)
+
+1753735587
+bblack!~bblack@wikimedia/bblack-WMF
+thanks all :)
+
+1753737158
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: --release is for distro maintainers not upstream or end users
+
+1753737778
+triallax!~triallax@lacerte/triallax
+right, but how are they functionally different?
+
+1753738219
+andrewrk!~andrewrk@mail.ziglang.org
+it only decides how to win ties if the application supports multiple release modes
+
+1753743118
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I enjoy how one side effect of Zig having a liburing type implementation in its std lib is that a really high percentage of ziguanas use it because it's just... there.
+
+1753743429
+andrewrk!~andrewrk@mail.ziglang.org
+that's going to be even more true when it's practically the default with https://github.com/ziglang/zig/issues/24510
+
+1753743567
+Drixtan!~Drixtan@user/Drixtan
+would it has a cost at startup?
+
+1753743716
+andrewrk!~andrewrk@mail.ziglang.org
+Drixtan: https://github.com/ziglang/zig/blob/8bcc91c15e966e1661124a73e17cf446e21831e9/lib/std/Io/EventLoop.zig#L167-L222
+
+1753743765
+andrewrk!~andrewrk@mail.ziglang.org
+more conservative default would be https://github.com/ziglang/zig/blob/8bcc91c15e966e1661124a73e17cf446e21831e9/lib/std/Io/ThreadPool.zig#L32-L44 which is near zero cost
+
+1753744259
+Drixtan!~Drixtan@user/Drixtan
+it's great imo, the cost is still low in both cases (in term of "I am doing an application"). I mean, you usually want those things anyway, so having them declaratively in the main is great. One can opt-out (or shall I say, people must opt-in?), so all the better. 
+
+1753745108
+Drixtan!~Drixtan@user/Drixtan
+wtf with all the forges since a couple of days... codeberg is half stable, github is experiencing instability right now... fucking AI scrappers again?
+
+1753745117
+Drixtan!~Drixtan@user/Drixtan
+fuck that shit
+
+1753745164
+andrewrk!~andrewrk@mail.ziglang.org
+well the nice thing about git is that you don't need your code hosting server to have a high percent of uptime
+
+1753745298
+Drixtan!~Drixtan@user/Drixtan
+yea, I was reading some documentation on github thou, but I get your point
+
+1753745347
+Drixtan!~Drixtan@user/Drixtan
+I read your post about the famous "give all your stuff to kind of 3 corporations" - I totally agree and we see the consequences more often than not 
+
+1753745592
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m on sourcehut, it’s the best decision I made to switch to their services
+
+1753745608
+hadronized!~hadronize@2001:41d0:a:fe76::1
+builds.sr.ht is honestly the best CI thing to dream of
+
