@@ -1,0 +1,272 @@
+1753926842
+grayhatter!~grayhatte@user/grayhatter
+is it too late to get an issue picked for 0.15?
+
+1753927808
+LAC-Tech!~lewis@granite-phrase.bnr.la
+starting to use testing.random_seed a lot. very useful. though I need a better technique for saivng failure seeds than hoping I remember to write it down.
+
+1753928165
+grayhatter!~grayhatte@user/grayhatter
+LAC-Tech: you can get a testing directory in .zig-cache, and I think if you don't call deinit(), it remains after the test 
+
+1753928206
+grayhatter!~grayhatte@user/grayhatter
+I'd assume you can then just grep through the directory when you're collecting seeds to get a list of every seed that's failed
+
+1753928389
+LAC-Tech!~lewis@granite-phrase.bnr.la
+grayhatter: deinit on whhat clears it?
+
+1753928435
+grayhatter!~grayhatte@user/grayhatter
+oh, sorry, it's called cleanup() now https://ziglang.org/documentation/0.14.1/std/#std.testing.TmpDir
+
+1753928509
+grayhatter!~grayhatte@user/grayhatter
+you can create the tmpDir() and then `tmpdir.dir.writeFile(.{ .sub_path = "failed_test_seed", .data = "string with seed" });`
+
+1753928536
+grayhatter!~grayhatte@user/grayhatter
+if you call cleanup() it'll get deleted, but last I checked if you don't call cleanup, it'll live somewhere in .zig-cache/
+
+1753928559
+LAC-Tech!~lewis@granite-phrase.bnr.la
+you know I wonder I couldn't just do something like write my own assertions that wrap testing.expect*, and on fail appned the seed to some file
+
+1753928670
+grayhatter!~grayhatte@user/grayhatter
+that was gonna be my first suggestion (just write to a known file) but I didn't want to consider the threading or locking aspect of it. I think tests are run in different threads? would be really annoying to over write one or the other
+
+1753928695
+LAC-Tech!~lewis@granite-phrase.bnr.la
+wait... each test block is a different thread?
+
+1753928769
+grayhatter!~grayhatte@user/grayhatter
+I always assumed each was run in a thread pool
+
+1753929289
+grayhatter!~grayhatte@user/grayhatter
+oh, I missed https://github.com/ziglang/zig/issues/19521 is already scheduled for v0.16... womp womp... oh well
+
+1753936855
+hrry!~hrry@user/hrry
+Hey I am looking at learning zig what are some recommended resources for someone coming from a C background? I've been looking at the documentation and standard library reference and saw something called Ziglings as well. Does anyone have any suggestions they'd recommend? I'm not trying to go too deep into tutorials but I feel a grasp of the language and how it works before I dive into the project I
+
+1753936857
+hrry!~hrry@user/hrry
+have planned would go a long way
+
+1753981663
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i forget, how do i force zig build to not use the fancy rendering?
+
+1753982516
+bblack!~bblack@wikimedia/bblack-WMF
+tsujp: --color off
+
+1753989640
+rvrb!~rvrb@156.146.51.228
+is it reasonable to imagine a bytecode VM built in Zig on top of the new IO interface that takes advantage of the runtime swappability to run the bytecode with different IOs?
+
+1753989689
+rvrb!~rvrb@156.146.51.228
+caveat: I barely know what I am asking, currently doodling with reimplementing Wren's VM in Zig and just wondering what the implications of the IO interface are on VMs
+
+1753989691
+bblack!~bblack@wikimedia/bblack-WMF
+my brain had a stack overflow trying to understand that :)
+
+1753989784
+rvrb!~rvrb@156.146.51.228
+bblack: is that because I have no idea what I am saying or you have no idea what I am saying
+
+1753989821
+bblack!~bblack@wikimedia/bblack-WMF
+both probably.  but yeah, I guess in theory if you could have a representation of the std.Io interface-classes that your VM bytecode could use.
+
+1753989834
+bblack!~bblack@wikimedia/bblack-WMF
+then maybe it could be made to work?
+
+1753989912
+bblack!~bblack@wikimedia/bblack-WMF
+I don't know much about Wren, and how much impedance mismatch there might be between its idea of io/async/etc and the new std.Io
+
+1753989930
+rvrb!~rvrb@156.146.51.228
+oh, I don't mean to make Wren's VM fit the model, just more abstractly a VM designed to 
+
+1753989940
+rvrb!~rvrb@156.146.51.228
+I was thinking, conceptually, if the design of the VM does a good job to not conflate asynchronity and concurrency in order to map things to the Zig IO concepts, then yes it could work?
+
+1753990015
+bblack!~bblack@wikimedia/bblack-WMF
+yeah it seems like that should be possible
+
+1753990168
+triallax!~triallax@lacerte/triallax
+rvrb: so in general your idea is to implement the io model of the language your implementing on top of zig's?
+
+1753990188
+rvrb!~rvrb@156.146.51.228
+yeah
+
+1753990196
+triallax!~triallax@lacerte/triallax
+ok makes sense
+
+1753990232
+triallax!~triallax@lacerte/triallax
+i have my own vm in zig as well but the language it implements has no async io support so not really relevant for it
+
+1753990276
+rvrb!~rvrb@156.146.51.228
+I am just getting my feet wet, working with Wren to learn how a production ready scripting language VM looks since it is a) very simple and b) very well commented
+
+1753990288
+triallax!~triallax@lacerte/triallax
+mhm
+
+1753990387
+triallax!~triallax@lacerte/triallax
+wren seems pretty interesting
+
+1753990427
+triallax!~triallax@lacerte/triallax
+wait, of course
+
+1753990435
+triallax!~triallax@lacerte/triallax
+it's by robert nystrom
+
+1753990441
+rvrb!~rvrb@156.146.51.228
+yes exactly haha
+
+1753990443
+triallax!~triallax@lacerte/triallax
+i thought the name was familiar, my vm is based on the one in crafting interpreters
+
+1753990447
+rvrb!~rvrb@156.146.51.228
+I am barely interested in the language itself (ew, oop) - I don't even know the syntax right now - I am just studying the VM
+
+1753990965
+triallax!~triallax@lacerte/triallax
+speaking of that
+
+1753990982
+triallax!~triallax@lacerte/triallax
+i know the c preprocessor is horrible but i did find myself missing it a little in some places
+
+1753991226
+triallax!~triallax@lacerte/triallax
+namely, one use case i can remember is e.g. stack manipulation macros for my vm
+
+1753991258
+triallax!~triallax@lacerte/triallax
+for performance reasons the top of the stack for example is a local variable rather than a field in the vm struct
+
+1753991289
+triallax!~triallax@lacerte/triallax
+so to push something onto the stack i have to pass a reference to the stack top to the `push` function which is mildly unergonomic
+
+1753991502
+rvrb!~rvrb@156.146.51.228
+can't you wrap it in a struct stored on the stack, with inlined functions?
+
+1753991529
+triallax!~triallax@lacerte/triallax
+i could try that
+
+1753991543
+triallax!~triallax@lacerte/triallax
+if that works it would be really nice
+
+1753991664
+triallax!~triallax@lacerte/triallax
+(also i say "missing the c preprocessor" despite the number of lines of C i've written amounting to a couple dozen maybe)
+
+1753991903
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I too find myself sometimes wishing I had a simple c preprocessor at hand for some ascii-level source manipulation at comptime.
+
+1753991943
+bblack!~bblack@wikimedia/bblack-WMF
+but inevitably, once I figure out how to do it with Zig comptime, I like that better.  It's still a little tedious for me because I haven't done it a thousand times yet, but it really is better :)
+
+1753991962
+triallax!~triallax@lacerte/triallax
+yeah well in this case comptime probably isn't even necessary
+
+1753991973
+triallax!~triallax@lacerte/triallax
+so even better
+
+1753991987
+triallax!~triallax@lacerte/triallax
+probably inlining either, i bet llvm is smart enough to do that itself
+
+1753992060
+triallax!~triallax@lacerte/triallax
+comptime is genuinely cool but it does suffer a little ime from being a little too easy to reach into even when not necessary
+
+1753992072
+triallax!~triallax@lacerte/triallax
+the c preprocessor is the same in this regard though probably worse
+
+1754001603
+lemons!~doggie@user/doggie-:49517
+is there any fancy way to assign some result of a for loop to a const?
+
+1754001638
+lemons!~doggie@user/doggie-:49517
+more specificalyl i have an arraylist of structs, one of their fields is a bitmask, and i need to OR them all together
+
+1754001998
+smlavine!~smlavine@sourcehut/user/smlavine
+lemons: No fancy way I can think of, just the "ugly" way of const result = accumulate: { var acc = 0; for ... };
+
+1754002027
+lemons!~doggie@user/doggie-:49517
+aight, cheers
+
+1754002628
+Drixtan!~Drixtan@user/Drixtan
+what's ugly about that?
+
+1754003181
+smlavine!~smlavine@sourcehut/user/smlavine
+s/ugly/normal/
+
+1754003296
+Drixtan!~Drixtan@user/Drixtan
+what's the risk level to refactor all my little pet projects to 0.15 (new IO) like -right-now- ?
+
+1754003318
+Drixtan!~Drixtan@user/Drixtan
+risk factor being, I will have to re-do it for the official 15
+
+1754005368
+lemons!~doggie@user/doggie-:49517
+hrm
+
+1754005410
+lemons!~doggie@user/doggie-:49517
+to avoid future off-by-ones, if coding a coordinate system would it be better to have the lowest y value be 0 or 1?
+
+1754005485
+lemons!~doggie@user/doggie-:49517
+actually, nevermind, pondering on this the only reason i'd use 1-based is because non-dll code uses 1-based indexing (and is where most of the code sits)
+
+1754005529
+lemons!~doggie@user/doggie-:49517
+and the only times i'd need the height is specifically when grabbing refs through the dll
+
+1754005546
+lemons!~doggie@user/doggie-:49517
+yeah ill just do 0-based, thank you #zig for being a good rubber ducky
+
