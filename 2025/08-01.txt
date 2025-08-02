@@ -1,0 +1,164 @@
+1754007059
+Drixtan!~Drixtan@user/Drixtan
+I am good a rubbing ducks
+
+1754014306
+triallax!~triallax@lacerte/triallax
+lemons is gone but for the record you can provide a value to labeled loop breaks, and that will be the value returned by the loop expression
+
+1754014374
+triallax!~triallax@lacerte/triallax
+e.g. const x = loop: for (0..20) |i| { if (i > 10 ) break :loop i } else null;
+
+1754014398
+triallax!~triallax@lacerte/triallax
+the value of the else block will be used instead of the loop finishes without breaking with a value
+
+1754014459
+triallax!~triallax@lacerte/triallax
+https://zig.guide/language-basics/loops-as-expressions
+
+1754035081
+dutchie!~dutchie@user/dutchie
+triallax: in fact labelling is not necessary: https://zigbin.io/a7780f
+
+1754035682
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+zig build --color off    didn't stop the pretty-printing build behaviour
+
+1754035694
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ive seen the cryptic env var to disable it before, i wish it was easier 
+
+1754035712
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if im running zig build in a script or part of building a container i want to see the build log which now just doesn't appear because it tries to fancy render
+
+1754035713
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+which is annoying
+
+1754035738
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i /like/ the fancy progress when interactive, but i want to be able to /easily/ disable it
+
+1754038003
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I don't receive confirmation mail from ziggit.dev
+
+1754038195
+Profpatsch!~Profpatsc@user/Profpatsch
+will there be a Copy-on-write slice thingy in the stdlib at one point? i.e. if I have an “encodeFoo” function that takes a slice and only has to actually escape something for special cases, I could just return the input slice if I don’t have to escape something
+
+1754038267
+Profpatsch!~Profpatsc@user/Profpatsch
+But then it’s kinda handy to have that reflected in a tagged union in the result so I only have to copy if I really really need ownership later, otherwise just defer the drop
+
+1754043599
+Profpatsch!~Profpatsc@user/Profpatsch
+does anybody else have the problem that zig build test -fincremental --watch  starts spinning in a loop very fast once you introduce an error?
+
+1754043618
+Profpatsch!~Profpatsc@user/Profpatsch
+zig-0.15.0-dev.936+fc2c1883b
+
+1754043625
+Profpatsch!~Profpatsc@user/Profpatsch
+Maybe it’s a problem with this specific nightly
+
+1754043692
+Profpatsch!~Profpatsc@user/Profpatsch
+only seems to happen with -fincremental, I suspect there’s some filechange that triggers the watch to loop
+
+1754048386
+bblack!~bblack@wikimedia/bblack-WMF
+I still have a lot of followup work to do: all kinds of code cleanup TODOs to address, and type-safety improvements, and refactoring into zig style and more use of std data structures, and efficiency work, etc.
+
+1754048451
+bblack!~bblack@wikimedia/bblack-WMF
+but all those caveats being said, I wanted to share the milestone: I just finished porting/removing the last .c file, in my effort to port my legacy DNS server project to Zig.  It's ugly and still looks a lot like the ugly C code it came from for now (see above).
+
+1754048472
+bblack!~bblack@wikimedia/bblack-WMF
+but still: it passes all of its pre-existing integration tests and basically-works.
+
+1754048520
+bblack!~bblack@wikimedia/bblack-WMF
+net diff from the zig porting effort (replacing autotools with build.zig, porting all the .[ch] files to .zig files, etc):
+
+1754048523
+bblack!~bblack@wikimedia/bblack-WMF
+ 243 files changed, 24381 insertions(+), 35263 deletions(-)
+
+1754048743
+bblack!~bblack@wikimedia/bblack-WMF
+https://github.com/gdnsd/gdnsd/compare/3.99-alpha...blblack:gdnsd:zigzag is basically the commitlog story there
+
+1754048794
+bblack!~bblack@wikimedia/bblack-WMF
+anyways, I think I'll write some blog posts somewhere to share the journey a bit.  Maybe it will serve as a primer for others that want to port things of this shape (existing legacy C code that's some kind of *nix network daemon sort of thing)
+
+1754048840
+bblack!~bblack@wikimedia/bblack-WMF
+took me just a little over 6 months to work through it a little bit at a time
+
+1754050026
+bblack!~bblack@wikimedia/bblack-WMF
+so, one of the things on my list to do next, is get rid of libev and replace it with some kind of native eventloop mechanism.  The plan in the back of my head had been to try out libxev as a native replacement.
+
+1754050121
+bblack!~bblack@wikimedia/bblack-WMF
+but with this new std.Io stuff now moving forward at speed, maybe I should move in that direction.  I'm not yet sure how close that is to having a working eventloop of some kind.
+
+1754050282
+bblack!~bblack@wikimedia/bblack-WMF
+mostly I'm using network sockets and timers with libev, but there are some uses of fs stat-watchers too.  my overall model is explicit threading with an eventloop inside each thread that would use epoll or uring or whatever.
+
+1754052067
+Profpatsch!~Profpatsc@user/Profpatsch
+For  `man 3 cmsg` macros, should we just import the macros from sys/socket.h? I can’t find them in std
+
+1754052084
+Profpatsch!~Profpatsc@user/Profpatsch
+They are just a bunch of macro calculations that are different for each platform
+
+1754052106
+Profpatsch!~Profpatsc@user/Profpatsch
+(trying to see whether I manage to do fd passing over unix sockets)
+
+1754055447
+bblack!~bblack@wikimedia/bblack-WMF
+Profpatsch: yeah I ended up just using @cImport for those for now in my project.  Making those work portably via std.c and/or std.posix will be a PITA, but should eventually happen.
+
+1754055569
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. https://github.com/blblack/gdnsd/blob/zigzag/src/dnsio_udp.zig#L52 ("Xc." is the namespace I put all my @cImports in)
+
+1754055816
+bblack!~bblack@wikimedia/bblack-WMF
+we'll basically need to get exact copies of the structure layout per-os/arch into std to be able to build zig functions that allow iterating cmsg stuff.
+
+1754056088
+bblack!~bblack@wikimedia/bblack-WMF
+Profpatsch: these examples actually use it for fd-passing: sender: https://github.com/blblack/gdnsd/blob/zigzag/src/css.zig#L187 receiver: https://github.com/blblack/gdnsd/blob/zigzag/src/csc.zig#L138
+
+1754082445
+smlavine!~smlavine@sourcehut/user/smlavine
+Hello -- How can I make it that running tests shows the test summary even when all tests succeed?
+
+1754082870
+smlavine!~smlavine@sourcehut/user/smlavine
+I appreciate the improvements that have been made to the default build.zig contents and the default source file contents with `zig init`. Makes it easy to pick up after a while of not using the language, get my bearings around the particulars of the build system and of testing, showing off slightly more complex things I could do with fuzz testing in particular is neat
+
+1754084177
+andrewrk!~andrewrk@mail.ziglang.org
+smlavine: --summary all
+
+1754084222
+andrewrk!~andrewrk@mail.ziglang.org
+I'll pass that second note along to Loris
+
+1754085133
+smlavine!~smlavine@sourcehut/user/smlavine
+andrewrk: Thanks
+
