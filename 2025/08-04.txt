@@ -1,0 +1,204 @@
+1754272455
+rvrb!~rvrb@156.146.51.228
+well, idk if I am doing something else wrong, but I was having a ton of issues with flush not flushing until I passed around `&stdout.interface`/`*Writer` instead of `stdout.interface`/`Writer`
+
+1754272501
+rvrb!~rvrb@156.146.51.228
+looking at the struct, that makes sense, since the `end` would be lost
+
+1754273060
+grayhatter!~grayhatte@user/grayhatter
+So, I should be able to do this math, but my brain has decided it's not gonna be helpful today. I assume there has to be a cleaner way to write this instead of using 2 for loops. But I can't see it, anyone have any ideas? https://zigbin.io/a59910
+
+1754273288
+grayhatter!~grayhatte@user/grayhatter
+I equally looking for something better than `for (0..200) pattern[i]; pattern[pattern.len - i];` too
+
+1754273901
+rvrb!~rvrb@156.146.51.228
+personally I would prefer to encounter the two four loops, since it's pretty clearly indicating different behavior for the first half, but if you insist on reducing lines of code, you could use two ranges in the for with the second being -200.., check its sign, and change to @floatFromInt(i_ % 200)
+
+1754273940
+rvrb!~rvrb@156.146.51.228
+I do not approve of this change https://zigbin.io/cb5f60
+
+1754273964
+grayhatter!~grayhatte@user/grayhatter
+rvrb: I'm interested in the pure math, non-branching option.... that I assume must exist?
+
+1754273998
+grayhatter!~grayhatte@user/grayhatter
+I didn't think for (-200..) was valid?
+
+1754274010
+grayhatter!~grayhatte@user/grayhatter
+I thought it had to fit within a usize only?
+
+1754274010
+rvrb!~rvrb@156.146.51.228
+oh, right, usize
+
+1754274055
+grayhatter!~grayhatte@user/grayhatter
+add -200 on the next line... yeah, that's what I did somewhere else for different code, but deleted it because I agree with you, it's harder to understand
+
+1754274055
+rvrb!~rvrb@156.146.51.228
+you could saturating subtract 200 from i_
+
+1754274094
+rvrb!~rvrb@156.146.51.228
+then it's 0 for first 200 and then starts 0..200
+
+1754274120
+grayhatter!~grayhatte@user/grayhatter
+@abs(-400 + i) where i = 0..200
+
+1754274147
+grayhatter!~grayhatte@user/grayhatter
+or is it -200 + i
+
+1754274201
+rvrb!~rvrb@156.146.51.228
+if the goal is to reduce branches, and the length is hardcoded, just use inline for?
+
+1754274335
+grayhatter!~grayhatte@user/grayhatter
+it's `const pattern_bg: [400]ARGB = comptime bg: { @setEvalBranchQuota(4000); ... }` which had made me sastified for now
+
+1754274400
+grayhatter!~grayhatte@user/grayhatter
+if I'm honest, the goal is to nerd snipe myself on the math implementation because I feel like I should have, and thus want to, build a better intuition for it
+
+1754302948
+nephele!~vision@i59F516E1.versanet.de
+Hi! Yesterday I tried to compile zig master on Haiku, and that failed eventually... is this expected to work? and if not, how can i get more precise debugging output? two of 3 errors were assertions about singlethreadedness but the build did not say where the original function was called from
+
+1754318482
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it a bad idea to name root.zig lib.zig instead? is it expected in a Zig project to find a root.zig?
+
+1754318486
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it sounds a bit weird to me
+
+1754318515
+hadronized!~hadronize@2001:41d0:a:fe76::1
+all in all we can do whatever we want in the build.zig file, but I’d rather stick to idiomatic principles, should I like them or not :)
+
+1754318675
+neurocyte!~neurocyte@user/neurocyte
+there are no hard coded file names in zig, you can call them whatever you want. that being said, src/main.zig and/or src/root.zig are pretty common
+
+1754318718
+neurocyte!~neurocyte@user/neurocyte
+I personally don't use root.zig. it's too generic for my taste. I just use the module name to name a module's root zig file.
+
+1754319656
+bblack!~bblack@wikimedia/bblack-WMF
+personally I've been using "main.zig" if it's an executable, and the module name as a filename if it's a module
+
+1754319702
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. my "asdf" module would be organized in a subdir named "asdf/", and some number of files within there, and the root source file of the module would be "asdf/asdf.zig"
+
+1754319774
+hadronized!~hadronize@2001:41d0:a:fe76::1
+interesting, so no lib.zig
+
+1754319781
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that stuff is probably a habit I will lose from Rust
+
+1754320006
+ifreund!2940d10f8b@user/ifreund
+I've been doing the same thing as bblack 
+
+1754320036
+ifreund!2940d10f8b@user/ifreund
+or, well sometime I do src/module_name.zig rather than module_name/module_name.zig
+
+1754320042
+ifreund!2940d10f8b@user/ifreund
+but I don't have a good reason for that
+
+1754320050
+ifreund!2940d10f8b@user/ifreund
+I don't think it matters very much
+
+1754321142
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah I was wondering whether it would be more natural for people to immediately try to look the files by going into a familiar file structure, or whether they would just immediately go to the build.zig to check how things work
+
+1754322156
+rvrb!~rvrb@156.146.51.228
+I use the module name if I am publishing docs since it makes the breadcrumb in the docs reflect how the user would probably be using it
+
+1754335738
+bblack!~bblack@wikimedia/bblack-WMF
+is there an "easy" way to audit for "var" globals inside structs rather than at file-scope (which yes is also a struct, but easlier to grep for)
+
+1754335851
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: grep for /^\s+var/ ?
+
+1754335862
+triallax!~triallax@lacerte/triallax
+that shows them inside functions too no?
+
+1754335871
+andrewrk!~andrewrk@mail.ziglang.org
+ah now I understand the problem
+
+1754335888
+triallax!~triallax@lacerte/triallax
+you could probably write a script to do this reasonably easily
+
+1754335912
+andrewrk!~andrewrk@mail.ziglang.org
+such a script could use std.zig.Ast
+
+1754335919
+triallax!~triallax@lacerte/triallax
+ah sure
+
+1754335926
+triallax!~triallax@lacerte/triallax
+i was thinking something more hacky but that's more robust
+
+1754336129
+bblack!~bblack@wikimedia/bblack-WMF
+thanks! I haven't played with std.zig much yet, should be interesting :)
+
+1754339621
+ifreund!2940d10f8b@user/ifreund
+hmm, I just wrote `foo == .none` where foo is a packed struct with a decl called none and expected this to work as it does for enums
+
+1754339644
+triallax!~triallax@lacerte/triallax
+this reminds me
+
+1754339677
+triallax!~triallax@lacerte/triallax
+i can do `try .foo` but not `.foo catch <expr with type noreturn>`
+
+1754339703
+triallax!~triallax@lacerte/triallax
+actually foo was a function on the type but still
+
+1754340011
+ifreund!2940d10f8b@user/ifreund
+these both have to do with "result types"
+
+1754340028
+triallax!~triallax@lacerte/triallax
+yes i'm aware
+
+1754340604
+ifreund!2940d10f8b@user/ifreund
+related: https://github.com/ziglang/zig/issues/22182
+
+1754345763
+andrewrk!~andrewrk@mail.ziglang.org
+I accidentally pressed ctrl+r into this application and now there's a blue line in the chat?
+
