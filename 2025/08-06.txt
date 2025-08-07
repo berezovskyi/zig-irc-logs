@@ -1,0 +1,608 @@
+1754444884
+rvrb!~rvrb@156.146.51.228
+labeled switches in a VM dispatch loop makes me happy
+
+1754444903
+triallax!~triallax@lacerte/triallax
+don't they ever :D
+
+1754473033
+ifreund!2940d10f8b@user/ifreund
+andrewrk: indeed :D
+
+1754482610
+AmandaC!~m-yt727s@cloud.camnet.site
+I don't suppose there's an easy way in build.zig to strip  binaries but keep the non-stripped version around for debugging purposes? I had a script for that in like, 0.10.0 but it doesn't seem to be behaving like I want with 0.14.1
+
+1754484965
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Should I only call std.Progress.Node.end if all subtasks have successfully completed?
+
+1754486159
+bblack!~bblack@wikimedia/bblack-WMF
+AmandaC: you could build the executable twice with different output filenames, e.g. "foo" and "foo.debug", and build them with different options.
+
+1754486682
+AmandaC!~m-yt727s@cloud.camnet.site
+bblack: Managed to figure it out:
+
+1754486682
+AmandaC!~m-yt727s@cloud.camnet.site
+... long message truncated: https://matrix.camnet.site/_heisenbridge/media/camnet.site/ZCmFwcaHHEndqTTBbosevpjD/kQFZN7km_XE (8 lines)
+
+1754487469
+bblack!~bblack@wikimedia/bblack-WMF
+AmandaC: nice!
+
+1754491329
+AmandaC!~m-yt727s@cloud.camnet.site
+Can std.json tell the difference between a []u8 that should be a string value, and one that should be a list of u8s?
+
+1754492178
+bblack!~bblack@wikimedia/bblack-WMF
+AmandaC: there's not much difference, unless by "string value" you mean [:0]u8
+
+1754492229
+AmandaC!~m-yt727s@cloud.camnet.site
+I mean will it encode random binary bytes I read from a file as "Foo": "<binary values>" or "Foo": [ ... ]
+
+1754492315
+bblack!~bblack@wikimedia/bblack-WMF
+oh good question, I'm not sure.  I know on the output side (generating json from Zig), there's an option "emit_strings_as_arrays".
+
+1754492315
+AmandaC!~m-yt727s@cloud.camnet.site
+The JSON decoder on the other end expects a list of ints, not a string with possible-escape-codes
+
+1754492366
+bblack!~bblack@wikimedia/bblack-WMF
+oh you are doing output, so maybe that's what you want
+
+1754492384
+AmandaC!~m-yt727s@cloud.camnet.site
+Yeah it is, but the same structure I'll be encoding also expects strings-as-strings
+
+1754492424
+AmandaC!~m-yt727s@cloud.camnet.site
+This was a problem with getty, but I worked around it with a custom struct that used getty's encoding stuff to encode it as an array always
+
+1754492486
+bblack!~bblack@wikimedia/bblack-WMF
+the ultimate escape hatch here, is your structs can have .jsonStringify() methods, which the json encoder will use (which you could use to vary the behavior re: emit_strings_as_arrays)
+
+1754492501
+bblack!~bblack@wikimedia/bblack-WMF
+the per-value output functions also take the same Options that can set emit_strings_as_arrays too
+
+1754492650
+AmandaC!~m-yt727s@cloud.camnet.site
+per-value output functions?
+
+1754493258
+AmandaC!~m-yt727s@cloud.camnet.site
+Hrm: https://github.com/ziglang/zig/blob/0.14.1/lib/std/json/stringify.zig#L475
+
+1754493278
+AmandaC!~m-yt727s@cloud.camnet.site
+Shouldn't rely on that though
+
+1754493898
+AmandaC!~m-yt727s@cloud.camnet.site
+Oh hey, there's a jsonParse escape hatch as well
+
+1754498707
+smlavine!~smlavine@sourcehut/user/smlavine
+Is there a reason {f} was chosen for .format() printing as opposed to just {} ?
+
+1754500091
+andrewrk!~andrewrk@mail.ziglang.org
+smlavine: peep the heading "Upgrade Guide" at https://github.com/ziglang/zig/pull/24329
+
+1754500129
+smlavine!~smlavine@sourcehut/user/smlavine
+I see thanks
+
+1754500949
+bblack!~bblack@wikimedia/bblack-WMF
+Zig hurts my brain sometimes, but it's the good kind of pain.  Like when your legs are sore from running more than you're used to :)
+
+1754501428
+andrewrk!~andrewrk@mail.ziglang.org
+:)
+
+1754503546
+bblack!~bblack@wikimedia/bblack-WMF
+am I doing something silly or is this a real inconsistency somwhere in parsing/compiling? https://zigbin.io/129a8c/run
+
+1754503575
+triallax!~triallax@lacerte/triallax
+i mentioned this a few days ago
+
+1754503620
+triallax!~triallax@lacerte/triallax
+you can find the conversation if you go up a little
+
+1754503710
+bblack!~bblack@wikimedia/bblack-WMF
+my scroll doesn't go that far apparently
+
+1754503718
+triallax!~triallax@lacerte/triallax
+i'll pastebin
+
+1754503770
+triallax!~triallax@lacerte/triallax
+https://0x0.st/s/CYPOs0Z3TjZYHnyKM5RGgA/8hJX.txt
+
+1754503776
+triallax!~triallax@lacerte/triallax
+that was shorter than i remembered it
+
+1754504005
+bblack!~bblack@wikimedia/bblack-WMF
+ok, thanks
+
+1754504025
+bblack!~bblack@wikimedia/bblack-WMF
+seems like many roads lead to that "Kill PTR" proposal
+
+1754504137
+triallax!~triallax@lacerte/triallax
+all i can think of when i see that is dns
+
+1754504190
+bblack!~bblack@wikimedia/bblack-WMF
+heh
+
+1754513936
+blackbeard420!~blackbear@45.33.85.133
+Is the general purpose allocator not recommended? It links to debug allocator in docs. Built for x86_64-linux-musl Measured with hyperfine allocating 1gb with the gpa is faster then both the c allocator and the arena allocator (using page allocator)
+
+1754513994
+triallax!~triallax@lacerte/triallax
+generalpurposeallocater has been renamed to debugallocator
+
+1754514020
+triallax!~triallax@lacerte/triallax
+in general it's much slower (both from what i see online and my own testing), i'm surprised you've found it faster
+
+1754514024
+triallax!~triallax@lacerte/triallax
+can you post your benchmark
+
+1754514035
+andrewrk!~andrewrk@mail.ziglang.org
+blackbeard420: for ReleaseFast I recommend std.heap.smp_allocator
+
+1754514044
+triallax!~triallax@lacerte/triallax
+also to actually answer your question, there's nothing wrong with it, it's just called the debug allocator for a reason
+
+1754514083
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what does smp stand for?
+
+1754514140
+blackbeard420!~blackbear@45.33.85.133
+Copy I'll try the smp_allocator thanks. Yeah I'll clean up the benchmark and add in smp_allocator to see
+
+1754514164
+triallax!~triallax@lacerte/triallax
+andrewrk: what do you advise in ReleaseSafe?
+
+1754514178
+triallax!~triallax@lacerte/triallax
+debugallocator is far too slow in my testing, for my use case anyhow
+
+1754514237
+blackbeard420!~blackbear@45.33.85.133
+It's definitely slower when used for more then a single allocation 
+
+1754514459
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah, Symmetric MultiProcessing
+
+1754514612
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: probably DebugAllocator configured with stack traces off
+
+1754514625
+triallax!~triallax@lacerte/triallax
+i'll give that a try
+
+1754514741
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What about ReleaseFast in single-threaded mode?
+
+1754514757
+triallax!~triallax@lacerte/triallax
+actually no stack traces is the default in non-debug mode it seems
+
+1754514784
+blackbeard420!~blackbear@45.33.85.133
+smp_allocator 946.1 ms ±  22.3 vs DebugAllocator 955.4 ms ±  16.0 ms. granted its a useless test of just allocating 1gb, iterating it all and then freeing
+
+1754514809
+triallax!~triallax@lacerte/triallax
+one large allocation is a very non-representative use case for most applications
+
+1754514821
+blackbeard420!~blackbear@45.33.85.133
+indeed
+
+1754514843
+triallax!~triallax@lacerte/triallax
+i would benchmark but i'm building something now
+
+1754514849
+triallax!~triallax@lacerte/triallax
+but i remember the difference is very stark
+
+1754514865
+blackbeard420!~blackbear@45.33.85.133
+ill do a quick test of a 1000 allocs on each
+
+1754515068
+blackbeard420!~blackbear@45.33.85.133
+wow, when allocating 1 million 1mb blocks and freeing. the smp_allocator is twice as fast
+
+1754515072
+blackbeard420!~blackbear@45.33.85.133
+vs the debug
+
+1754515084
+triallax!~triallax@lacerte/triallax
+i'm surprised the margin isn't higher
+
+1754515158
+blackbeard420!~blackbear@45.33.85.133
+they are both oddly faster then the c_allocator
+
+1754515167
+blackbeard420!~blackbear@45.33.85.133
+by a lot...
+
+1754515178
+triallax!~triallax@lacerte/triallax
+what's your system allocator
+
+1754515183
+triallax!~triallax@lacerte/triallax
+mine is mimalloc
+
+1754515188
+triallax!~triallax@lacerte/triallax
+and it's roughly on par with the smp allocator
+
+1754515201
+triallax!~triallax@lacerte/triallax
+for my project at least
+
+1754515217
+andrewrk!~andrewrk@mail.ziglang.org
+only testing 1 million 1mb blocks and freeing is also non representative
+
+1754515221
+blackbeard420!~blackbear@45.33.85.133
+im on glibc void, but testing zig built with musl using its allocator
+
+1754515223
+triallax!~triallax@lacerte/triallax
+yes agreed
+
+1754515239
+triallax!~triallax@lacerte/triallax
+blackbeard420: hm, does void use musl mallocng?
+
+1754515247
+triallax!~triallax@lacerte/triallax
+i know that's quite slow
+
+1754515261
+blackbeard420!~blackbear@45.33.85.133
+i believe so, ill have to double check but that would explain it
+
+1754515264
+andrewrk!~andrewrk@mail.ziglang.org
+if you want to get a representative test case, inject a custom malloc implementation with LD_PRELOAD into firefox and browse the internet for a few minutes, collecting a list of allocations and frees and their respective sizes, then repeat that list
+
+1754515289
+triallax!~triallax@lacerte/triallax
+i wonder why they don't switch to a faster allocator on musl
+
+1754515336
+andrewrk!~andrewrk@mail.ziglang.org
+what I suggested is pretty representative for c++ code but not quite for a zig codebase which will likely do fewer silly RAII stuff
+
+1754515374
+andrewrk!~andrewrk@mail.ziglang.org
+triallax: musl is basically focused on the "release safe" use case
+
+1754515408
+triallax!~triallax@lacerte/triallax
+that's my understanding as well, but i think for a general purpose distro you could go with something faster even if you sacrifice some security
+
+1754515423
+blackbeard420!~blackbear@45.33.85.133
+yeah must of been the mallocng, glibc's malloc was magnitudes faster
+
+1754515437
+triallax!~triallax@lacerte/triallax
+my distro (chimera) uses musl but switches the allocator out for mimalloc by default, and it shows
+
+1754516919
+nephele!~vision@i59F516E2.versanet.de
+ACTION waves
+
+1754516999
+nephele!~vision@i59F516E2.versanet.de
+andrewrk: is there ways to contribute other than github? I saw some code for the haiku port is wrong (hardcoding certain certificate store paths, but we don't hardcode these and instead have a find api), and i'd be interested in fixing that
+
+1754517134
+andrewrk!~andrewrk@mail.ziglang.org
+hi nephele
+
+1754517136
+andrewrk!~andrewrk@mail.ziglang.org
+not yet
+
+1754517164
+andrewrk!~andrewrk@mail.ziglang.org
+will be looking to jump ship soon enough
+
+1754517181
+nephele!~vision@i59F516E2.versanet.de
+oh? Have you found a new ship? :)
+
+1754517283
+andrewrk!~andrewrk@mail.ziglang.org
+I'm thinking about how to lean a little more into decentralization
+
+1754517351
+triallax!~triallax@lacerte/triallax
+forgejo's working on federation but i haven't tried it yet
+
+1754517352
+triallax!~triallax@lacerte/triallax
+could be cool
+
+1754517473
+nephele!~vision@i59F516E2.versanet.de
+We've had similar discussions for our webkit port; I think you either need a canonical repository, or you need singatures. For Haiku itself gerrit works great for code review, and then we have trac for tickets. I'm not sure code review and tickets can be nicely decentralized as such
+
+1754517721
+andrewrk!~andrewrk@mail.ziglang.org
+it would be really nice if bug tracker data were stored in git
+
+1754517772
+nephele!~vision@i59F516E2.versanet.de
+Fossil does it like that, but it's not git
+
+1754518056
+rvrb!~rvrb@156.146.51.228
+this is not really a realistic option for Zig today, but some people are building a social coding platform on atproto. I am not yet convinced by atproto.. but it is interesting nonetheless https://tangled.sh
+
+1754518085
+nephele!~vision@i59F516E2.versanet.de
+what is social coding?
+
+1754518089
+rvrb!~rvrb@156.146.51.228
+github
+
+1754518114
+Earnestly!~earnest@user/earnestly
+There are serious projects which do store issues as git objects within git (notibly git-bug, but also git-issue. There was a new thing but I've forgotten it (had fancy web ui and such), annoyingly)
+
+1754518148
+Earnestly!~earnest@user/earnestly
+Ultimately it will have to develop like this because that's kind of how git rolls, might eventually get something "official"
+
+1754518185
+Earnestly!~earnest@user/earnestly
+(git-issue can export/import github issues)
+
+1754518215
+andrewrk!~andrewrk@mail.ziglang.org
+github was born into the era where everyone was trying to copy facebook
+
+1754518257
+andrewrk!~andrewrk@mail.ziglang.org
+looks like it will die that way too
+
+1754518273
+nephele!~vision@i59F516E2.versanet.de
+Maybe i'm missing something... does github have social media features? I thought they are now branded as AI first or so?
+
+1754518296
+andrewrk!~andrewrk@mail.ziglang.org
+they downplay them lately, but you can "follow" people
+
+1754518302
+andrewrk!~andrewrk@mail.ziglang.org
+which is basically friends
+
+1754518303
+triallax!~triallax@lacerte/triallax
+achievements, following, the home page
+
+1754518318
+triallax!~triallax@lacerte/triallax
+all of which i've hidden with userstyles
+
+1754518326
+nephele!~vision@i59F516E2.versanet.de
+achievements? .-.
+
+1754518339
+triallax!~triallax@lacerte/triallax
+yeah, for real
+
+1754518345
+Earnestly!~earnest@user/earnestly
+Tbh, I follow users who star interesting projects, so I can find them as well. That's the only use I've found for it
+
+1754518357
+rvrb!~rvrb@156.146.51.228
+github's primary draw is that contributors are there, abstractly; that's really the social aspect. you star/watch repos, subscribe to issues, have one login for multiple projects. so I guess the tangled.sh thing is - what if you Bluesky'd the social bits and then projects could own their pr/issue data
+
+1754518360
+triallax!~triallax@lacerte/triallax
+i follow no one but have 50 followers for some reason
+
+1754518361
+Earnestly!~earnest@user/earnestly
+(and star'd projects are basically bookmarks)
+
+1754518362
+triallax!~triallax@lacerte/triallax
+idk i don't get it
+
+1754518403
+nephele!~vision@i59F516E2.versanet.de
+Ah okay. That explains why some of these things are then in gitea then. Was always really wierd to me why i would "follow" one of the 2 other people on an instance... :)
+
+1754519066
+rvrb!~rvrb@156.146.51.228
+speaking of, does anyone know of a ublock list for filtering AI shit out of GitHub? seems like every other day they launch a new feature I do not want that slows the UI by another 10%
+
+1754519193
+Drixtan!~Drixtan@user/Drixtan
+like the CEO of github said: embrace AI or GFTO (of the software engineering), you could just, ... you could listen to that CEO and GTFO of github and roam the land of codeberg and the like?
+
+1754519250
+nephele!~vision@i59F516E2.versanet.de
+codeberg is still a bit stuck currently with their storage limits... we are stuck in a limbo of them not quite having enabled their storage limits, but also not ready to process exemption requests :)
+
+1754519381
+nephele!~vision@i59F516E2.versanet.de
+Huh, compiling the compiler_rt really takes a long time
+
+1754519386
+nephele!~vision@i59F516E2.versanet.de
+i hope i only have to do this once
+
+1754519546
+andrewrk!~andrewrk@mail.ziglang.org
+once per {compiler version,target} tuple
+
+1754519631
+nephele!~vision@i59F516E2.versanet.de
+too bad it's only using one thread
+
+1754519664
+andrewrk!~andrewrk@mail.ziglang.org
+that's one of the advantages zig backends have over llvm
+
+1754519789
+nephele!~vision@i59F516E2.versanet.de
+When i tried this the last weekend the build failed. Just waiting till it fails again on this other computer :)
+
+1754520214
+AmandaC!~m-yt727s@cloud.camnet.site
+Is the "comptime (expr)" part of this needed when level/scope are already comptime? "const prefix = comptime ("[" ++ level.asText() ++ "]" ++ "(" ++ @tagName(scope) ++ "): ");"
+
+1754520232
+triallax!~triallax@lacerte/triallax
+nope
+
+1754520236
+triallax!~triallax@lacerte/triallax
+++ is always comptime anyway
+
+1754520246
+AmandaC!~m-yt727s@cloud.camnet.site
+ah
+
+1754520250
+triallax!~triallax@lacerte/triallax
+but even ignoring that if context is comptime then it doesn't matter
+
+1754521199
+nephele!~vision@i59F516E2.versanet.de
+oh, one issue dissapeared since last time :)
+
+1754521276
+nephele!~vision@i59F516E2.versanet.de
+This is the build fault I am now getting, with latest zig commit, and haiku nightly: https://0x0.st/8ht7.txt
+
+1754521498
+nephele!~vision@i59F516E2.versanet.de
+The failing line is basically just  if (builtin.single_threaded) { @compileError("Cannot spawn thread when building in single-threaded mode"); }
+
+1754521512
+nephele!~vision@i59F516E2.versanet.de
+but i'm not sure where this is called from to debug it :)
+
+1754521546
+triallax!~triallax@lacerte/triallax
+pass -freference-trace?
+
+1754521575
+nephele!~vision@i59F516E2.versanet.de
+to where?
+
+1754521594
+nephele!~vision@i59F516E2.versanet.de
+I started this build by just typing "ninja" :)
+
+1754521598
+triallax!~triallax@lacerte/triallax
+not sure actually
+
+1754521616
+triallax!~triallax@lacerte/triallax
+whatever is doing that stage3/bin/zig call i guess
+
+1754521624
+triallax!~triallax@lacerte/triallax
+sorry not very familiar with the build system ;-;
+
+1754521633
+nephele!~vision@i59F516E2.versanet.de
+me either :D
+
+1754523204
+nephele!~vision@i59F516E2.versanet.de
+hmmm, i restarted the build with ninja -j1... thought that now builds stage2 again. wierd
+
+1754524601
+andrewrk!~andrewrk@mail.ziglang.org
+nephele: assuming you're trying to build on haiku, that error tells me that somewhere in the std lib, haiku-specific code is not respecting -fsingle-threaded (i.e. by noticing `@import("builtin").single_threaded`)
+
+1754524626
+andrewrk!~andrewrk@mail.ziglang.org
+you can probably reproduce on another host by running std lib tests with -target x86_64-haiku -fsingle-threaded
+
+1754524637
+nephele!~vision@i59F516E2.versanet.de
+like, on a linux machine?
+
+1754524673
+andrewrk!~andrewrk@mail.ziglang.org
+well, I just checked and I get error: unable to find or provide libc for target 'x86_64-haiku-none'
+
+1754524692
+andrewrk!~andrewrk@mail.ziglang.org
+it would be nice if one didn't need libc for syscalls
+
+1754524718
+nephele!~vision@i59F516E2.versanet.de
+our syscall numbers are not stabel, we have stubs in libc for those
+
+1754524758
+nephele!~vision@i59F516E2.versanet.de
+(that is, they are renumerated by the build as required when syscalls are added or removed)
+
+1754524766
+andrewrk!~andrewrk@mail.ziglang.org
+yes I understand
+
+1754524778
+andrewrk!~andrewrk@mail.ziglang.org
+it would be nice if they were stable :)
+
+1754524795
+nephele!~vision@i59F516E2.versanet.de
+Would you rather have magic numbers? ;)
+
