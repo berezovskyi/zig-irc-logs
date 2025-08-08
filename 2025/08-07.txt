@@ -1,0 +1,376 @@
+1754524811
+andrewrk!~andrewrk@mail.ziglang.org
+certainly! much better than a libc dependency
+
+1754524834
+nephele!~vision@i59F516E2.versanet.de
+I have been thinking about this. I suppose it would be possible that the build saves this date somewhere else, not only in the libc stubs... and the kernel exposes it somehow
+
+1754524842
+nephele!~vision@i59F516E2.versanet.de
+would that be a possibility?
+
+1754524867
+andrewrk!~andrewrk@mail.ziglang.org
+I'm just saying when you add a new syscall, add it to the end of the enum, and when you delete one, leave a stub entry so that the numbers don't change
+
+1754524900
+nephele!~vision@i59F516E2.versanet.de
+I think the idea here was that we can deal with new syscalls and such while userspace apps only need to link against the libc stubs
+
+1754524924
+nephele!~vision@i59F516E2.versanet.de
+are the stubs itself the problem, or the rest of the libc?
+
+1754524928
+andrewrk!~andrewrk@mail.ziglang.org
+yeah but zig std lib would rather interface directly with the OS than with libc
+
+1754524941
+andrewrk!~andrewrk@mail.ziglang.org
+well it's also that it requires dynamic linking
+
+1754524961
+nephele!~vision@i59F516E2.versanet.de
+It does. But then on Haiku that is somewhat intentional
+
+1754524970
+andrewrk!~andrewrk@mail.ziglang.org
+and also hinders cross compilation (if it didn't require libc then I would have been able to run that command just now)
+
+1754525013
+andrewrk!~andrewrk@mail.ziglang.org
+just a request. there's plenty of other operating systems that also do their syscalls via libc, you're not alone
+
+1754525016
+nephele!~vision@i59F516E2.versanet.de
+Well, the libc depends on the stubs, not the other way around i think. Can zig deal with it linking against a known set of stubs without the libc? Perhaps those two could be split up
+
+1754525075
+andrewrk!~andrewrk@mail.ziglang.org
+that could be an interesting idea to explore
+
+1754525095
+andrewrk!~andrewrk@mail.ziglang.org
+I still prefer static executables tho
+
+1754525135
+nephele!~vision@i59F516E2.versanet.de
+I agree somewhat... but i'm not fighting that battle in Haiku :P I accepted a long time ago that this is the way it is. It has some interesting things like loading apps into other apps, but still
+
+1754525183
+nephele!~vision@i59F516E2.versanet.de
+would having the libc stubs in their own lib work for your purposes? I think having a copy in zig would be easier than a full libc copy
+
+1754525825
+nephele!~vision@i59F516E2.versanet.de
+andrewrk: I've written an email to the haiku dev list... let's see what the others think. You are happy to respond if you'd like :)
+
+1754526263
+nephele!~vision@i59F516E2.versanet.de
+Is there a channel logger for this?
+
+1754526372
+andrewrk!~andrewrk@mail.ziglang.org
+no
+
+1754526393
+andrewrk!~andrewrk@mail.ziglang.org
+we're all just living in the moment, baby!
+
+1754526397
+nephele!~vision@i59F516E2.versanet.de
+:)
+
+1754526414
+nephele!~vision@i59F516E2.versanet.de
+I mean, that is kind of what irc is for :)
+
+1754526458
+nephele!~vision@i59F516E2.versanet.de
+heh, ninja -j1 fails in the same way, so that trick didn't help any. 
+
+1754526493
+nephele!~vision@i59F516E2.versanet.de
+Can i pass the build something so it lists all references, maybe i can see where in the stdlib it's frivolously ignoring single threaded mode
+
+1754526680
+andrewrk!~andrewrk@mail.ziglang.org
+-freference-trace
+
+1754526696
+nephele!~vision@i59F516E2.versanet.de
+to ninja?
+
+1754526709
+andrewrk!~andrewrk@mail.ziglang.org
+let me check your log again to see how far you got
+
+1754526780
+andrewrk!~andrewrk@mail.ziglang.org
+in your log it prints the failed command, which is executing zig2 
+
+1754526795
+andrewrk!~andrewrk@mail.ziglang.org
+I recommend to rerun that command directly, appending -freference-trace
+
+1754526836
+nephele!~vision@i59F516E2.versanet.de
+the one that starts with stage3/bin/zig?
+
+1754526858
+andrewrk!~andrewrk@mail.ziglang.org
+it starts with /boot/home/proj/zig/build/zig2
+
+1754526903
+nephele!~vision@i59F516E2.versanet.de
+Ah, i see
+
+1754526914
+andrewrk!~andrewrk@mail.ziglang.org
+I already see the problem though, you don't need more than those 2 references already printed
+
+1754527061
+andrewrk!~andrewrk@mail.ziglang.org
+this is a recent regression actually; the build system no longer supports -fsingle-threaded
+
+1754527072
+nephele!~vision@i59F516E2.versanet.de
+I suppose it's easier if you are a bit familar with the codebase, as you surely are ;)
+
+1754527090
+nephele!~vision@i59F516E2.versanet.de
+ah. well, i could also try the last release version if you'd like
+
+1754527286
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/24723
+
+1754527514
+nephele!~vision@i59F516E2.versanet.de
+how come the system is incapable of handeling threads in this instance?
+
+1754527744
+andrewrk!~andrewrk@mail.ziglang.org
+not to be mean, but I noticed in the past the contributors who worked on haiku did not do good work
+
+1754527758
+andrewrk!~andrewrk@mail.ziglang.org
+I suspect that they set "always single threaded" to true for haiku as a hack
+
+1754527778
+nephele!~vision@i59F516E2.versanet.de
+hmm :(
+
+1754527780
+andrewrk!~andrewrk@mail.ziglang.org
+aha: https://github.com/ziglang/zig/blob/e17a050bc695f7d117b89adb1d258813593ca111/src/target.zig#L82
+
+1754527794
+andrewrk!~andrewrk@mail.ziglang.org
+perhaps you can spelunk git history to find out why someone thought that was a good idea
+
+1754527795
+nephele!~vision@i59F516E2.versanet.de
+Could very well be, there are not that many reviews from haiku developers on the reviews
+
+1754527823
+nephele!~vision@i59F516E2.versanet.de
+well... it seems very wrong for Haiku, which prides itself on beeing multithreaded :)
+
+1754527863
+nephele!~vision@i59F516E2.versanet.de
+" haiku: default to single threaded to work around tls bugs"
+
+1754527864
+nephele!~vision@i59F516E2.versanet.de
+hmmm
+
+1754527867
+nephele!~vision@i59F516E2.versanet.de
+but which TLS bugs
+
+1754527879
+nephele!~vision@i59F516E2.versanet.de
+sadly there is no haiku ticket attached to the bug
+
+1754527882
+andrewrk!~andrewrk@mail.ziglang.org
+well, jacobly0 is a core team member, so you can ask him :)
+
+1754527906
+andrewrk!~andrewrk@mail.ziglang.org
+with respect to threadlocals, I think he's talking about a zig issue, not a haiku issue
+
+1754527938
+nephele!~vision@i59F516E2.versanet.de
+ah, the ticket did not make it clear.  Haiku having bugs is also a real possibility in this case, of course :)
+
+1754527943
+nephele!~vision@i59F516E2.versanet.de
+s/ticket/commit
+
+1754528028
+andrewrk!~andrewrk@mail.ziglang.org
+well, step 1 will be fixing the recent build system regression, which will get you up and running
+
+1754528036
+andrewrk!~andrewrk@mail.ziglang.org
+then a more involved step will be getting multithreading working
+
+1754528159
+nephele!~vision@i59F516E2.versanet.de
+Yeah :) My initial motivation was porting my game to zig on sdl3... love2d has really bad performance characteristics on haiku
+
+1754528367
+LAC-Tech!~lewis@granite-phrase.bnr.la
+confession: I write helper functions instead of doing the break :blk stuff because it's ugly and confusing. Am I a bad Ziguana?
+
+1754528507
+triallax!~triallax@lacerte/triallax
+erm, no?
+
+1754528510
+triallax!~triallax@lacerte/triallax
+sounds good even
+
+1754528571
+andrewrk!~andrewrk@mail.ziglang.org
+a good ziguana judges the merits of their code from first principles rather than relying on other people or robots to tell them what is acceptable or not
+
+1754528589
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Why are you framing yourself as a good or bad Ziguana depending on how you use one feature?
+
+1754528684
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I'm exgerrating for (attempted) comic effect. I do find a lot of the Zig idioms odd and confusing. This is just something I hack on alone so it's good to get community perspective.
+
+1754528710
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1754528734
+andrewrk!~andrewrk@mail.ziglang.org
+generally, people use named blocks to limit use of `var` or `undefined`.  functions are also a nice way to do that
+
+1754528906
+LAC-Tech!~lewis@granite-phrase.bnr.la
+the labelled statements thing was a GCC extension I think? I can remember interpreter writers talking about it
+
+1754536857
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: I'm suffering from not using your abstraction in std.http.Client right now
+
+1754538161
+rvrb!~rvrb@156.146.51.228
+andrewrk: hah. I've moved on to another project and keep finding reasons to use it, but I haven't pulled it in yet
+
+1754538205
+rvrb!~rvrb@156.146.51.228
+I don't know if you saw my update on the thread, but I am kind of at an impasse on what the right implementation is or whether it is worth it
+
+1754538255
+rvrb!~rvrb@156.146.51.228
+I feel like the usecase where you have an obese slice is like, pretty obscure, but I also have the feeling that it may be more useful than I think and we just haven't had anything like it before so its uses are nonobvious
+
+1754538449
+rvrb!~rvrb@156.146.51.228
+it it something you want to pull in to std?
+
+1754539100
+andrewrk!~andrewrk@mail.ziglang.org
+yeah do you mind if I shamelessly steal it, and adjust the API to my sensibilities?
+
+1754539271
+rvrb!~rvrb@156.146.51.228
+not at all
+
+1754539337
+rvrb!~rvrb@156.146.51.228
+check out kristoff's zig-flex, too, if you haven't
+
+1754539390
+andrewrk!~andrewrk@mail.ziglang.org
+will do (I haven't yet)
+
+1754539670
+rvrb!~rvrb@156.146.51.228
+I might like it better
+
+1754565990
+tonitch!~tonitch@user/tonitch
+Is there a way to instruct the zig dependency fetch to do a git deep clone ?
+
+1754574383
+hadronized!~hadronize@2001:41d0:a:fe76::1
+can I do something like return foo() catch blk: { …; break :blk value; };, or do I need to use an if() statement for that?
+
+1754574402
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the compiler seems to be confused with me doing that
+
+1754574409
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like it expects an error type, not a payload type
+
+1754574512
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess this is because I have a try in the catch block
+
+1754574517
+nephele!~vision@i59F516E0.versanet.de
+bah.. can't build the last zig release either because the haikuports llvm19 is missing the AVR target .-.
+
+1754574837
+nephele!~vision@i59F516E0.versanet.de
+is there a vulkan scene graph equivalent for zig?
+
+1754574940
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah nevermind, it was me not playing correctly around optional coercion
+
+1754575411
+hadronized!~hadronize@2001:41d0:a:fe76::1
+actually, better question: return foo() catch {}; does that return, or does it just continue execution?
+
+1754575436
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I came up with a construct to try something, and if it fails, continue trying more stuff in the function
+
+1754575458
+hadronized!~hadronize@2001:41d0:a:fe76::1
+with if (…) |value| { … } else |err| { _ = err catch {}; … }
+
+1754575465
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but I’m not sure this is very idiomatic
+
+1754575499
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess I could make a function that transforms a E!A in ?A for that
+
+1754580939
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, is it possible to break out of an inline for? I reached out immediately to blk: { inline for … { break :blk; } } because I think it should not make sense to break out of it, since it should be unrolled (and I wanted to be extra sure, since I have a runtime loop just above it), but maybe Zig can support it by manually adding that block I’m doing?
+
+1754589844
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: Is the added comment in my PR adequate?
+
+1754594864
+reykjalin!7e28cf3a41@user/reykjalin
+hey all, I’d like to host a Zig Day in Kitchener-Waterloo, Ontario if there’s enough interest. if anyone is close enough that they’d attend please let me know :) https://ziggit.dev/t/zig-day-in-kitchener-waterloo-ontario/11351/1
+
+1754595158
+andrewrk!~andrewrk@mail.ziglang.org
+reykjalin: I sent the link to a friend who lives 1h away
+
+1754595386
+clevor!sid649024@id-649024.hampstead.irccloud.com
+🤦
+
+1754597412
+reykjalin!7e28cf3a41@user/reykjalin
+andrewrk: sweet, thank you!
+
