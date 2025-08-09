@@ -1,0 +1,348 @@
+1754653362
+bblack!~bblack@wikimedia/bblack-WMF
+what's the std.Io equivalent of the dead std.fifo.LinearFifo(X, .Dynamic) ?
+
+1754653464
+bblack!~bblack@wikimedia/bblack-WMF
+(I saw the removal of std.fifo from the MachO linker, but it replaced it with an ArrayList that would grow indefinitely over time in a forever-running case, because it never reclaims "popped" space from the head)
+
+1754659820
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm trying to benchmark using [20]u8 vs u160 for some data and I'm writing a very small zig program to that end, however trying to truncate or intCast down to u160 won't work
+
+1754659821
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+https://godbolt.org/z/jbszxMsMf
+
+1754659859
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+const foo = @as(u160, @truncate(dummy_data));    reports a type of u160 but a size of 32, same if I do   const foo: u160 = @intCast(dummy_data);    where in both cases dummy_data is a source u256
+
+1754659903
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+because of that I cannot std.mem.toBytes as it reports expecting a destination of [32]u8 instead of my given [20]u8. Is this a bug or do I just suck...?
+
+1754660398
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+This is a problem with @sizeOf() right.. or expected? The docs do say it may include padding bits and that seems to be the case here, but std.mem.toBytes uses @sizeOf and so it will consider said padding bits
+
+1754660435
+triallax!~triallax@lacerte/triallax
+uhh
+
+1754660439
+triallax!~triallax@lacerte/triallax
+i remember having a similar problem with u24
+
+1754660448
+triallax!~triallax@lacerte/triallax
+let me see what i did
+
+1754660546
+triallax!~triallax@lacerte/triallax
+apparently i used @bitCast
+
+1754660779
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+still doesn't work for me
+
+1754660808
+triallax!~triallax@lacerte/triallax
+hm, code?
+
+1754660826
+triallax!~triallax@lacerte/triallax
+also fwiw, not telling you to not benchmark, but i do suspect there will be no difference
+
+1754660945
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+triallax: https://godbolt.org/z/n8oMbEnq3
+
+1754661027
+triallax!~triallax@lacerte/triallax
+you bitCast instead of toBytes too
+
+1754661093
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+oh ok
+
+1754661100
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+..yuck
+
+1754661106
+triallax!~triallax@lacerte/triallax
+sup
+
+1754661144
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+gonna have food and try finish this off, the double @bitCast works. I'll have it take 1 arg from stdin so it's not compile-time optimised
+
+1754665213
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah i dont see a difference
+
+1754665263
+triallax!~triallax@lacerte/triallax
+it probably compiles down to the same thing
+
+1754665269
+triallax!~triallax@lacerte/triallax
+you can see on godbolt i guess
+
+1754665314
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+yeah i imagine it is, this is the literal: https://godbolt.org/z/YPKbYMzEK and the bytes: https://godbolt.org/z/e91PsY35T
+
+1754665754
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+here's both with a diff: https://godbolt.org/z/dh68zrY17
+
+1754665885
+triallax!~triallax@lacerte/triallax
+that can be hardly called a diff tbh :D
+
+1754665969
+triallax!~triallax@lacerte/triallax
+oh it loaded now
+
+1754665983
+triallax!~triallax@lacerte/triallax
+yeah idk too much assembly for me
+
+1754666170
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+likewise
+
+1754670554
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: Your tip about buffer sizes in the Zig 2026 roadmap was pretty helpful. I got a 15% performance improvement just by adjusting buffer sizes.
+
+1754670971
+triallax!~triallax@lacerte/triallax
+oh, what's the tip?
+
+1754671087
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It was the mention of his talk "Remember to Flush"
+
+1754671153
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I can't find the timestamp.
+
+1754675987
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it correct to assume that I should be using a HashMap with a void type as values in order to use a set?
+
+1754676514
+triallax!~triallax@lacerte/triallax
+that's what i do, the ergonomics aren't super great though
+
+1754676522
+triallax!~triallax@lacerte/triallax
+but not super bad either
+
+1754678376
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I have started to write a JSON deserializer
+
+1754678402
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m sure better implementations exist, but I wanted to write one that I could use to force myself writing more and more Zig
+
+1754678417
+hadronized!~hadronize@2001:41d0:a:fe76::1
+funny to see how I start thinking about situations I would almost ignore in other languages
+
+1754678420
+Earnestly!~earnest@user/earnestly
+shave all the yaks
+
+1754678460
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like, parsing a field that requires allocation (a string, a list of other stuff, a sub-object), and having the next field fail serialization
+
+1754678476
+hadronized!~hadronize@2001:41d0:a:fe76::1
+comptime is a blessing for that kind of stuff
+
+1754678485
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://git.sr.ht/~hadronized/json.zig/tree/master/item/src/root.zig#L109
+
+1754679861
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: out of curiosity, did it come from increasing a buffer size, or decreasing a buffer size?
+
+1754680702
+Drixtan!~Drixtan@user/Drixtan
+ls
+
+1754680922
+AmandaC!~m-yt727s@cloud.camnet.site
+usr bin etc super_secret_dont_open tmp sbin
+
+1754680942
+triallax!~triallax@lacerte/triallax
+having that in / is horrendous
+
+1754680995
+AmandaC!~m-yt727s@cloud.camnet.site
+but who would think to look there?
+
+1754681196
+lemons!~doggie@user/doggie-:49517
+uuhhghhh i need some assistance with cooking up an algorithm but i also dont know how to articulate what exactly my problem is
+
+1754682400
+lemons!~doggie@user/doggie-:49517
+eh ill just infodump on discord i guess
+
+1754682445
+lemons!~doggie@user/doggie-:49517
+since here it'll get buried
+
+1754683374
+Drixtan!~Drixtan@user/Drixtan
+did you try the forums? https://ziggit.dev/
+
+1754683414
+Drixtan!~Drixtan@user/Drixtan
+the forums is awesome, filled with awesome people
+
+1754683575
+lemons!~doggie@user/doggie-:49517
+holy wew that EXISTS?
+
+1754684927
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://zigbin.io/5863d1 should not this be checked illegal behavior?
+
+1754685622
+chek!~chek@45.77.221.162
+is there some nice way to see zig std reference without a js-enabled browser
+
+1754685725
+Drixtan!~Drixtan@user/Drixtan
+no, but if you are creating a CLI/TUI to browse the std reference, I would give you a star on your repo or something...
+
+1754685741
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+star for star
+
+1754690559
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: It was from decreasing the input (filesystem) buffer size and increasing the output (stdout/file) buffer size.
+
+1754690857
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://github.com/myclevorname/narser/commit/c9efdd90485674c4ce08ad1822489b7e5d2cfaed
+
+1754691014
+LAC-Tech!~lewis@granite-phrase.bnr.la
+making tags and unions be composable at the type level is one of the best things ZIg has done. like the fact I can make an enum then make a tagged union from that enum is so convenient. I hope the next wave of garbage collected functional languages steal that idea.
+
+1754692145
+triallax!~triallax@lacerte/triallax
+clevor: well that's interesting
+
+1754692424
+hadronized!~hadronize@2001:41d0:a:fe76::1
+LAC-Tech: do you have an example about why that’s useful?
+
+1754692436
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I never actually used externally tagged unions like that; I just use union(enum)
+
+1754692593
+LAC-Tech!~lewis@granite-phrase.bnr.la
+hadronized: sometimes that tag represents a set of operations,and ther emight be several unions you can define off of them, representing different bits of info about the op. you could just hard code it twice but with a separate enum you can just change one of the fields and the compiler tells you what you need to update
+
+1754692668
+cancername!~cancernam@user/cancername
+hadronized: directly manipulating the len field of slices is unchecked, but you can try to slice explicitly with s = s[20..] which will emit a check IIRC
+
+1754692755
+Drixtan!~Drixtan@user/Drixtan
+you can s[7] = 7 without error, so I doubt slicing it will
+
+1754692789
+triallax!~triallax@lacerte/triallax
+but that's only if you set len manually
+
+1754692797
+Drixtan!~Drixtan@user/Drixtan
+yes
+
+1754692798
+triallax!~triallax@lacerte/triallax
+if you don't, that assignment will still fail at runtime
+
+1754692801
+Drixtan!~Drixtan@user/Drixtan
+yes
+
+1754692808
+cancername!~cancernam@user/cancername
+yes
+
+1754692827
+Earnestly!~earnest@user/earnestly
+patrick star meme
+
+1754692838
+triallax!~triallax@lacerte/triallax
+yes
+
+1754692865
+cancername!~cancernam@user/cancername
+s[7] might still fail at runtime if it's dynamically allocated and the allocator bothers to align buffer ends to page boundaries to make buffer overruns harder
+
+1754692883
+triallax!~triallax@lacerte/triallax
+hm sure
+
+1754692904
+cancername!~cancernam@user/cancername
+but yeah, language wise there's no check here
+
+1754693566
+Drixtan!~Drixtan@user/Drixtan
+but always remember, there is no such things as "safe programming" https://rustsec.org/categories/memory-corruption.html
+
+1754693786
+AmandaC!~m-yt727s@cloud.camnet.site
+Sure there is! Turn off the computer, unplug all wires, bury it in a ditch, then pave over it! Safe code!
+
+1754693786
+hadronized!~hadronize@2001:41d0:a:fe76::1
+here Rust safety is quite different though Drixtan; for instance this: https://github.com/pombredanne/scanner-rs/pull/1/files will lead to a panic at runtime
+
+1754693789
+hadronized!~hadronize@2001:41d0:a:fe76::1
+not a UB
+
+1754693955
+Earnestly!~earnest@user/earnestly
+AmandaC: (or the erlang approach, which is "more computers")
+
+1754694027
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Safety is a formal concept that covers much more than what rust can statically provide. See Alpern & Schneider 1985 or 1987, they did the seminal work on this.
+
+1754694590
+Drixtan!~Drixtan@user/Drixtan
+hadronized, you know, we don't have to look far if it's a UB that you want: https://rustsec.org/advisories/RUSTSEC-2023-0092.html
+
+1754694610
+Drixtan!~Drixtan@user/Drixtan
+and I am not pointing rust in particular here, just happen that is the selling pitch of rust
+
+1754694658
+Drixtan!~Drixtan@user/Drixtan
+main point, that oculd be any language. Use what's fun and productive, that's my mojo
+
+1754697254
+torque!~tachyon@user/torque
+panicing is not a safe response, depending on the problem domain
+
