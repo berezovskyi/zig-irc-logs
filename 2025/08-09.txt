@@ -1,0 +1,232 @@
+1754698138
+Drixtan!~Drixtan@user/Drixtan
+playing nethack at fullmoon is safe neither :-/ (you hear a jackal howling at the moon) <- totally not safe
+
+1754698456
+andrewrk!~andrewrk@mail.ziglang.org
+you have a sad feeling for a moment, and then it passes
+
+1754698661
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Until someone dies because some medical software panics.
+
+1754699876
+rvrb!~rvrb@156.146.51.228
+andrewrk: did you end up pulling that code in? if you end up doing so, please let me know, I'd like to examine any adjustments you make
+
+1754700032
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: not yet. but the code is sitting in master waiting to be substituted for something nicer: https://github.com/ziglang/zig/blob/master/lib/std/http/Client.zig#L226-L457
+
+1754700047
+rvrb!~rvrb@156.146.51.228
+is that a nudge ;)
+
+1754700078
+andrewrk!~andrewrk@mail.ziglang.org
+if you want it to be :)
+
+1754700116
+andrewrk!~andrewrk@mail.ziglang.org
+I'd do it myself at some point, but I'm stuck trying to fix the regressions that I caused with package fetching
+
+1754700164
+rvrb!~rvrb@156.146.51.228
+I got nothing to do tonight; my wife is still somewhere deep in the wallowas. I'll take a stab. I'm not worried if you get to it before I finish
+
+1754701635
+LAC-Tech!~lewis@granite-phrase.bnr.la
+clevor: are you in that field? my educated guess is safety there is much more derived through testing than static analysis. though I wonder if there's some "NASA Safety Rules" stuff going on
+
+1754702040
+rvrb!~rvrb@156.146.51.228
+andrewrk: is this known? just getting a development environment setup and the http tests seem to fail intermittently https://gist.github.com/tristanpemble/c795a02cec4ad2534f86bce7587f22b6
+
+1754702086
+rvrb!~rvrb@156.146.51.228
+sharing in case it's not and it's relevant to what you're debugging
+
+1754702132
+rvrb!~rvrb@156.146.51.228
+actually, that seems to be relevant to the very code I am working to clean up
+
+1754702136
+rvrb!~rvrb@156.146.51.228
+(:
+
+1754702343
+rvrb!~rvrb@156.146.51.228
+ok yeah I think it is what you are working on; https://github.com/ziglang/zig/issues/24760
+
+1754703426
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: that one in your gist is fixed by 3d25a9c1e07cfcb72250760b2c1a1d9d4f6174ed
+
+1754703585
+andrewrk!~andrewrk@mail.ziglang.org
+mm unless you're already after that commit?
+
+1754703641
+rvrb!~rvrb@156.146.51.228
+I am - but I am using an older build of the compiler (mitchellh's nix overlay master so probably last night), should I always be building from head if I am working on std?
+
+1754703663
+andrewrk!~andrewrk@mail.ziglang.org
+well, you're still compiling the newer code and the crash is in the newer code
+
+1754703668
+rvrb!~rvrb@156.146.51.228
+yeah
+
+1754703713
+rvrb!~rvrb@156.146.51.228
+on 5f7a0bbabfde4eeb0ff4f40f0942ef710b6104a1 fwiw
+
+1754703771
+andrewrk!~andrewrk@mail.ziglang.org
+actually, I don't think my attempted fix is valid
+
+1754704120
+andrewrk!~andrewrk@mail.ziglang.org
+that's crazy that stat() is apparently not returning an error for a network socket? 
+
+1754704391
+andrewrk!~andrewrk@mail.ziglang.org
+hmm or maybe it's because File.Reader is setting it
+
+1754704517
+rvrb!~rvrb@156.146.51.228
+um let me see if I can setup a debugger to catch it
+
+1754704570
+andrewrk!~andrewrk@mail.ziglang.org
+I caught a size=0 pos=170 but I've no idea how size is being set to zero
+
+1754704857
+andrewrk!~andrewrk@mail.ziglang.org
+hmm also 170 is decimal for 0xaa
+
+1754704906
+rvrb!~rvrb@156.146.51.228
+I am failing to reproduce now that I am using a debugger, so clearly quantum race condition
+
+1754705372
+rvrb!~rvrb@156.146.51.228
+I don't understand anything about the context of what this error is, yet, but given the 0xaa looking like uninitialized memory, it seemingly related to some kind of response reader, is this possibly related to the very read/write buffers I was about to go work on refactoring?
+
+1754705480
+andrewrk!~andrewrk@mail.ziglang.org
+you mean the Connection.Tls and Connection.Plain structs?
+
+1754705532
+rvrb!~rvrb@156.146.51.228
+oh, yes; I was thinking the Response was doing something similar
+
+1754705574
+rvrb!~rvrb@156.146.51.228
+well, I mean, I assume the Response comes out of a Connection
+
+1754705610
+andrewrk!~andrewrk@mail.ziglang.org
+well the std.fs.File.Reader in question is std.http.Connection.stream_reader
+
+1754705653
+andrewrk!~andrewrk@mail.ziglang.org
+full path: std.http.Connection.stream_reader.file_reader.size
+
+1754707898
+clevor!sid649024@id-649024.hampstead.irccloud.com
+LAC-Tech: No, but it's a use case where you can't afford to panic.
+
+1754716278
+LAC-Tech!~lewis@granite-phrase.bnr.la
+clevor: right. I sometimes wonder if std libraries should panic free. you've always got the option to panic if you can't handle an error
+
+1754716870
+Drixtan!~Drixtan@user/Drixtan
+if, for obscure reason, the std detects the memory is corrupted or the access should be denied, wouldn't it better to panic instead of continuing into bigger problems?
+
+1754718549
+grayhatter!~grayhatte@user/grayhatter
+does anyone follow the allyourcodebase repos?
+
+1754718626
+grayhatter!~grayhatte@user/grayhatter
+do commits still go missing because of force push?
+
+1754733977
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+hello
+
+1754734057
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+i would like to port a very small prog written in C in zig, to test this language
+
+1754734104
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+basically, it has a struct with function pointers, and the purpose is to write several struct with different functions pointers
+
+1754734141
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+like some which open images, and i have functions pointers to open/read a png file, or a jpeg file, etc...
+
+1754734174
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+is there some features in zig to easily do this ?
+
+1754734339
+Affliction!affliction@idlerpg/player/affliction
+storing function pointers in a struct? sure, you'll probably run into std.mem.Allocator early on, it contains a pointer to a vtable which contains many function pointers
+
+1754734607
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+i'll look at that
+
+1754734636
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+note that i just discovered zig, so i knw almost nothing, i just did an hello world
+
+1754734683
+vtorri!~vtorri@lfbn-tln-1-220-32.w90-119.abo.wanadoo.fr
+thanks
+
+1754736060
+tonitch!~tonitch@user/tonitch
+semi-zig related question ^^ I'm trying to use zig build system to build cimgui (witch depend on imgui) so the repo has imgui as a git submodule. I can build imgui just fine but then cimgui expect to have imgui.h in imgui/imgui.h (witch it doesn't have because the submodule is not downloaded). how am I expected to handle this situation ? should I alter the source of cimgui, should I copy the imgui.h
+
+1754736062
+tonitch!~tonitch@user/tonitch
+file over to "cimgui"/imgui/imgui.h or is there a better solution (I don't know the compiler well enough but maybe there is an option for that case? here is my source if you want to check. my last attempt was to use path ".." witch obviously doesnt work. https://github.com/tonitch/cimgui.zig
+
+1754738033
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+if i write std.debug.print in a test, where is the output? it seems to be overwritten by the default tree step printing thing of `zig build`
+
+1754761237
+rvrb!~rvrb@156.146.51.228
+is anyone ware of any serious effort to write a WASM runtime in Zig?
+
+1754761244
+rvrb!~rvrb@156.146.51.228
+'aware'
+
+1754761292
+rvrb!~rvrb@156.146.51.228
+I found https://github.com/malcolmstill/zware just wondering if there are others
+
+1754761577
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: that guy from zig day Reuben makes one too
+
+1754761607
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/rdunnington/bytebox
+
+1754761630
+rvrb!~rvrb@156.146.51.228
+neat. I remember his name but I can't remember his face
+
+1754763046
+rvrb!~rvrb@156.146.51.228
+man, his code is so readable
+
