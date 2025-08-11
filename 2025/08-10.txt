@@ -1,0 +1,448 @@
+1754840800
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+a procrastinating question .. do you have a favorite idiom for traversing array/slice in reverse?   the `|step|` way here is kinda growing on me but i'm hoping for something even more expressive:  https://bpa.st/SXIA
+
+1754840907
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+`for (arr.len..0)` would be kinda nice but it does not really work well as is (and breaks because apparently compiler assumes the step is +1 so the first boundary must be `-3` which is not usize) 
+
+1754841004
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+(here's the same with newlines fixed https://bpa.st/GHUA )
+
+1754841097
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+i suppose std.mem.reverseIterator() would also work but would be effectively the same as the while option with most of the disadvantages (var state outside the loop..)
+
+1754841533
+braewoods!~braewoods@user/braewoods
+netvor, if it were C, we just count down instead but it's often a terrible idea to do that if your index is unsigned.
+
+1754841573
+braewoods!~braewoods@user/braewoods
+so we don't really have an idiom for it per say? we just have a different approach to counting.
+
+1754841595
+braewoods!~braewoods@user/braewoods
+for reverse, we just start at the last index and end on the first.
+
+1754841681
+braewoods!~braewoods@user/braewoods
+that's just how iteration works for raw access.
+
+1754841701
+braewoods!~braewoods@user/braewoods
+for forward: for (i = 0; i < len; i++)
+
+1754841716
+braewoods!~braewoods@user/braewoods
+for reverse: for (i = len - 1; i >= 0; i--)
+
+1754841724
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+yeah you can do it easily with 3-part for, which is not in zig .. it's not that i'm missing it :)
+
+1754841754
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+the step version works well for me to be fair
+
+1754841768
+braewoods!~braewoods@user/braewoods
+why do you need reverse order anyway?
+
+1754841775
+braewoods!~braewoods@user/braewoods
+might it be easier to just reverse the array?
+
+1754841830
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+well sometimes for sure but not always
+
+1754841846
+braewoods!~braewoods@user/braewoods
+But honestly, i'd suggest just wrapping up the iteration forward / reverse behind your fancy iterator abstraction so you can easily change it later if you have cause to.
+
+1754841893
+braewoods!~braewoods@user/braewoods
+sometimes it's better to push stuff behind a function or similar design so it can be tweaked later in a single place.
+
+1754841899
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+i guess, in any concrete case, the details of the actual situation will give better hints on which way is the best
+
+1754841925
+braewoods!~braewoods@user/braewoods
+sometimes the ability to easily do a "parts exchange" might be better than just doing it directly where needed.
+
+1754841995
+braewoods!~braewoods@user/braewoods
+like, i've sometimes put the exact method of storing a bool behind an API of sorts so I can have an easier time changing the data structure if needed in the future.
+
+1754842014
+braewoods!~braewoods@user/braewoods
+think like bit packed bool vs just an array of bool.
+
+1754842100
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+eg. the case where i needed it is that there's a large array of points, and smaller array of geometries, which are slices to the array of points, and i have a cursor which points to a point.
+
+1754842127
+braewoods!~braewoods@user/braewoods
+netvor, yea. there's usually no reason to favor one iteration order over another. if it needs to be in a specific order, it's usually better to rearrange the array itself.
+
+1754842162
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+because the geometries have variable & dynamic lengths, implementing  Cursor.before() required iterating through them .. in reverse, to find the neighboring point
+
+1754842208
+braewoods!~braewoods@user/braewoods
+And computing the index of this neighbor isn't an option?
+
+1754842239
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+no because any point may become invalid at any moment
+
+1754842296
+braewoods!~braewoods@user/braewoods
+Ok. So lookup tables of sorts are out.
+
+1754842301
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+even the source point.  eg. the new geometry state decides that its length is now 2, and we were pointing to its point 4 ..
+
+1754842335
+braewoods!~braewoods@user/braewoods
+sparse arrays can be pretty useful if they fit the problem well.
+
+1754842399
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+might be.  i'm trying to learn a lot of stuff from first principles, so maybe i should look at sparse arrays or i'll end up reinventing them badly :D 
+
+1754842438
+braewoods!~braewoods@user/braewoods
+Sparse arrays are just arrays where every index is considered valid and may not be populated consistently.
+
+1754842453
+braewoods!~braewoods@user/braewoods
+IIRC, they're the basis for most hash tables.
+
+1754842470
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+ah i was just typing "isn't that just a (hash) map?"
+
+1754842474
+braewoods!~braewoods@user/braewoods
+Or simple lookup tables where an existing index can act as a key.
+
+1754842507
+braewoods!~braewoods@user/braewoods
+E.g., UNIX file descriptors can be used as a key for your own simple hash tables.
+
+1754842519
+braewoods!~braewoods@user/braewoods
+I've done that before to lookup client state quickly.
+
+1754842562
+braewoods!~braewoods@user/braewoods
+As all valid file descriptors are guaranteed to be between 0 and your process's file descriptor limit in terms of scale.
+
+1754842730
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+why would you use unix file descriptor?  don't you just want a growing int?
+
+1754843059
+braewoods!~braewoods@user/braewoods
+netvor, eh? unix file descriptors are always simple integers. they're how the raw APIs work with sockets and the like.
+
+1754843090
+braewoods!~braewoods@user/braewoods
+why would you need a fancy construct for that?
+
+1754843185
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+int is a fancy construct?
+
+1754843215
+braewoods!~braewoods@user/braewoods
+netvor, 'growing int' sounds like it's not a fixed width integer.
+
+1754843255
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+no i just meant a very ordinary int
+
+1754843266
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+sized as needed
+
+1754843283
+braewoods!~braewoods@user/braewoods
+so then what were you asking? file descriptors are already ints, it's just a special use of them.
+
+1754843283
+netvor!~netvor@2a00:ca8:a1f:cd0:f065:c0ef:70d7:62e1
+(and independent on platform)
+
+1754843334
+braewoods!~braewoods@user/braewoods
+they're actually an index into the kernel's internal tables.
+
+1754843352
+braewoods!~braewoods@user/braewoods
+and it stays fixed until the resource is closed.
+
+1754843379
+braewoods!~braewoods@user/braewoods
+so it's not a bad candidate for use for tracking resources related to an open file.
+
+1754843435
+braewoods!~braewoods@user/braewoods
+It's very useful when you're using something like poll() or select() to monitor activity.
+
+1754849641
+Drixtan!~Drixtan@user/Drixtan
+did you someone here see that thing: https://github.com/plasma-umass/coz <-- profiler by experimentation, slowing down other parts to give you the impact of optimizing a part or another of your program. There is a small video in there, I find that particularly interesting.
+
+1754852929
+rvrb!~rvrb@156.146.51.228
+it seems like every time I have a syntax/language idea I can find a discussion on it on GitHub. I am trying to find any discussion on replacing continue expressions with something else. specifically the concept in my mind is specialized defer statement that only runs on continue in a loop. I am not finding anything
+
+1754852971
+rvrb!~rvrb@156.146.51.228
+sorry, "continue expressions" is vague - the `while (foo) : (this thing)` syntax
+
+1754858421
+Drixtan!~Drixtan@user/Drixtan
+can you give a concret example? most of the time, a continue is to skip the loop on a condition. If you have to run something on that given condition, what's the difference than a normal "if" statement?
+
+1754859429
+rvrb!~rvrb@156.146.51.228
+Drixtan: very end of this article https://matklad.github.io/2025/08/09/zigs-lovely-syntax.html
+
+1754859507
+rvrb!~rvrb@156.146.51.228
+I was mostly just looking for discussions on the current language feature, not proposing a change. whenever I have ideas like this I like to read the relevant conversations to learn the considerations that go into design
+
+1754859578
+rvrb!~rvrb@156.146.51.228
+I found https://github.com/ziglang/zig/issues/8030 and https://github.com/ziglang/zig/issues/1403 but was wondering if anyone was aware of more discussion around the current implementation
+
+1754861281
+rvrb!~rvrb@156.146.51.228
+if anyone else is interested like I was, spelunking through this issues the discussion I arrived at https://github.com/ziglang/zig/issues/357 which is great context for how the current design came to be
+
+1754866998
+hadronized!~hadronize@2001:41d0:a:fe76::1
+what is the typical way to ensure an invariant cannot be broken by changing a field of a struct or something like that, since Zig doesn’t have encapsulation?
+
+1754867102
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for instance, having a slice[0..b] and resize it with slice[0..a] and a < b is fine, but doing slice.len = a won’t cause any issue (and it’s just UB then); making len private fixes that kind of loophole issue, and setting the length could go through a function that does the check, but is there another way?
+
+1754867104
+andrewrk!~andrewrk@mail.ziglang.org
+a good name and doc comments
+
+1754867129
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: you are not afraid of accidentals?
+
+1754867151
+andrewrk!~andrewrk@mail.ziglang.org
+I fear nothing
+
+1754867366
+Drixtan!~Drixtan@user/Drixtan
+lol: We shall fear nothing for we are what you fear.
+
+1754867394
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m not sure to understand honestly
+
+1754867423
+hadronized!~hadronize@2001:41d0:a:fe76::1
+making mistakes is something that happens all the time (bugs don’t write themselves, they are actually and actively written by a human being), so protecting invariants is important
+
+1754867436
+Drixtan!~Drixtan@user/Drixtan
+oki
+
+1754867598
+andrewrk!~andrewrk@mail.ziglang.org
+what's the typical way to ensure you don't accidentally call abort() and kill your program?
+
+1754867696
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t think you can block SIGABRT, so you probably cannot be 100% sure as soon as you can call in FFI
+
+1754867744
+andrewrk!~andrewrk@mail.ziglang.org
+in your own code
+
+1754867746
+hadronized!~hadronize@2001:41d0:a:fe76::1
+why are you taking that example? I was more talking about code I design, so that when exposed through a public API, my users are protected against misusage
+
+1754867803
+Drixtan!~Drixtan@user/Drixtan
+the real question is, from what are you protecting your users from? Aren't these "users" developers?
+
+1754867809
+hadronized!~hadronize@2001:41d0:a:fe76::1
+let’s say I want to expose a slice, but I don’t want users to be able to manually set the .len, and instead use a setLen() function for instance
+
+1754867819
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Drixtan: ill constructs
+
+1754867862
+Drixtan!~Drixtan@user/Drixtan
+the mindset of OOP, where you encapsulate and alienate the users is gone. You give a set of functionalities, and it's up to your "users" to use them. You don't control what they do and don't do
+
+1754867874
+hadronized!~hadronize@2001:41d0:a:fe76::1
+this is not about OOP
+
+1754867885
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it has nothing to do with OOP
+
+1754867887
+Drixtan!~Drixtan@user/Drixtan
+encapsulation is pillar of OOP, that's my reference
+
+1754867897
+Drixtan!~Drixtan@user/Drixtan
+where you do your little setters and getters
+
+1754867905
+Drixtan!~Drixtan@user/Drixtan
+"in case of something is changing later"
+
+1754867906
+Drixtan!~Drixtan@user/Drixtan
+right
+
+1754867911
+Drixtan!~Drixtan@user/Drixtan
+that's what you are looking for, am I right
+
+1754867917
+hadronized!~hadronize@2001:41d0:a:fe76::1
+part of, yes
+
+1754867932
+Drixtan!~Drixtan@user/Drixtan
+well, that's exactly what I am talking about
+
+1754867933
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I am not talking about getters or setters, but invariants
+
+1754867956
+Drixtan!~Drixtan@user/Drixtan
+you want to hide len
+
+1754867963
+Drixtan!~Drixtan@user/Drixtan
+and expose it via a getter
+
+1754867963
+hadronized!~hadronize@2001:41d0:a:fe76::1
+sometimes, when you take a value as argument of a function, and works on it, you have the right to violate invariants inside the body of the function, but the invariant must hold across calls
+
+1754867967
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah
+
+1754867970
+Drixtan!~Drixtan@user/Drixtan
+yeah
+
+1754867980
+hadronized!~hadronize@2001:41d0:a:fe76::1
+because changing the length of a slice is basically UB if you go higher than it
+
+1754868029
+Drixtan!~Drixtan@user/Drixtan
+yea, like if I call "panic!()" that's going to crash, also... how comes I am not protected against that
+
+1754868034
+Drixtan!~Drixtan@user/Drixtan
+I totally should be protected
+
+1754868040
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you have an array of 5 elements, slice it, and then do slice[0..10], you will get a panic, which is good
+
+1754868051
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you take the slice, and do slice.len = 10, you get garbage memory
+
+1754868059
+Drixtan!~Drixtan@user/Drixtan
+so don't
+
+1754868068
+hadronized!~hadronize@2001:41d0:a:fe76::1
+my point is: no one should ever do that
+
+1754868072
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so why should it be expsode?
+
+1754868074
+hadronized!~hadronize@2001:41d0:a:fe76::1
+exposed*
+
+1754868096
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the code that is doing slice internal stuff might want to, like the compiler, I guess? but users should never do that directly
+
+1754868109
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I understand the whole Zig thing regarding having transparent types, I can understand that
+
+1754868120
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but I don’t understand the lack of tooling regarding maintaining invariants
+
+1754868138
+Drixtan!~Drixtan@user/Drixtan
+because you don't need
+
+1754868143
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you have private functions
+
+1754868148
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and pub functions 
+
+1754868154
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so why not private fields and pub fields?
+
+1754868240
+hadronized!~hadronize@2001:41d0:a:fe76::1
+this is a genuine question, because I don’t actually see what value it brings not to have visibility modifiers
+
+1754868440
+andrewrk!~andrewrk@mail.ziglang.org
+you have it backwards. the null hypothesis is no visibility modifiers
+
+1754868772
+Drixtan!~Drixtan@user/Drixtan
+andrewrk, couldn't be just possible to define a var, directly on the root of a afile.zig like `const MyStruct = { ... }; var something = MyStruct { .a = undefined, ... }; then this something can't be accessible from outside of that afile.zig anyway?
+
+1754868784
+Drixtan!~Drixtan@user/Drixtan
+if one absolutely needs to hide stuff...
+
+1754868791
+Drixtan!~Drixtan@user/Drixtan
+because "users"
+
+1754869390
+Drixtan!~Drixtan@user/Drixtan
+hadronized : https://ziggit.dev/t/zig-structs-vs-java-classes/4637/7
+
