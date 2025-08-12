@@ -1,0 +1,364 @@
+1754870906
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: what do you mean null hypothesis? Zig both has and doesn’t have them at the same time
+
+1754870911
+hadronized!~hadronize@2001:41d0:a:fe76::1
+since you have them for functions, but not for fields
+
+1754870975
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Drixtan: that looks more like obfuscation to me haha
+
+1754871487
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: In the Zig repo, should I re-request a review after I implement the requested changes, or is that too annoying?
+
+1754871529
+andrewrk!~andrewrk@mail.ziglang.org
+no need, I have notifications on for everything
+
+1754871548
+andrewrk!~andrewrk@mail.ziglang.org
+I'm busy fixing the master branch regression that I caused, and also it's Sunday
+
+1754871555
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1754884799
+rvrb!~rvrb@156.146.51.228
+encapsulation as a defensive posture is at best patronizing the end user, and at worst, actively hostile sabotage. try to imagine your end user is a responsible professional that knows what they are doing and free yourself from bad APIs and the burden of playing code cop
+
+1754885131
+rvrb!~rvrb@156.146.51.228
+to frame it another way, if your data structure requires private fields to be used safely by a competent developer, consider that it's not the user's fault if they mess it up, and that your data structure is just not very well designed
+
+1754892983
+torque!~tachyon@user/torque
+ <hadronized> the code that is doing slice internal stuff might want to, like the compiler, I guess? but users should never do that directly
+
+1754893001
+torque!~tachyon@user/torque
+there are use cases for fiddling with the length of a slice
+
+1754893013
+torque!~tachyon@user/torque
+there's no real reason to prevent the user from being able to do so
+
+1754893059
+torque!~tachyon@user/torque
+I guess this point has been made by several people more better than me already but if the user is inclined to do things that do not make sense, they'll figure out a way to do it regardless of what you want
+
+1754893087
+torque!~tachyon@user/torque
+as long as, like, ptrcast exist, nothing is stopping them from reinterpreting any memory however they want and trying to mangle it
+
+1754893214
+torque!~tachyon@user/torque
+at work we have a bunch of c++ that uses opaque pointers in the class interfaces and the implementation is completely private. this is primarily done because it's a very easy way to avoid breaking ABI compatibility because C++ was a language designed by a huge number of clowns all trapped in a small car teetering on the edge of a cliff, or something
+
+1754893224
+torque!~tachyon@user/torque
+but it also makes it impossible to extend anything
+
+1754893262
+torque!~tachyon@user/torque
+or reuse functionality that already exists
+
+1754906634
+hadronized!~hadronize@2001:41d0:a:fe76::1
+torque: yeah the reusability argument is something I have read about Zig a couple times, indee
+
+1754909024
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is there a way to parse floats in the std?
+
+1754909039
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I have came up with my own thing as a first implementation of my JSON deserializer, but I am sure it’s not good
+
+1754909412
+dutchie!~dutchie@user/dutchie
+hadronized: https://ziglang.org/documentation/master/std/#std.fmt.parseFloat
+
+1754909447
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah it was in std.fmt, of course
+
+1754909449
+hadronized!~hadronize@2001:41d0:a:fe76::1
+thanks
+
+1754917568
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it possible to spread out declarations in an inline for?
+
+1754917570
+hadronized!~hadronize@2001:41d0:a:fe76::1
+something like
+
+1754917595
+hadronized!~hadronize@2001:41d0:a:fe76::1
+inline for (fields) |f| { var f.name: f.type = null; } 
+
+1754917622
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and have that available for the rest of the function
+
+1754917666
+hadronized!~hadronize@2001:41d0:a:fe76::1
+should be ?f.type, actually
+
+1754917704
+ifreund!2940d10f8b@user/ifreund
+no
+
+1754918678
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, I also need to check whether I can set a label on errdefer
+
+1754918680
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it would be nice
+
+1754918694
+hadronized!~hadronize@2001:41d0:a:fe76::1
+because I think I might have a problem with conditionally allocating memory
+
+1754918708
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if (…) { const p = try allocate(); }
+
+1754918726
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that thing is in a loop, and if something after that fails, I need to deallocate p
+
+1754918735
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I guess I can’t really errdefer in the if, correct?
+
+1754918795
+hadronized!~hadronize@2001:41d0:a:fe76::1
+and that if is actually part of an inline for, so I can’t really escape p from the if statement
+
+1754920927
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, I actually fixed that by moving the errdefer before my loop and using a set to check whether fields were set on an undefined object
+
+1754920929
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://git.sr.ht/~hadronized/json.zig/commit/0b0738f096458ab45e52d9ad7c7c2d670fde2ab0
+
+1754923685
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Can't wait to eat my lunch and watch https://www.youtube.com/watch?v=f30PceqQWko&list=PL9eL-xg48OM3E1AN2f40m9iv0SZEAOGKz&index=7 at 1pm.  Don't forget to Flush....  
+
+1754923712
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+If its yellow let it mellow,  if its brown flush it down.
+
+1754930702
+andrewrk!~andrewrk@mail.ziglang.org
+Smithx10: that's why we don't "defer" a flush, because there's no point in flushing when only an error occurs!
+
+1754931048
+andrewrk!~andrewrk@mail.ziglang.org
+has anyone else noticed github started scheduling actions runners randomly rather than on the oldest queued item?
+
+1754931810
+andrewrk!~andrewrk@mail.ziglang.org
+my systems distributed talk is premiering now: https://www.youtube.com/watch?v=f30PceqQWko it's about I/O streams across several languages
+
+1754932940
+rvrb!~rvrb@156.146.51.228
+andrewrk: not sure if you are in the YouTube comments but someone asked a question I had wondered at some point, too; couldn't allocating also be considered IO?
+
+1754933109
+rvrb!~rvrb@156.146.51.228
+I guess it's a fun thought experiment but there's not a lot of practical benefit in lumping it into the same interface
+
+1754934384
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: I/O can be done without memory allocation 
+
+1754934740
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+lol,  source and sink n1
+
+1754936111
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+@andrewrk  that is pretty dope,  I think go may have gotten to SendFile https://github.com/golang/go/commit/f664031bc17629080332a1c7bede38d67fd32e47 also
+
+1754936160
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Very good talk, funny. I lol'd a few times... anytime anyone makes fun of c++ its fun.
+
+1754936341
+andrewrk!~andrewrk@mail.ziglang.org
+Smithx10: but go does it via checking specifically what type the interface is, so it won't manage to do it through multiple streams like in my file->tar->http->socket example
+
+1754936356
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+ahhhh, gotcha
+
+1754938250
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Has any other language ever attempting to handle io via an interface or is this a novel concept?
+
+1754938411
+andrewrk!~andrewrk@mail.ziglang.org
+I'm sure it's been done before
+
+1754938942
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+in zig build system, can i override the output filename used by addLibrary? e.g. instead of addLibrary "foo" -> libfoo.so, i'd like to create foo.so.
+
+1754939013
+grayhatter!~grayhatte@user/grayhatter
+I haven't finished it yet, but I'm having a really hard time deciding which part is peak commentary, I can already tell that the dependecy injection section is never gonna get the credit it deserves
+
+1754939350
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Yesterday, I found a weird edge case in Writergate where `std.Io.Reader.stream` doesn't work with stdin.
+
+1754939414
+andrewrk!~andrewrk@mail.ziglang.org
+is it the one I fixed yesterday?
+
+1754939954
+hadronized!~hadronize@2001:41d0:a:fe76::1
+has anyone here looked into new systems programming languages besides Zig, like Odin, Hare, etc., and if so, what do you think about them with regard to the features of Zig (especially comptime)
+
+1754940166
+andrewrk!~andrewrk@mail.ziglang.org
+hadronized: off topic
+
+1754940252
+andrewrk!~andrewrk@mail.ziglang.org
+this isn't a programming languages discussion channel
+
+1754940498
+clevor!sid649024@id-649024.hampstead.irccloud.com
+IDK
+
+1754940715
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I'll update Zig and see if it works.
+
+1754941749
+davros1!~davros2@2a01:4b00:f01b:3e00:9417:19ea:6f44:a786
+hadronized, try ##programmnig, I'm into rust myself but would have enjoyed any of that list or Zig. I am not a 'everything must be safe' fanatic but I can't afford another language switch
+
+1754941777
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+i was looking at writing a lua module in zig but i am baffled by this segmentation fault coming from a very basic test. using gdb on the test binary isn't much more enlightening. any ideas? https://gist.github.com/mischief/2809cbd2ea53f278a809218f15b0738f
+
+1754941801
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: Thanks, it works correctly.
+
+1754941908
+clevor!sid649024@id-649024.hampstead.irccloud.com
+mischief: If there is a a segfault without a stack trace, there might be a stack overflow. If it doesn't happen if you enable LLVM in debug mode, then see https://github.com/ziglang/zig/issues/24183
+
+1754941973
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+this option doesn't exist. i have 0.14.1.
+
+1754942070
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://github.com/myclevorname/narser/blob/af10e4283066b5da99c97d76bc75753ca7477640/build.zig#L24
+
+1754942219
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+it still segfaults no matter if .use_llvm = true or false as passed to addLibrary in the build.zig in the gist above.
+
+1754942376
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+and actually it seems .use_llvm = false breaks zig build spectacularly :-)
+
+1754942378
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+> │  ├─ zig build-lib add Debug native 59491 errors
+
+1754942397
+seti_!~seti_@user/seti-:64798
+Is the zig 0.15.0 compiler too new to build zls 0.14.0 (march 7th release) with?
+
+1754942405
+seti_!~seti_@user/seti-:64798
+got a weird error when i tried to 
+
+1754942527
+seti_!~seti_@user/seti-:64798
+ah should have looked at the zls install guide maybe "A tagged release of Zig should be used with the same tagged release of ZLS (and vice versa)"
+
+1754942556
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I just looked at the whole gist and it turns out you can't disable LLVM because it compiles C code.
+
+1754942936
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+fg
+
+1754943030
+andrewrk!~andrewrk@mail.ziglang.org
+mischief: I recommend to run the segfaulting unit test binary in a debugger
+
+1754943117
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+i've tried. it's not enlightening because the stack is screwed.
+
+1754943147
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+updated the gist with gdb output
+
+1754943218
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+valgrind seems to give a better indicator that test_runner.mainTerminal (test_runner.zig:214) called a null pointer, but i'm not sure how that happened
+
+1754943407
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+ah, i see. when the test calls luaL_newstate it blows up. i wonder why
+
+1754944192
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+ah well, i figured it out. i need `.link_libc = true,`, which i suppose makes sense when linking a library like lua.
+
+1754944697
+andrewrk!~andrewrk@mail.ziglang.org
+mischief: odd that you didn't get any linker errors before runtime
+
+1754945090
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+.. and it seems one needs to be mindful of writing stdout in a test.
+
+1754945102
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+all fixed and updated my gist, thank you :-)
+
+1754948821
+energizer!~energizer@user/energizer
+is there an implementation of nurseries in the new zig async?
+
+1754949342
+andrewrk!~andrewrk@mail.ziglang.org
+energizer: Io.Group
+
+1754949813
+energizer!~energizer@user/energizer
+andrewrk: i'm not seeing where that is 
+
+1754951182
+mischief!~mischief@2604:5500:c29f:e800::c0ca:c01a
+does zig not generate IBT/endbr64 instructions in functions?
+
+1754951681
+andrewrk!~andrewrk@mail.ziglang.org
+energizer: new zig async is not landed in master branch yet
+
+1754951718
+andrewrk!~andrewrk@mail.ziglang.org
+mlugg has it implemented in a fork
+
