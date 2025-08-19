@@ -1,0 +1,324 @@
+1755482045
+andrewrk!~andrewrk@mail.ziglang.org
+it's type-erased at the vtable boundary but the interface has type-safe wrappers
+
+1755484655
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: on a scale of 1 to 10 how much do you miss \a \b \f \v escapes in string literals in zig?
+
+1755511744
+clevor!sid649024@id-649024.hampstead.irccloud.com
+std.io.Writer.sendFile should return u64.
+
+1755513938
+ifreund!2940d10f8b@user/ifreund
+clevor: why?
+
+1755514009
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If a file is over 4 GiB, then I would want sendFileAll to be able to write more than 4 GiB on a 32-bit system.
+
+1755514125
+ifreund!2940d10f8b@user/ifreund
+note the limit passed, which is a usize
+
+1755514198
+ifreund!2940d10f8b@user/ifreund
+also in the interface "implementations may assume that file size does not exceed this amount" about the limit
+
+1755514233
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh
+
+1755514270
+ifreund!2940d10f8b@user/ifreund
+I understand the use-case, but I don't think it would be as straightforward to support as it might initially appear
+
+1755519195
+bblack!~bblack@wikimedia/bblack-WMF
+the only string literal escape I've even slightly missed is \f, because I happened to use it as a marker in some of the legacy C code I was porting.  But the impact was tiny, a parser switch case that looks slightly-uglier as:
+
+1755519199
+bblack!~bblack@wikimedia/bblack-WMF
+'\n', ' ', '\t', std.ascii.control_code.ff => {
+
+1755529788
+hadronized!~hadronize@2001:41d0:a:fe76::1
+a function taking as arguments two pointers assume they can alias, right? there is no optimization based on that IIRC in Zig?
+
+1755530556
+bblack!~bblack@wikimedia/bblack-WMF
+hadronized: I don't know the real answer (and odds are whatever the current answer is, it could change).  But there is a "noalias" keyword if you want to explicitly tell the compiler that two arguments never alias.  I would generally assume C-ish rules otherwise (pointers to distinct types are assumed to not alias, pointers to same-type may alias, and pointers to u8 possibly alias anything else), but I'm 
+
+1755530562
+bblack!~bblack@wikimedia/bblack-WMF
+really not sure.
+
+1755530824
+hadronized!~hadronize@2001:41d0:a:fe76::1
+bblack: if I use noalias, does zig have my back if I actually provide aliasing pointers? or is it just UB?
+
+1755530989
+hadronized!~hadronize@2001:41d0:a:fe76::1
+actually I’ll try
+
+1755531181
+bblack!~bblack@wikimedia/bblack-WMF
+hadronized: the docs for noalias say "TODO add documentation for noalias", so unless we really dig through compiler implementation, who knows.
+
+1755531205
+bblack!~bblack@wikimedia/bblack-WMF
+noalias is used by the @memcpy() prototype though, and the c-translation stuff translates "restrict" -> "noalias"
+
+1755531247
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah, it looks like it’s not actually doing anything
+
+1755531256
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://godbolt.org/z/P6ozGfedM
+
+1755531265
+hadronized!~hadronize@2001:41d0:a:fe76::1
+see mov eax, dword ptr [rdi]
+
+1755531278
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it should actually put 123 here, not dereference the pointer
+
+1755531326
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://godbolt.org/z/G6q5d7r6c they both do the same
+
+1755531378
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I think C does that optimization though? I need to check
+
+1755531501
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah https://godbolt.org/z/YdEbaPaxh
+
+1755531590
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+andrewrk: Does it make sense to attempt to add a target for Morello (arm64 with 128-bit CHERI capabilities) to the self-hosted backend, or should I stick with LLVM for now?
+
+1755531609
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+(Have managed to get access to a box on which to test)
+
+1755532304
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+The existence of https://ziglang.org/documentation/master/#ptrFromInt and https://ziglang.org/documentation/master/#intFromPtr as builtins is an issue, since CHERI fundamentally *bans* directly converting pointers to usize, and viceversa
+
+1755532810
+alethkit!23bd17ddc6@sourcehut/user/alethkit
+something like https://doc.rust-lang.org/stable/std/ptr/index.html#strict-provenance would need to be added to the language before a port is possible, so I thought discussing it here first would make sense.
+
+1755539292
+kassiopeia!~kassiopei@user/Kassiopeia
+I feel so stupid right now, before i used "const stdout = std.io.getStdOut.writer();" and i could use the print function to print a formatted string to stdout. Now when i try to compile i just receive an error "error: root source file struct 'Io' has no member named 'getStdOut'". What am i doing wrong? 
+
+1755539391
+kassiopeia!~kassiopei@user/Kassiopeia
+as a side note, before i had version 0.14 of zig compiler and now i have 0.15. What changed between 14 and 15? also i double checked i wrote 'io' lowercase, i dont understand why the error says it is Uppercase
+
+1755540069
+phaleth!~phaleth@user/phaleth
+kassiopeia: quite a few changes happened since 0.14 https://github.com/ziglang/zig/pull/24329/commits/0b3f0124dc33403d329fb8ee63a93215d9af1f1e
+
+1755540212
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+(/me watching iogate already starting, how exciting :P)
+
+1755541607
+andrewrk!~andrewrk@mail.ziglang.org
+clevor, ifreund: regarding sendFile limit - two points
+
+1755541630
+andrewrk!~andrewrk@mail.ziglang.org
+1. I need to reevaluate that doc comment about how implementations may assume the file size does not exceed the limit. I think we landed on better semantics than this
+
+1755541693
+andrewrk!~andrewrk@mail.ziglang.org
+2. the limit being usize is good because in practice most systems have a much smaller limit than 64 bits, and that function can return short writes. the system wouldn't transfer more than 4G in one syscall either way
+
+1755541734
+andrewrk!~andrewrk@mail.ziglang.org
+with sendFileAll, the equation changes
+
+1755541771
+andrewrk!~andrewrk@mail.ziglang.org
+anyway you're right to take a critical eye towards these APIs. I knowingly delayed trying to figure out the final forms for these particular semantics while working on others
+
+1755541867
+andrewrk!~andrewrk@mail.ziglang.org
+kassiopeia: 0.15.0 is not released yet, 0.14.1 is still the most recent stable version. when it is released, which should be this week, there will be release notes to precisely answer your question of "what changed"
+
+1755542014
+andrewrk!~andrewrk@mail.ziglang.org
+hadronized: you've misdiagnosed the problem. hint: try deleting the `b` parameter entirely
+
+1755542059
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: what do you mean problem?
+
+1755542112
+andrewrk!~andrewrk@mail.ziglang.org
+you're talking about a missed optimization, right?
+
+1755542192
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yes, the fact that because a and b should not alias, then assigning something to b has no impact on a, so because we return the content on a right after having assigned something to it, we can actually use that thing right away
+
+1755542205
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that optimization cannot work if the pointers alias
+
+1755542226
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m surprised noalias doesn’t trigger it in Zig (it does in C with restrict and by default in Rust)
+
+1755542241
+andrewrk!~andrewrk@mail.ziglang.org
+like I said, you've misdiagnosed the problem. hint: try deleting the 'b' parameter entirely
+
+1755542271
+hadronized!~hadronize@2001:41d0:a:fe76::1
+why would I delete it? I’m comparing the optimization Zig does vs. C here
+
+1755542289
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Zig does the same as the C version using int*
+
+1755542303
+hadronized!~hadronize@2001:41d0:a:fe76::1
+with, or without noalias
+
+1755542314
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(and C with int* restrict does have the optimization enabled)
+
+1755542340
+andrewrk!~andrewrk@mail.ziglang.org
+I think you should put a little more effort into understanding what I am communicating to you
+
+1755542419
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you tell me I misdiagnosed something without telling me what you mean Andrew; I’m not sure I’m the one putting little effort to understand here
+
+1755542436
+hadronized!~hadronize@2001:41d0:a:fe76::1
+deleting b would completely remove the purpose of this little experiment
+
+1755542497
+andrewrk!~andrewrk@mail.ziglang.org
+did you try it? did you notice anything interesting about the missed optimization?
+
+1755542663
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yes, and I still don’t understand
+
+1755542731
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hadronized: it's not the b.* write that causes this
+
+1755542744
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://godbolt.org/z/9TsKqbEvr
+
+1755542750
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Gliptic: causing what? 
+
+1755542759
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the dereference on the return side?
+
+1755542764
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1755542804
+rvrb!~rvrb@156.146.51.229
+is the Zig build system implemented entirely in userland, or does it rely on any compiler internals at any point? like, is it feasible to build another application on top of it as a build graph backend?
+
+1755542813
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Gliptic: are pointers volatile by default in Zig?
+
+1755542841
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I guess not
+
+1755542848
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, but are you certain a `mov eax, 123` would be faster?
+
+1755542993
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Gliptic: I think that an immediate mov will run faster than a pointer version, yes
+
+1755543002
+hadronized!~hadronize@2001:41d0:a:fe76::1
+at least C / Rust agrees on that
+
+1755543023
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but even then if it was wrong, I would like to understand why Zig doesn’t do it
+
+1755543243
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: 100% build system - the only part in the compiler is the `zig build` subcommand which performs fetching and compiles the build runner from source and then executes it
+
+1755543262
+andrewrk!~andrewrk@mail.ziglang.org
+oops I meant 100% userland
+
+1755543408
+rvrb!~rvrb@156.146.51.229
+ok, interesting. I am imagining some weird things. started with realizing you could build Nix derivations with it. may or may not explore that for a blog post
+
+1755543463
+rvrb!~rvrb@156.146.51.229
+I think you could in theory bootstrap an entire Linux installation a la NixOS with just the zig binary and the Zig build system
+
+1755543544
+rvrb!~rvrb@156.146.51.229
+if you can compile busybox with Zig, which I don't think would be that bad?
+
+1755550597
+AmandaC!~m-yt727s@cloud.camnet.site
+did 0.14 change how linker scripts are handled? I'm trying to make somethign to run raw on riscv64 but for some reason I'm still gettting an ELF, and also it complains about not being able to find _start on build/link
+
+1755550980
+andrewrk!~andrewrk@mail.ziglang.org
+AmandaC: mmm nothing comes to mind
+
+1755551302
+AmandaC!~m-yt727s@cloud.camnet.site
+This is my build.zig, and the relevent section: https://git.camnet.site/amandac/oc2-zig/src/branch/main/build.zig#L70-L93
+
+1755551376
+AmandaC!~m-yt727s@cloud.camnet.site
+I've mostly cobbled this together from scraps on the internet I found, so I'm not sure if i'm doing somethign wrong, or wat
+
+1755553323
+andrewrk!~andrewrk@mail.ziglang.org
+AmandaC: can you share more details, such as the error output?
+
+1755554214
+AmandaC!~m-yt727s@cloud.camnet.site
+Zig says there was unexpected output from ldd, which is a warning that it can't find _start so it's not setting an address? I've put my laptop to sleep for the night, so I'm going off the top of my head
+
+1755554324
+AmandaC!~m-yt727s@cloud.camnet.site
+It still builds "fine" except it doesn't seem to be booting in my target 
+
+1755554366
+Profpatsch!~Profpatsc@user/Profpatsch
+rvrb: Ah okay, I was going from the podcast video which showed the types as anyopaque at one point, at least I thought that it did
+
+1755554413
+Profpatsch!~Profpatsc@user/Profpatsch
+comptime types are gonna be a **** to resolve for lsp, but I believe it’s possible to have good completion support at one point even with these kinds of shenanigans :)
+
