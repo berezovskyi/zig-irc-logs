@@ -1,0 +1,244 @@
+1755684494
+dutchie!~dutchie@user/dutchie
+I was just stracing a Zig binary built with a master version of Zig, and there's a load of process_vm_readv calls in there. What are they all about?
+
+1755684508
+dutchie!~dutchie@user/dutchie
+It looks like random binary junk being passed to the same PID
+
+1755688757
+lxsameer!~lxsameer@Serene/lxsameer
+hey folks, I just read the post on zig using wasm for the bootstrap stages. I'm not a zig user at all but the compiler seems interesting to me. how was the experience with the wasm bootstrapper so far? 
+
+1755689710
+bblack!~bblack@wikimedia/bblack-WMF
+dutchie: it's the result of a Debug build using the debug_allocator, it's doing all those process_vm_readv as part of recording stack trace frames.  You can get rid of the line noise by switching to -Doptimize=ReleaseSafe, or by adding ".stack_trace_frames = 0" to the first argument of std.heap.DebugAllocator()
+
+1755689789
+bblack!~bblack@wikimedia/bblack-WMF
+(at a deeper level, process_vm_readv() is used in lib/std/debug/MemoryAccessor.zig )
+
+1755690113
+dutchie!~dutchie@user/dutchie
+bblack: aha, I thought it might be some debug instrumentation thing! thanks for clarifying exactly what
+
+1755698152
+triallax!~triallax@lacerte/triallax
+the x86 backend crashes on my project apparently
+
+1755698175
+triallax!~triallax@lacerte/triallax
+using 0.15.0-dev.1599+cf90a5e45
+
+1755698189
+triallax!~triallax@lacerte/triallax
+i guess i'm going to have to build it myself again for the debug symbols...
+
+1755698212
+triallax!~triallax@lacerte/triallax
+is there a reason these aren't published separately rather than just being stripped out entirely?
+
+1755698351
+triallax!~triallax@lacerte/triallax
+actually might be https://github.com/ziglang/zig/issues/24280
+
+1755699021
+triallax!~triallax@lacerte/triallax
+it builds now but i suspect my migration is garbage
+
+1755699033
+triallax!~triallax@lacerte/triallax
+tests pass at least
+
+1755700208
+clevor!sid649024@id-649024.hampstead.irccloud.com
+triallax: I do not have access to GitHun atm because I am at school. What is that issue about?
+
+1755700699
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+my build.zig is trying to use this dep but it keeps telling me there's no module "deska" in dependency.  here's the dep:  https://git.sr.ht/~netvor/zig-vornet-deska/tree/egg/item/build.zig   and here's the snippet from the parent build.zig
+
+1755700739
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+note that i control the dep and i just created it and might have something wrong
+
+1755700796
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+there's another dep that i've created in the past, which does work:   https://git.sr.ht/~netvor/zig-clapp/tree/main/item/build.zig
+
+1755700868
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+only thing i can see as different and possibly related is that the working one uses `b.addModule("clapp", .{...})` while the broken one uses `b.createModule(.{})` which does not accept the name
+
+1755700878
+ifreund!2940d10f8b@user/ifreund
+yes, that's the problem
+
+1755700902
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+i'm trying to get some intuitive model of why/how "create" vs. "add" is the cause
+
+1755700921
+ifreund!2940d10f8b@user/ifreund
+yeah, I think the naming here is pretty poor
+
+1755700944
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+i think i've tried to understand it in the past and just gave up
+
+1755700960
+ifreund!2940d10f8b@user/ifreund
+if you look at the source code it's obvious what they do at least
+
+1755700981
+ifreund!2940d10f8b@user/ifreund
+You can read "add" as "add to table of exported modules"
+
+1755701057
+ifreund!2940d10f8b@user/ifreund
+probably one or both need "public"/"private" in the name
+
+1755701226
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+maybe `exportModule()` .. but given there's `createModule()` (which is apparently preferred api since it's in zig init)  i would sort of expect it to be 2-step:  `m = b.createModule(..)`  then `b.exportModule("foo", m)` << that seems to show the intent better
+
+1755701291
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+but don't listen to me, i'll just change it to add and be done with it.  i'm sure there's a better api (and perhaps a buildziggate) somewhere in the far future
+
+1755701303
+netvor!~netvor@2a00:ca8:a1f:cd0:b2de:c866:be10:f582
+thanks for now!
+
+1755714226
+andrewrk!~andrewrk@mail.ziglang.org
+release notes are up https://ziglang.org/download/0.15.1/release-notes.html
+
+1755715139
+bblack!~bblack@wikimedia/bblack-WMF
+\o/
+
+1755715165
+chmod222!~chmod222@user/chmod222
+Cue the "is async back yet" questions
+
+1755715337
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+before that, i feel cheated that download links are 404ing :D
+
+1755715393
+chmod222!~chmod222@user/chmod222
+Damn, rip usingnamespace
+
+1755715396
+chmod222!~chmod222@user/chmod222
+Time to rewrite my shit again
+
+1755715453
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+Writergate feels like a much wider breaking change imo
+
+1755715471
+palanix!~palanix@2a02:3100:63de:1300:c4b5:7df6:cdf0:60c6
+what happened to 0.15.0?
+
+1755715478
+chmod222!~chmod222@user/chmod222
+Oh yeah, I kind of deleted that though from my mind
+
+1755715509
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+0.15.0 isn't real, it can't hurt you
+
+1755715599
+andrewrk!~andrewrk@mail.ziglang.org
+oh shit they are
+
+1755715934
+andrewrk!~andrewrk@mail.ziglang.org
+alright fixed
+
+1755716265
+meidam!~meidam@user/meidam
+Cool to see it out
+
+1755716302
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+<3
+
+1755716475
+chmod222!~chmod222@user/chmod222
+Aw, no more format strings in format methods, now I have to find another hacky way to smuggle print state
+
+1755717727
+bblack!~bblack@wikimedia/bblack-WMF
+chmod222: take a look at std.fmt.alt().  You don't even have to use that directly, but it provides a template for how to hack around with custom formatting that may need to carry some context/state.
+
+1755717847
+bblack!~bblack@wikimedia/bblack-WMF
+fundamentally on some level, at least for the use-cases I was looking at, it came down to "wrap your printable thing + other context into something else that has a .format() function"
+
+1755717848
+chmod222!~chmod222@user/chmod222
+Oh, that looks perfect
+
+1755717859
+chmod222!~chmod222@user/chmod222
+Yeah I need it for something like that
+
+1755717881
+chmod222!~chmod222@user/chmod222
+Print the same type differently if it's already being printed right now, because it recurses down
+
+1755722331
+bblack!~bblack@wikimedia/bblack-WMF
+any std.DoublyLinkedList users here? the release notes mentioning the changes there reminded me to bring it up here...e
+
+1755722501
+bblack!~bblack@wikimedia/bblack-WMF
+back before the most-recent std changes there, I had already been annoyed by the same thing, and had rolled my own variant to get the prev/next pointers intrusive in the actual data nodes.  But it doesn't require the callers to use @fieldParentPtr.  Instead, it has some standards about what your self-defined instrusive prev/next fields look like, which it enforces at comptime.
+
+1755722542
+bblack!~bblack@wikimedia/bblack-WMF
+was curious if it was worth proposing something more along this design line for std, or if it's just too weird and out there :)
+
+1755722553
+bblack!~bblack@wikimedia/bblack-WMF
+https://github.com/blblack/gdnsd/blob/zigzag/gks/dll.zig
+
+1755722605
+bblack!~bblack@wikimedia/bblack-WMF
+(I updated the commentary there and did more refactoring, *after* the recent upstream std changes, so the comparisons there are to the modern std.DLL)
+
+1755726891
+chmod222!~chmod222@user/chmod222
+The website links still appear dead to me
+
+1755726924
+chmod222!~chmod222@user/chmod222
+Oop, my fault, I confused master with the tagged release
+
+1755727672
+Drixtan!~Drixtan@user/Drixtan
+oooffff, congratulation for the 0.15 release! \o/
+
+1755727834
+mortmann!~mortmann@p5dcb2f03.dip0.t-ipconnect.de
+thx chmod222, i was also wondering
+
+1755729604
+rvrb!~rvrb@156.146.51.229
+I love that the HTTP server is just a reader/writer now, that feels so right
+
+1755729964
+rvrb!~rvrb@156.146.51.229
+who is the artist that makes the release notes illustrations?
+
+1755732787
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: https://heyitsjaki.com/
+
+1755734350
+ovf!sid19068@id-19068.hampstead.irccloud.com
+yay 0.15! small release-related feature request: a #latest-release anchor on the download page -- right not what's above the fold is 'master' which is not necessary what i'd like to ask people to download.
+
