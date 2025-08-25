@@ -1,0 +1,692 @@
+1756025855
+ambyjkl!~ambyjkl@user/ambyjkl
+hello, i have found a weird behaviour with zig cc that may or may not be a bug in zig and/or llvm, is this the right place to discuss it?
+
+1756025936
+ifreund!2940d10f8b@user/ifreund
+pretty much anything related to zig is on topic here
+
+1756026012
+ambyjkl!~ambyjkl@user/ambyjkl
+got it, thanks
+
+1756026021
+ambyjkl!~ambyjkl@user/ambyjkl
+so here is the gist of it
+
+1756026033
+ambyjkl!~ambyjkl@user/ambyjkl
+i'm compiling C to webassembly with `zig cc` and for some reason it aggressively throws away code in quite a few blocks unless i specifically place `volatile int` declarations within them
+
+1756026067
+ambyjkl!~ambyjkl@user/ambyjkl
+the only notable thing about these blocks is my usage of wasm simd intrinsics in them
+
+1756026209
+ambyjkl!~ambyjkl@user/ambyjkl
+llvm might be the culprit but in order to confirm that i haven't yet figured out the correct flags to use `clang` instead of `zig cc`
+
+1756026243
+ambyjkl!~ambyjkl@user/ambyjkl
+but i figured i'd ask here first in case someone has seen some problems with the dead code analysis logic
+
+1756026293
+ambyjkl!~ambyjkl@user/ambyjkl
+also i must say `zig cc` is pure magic so i always use it in cross-compilation use cases
+
+1756026583
+ambyjkl!~ambyjkl@user/ambyjkl
+these are my flags `zig cc -target wasm32-wasi-musl -mcpu=lime1+reference_types+simd128 -O1 -g`, also i wrap the generated `.a` static lib with a zig entry point, but i have confirmed that the code tossing situation happens in the `.a` step and not in the final `zig build-exe` to the `.wasm` step
+
+1756026855
+tkellen!uid716183@user/tkellen
+how hard would setting up a minimum viable reproduction repo be? 
+
+1756027010
+ambyjkl!~ambyjkl@user/ambyjkl
+yea about that, the same file has a few functions of that sort, and it only affects one of the functions
+
+1756027024
+ambyjkl!~ambyjkl@user/ambyjkl
+i don't quite know why only that one function is being affected
+
+1756027054
+ambyjkl!~ambyjkl@user/ambyjkl
+one thing to note, i use `-O1 -g` there is a reason for that
+
+1756027078
+ambyjkl!~ambyjkl@user/ambyjkl
+i can't use `-O0` because the browser complains that a function has too many local variables
+
+1756034435
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm using a format specifier like {d:<3} is nice, but I want to wrap the printed integer in () e.g. (42) and have the padding up to 3 characters _outside_ the wrapping (), so instead of `(42 )` I'd get `(42) `
+
+1756034465
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I imagine I need to format into a string first and then use {s:<5} (3 + 2 parens = 5) to achieve this?
+
+1756036884
+mivanchev!~mivanchev@user/mivanchev
+hey, why is a hello world compiled 2MB and is there a way to reduce it?
+
+1756036914
+triallax!~triallax@lacerte/triallax
+that's far too large
+
+1756036917
+triallax!~triallax@lacerte/triallax
+are you building in debug mode?
+
+1756036944
+triallax!~triallax@lacerte/triallax
+what command are you using to build the executable?
+
+1756036989
+mivanchev!~mivanchev@user/mivanchev
+triallax: zig build-exe hello.zig
+
+1756037029
+triallax!~triallax@lacerte/triallax
+yeah as i expected
+
+1756037031
+triallax!~triallax@lacerte/triallax
+debug mode
+
+1756037045
+ambyjkl!~ambyjkl@user/ambyjkl
+tkellen seems godbolt has a webassembly clang set up properly and i was able to compare zig cc with clang directly, and they both have this issue
+
+1756037055
+ambyjkl!~ambyjkl@user/ambyjkl
+so it's not a zig issue but an llvm issue
+
+1756037056
+mivanchev!~mivanchev@user/mivanchev
+triallax: how to go release mode
+
+1756037109
+triallax!~triallax@lacerte/triallax
+actually with ReleaseSafe it's 2MB for me, is that the exact command you're using?
+
+1756037119
+mivanchev!~mivanchev@user/mivanchev
+yes
+
+1756037123
+triallax!~triallax@lacerte/triallax
+huh
+
+1756037124
+triallax!~triallax@lacerte/triallax
+well anyway
+
+1756037136
+triallax!~triallax@lacerte/triallax
+there's -OReleaseSafe, -OReleaseFast, and -OReleaseSmall
+
+1756037167
+mivanchev!~mivanchev@user/mivanchev
+13K thanks :))
+
+1756037183
+triallax!~triallax@lacerte/triallax
+for ReleaseSafe and ReleaseFast, you can strip if needed to make the binaries even smaller
+
+1756037185
+mivanchev!~mivanchev@user/mivanchev
+all I needed to know
+
+1756037192
+triallax!~triallax@lacerte/triallax
+i believe ReleaseSmall strips by default but i might be wrong
+
+1756037194
+mivanchev!~mivanchev@user/mivanchev
+in order to ditch Rust for good :D
+
+1756037195
+triallax!~triallax@lacerte/triallax
+mivanchev: well
+
+1756037203
+triallax!~triallax@lacerte/triallax
+it's worth reading up on the differences between these
+
+1756037213
+mivanchev!~mivanchev@user/mivanchev
+I know them, thanks
+
+1756037222
+triallax!~triallax@lacerte/triallax
+are you sure?
+
+1756037240
+mivanchev!~mivanchev@user/mivanchev
+after 20 years of dev pretty sure, sadly :/
+
+1756037249
+triallax!~triallax@lacerte/triallax
+no, i mean in the context of zig specifically
+
+1756037272
+mivanchev!~mivanchev@user/mivanchev
+yes, i know about the safety features, if thats what you mean
+
+1756037278
+triallax!~triallax@lacerte/triallax
+right
+
+1756037296
+mivanchev!~mivanchev@user/mivanchev
+thank you for being so nice!!! I was afraid for a moment
+
+1756037303
+triallax!~triallax@lacerte/triallax
+afraid of what?
+
+1756037319
+mivanchev!~mivanchev@user/mivanchev
+of having the same rust scenario with multi-mb binaries
+
+1756037349
+triallax!~triallax@lacerte/triallax
+well i imagine it'd depend mostly on how many crates you pull in
+
+1756037364
+mivanchev!~mivanchev@user/mivanchev
+the hello world crate for one :)
+
+1756037368
+mivanchev!~mivanchev@user/mivanchev
++ whatever else
+
+1756037379
+triallax!~triallax@lacerte/triallax
+how big is hello world in rust?
+
+1756037391
+mivanchev!~mivanchev@user/mivanchev
+big
+
+1756037397
+triallax!~triallax@lacerte/triallax
+even after stripping?
+
+1756037405
+triallax!~triallax@lacerte/triallax
+well i can try this myself
+
+1756037534
+triallax!~triallax@lacerte/triallax
+indeed this is pretty big
+
+1756037547
+triallax!~triallax@lacerte/triallax
+at least on my system, 0.36 MB after stripping
+
+1756037593
+triallax!~triallax@lacerte/triallax
+personally probably wouldn't bother me too much
+
+1756037614
+triallax!~triallax@lacerte/triallax
+this overhead is probably one-time i'm imagining
+
+1756037665
+mivanchev!~mivanchev@user/mivanchev
+i wouldnt be investing researching a new lang if it was one time :/
+
+1756037728
+triallax!~triallax@lacerte/triallax
+i mean i don't know what kind of rust projects you've done, but in my experience most rust projects have a lot of crates and stuff
+
+1756037745
+triallax!~triallax@lacerte/triallax
+i could be wrong but if i were to avoid crates as much as i could the binaries would be fairly acceptable, for _my_ purposes
+
+1756037752
+triallax!~triallax@lacerte/triallax
+i fully acknowledge your requirements may be different
+
+1756037790
+mivanchev!~mivanchev@user/mivanchev
+i have some system stuff with minimal crating
+
+1756037795
+mivanchev!~mivanchev@user/mivanchev
+but size is an issue still
+
+1756037808
+mivanchev!~mivanchev@user/mivanchev
+(there are more reasons, zig is overall just closer to C than rust)
+
+1756038019
+mivanchev!~mivanchev@user/mivanchev
+thanks everyone!
+
+1756038022
+triallax!~triallax@lacerte/triallax
+cheers
+
+1756039018
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+how can I have a struct have a field which contains the logger for it, std.log and std.log.scoped(.foo) return `type` which forces the entire struct to be comptime
+
+1756039069
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+or rather sorry, std.log contains code which when called from comptime is a compile error
+
+1756040655
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+argh std.log is confusing me, or does addTest just default to not printing out anything from std.log...?
+
+1756041074
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+So addTest has a default log level of err it seems, but I cannot seem to change it
+
+1756041120
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm essentially just wanting to output my own custom disassembler information, I figure std.log is the way to go about this because then the consumer of the library can override the log function and have that stuff go wherever they want (a file, database etc)
+
+1756041148
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+whereas if I only use std.debug.print they need to wrangle stderr
+
+1756041438
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+afaik std.log is runtime.  why not pass the data out using some custom data structure instead? eg. accept (optional) array, and perhaps provide .format facilities (note that this has changed in 0.15.1) if most of the time all they're gonna do is log it
+
+1756041469
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+.. * by "array" i meant a pointer to arraylist or something like that
+
+1756041530
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+and each line i want to log is a new element in the arraylist? but isn't std.log what this is for given it can be overridden by the consuming library easily etc
+
+1756041582
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+well i think std.log is designed for, just, logging in terms of text, from application to user
+
+1756041624
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i am just logging text in this case
+
+1756041701
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+right if I put `std.testing.log_level = .debug;` in a `test { ... }` block that sets the log level from the default of .err to .debug
+
+1756041751
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i was only doing `pub const std_options = .{ ... };` at the root module which I mean I think should work (it does for non-test runtime) but is probably being overridden by default test runner stuff I imagine
+
+1756041804
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+note that by using arraylist or something you also make the logged output testable
+
+1756041968
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+maybe ill move to that pattern in the future but for now it's fine to not test the output 
+
+1756041987
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+idk how std_options really works, i think of it as a global per executable, so touching it anywhere else than in main.zig would be basically a no go
+
+1756042034
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+testing.zig as this: pub var log_level = std.log.Level.warn; so the default log level is .warn and it appears setting a log level includes all those "more serious" than it also, so .info also logs .warn and .err (but not .debug). Setting .warn logs .err too. Setting .debug logs all of .info, .warn, .err
+
+1756042196
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+if i understand what you want correctly, it seems that to solve your problem you will need to move to that pattern.  and you kind of arlready are, it's just that you're trying to bend std.log to help you
+
+1756042262
+ifreund!2940d10f8b@user/ifreund
+accepting an Io.Writer is generally the correct way to expose this kind of thing as a library
+
+1756042819
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm not yet going to migrate to 0.15.1 due to some stdlib changes, so using 0.14.1 how does one use the scoped logging with the writer pattern
+
+1756042858
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+i think that still applies with eg. the old std.io.AnyWriter
+
+1756042897
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+it is "scoped" by definition because it's just its own writer
+
+1756043364
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ill have a look, is there a good example usage of this pattern? I'm also looking
+
+1756043839
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm, this gets quite complicated when one wants to do more than std.debug.print haha. Reading this currently: https://www.openmymind.net/In-Zig-Whats-a-Writer/
+
+1756043874
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+not sure if "good" example but here's what i did with my cli arg parsing library:  theese fmt.*() functions are used in core.zig to show debug info when parsing.  https://git.sr.ht/~netvor/zig-clapp/tree/main/item/src/cli/fmt.zig
+
+1756043920
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+(internally i wrap the writer to IWriter which just tracks the indentation)
+
+1756044006
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+it's just for internal use, though.  so it might be a bad fit for an example.
+
+1756044305
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+i think all it would take is eg. in my `pub fn parseArgs` add argument like `debug_writer: std.io.AnyWriter` and in the implementation just pass it to my fmt.*() functions 
+
+1756044552
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+tsujp: that's why i liked to use AnyWriter.  note that even in 0.14.1 the old style writers have .any() method can "convert" them to AnyWriter, which has much  nicer interface
+
+1756051319
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im trying to write a zig cli client for subsonic, so im trying to figure out how to connect to a server, so im guessing my client is an http client, right? so now im confused what to put for Client in .connect: https://zigbin.io/a670fb
+
+1756051939
+mivanchev!~mivanchev@user/mivanchev
+excuse my stupid novice question: parsing a JSON file with an object contains a list, sorry { "obj": [1, 2, 3, 4] }, i want my result to be an arraylist instead of an []u32
+
+1756051964
+mivanchev!~mivanchev@user/mivanchev
+is it simpler to read the json to a struct { obj: []const u32 } and convert it to a struct { obj: arraylist } manually?
+
+1756051971
+mivanchev!~mivanchev@user/mivanchev
+or is there a hack to read the json list as arraylist?
+
+1756051982
+AmandaC!~m-yt727s@cloud.camnet.site
+I'm pretty sure arraylist implements fromJson?
+
+1756051996
+AmandaC!~m-yt727s@cloud.camnet.site
+so it should just work in a struct
+
+1756052018
+mivanchev!~mivanchev@user/mivanchev
+how/where do i check?
+
+1756052755
+mivanchev!~mivanchev@user/mivanchev
+AmandaC: I get a bunch of errors when using []const std.ArrayList(KeyJson),
+
+1756053584
+AmandaC!~m-yt727s@cloud.camnet.site
+Should just be std.ArrayList(KeyJson)
+
+1756053588
+AmandaC!~m-yt727s@cloud.camnet.site
+I would think
+
+1756053593
+AmandaC!~m-yt727s@cloud.camnet.site
+no []const ...
+
+1756056652
+mivanchev!~mivanchev@user/mivanchev
+hey, why is "    const foo: std.ArrayListUnmanaged(u8) = .empty;
+
+1756056659
+mivanchev!~mivanchev@user/mivanchev
+failing for .empty undefined?
+
+1756056682
+mivanchev!~mivanchev@user/mivanchev
+where the docs specify "Default initialization of this struct is deprecated; use .empty instead."
+
+1756056771
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what version are you running?
+
+1756056809
+mivanchev!~mivanchev@user/mivanchev
+0.13
+
+1756056861
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, you're not looking at 0.13 docs
+
+1756056873
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because 0.13 had no .empty
+
+1756056950
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah those literals came only in 0.14
+
+1756056961
+mivanchev!~mivanchev@user/mivanchev
+Where do i find the std docs for 0.13
+
+1756056990
+mivanchev!~mivanchev@user/mivanchev
+hey tranzystorekk o/ you saw my msg about the segfault?
+
+1756057014
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah, but I already added a gdb backtrace to the report
+
+1756057015
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+https://ziglang.org/documentation/0.13.0/std/
+
+1756057095
+mivanchev!~mivanchev@user/mivanchev
+Gliptic: so is the init now just const foo = std.ArrayListUnmanaged(u8); ?
+
+1756057106
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, that's a type
+
+1756057107
+mivanchev!~mivanchev@user/mivanchev
+because foo.append(alloc, 1); also expects a self 
+
+1756057115
+mivanchev!~mivanchev@user/mivanchev
+what would be the init then?
+
+1756057117
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's "now" (if you mean 0.15), .empty
+
+1756057121
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as the 0.15 docs say
+
+1756057124
+mivanchev!~mivanchev@user/mivanchev
+no i mean 0.13
+
+1756057128
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that was .{}
+
+1756057157
+mivanchev!~mivanchev@user/mivanchev
+onst foo: std.ArrayListUnmanaged(u8) = .{}; ?
+
+1756057165
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1756057186
+mivanchev!~mivanchev@user/mivanchev
+how is that assignmnet processed, empty tuple coerced to a type?
+
+1756057205
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's using the default values for all the fields of the struct
+
+1756057218
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and this struct has such defaults
+
+1756057225
+mivanchev!~mivanchev@user/mivanchev
+ok, no default calls, thanks :))
+
+1756057239
+mivanchev!~mivanchev@user/mivanchev
+hope we get 0.14 going soon in void 
+
+1756057258
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why wait for distro packages
+
+1756057279
+mivanchev!~mivanchev@user/mivanchev
+because in void we put big ephasis on quality
+
+1756057288
+mivanchev!~mivanchev@user/mivanchev
+and i dont wannt experiments on my pc
+
+1756057296
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and why would 0.13 be more quality than 0.15.1
+
+1756057319
+mivanchev!~mivanchev@user/mivanchev
+it isn't but we get a segfault during the build
+
+1756057494
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+0.14 might never happen, there isn't too much active effort to fix that segfault while it is allegedly not happening on 0.15/llvm20
+
+1756057569
+mivanchev!~mivanchev@user/mivanchev
+then this is the way
+
+1756057645
+triallax!~triallax@lacerte/triallax
+mivanchev: i am pretty sure the reason zig update is delayed isn't quality though
+
+1756057710
+mivanchev!~mivanchev@user/mivanchev
+triallax: "quality" in terms of we don't just update versions but make sure stuff works afterwards
+
+1756057720
+mivanchev!~mivanchev@user/mivanchev
+not quality in the sense of zig doesn't have it
+
+1756057722
+triallax!~triallax@lacerte/triallax
+any sane distro would do that
+
+1756057736
+mivanchev!~mivanchev@user/mivanchev
+triallax: i wouldn't say that at all :))
+
+1756057761
+triallax!~triallax@lacerte/triallax
+¯\_(ツ)_/¯
+
+1756057852
+mivanchev!~mivanchev@user/mivanchev
+see you later, thanks everyone!
+
+1756060457
+JetpackJackson!739e7f3d14@user/JetpackJackson
+alright i got to here but im struggling with parsing the xml cause i guess its different from normal xml? https://zigbin.io/2b1634
+
+1756060457
+JetpackJackson!739e7f3d14@user/JetpackJackson
+(the user in the code is a test user)
+
+1756060556
+AmandaC!~m-yt727s@cloud.camnet.site
+What would be the equivilent of std.json.stringifyAlloc? Also std.json's changes don't seem to be mentioned at all in the release notes
+
+1756060705
+AmandaC!~m-yt727s@cloud.camnet.site
+I assume there's something like an alloc writer, but I didn't see it anywhere
+
+1756060739
+AmandaC!~m-yt727s@cloud.camnet.site
+er, the 0.15.1 equivilent
+
+1756062051
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+std.Io.Writer.Allocating
+
+1756062119
+AmandaC!~m-yt727s@cloud.camnet.site
+oh, Missed that
+
+1756064717
+JetpackJackson!739e7f3d14@user/JetpackJackson
+like if i put `response_writer = stdout` then i get the output of the xml in stdout but i want to catch it and parse it somehow
+
+1756066489
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+JetpackJackson: not sure what's a nice solution in 0.15.1 but but at least in 0.14.1 eg. an ArrayListUnmanaged(u8) has .writer() method, which (given allocator) returns a valid writer.  you'd then pick up the bins in the arraylist's .items
+
+1756066545
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+s/bins/bytes/
+
+1756067508
+JetpackJackson!739e7f3d14@user/JetpackJackson
+What do I put for the self parameter
+
+1756067622
+ifreund!2940d10f8b@user/ifreund
+netvor: Io.Writer.Allocating is the 0.15 equivalent
+
+1756067695
+JetpackJackson!739e7f3d14@user/JetpackJackson
+How do I make it read the server response
+
+1756067724
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Wait
+
+1756067743
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Wait yeah how do I get it to read
+
+1756067823
+JetpackJackson!739e7f3d14@user/JetpackJackson
+I'm getting segfault
+
+1756068022
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/ee7804
+
+1756068544
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+i'm not familiar with 0.15 yet, but this might help:  here's how std uses Allocating in tests: https://github.com/ziglang/zig/blob/master/lib/std/Io/Writer.zig#L2678
+
+1756068639
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+good luck, gotta go to bed now :)
+
+1756068757
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Alright I'll take a look
+
+1756068761
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Thanks!
+
+1756072100
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+im getting an error when trying to send a very simple http POST via std.http.Client.fetch()
+
+1756072238
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+this example code: https://0x0.st/K-Kr.zig
+
+1756072298
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+gives me this backtrace: https://0x0.st/K-KX.txt
+
