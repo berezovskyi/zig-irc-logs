@@ -142,3 +142,83 @@ The problem with global mutable state is not really the "global" thing (up to a 
 chmod222!~chmod222@user/chmod222
 This is why we have various POSIX APIs that had to be ammended to provide a `_r` function, i.e. `strtok` -> `strtok_r`, `localtime` -> `localtime_r` because we figured out that global mutable state is really problematic
 
+1756119564
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+thanks chmod222 .. i'm still learning system level and find myself changing my mind all the time.  good to know there's one way to definitely avoid
+
+1756119673
+ifreund!2940d10f8b@user/ifreund
+note that threadlocal state exists and has its use-cases, but you probably will be better off with a Context struct
+
+1756119705
+chmod222!~chmod222@user/chmod222
+Yes, thread local storage comes in handy if you want to enable some "global" thing but only for a single thread, for example
+
+1756119707
+ifreund!2940d10f8b@user/ifreund
+also that pattern effectively allows multiple "copies" of your library to co-exist in the same program without stepping on eachother's toes
+
+1756119862
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+but it does come with the price of now having every single fn accept the ctx, right?  i think i tried it a bit and it felt kinda uncomfortable due to this, so i was not sure if i should go on
+
+1756119878
+chmod222!~chmod222@user/chmod222
+It does, yes
+
+1756119919
+chmod222!~chmod222@user/chmod222
+If you make your functions parts of the context struct, you can use member call syntax (`ctx.doThing()`) as opposed to `doThing(&ctx)`, but that's mostly syntactic sugar
+
+1756119931
+chmod222!~chmod222@user/chmod222
+If you export it as a C API it will be the latter
+
+1756119988
+chmod222!~chmod222@user/chmod222
+I pretty much always use member call syntax with a context structure that contains mutable state, and a compile time options module for global static/configurable state
+
+1756120010
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+i see.  i'm currently trying to make myself more comfortable with the "classic C" style, doThing(&ctx) .. i realized thaty with zig's File-is-struct, it's kinda fun
+
+1756120081
+chmod222!~chmod222@user/chmod222
+You can also use member-call syntax with file structs
+
+1756120148
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+yeah, that's the fun part, i get the member call syntax for free, while having the advantage of being able keep my codebase feel really "flat"
+
+1756120158
+chmod222!~chmod222@user/chmod222
+Ah, yes
+
+1756120171
+chmod222!~chmod222@user/chmod222
+I use that all the time, too much probably
+
+1756120182
+chmod222!~chmod222@user/chmod222
+I find myself wishing for generic file-structs
+
+1756120209
+ifreund!2940d10f8b@user/ifreund
+not gonna happen :)
+
+1756120216
+chmod222!~chmod222@user/chmod222
+Though I can't see how you would even make that work syntactically in a way that doesn't end up being a massiveh ack
+
+1756120282
+chmod222!~chmod222@user/chmod222
+It's fine, I can live with my madness being tempered by the cold water of reality
+
+1756120294
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+as someone coming from Python world it just makes me giggle when i create a foo.zig full of "just functions" and feel like a bearded C hacker ("here's a dime, kid, get a good computer")  ... while also losing nothing in comfort
+
+1756120379
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+nvm, i'll keep this in mind, thanks for help
+
