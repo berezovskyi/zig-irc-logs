@@ -1,0 +1,476 @@
+1756101477
+GreaseMonkey!greaser@user/greasemonkey
+almost got my Doom fork updated to 0.15.1 but managed to hit a few compiler bugs, it's kinda awkward trying to work out how to narrow it down
+
+1756101538
+GreaseMonkey!greaser@user/greasemonkey
+it's a MIR lowering bug, the LLVM backend does build something which hangs but only for ReleaseSafe, the other settings result in not being able to find __ubsan_handle_out_of_bounds
+
+1756101581
+GreaseMonkey!greaser@user/greasemonkey
+...ok, seems the hang is in Io.Reader.streamDelimiter, i need to find out how to actually convert that from the old interface to the new interface
+
+1756101678
+GreaseMonkey!greaser@user/greasemonkey
+and for clarity, this code is a mix of C and Zig, most (all?) of the renderer was ported to Zig
+
+1756102076
+GreaseMonkey!greaser@user/greasemonkey
+...alright, now *that* hang was because i didn't realise you needed to skip the delimiter when you encounter it. good to have that fixed. anyway... how do you nail down an "emit MIR failed" bug? the message i'm getting is this: error: error(x86_64_encoder): no encoding found for: none mov m64 m64 none none
+
+1756102084
+GreaseMonkey!greaser@user/greasemonkey
+erm, s/nail down/narrow down/
+
+1756102111
+andrewrk!~andrewrk@mail.ziglang.org
+GreaseMonkey: if you encounter that it's a deficiency in the x86 backend
+
+1756102132
+andrewrk!~andrewrk@mail.ziglang.org
+you can work around by using the llvm backend
+
+1756102200
+GreaseMonkey!greaser@user/greasemonkey
+ah yep... that will at least get *something* built in the meantime
+
+1756102241
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+zig-global is also cache stuff right? I can add it to gitignore?
+
+1756108261
+andrewrk!~andrewrk@mail.ziglang.org
+tsujp: that's not a directory created by zig
+
+1756108613
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+andrewrk ah that might have been a renamed .zig-cache I made to fix zig not reading some fs attribute on fuse, I should double check this again and file a bug. Can‘t remember if it was really zig‘s fault or podman. The filesystem does support d_type (what I think it was) but I had to move the cache directory to the same partition or something 
+
+1756108869
+ifreund!2940d10f8b@user/ifreund
+it's probably the fuse filesystem's fault
+
+1756108879
+ifreund!2940d10f8b@user/ifreund
+many of them are not 100% conformant
+
+1756110777
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm zig build -fllvm says unrecognized argument, another regression?
+
+1756111244
+squeek502!~squeek502@user/squeek502
+tranzystorekk, `zig build` invokes the zig build system, you might be looking for `zig build-exe`, `zig build-lib`, etc
+
+1756111295
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm, the release notes seem to hint that it should be usable anywhere, especially in the context of a debug build
+
+1756111359
+squeek502!~squeek502@user/squeek502
+AFAIK -fllvm has never been a recognized option by the build runner
+
+1756111383
+squeek502!~squeek502@user/squeek502
+from the release notes: > you can use LLVM backend for Debug builds by passing -fllvm on the command-line or by setting .use_llvm = true when creating a std.Build.Step.Compile
+
+1756111408
+squeek502!~squeek502@user/squeek502
+-fllvm is for zig build-exe, etc, .use_llvm is for zig build (goes in your build.zig)
+
+1756111440
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+"on the command line" sounds misleadingly like build should forward it as well
+
+1756111517
+squeek502!~squeek502@user/squeek502
+agreed, the language used is ambiguous
+
+1756111521
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+but anyway, my std.http fetch bug above doesn't seem like it's the self hosted backend's fault
+
+1756111768
+ifreund!2940d10f8b@user/ifreund
+tranzystorekk: there was a lot of code churn in std.http due to the writergate scandal
+
+1756111779
+ifreund!2940d10f8b@user/ifreund
+I'd suggest opening an issue
+
+1756111802
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah
+
+1756117710
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+how to safely keep a library-wise global state?  is just `var FOO = 1;` in root.zig a good practice?   (what i have in mind right now is just enabling custom debugging independent of builtin.mode)
+
+1756118277
+ifreund!2940d10f8b@user/ifreund
+global state in a library is itself poor practice
+
+1756118475
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+so if i want to have a debug facility which can be enabled/disabled by lib user, would i just have to pass some argument everywhere?
+
+1756118551
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+or is this use case for build options?  (but that's also a global state, kind of, right? although not mutable)
+
+1756119111
+chmod222!~chmod222@user/chmod222
+I'd just do the same thing people have been doing in C for a long time: Have a `const MyLibContext = struct { ... }` and give that out as a handle
+
+1756119138
+chmod222!~chmod222@user/chmod222
+`fn init() *MyLibContext`, `fn doStuff(ctx: *MyLibContext)`, etc
+
+1756119224
+chmod222!~chmod222@user/chmod222
+Or make it a proper build time setting that gets baking into an `const cfg = @import("mylib-config");`
+
+1756119242
+chmod222!~chmod222@user/chmod222
+Lots of ways to shave this yak, I think mutable global state is the worst one though
+
+1756119389
+chmod222!~chmod222@user/chmod222
+The problem with global mutable state is not really the "global" thing (up to a point at least), it's the "mutable", because that opens you up to multi threading drama
+
+1756119497
+chmod222!~chmod222@user/chmod222
+This is why we have various POSIX APIs that had to be ammended to provide a `_r` function, i.e. `strtok` -> `strtok_r`, `localtime` -> `localtime_r` because we figured out that global mutable state is really problematic
+
+1756119564
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+thanks chmod222 .. i'm still learning system level and find myself changing my mind all the time.  good to know there's one way to definitely avoid
+
+1756119673
+ifreund!2940d10f8b@user/ifreund
+note that threadlocal state exists and has its use-cases, but you probably will be better off with a Context struct
+
+1756119705
+chmod222!~chmod222@user/chmod222
+Yes, thread local storage comes in handy if you want to enable some "global" thing but only for a single thread, for example
+
+1756119707
+ifreund!2940d10f8b@user/ifreund
+also that pattern effectively allows multiple "copies" of your library to co-exist in the same program without stepping on eachother's toes
+
+1756119862
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+but it does come with the price of now having every single fn accept the ctx, right?  i think i tried it a bit and it felt kinda uncomfortable due to this, so i was not sure if i should go on
+
+1756119878
+chmod222!~chmod222@user/chmod222
+It does, yes
+
+1756119919
+chmod222!~chmod222@user/chmod222
+If you make your functions parts of the context struct, you can use member call syntax (`ctx.doThing()`) as opposed to `doThing(&ctx)`, but that's mostly syntactic sugar
+
+1756119931
+chmod222!~chmod222@user/chmod222
+If you export it as a C API it will be the latter
+
+1756119988
+chmod222!~chmod222@user/chmod222
+I pretty much always use member call syntax with a context structure that contains mutable state, and a compile time options module for global static/configurable state
+
+1756120010
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+i see.  i'm currently trying to make myself more comfortable with the "classic C" style, doThing(&ctx) .. i realized thaty with zig's File-is-struct, it's kinda fun
+
+1756120081
+chmod222!~chmod222@user/chmod222
+You can also use member-call syntax with file structs
+
+1756120148
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+yeah, that's the fun part, i get the member call syntax for free, while having the advantage of being able keep my codebase feel really "flat"
+
+1756120158
+chmod222!~chmod222@user/chmod222
+Ah, yes
+
+1756120171
+chmod222!~chmod222@user/chmod222
+I use that all the time, too much probably
+
+1756120182
+chmod222!~chmod222@user/chmod222
+I find myself wishing for generic file-structs
+
+1756120209
+ifreund!2940d10f8b@user/ifreund
+not gonna happen :)
+
+1756120216
+chmod222!~chmod222@user/chmod222
+Though I can't see how you would even make that work syntactically in a way that doesn't end up being a massiveh ack
+
+1756120282
+chmod222!~chmod222@user/chmod222
+It's fine, I can live with my madness being tempered by the cold water of reality
+
+1756120294
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+as someone coming from Python world it just makes me giggle when i create a foo.zig full of "just functions" and feel like a bearded C hacker ("here's a dime, kid, get a good computer")  ... while also losing nothing in comfort
+
+1756120379
+netvor!~netvor@2a00:ca8:a1f:cd0:8301:b6c5:e011:228
+nvm, i'll keep this in mind, thanks for help
+
+1756131006
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: I’m still interested in your hindsight regarding my noalias snippet from last time
+
+1756136173
+grayhatter!~grayhatte@user/grayhatter
+should @setEvalBranchQuota() be renamed @extendEvalBranchQuota(), because settings a smaller value isn't allowed?
+
+1756136229
+grayhatter!~grayhatte@user/grayhatter
+I wanted to suggest @embiggenEvalBranchQuota(), because it's funnier, but it was also a real inquiry that I didn't want to be ignored as just a joke
+
+1756136391
+ifreund!2940d10f8b@user/ifreund
+I think there might already be a proposal to rename it to something more fitting
+
+1756136576
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+extend kind of sounds like you're extending with the number you pass
+
+1756143600
+andrewrk!~andrewrk@mail.ziglang.org
+hadronized: clue: try a different optimization and make sure it does what you think it does
+
+1756150541
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+andrewrk: congrats on .15.1 !!
+
+1756150550
+andrewrk!~andrewrk@mail.ziglang.org
+cheers
+
+1756150685
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+qq... how many more times are you going to break everything and have to update 351 files with 31269 insertions and 37022 deletions?
+
+1756151299
+andrewrk!~andrewrk@mail.ziglang.org
+I honestly don't think there will ever be anything that disruptive again
+
+1756151314
+triallax!~triallax@lacerte/triallax
+the upcoming io changes don't count?
+
+1756151315
+bblack!~bblack@wikimedia/bblack-WMF
+Famous Last Words :)
+
+1756151320
+triallax!~triallax@lacerte/triallax
+hah
+
+1756151501
+bblack!~bblack@wikimedia/bblack-WMF
+the io changes don't have to be disruptive though.  the initial default implementation could be synchronous and then everything would more or less still work like it does now.
+
+1756152210
+grayhatter!~grayhatte@user/grayhatter
+Smithx10: what required so many changes?
+
+1756152232
+grayhatter!~grayhatte@user/grayhatter
+and was it a simple syntax update, or did you rewrite/refactor to make use of the improved API?
+
+1756152264
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+grayhatter: Im joking about how much work he did to introduce io
+
+1756152284
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+Its a callback to his talk he gave 
+
+1756152482
+grayhatter!~grayhatte@user/grayhatter
+oh! lol you're right my bad, I did insert an "I" in the "have to update"
+
+1756152600
+grayhatter!~grayhatte@user/grayhatter
+though, to be fair, zig got a completely new feature/api and a red diff. So that's probably worth it
+
+1756152724
+grayhatter!~grayhatte@user/grayhatter
+not quite as nice as a -101k red diff.... but they can't all be that good
+
+1756157816
+bblack!~bblack@wikimedia/bblack-WMF
+I haven't pinned down the real problem yet, and I'm out of time for today, but: something with the deletion of MemoryAccessor and related, is causing my Debug build executables to now crash with a SIGSEGV when they're exiting.  They're fine in ReleaseSafe.
+
+1756157839
+bblack!~bblack@wikimedia/bblack-WMF
+(I am using debug_allocator)
+
+1756157963
+bblack!~bblack@wikimedia/bblack-WMF
+(the only evidence I have to pin the blame, is I tried reverting just those two commits: "delete std.debug.FixedBufferReader" and then "std.debug: delete MemoryAccessor" and the crashing stopped.  But I've been going at lots of other things for a while and burnt out, I could be wrong!)
+
+1756157990
+bblack!~bblack@wikimedia/bblack-WMF
+I'll figure it out tomorrow, hopefully it's just me!
+
+1756160987
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: the issue is that there is no documentation for noalias, so I just used it the same way it’s expected to work in C (restrict) or in Rust (borrowing rules)
+
+1756162006
+andrewrk!~andrewrk@mail.ziglang.org
+hadronized: you didn't apply my clue at all
+
+1756162069
+andrewrk!~andrewrk@mail.ziglang.org
+hint: make sure you understand the basics of using that tool (godbolt)
+
+1756162240
+hadronized!~hadronize@2001:41d0:a:fe76::1
+andrewrk: what do you mean?
+
+1756162260
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I used it exactly the same way for the C version, and the Rust version
+
+1756162270
+hadronized!~hadronize@2001:41d0:a:fe76::1
+did I trip on the arguments to pass to zig?
+
+1756162281
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t have the link anymore, let me find it again
+
+1756162456
+hadronized!~hadronize@2001:41d0:a:fe76::1
+found it, and yeah, I still do not undertsand your riddle; may you tell me what I’m doing wrong?
+
+1756162467
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://godbolt.org/z/vW6fvnofY
+
+1756162493
+andrewrk!~andrewrk@mail.ziglang.org
+as a reminder, my suggestion was to try some other trivial optimization and make sure godbolt is doing what you think it's doing
+
+1756162530
+hadronized!~hadronize@2001:41d0:a:fe76::1
+it is outputting asm, which is what I’m interesting in
+
+1756162538
+hadronized!~hadronize@2001:41d0:a:fe76::1
+interested*
+
+1756163110
+hadronized!~hadronize@2001:41d0:a:fe76::1
+hm, actually
+
+1756163146
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I was missing the main function
+
+1756163163
+hadronized!~hadronize@2001:41d0:a:fe76::1
+now I have one billion line of asm to parse to find my stuff in 🫠
+
+1756163190
+hadronized!~hadronize@2001:41d0:a:fe76::1
+well, it didn’t change anything to the codegen of those functions
+
+1756163197
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so I can only assume that noalias just does nothing
+
+1756163217
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I looked for flags of build-obj, maybe they need to be explicitly enabled, but I haven’t found anything
+
+1756163301
+andrewrk!~andrewrk@mail.ziglang.org
+what trivial optimization did you try to observe?
+
+1756163321
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I don’t think there is anything trivial here
+
+1756163343
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m trying to observe the fact that, restricted / noaliasing pointers cannot point to the same memory
+
+1756163349
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so writing to one doesn’t affect the other
+
+1756163375
+hadronized!~hadronize@2001:41d0:a:fe76::1
+writing first to a with a constant, then to b, and dereferencing a as a return value is exactly the same as writing the constant to a, something else to b, and returning the constant
+
+1756163386
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that’s the output I get from C with restrict, and the output from safe Rust
+
+1756163393
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but Zig doesn’t seem to apply that optimization
+
+1756163402
+hadronized!~hadronize@2001:41d0:a:fe76::1
+my initial idea was that Zig considered pointer volatile by default
+
+1756163417
+hadronized!~hadronize@2001:41d0:a:fe76::1
+which could explain that behavior in some way, but there is a volatile keyword in Zig, so it’s not that
+
+1756163648
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ah, found it…
+
+1756163707
+hadronized!~hadronize@2001:41d0:a:fe76::1
+https://godbolt.org/z/PnsW8z1eY
+
+1756163720
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m super confused byt the syntax now
+
+1756163723
+hadronized!~hadronize@2001:41d0:a:fe76::1
+by*
+
+1756163754
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/12341
+
+1756163877
+hadronized!~hadronize@2001:41d0:a:fe76::1
+why did you decide not to link this to me last week when I asked about it?
+
+1756164009
+andrewrk!~andrewrk@mail.ziglang.org
+trying to help you level up your troubleshooting & engineering skills. when faced with a confusing situation, rather than checking your existing assumptions, you started making more
+
+1756164069
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah I think the wrong assumption I made there was to think I would invoke that the same way as I normally do locally, which was the case for Rust, and for C
+
+1756164093
+hadronized!~hadronize@2001:41d0:a:fe76::1
+given the fact that noalias is not documented, it was more logical to me that the optimization was just not implemented
+
+1756164102
+hadronized!~hadronize@2001:41d0:a:fe76::1
+rather than the build system being confusing
+
+1756164108
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but okay, now I have my answer
+
