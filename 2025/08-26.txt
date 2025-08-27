@@ -1,0 +1,100 @@
+1756205534
+nilsj2!~Thunderbi@user/nilsj2
+Hey, my project has a dependency on the tailwindcss executable that they distribute. As far is I understand I cannot have dependencies on build.zig.zon that aren't tar.gz or something similar. These are just binaries, see: https://github.com/tailwindlabs/tailwindcss/releases/tag/v4.1.12 . I would preferably not do what https://ziggit.dev/t/downloading-install-binary-assets-in-build-zig/5701 did. Is the only solution to just download and chmod with a zig build s
+
+1756210489
+tonitch!~tonitch@user/tonitch
+is it normal that a @cimport of a header file inside a dependency module doesn't work ? 
+
+1756210767
+tonitch!~tonitch@user/tonitch
+the header file is cimgui.h and I have (in my dependency module build.zon) cimgui.addIncludePath(cimgui_dep.path("")) as well as cimgui.installHeadersDirectory(cimgui_dep.path(""), "", .{}); and I get this error https://0x0.st/KoPT.c
+
+1756215257
+bblack!~bblack@wikimedia/bblack-WMF
+I've gotten a little further on my executable that SEGVs at shutdown, only in Debug: some of my threads (created with std.Thread.spawn()) create their own per-thread DebugAllocator instances.  If I set .stack_trace_frames anywhere from 0-5 in these, everything is fine.  At 6 (the default) it crashes during debug allocator cleanup, somewhere in an alloc.free() -> debug.captureStackTrace -> 
+
+1756215263
+bblack!~bblack@wikimedia/bblack-WMF
+debug.StackIterator.next -> debug.StackIterator.next_internal .  If I set the stack trace value to 7, it fails much earlier during an .alloc() -> captureStackTrace() instead.
+
+1756215545
+bblack!~bblack@wikimedia/bblack-WMF
+(but I have yet to get a short artificial repro, even with spawning threads with their own debug_allocators)
+
+1756222751
+bblack!~bblack@wikimedia/bblack-WMF
+found what I was missing: it's that I have some pages mapped which have been mprotect()ed with PROT_NONE (unreadable).  MemoryAccessor was probably going around that.  I still need to dig more to figure out if this is a me-problem or a zig-problem.
+
+1756228712
+bblack!~bblack@wikimedia/bblack-WMF
+ok maybe memory protection was a red herring (or just another facet of the same problem), but now I have a simpler repro.  What I was missing in my other simple repros was linking libc
+
+1756228744
+bblack!~bblack@wikimedia/bblack-WMF
+the problem arises easily if you link libc [on Linux], thus threads are libc pthreads, and you instantiate + use a debug allocator within a thread.
+
+1756228832
+bblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/b2d45f 
+
+1756228851
+bblack!~bblack@wikimedia/bblack-WMF
+^ this runs fine with "zig run foo.zig"
+
+1756228936
+bblack!~bblack@wikimedia/bblack-WMF
+but with "zig run -lc foo.zig", output is: https://zigbin.io/278563
+
+1756229002
+bblack!~bblack@wikimedia/bblack-WMF
+I'll make a bug report, because I'm out of my depth now.  It only happens since the MemoryAccessor removal.
+
+1756229916
+bblack!~bblack@wikimedia/bblack-WMF
+https://github.com/ziglang/zig/issues/25025
+
+1756230219
+rvrb!~rvrb@156.146.51.229
+how do you read an entire file into an aligned slice in 0.15? Dir.readFileAllocOptions uses File.readToEndAlloc which is "Deprecated in favor of Reader", but I cannot figure out any way to do that with just a Reader/Writer
+
+1756231210
+rvrb!~rvrb@156.146.51.229
+managed to do it with file.stat() -> alignedAlloc -> Writer.fixed -> File.reader().interface.streamExact, not sure if there is another way
+
+1756239158
+grayhatter!~grayhatte@user/grayhatter
+are you aligning to the file size?
+
+1756239223
+grayhatter!~grayhatte@user/grayhatter
+file.stat() -> buffer = alignedAlloc -> file.read(buffer);
+
+1756239225
+grayhatter!~grayhatte@user/grayhatter
+?
+
+1756239339
+grayhatter!~grayhatte@user/grayhatter
+if you're linux only there's also mmap depending on what alignment you need
+
+1756241299
+rvrb!~rvrb@156.146.51.229
+just trying to load a glTF with zgltf. glTF requires align(4) I guess
+
+1756241316
+rvrb!~rvrb@156.146.51.229
+file.stat() to get the file size to allocate the slice with one allocate
+
+1756243900
+andrewrk!~andrewrk@mail.ziglang.org
+nilsj2: https://github.com/ziglang/zig/issues/17895
+
+1756244045
+nilsj2!~Thunderbi@user/nilsj2
+andrewrk: Nice
+
+1756244669
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+rvrb: i found https://ziglang.org/documentation/master/std/#std.Io.Reader.allocRemaining with .unlimited works well
+
