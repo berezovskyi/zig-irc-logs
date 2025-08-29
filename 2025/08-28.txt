@@ -1,0 +1,496 @@
+1756366700
+mivanchev!~mivanchev@user/mivanchev
+hey, is getting a pointer to a struct from a pointer to a member defined in zig?
+
+1756366868
+ifreund!2940d10f8b@user/ifreund
+mivanchev: @fieldParentPtr()
+
+1756367455
+mivanchev!~mivanchev@user/mivanchev
+ifreund: awesome!!
+
+1756367562
+mivanchev!~mivanchev@user/mivanchev
+ifreund: do you know if it's possible to construct functions at comptile similar to C preprocessor?
+
+1756367572
+mivanchev!~mivanchev@user/mivanchev
+i.e. "leave everything the same but change the name" ?
+
+1756367586
+mivanchev!~mivanchev@user/mivanchev
+I have a lot of identical signatures which are quite long
+
+1756367592
+mivanchev!~mivanchev@user/mivanchev
+where only the name changes
+
+1756369167
+ifreund!2940d10f8b@user/ifreund
+mivanchev: if everything is the same except for the function name, just add more aliases, `const foo1 = fooImpl; const foo2 = fooImpl; fn fooImpl(...`
+
+1756369184
+ifreund!2940d10f8b@user/ifreund
+this is code smell though IMO
+
+1756369187
+mivanchev!~mivanchev@user/mivanchev
+ifreund: no, the implementation is slightly off too :)
+
+1756369285
+ifreund!2940d10f8b@user/ifreund
+perhaps something like this then: `const foo1 = fooImpl(.foo1); fn fooImpl(comptime x: enum { foo1 }) ...`
+
+1756369323
+ifreund!2940d10f8b@user/ifreund
+and then switch on the comptime enum passed to fooImpl() at compile time to select between the implementations where they differ
+
+1756369325
+mivanchev!~mivanchev@user/mivanchev
+ok so i read there are no c-like preprocessor macros in order to keep it simple
+
+1756369332
+ifreund!2940d10f8b@user/ifreund
+and return a function from fooImpl()
+
+1756369335
+mivanchev!~mivanchev@user/mivanchev
+i guess this is the one use case where it hits the border, kinda
+
+1756369344
+ifreund!2940d10f8b@user/ifreund
+yes there is no preprocesor
+
+1756369398
+ifreund!2940d10f8b@user/ifreund
+I wouldn't consider this anywhere near the border of what is possible with comptime
+
+1756369427
+mivanchev!~mivanchev@user/mivanchev
+can I set a default calling conv with comptime?
+
+1756369428
+ifreund!2940d10f8b@user/ifreund
+it's very powerful, though it requires a different way of thinking compared to preprocessing
+
+1756369437
+mivanchev!~mivanchev@user/mivanchev
+or spare repeating export fn 1000s times?
+
+1756369449
+ifreund!2940d10f8b@user/ifreund
+those are both antifeatures :P
+
+1756369471
+mivanchev!~mivanchev@user/mivanchev
+I mean, i love zig so far but it's obvious some flexibility was likely lost
+
+1756369476
+ifreund!2940d10f8b@user/ifreund
+If you really want to do code generation you can of course do so as a build step
+
+1756369522
+ifreund!2940d10f8b@user/ifreund
+mivanchev: in my experience, the equivalent zig code for any reasonable use of the C preprocesser has always been more readable and maintainable
+
+1756369574
+mivanchev!~mivanchev@user/mivanchev
+well it's not a reasonable use case so we're somewhat around the edge imo, i do feel the other features more than make up for it though :)
+
+1756369585
+mivanchev!~mivanchev@user/mivanchev
+for a reasonable use case i'd agree with you so far in
+
+1756369729
+ifreund!2940d10f8b@user/ifreund
+to be clear, the original use-case you described is very possible and even quite ergonomic in Zig assuming I've understood it correctly
+
+1756369767
+mivanchev!~mivanchev@user/mivanchev
+you likely haven't due to detail omission but it's about reducing the length of very long function signatures
+
+1756369775
+mivanchev!~mivanchev@user/mivanchev
+for code that is not automatically generated
+
+1756369784
+mivanchev!~mivanchev@user/mivanchev
+and I'm porting
+
+1756369897
+mivanchev!~mivanchev@user/mivanchev
+it's more of an optical thing than any useful feature though
+
+1756369953
+ifreund!2940d10f8b@user/ifreund
+ah, yeah obscuring function signatures to save typing isn't a supported feature of zig's comptime :P
+
+1756370064
+mivanchev!~mivanchev@user/mivanchev
+I'm not sure we need to attach a statement to it :)
+
+1756370081
+mivanchev!~mivanchev@user/mivanchev
+but yeah it is what it is and I take the rest gladly
+
+1756376607
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm trying to construct an _array_ of strings mapped to an enum value at comptime, so the lengths are known. My problem is the cursed array literal requires address-of operator (&) to coerce to slice type '[][]const u8' and if I use an & then now a runtime variable references a comptime one
+
+1756376628
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+How can I solve this. I've been bashing my head against this for almost 2 hours and I'm fed up
+
+1756376895
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+This is the minimal example: https://gist.github.com/tsujp/cc8835889c76812d1849e292462c96f9
+
+1756378095
+Affliction!affliction@idlerpg/player/affliction
+tsujp: is std.enums.EnumArray or EnumMap usable?
+
+1756378145
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Affliction: I tried before and it complained about reference to a comptime variable
+
+1756378180
+Affliction!affliction@idlerpg/player/affliction
+hm
+
+1756378281
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah, this: src/lib/op.zig:491:41: error: global variable contains reference to comptime var pub const annotation = MakeOpAnnotations(.{
+
+1756378515
+Affliction!affliction@idlerpg/player/affliction
+I've not tried doing something similar to this, generally my comptime stuff has largely either worked, or it was clear why it didn't, so I"ll defer to someone else.
+
+1756378520
+squeek502!~squeek502@user/squeek502
+tsujp, your example code can't be used to reproduce the error (missing `MAX_OPCODE_COUNT`, `OpCodes.Enum`, probably more)
+
+1756378535
+Affliction!affliction@idlerpg/player/affliction
+But I could throw some stuff at the wall and see what sticks: how about []const []const u8 ?
+
+1756378572
+squeek502!~squeek502@user/squeek502
+but my guess is that you just need to assign `da` and `aa` to a const before returning pointers to them and change `OpAnnotation` fields to `[]const []const u8`
+
+1756378584
+Affliction!affliction@idlerpg/player/affliction
+yeah, that too
+
+1756378607
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+[]const []const u8 doesn't work, and if they are assigned to const how can I possibly modify them 
+
+1756378616
+Affliction!affliction@idlerpg/player/affliction
+tsujp: modify them, then assign them to a const
+
+1756378631
+Affliction!affliction@idlerpg/player/affliction
+should be able to make new const vars at line 31
+
+1756378646
+Affliction!affliction@idlerpg/player/affliction
+const vars... you get the idea, getting late :V
+
+1756378650
+squeek502!~squeek502@user/squeek502
+tsujp, see https://ziggit.dev/t/comptime-mutable-memory-changes/3702 for an explanation
+
+1756378804
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+modify and then assign to const fixes it, honestly im more annoyed that fixes it because there's no indication to me why that should work
+
+1756378827
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+unless it's as simple as "forcing to the compiler to treat it as a const by literally writing so"
+
+1756378845
+Affliction!affliction@idlerpg/player/affliction
+comptime vars can't be used at runtime. It'd be nice if their final values could become runtime consts, but I'd imagine there's a reason for htat.
+
+1756378876
+Affliction!affliction@idlerpg/player/affliction
+well, can't be pointed at*
+
+1756378925
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I (think) I kind of expected the compiler to be smart enough to see that the function is returning a struct, used in a variable, which itself is returned to a constant and therefore the values are constant for runtime
+
+1756378940
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+note that I don't have to do this for "op_map" which is comptime var and returned to a `pub const`
+
+1756378958
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+but I magically must do so for the struct field elements, and instead receive an INCREDIBLY cryptic compiler error
+
+1756378982
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+(that has nothing to do with the callsites involved, and as mentioned skips a seemingly identical scenario earlier in the call stack)
+
+1756378991
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+either im a moron or this is a footgun
+
+1756379073
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+sorry im just really, really annoyed because this isn't the first time hours of time have been swallowed and I've read, re-read, re-read again, taken a break, re-read and re-read again and checked the stdlib source for inspiration only for it to wind up being something that, as I said, feels arbitrarily applied
+
+1756379100
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+it makes me feel like putting in effort is a waste of time honestly
+
+1756379149
+Affliction!affliction@idlerpg/player/affliction
+I think there's method to the madness based on my mild speculation on how the compiler's implemented. But yeah, it's something I've run into too.
+
+1756379186
+Affliction!affliction@idlerpg/player/affliction
+I think, by binding the var to a const, it'll then have a known value, and thus, memory layout at that point, so it can then be stored in the binary's data segment and pointed at at runtime.
+
+1756379232
+Affliction!affliction@idlerpg/player/affliction
+It does somewhat feel like, at the site the pointer is created, the compiler could do that extra step for you, create the constant, put it in the binary, and allow a const pointer to it.
+
+1756379278
+Affliction!affliction@idlerpg/player/affliction
+This is all wild speculation though, corrections much appreciated :)
+
+1756379326
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I would also very much like to be corrected here
+
+1756379327
+Affliction!affliction@idlerpg/player/affliction
+At the end of the day, zig is still a language in flux, with a very small development team. I don't expect magic.
+
+1756379338
+squeek502!~squeek502@user/squeek502
+the why is here: https://ziggit.dev/t/comptime-mutable-memory-changes/3702#why-4
+
+1756379347
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+This too, it's pre 1.0 and changing often
+
+1756379578
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+note that this breaks if used in a function (makeAnnotations), if I put the contents of makeAnnotations inline at the start of that inline for then it works as expected
+
+1756379592
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Will read those later squeek502 I need a break rn
+
+1756379622
+Affliction!affliction@idlerpg/player/affliction
+The explanation makes sense to me.
+
+1756379661
+Affliction!affliction@idlerpg/player/affliction
+I can also understand being more constrained earlier on, and perhaps lifting those constraints when the language is more complete.
+
+1756379676
+Affliction!affliction@idlerpg/player/affliction
+Or, perhaps not lifting those constraints, if they have other benefits to the language design
+
+1756379686
+squeek502!~squeek502@user/squeek502
+note also that it doesn't seem to be quite as strict as what's mentioned in that post anymore, the `my_name` example works without needing the `const final` assignment
+
+1756380034
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Updated gist of now working version: https://gist.github.com/tsujp/cc8835889c76812d1849e292462c96f9
+
+1756380136
+squeek502!~squeek502@user/squeek502
+tsujp, "arrays i.e. [][]const u8" just fyi that's not an array type, `[][]const u8` is a (mutable) slice of (const) slices
+
+1756380171
+squeek502!~squeek502@user/squeek502
+arrays are value types that must have a comptime-known length
+
+1756380458
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Right so the syntax is the same between them but it's an array if the length is comptime-known (the latter part I already knew, but I thought there was a distinction in syntax for some reason)
+
+1756380491
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+and []const []const u8 is an immutable slice of const slices
+
+1756380505
+Affliction!affliction@idlerpg/player/affliction
+arrays are [LEN]Type, slices are []Type or []const Type
+
+1756380515
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+if I did [4]const [2]const u8 now it's an immutable _array_ of an _array_ of u8s
+
+1756380554
+Affliction!affliction@idlerpg/player/affliction
+arrays aren't pointers, so don't have a "const " tag. Their const...ness is defined by their binding
+
+1756380593
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm, that appears to be a gap in my understanding
+
+1756380600
+Affliction!affliction@idlerpg/player/affliction
+so const things: [4]Things = ...; will be constant, var things: [4]Things = ...; will be variable
+
+1756380645
+Affliction!affliction@idlerpg/player/affliction
+basically, [] can be thought of as being like a pointer. Just as you have *Thing and *const Thing, []Thing and []const Thing, are pointers paired with a length.
+
+1756380671
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah that's my realisation now, I thought [] could still be a "value" type in some scenarios it seems
+
+1756380674
+squeek502!~squeek502@user/squeek502
+right, slices are pointer types, and arrays are not
+
+1756380689
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+When combined with const I mean
+
+1756380693
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+On the right side of =
+
+1756380694
+Affliction!affliction@idlerpg/player/affliction
+so you can have a "var slice: []const Thing" which will allow 'slice' to be pointed at a different slice, but you won't be able to manipulate the Things within
+
+1756380748
+Affliction!affliction@idlerpg/player/affliction
+Right. Now there is [_]Thing which is an array of inferred length.
+
+1756380756
+Affliction!affliction@idlerpg/player/affliction
+But yeah, [] is always a slice. And so, always a pointer.
+
+1756380798
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+This has been good learning, thank you Affliction and squeek502 both
+
+1756380803
+Affliction!affliction@idlerpg/player/affliction
+no worries
+
+1756380831
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Came in frustrated, came out with problem solved and (arguably more importantly) more knowledge
+
+1756380916
+Affliction!affliction@idlerpg/player/affliction
+And I've taken away a thing or two too. Everyone wins!
+
+1756381099
+Affliction!affliction@idlerpg/player/affliction
+And, yeah, that's why [][]const failed when []const []const worked. You were pointing at data in the read-only section of the binary. So, that has to be constant.
+
+1756381125
+Affliction!affliction@idlerpg/player/affliction
+I think that's a case I ran into too
+
+1756381796
+mivanchev!~mivanchev@user/mivanchev
+hey, is it possible to read @embedFile json at comptime?
+
+1756381802
+mivanchev!~mivanchev@user/mivanchev
+how do I get an allocator
+
+1756382335
+Affliction!affliction@idlerpg/player/affliction
+mivanchev: afaik embedFile only works on ZON. https://github.com/bnl1/comptime_allocator/blob/main/src/comptime_allocator.zig demonstrates a comptime allocator.
+
+1756382351
+Affliction!affliction@idlerpg/player/affliction
+heading to sleep, wait around if you have further questions
+
+1756382415
+mivanchev!~mivanchev@user/mivanchev
+thanks Affliction 
+
+1756382425
+mivanchev!~mivanchev@user/mivanchev
+it seems json is not fit for comptime :/
+
+1756389066
+deadmarshal!deadmarsha@deadmarshal.nastycode.com
+Cause Zig's comptime is weak. Try Forth 
+
+1756389794
+clevor!sid649024@id-649024.hampstead.irccloud.com
+You can @embedFile it and parse it into a struct at comptime, but you might need to write a parser.
+
+1756390892
+ifreund!2940d10f8b@user/ifreund
+Affliction: @embedFile() works on any file
+
+1756390900
+ifreund!2940d10f8b@user/ifreund
+@import() only works on .zig and .zon files
+
+1756390917
+ifreund!2940d10f8b@user/ifreund
+parsing json at comptime is 100% possible
+
+1756395191
+chmod222!~chmod222@user/chmod222
+I've done it in the past but depending on the filesize and what you want to do with the parsed structure, you may have to crank up that eval limit significantly
+
+1756396110
+grayhatter!~grayhatte@user/grayhatter
+I'm parsing html and turning it into generated templates at comptime using @embedFile and addAnonymousImport, I wouldn't wanna use json but no reason you couldn't
+
+1756396187
+grayhatter!~grayhatte@user/grayhatter
+chmod222: is right, be prepared to increase the eval quota a lot :D
+
+1756397443
+mivanchev!~mivanchev@user/mivanchev
+hey, how to get an array of 20 elements without writing them all explicitly?
+
+1756397456
+mivanchev!~mivanchev@user/mivanchev
+i have a struct field that's an [20]u8
+
+1756397470
+mivanchev!~mivanchev@user/mivanchev
+or, alternatively, how to initialize that field without knowing the size
+
+1756397776
+ifreund!2940d10f8b@user/ifreund
+mivanchev: are you looking for @splat()?
+
+1756397829
+mivanchev!~mivanchev@user/mivanchev
+or std.mem.zeroes i think
+
+1756397846
+ifreund!2940d10f8b@user/ifreund
+std.mem.zeroes is not idiomatic zig
+
+1756397860
+ifreund!2940d10f8b@user/ifreund
+consider it a crutch for C interop
+
+1756397941
+mivanchev!~mivanchev@user/mivanchev
+let me check splat then, thanks!
+
+1756398521
+dutchie!~dutchie@user/dutchie
+TIL @splat works with arrays, not just vectors
+
+1756398538
+dutchie!~dutchie@user/dutchie
+ACTION greps code for `[_]T{x} ** n`
+
