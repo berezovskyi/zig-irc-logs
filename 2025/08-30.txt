@@ -1,0 +1,580 @@
+1756519511
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Heh, changing the (file) input and file output buffer sizes in narser made directory unpacking go from 2.2 seconds to 1.7 seconds.
+
+1756519676
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Optimizing for speed increased the binary size from 137800 bytes to 158744 bytes, but speed is a higher priority than size.
+
+1756522921
+andrewrk!~andrewrk@mail.ziglang.org
+why would that affect the binary size?
+
+1756523223
+Drixtan!~Drixtan@user/Drixtan
+isn't there a principle that you trade speed for memory and vice versa?
+
+1756523578
+andrewrk!~andrewrk@mail.ziglang.org
+I see what happened - I took "optimizing for speed" to be referring to the previous message which was talking about buffer sizes, but it was changing the topic to be about optimization mode (-O)
+
+1756526362
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I wrote a function to unpack a Nix archive to the filesystem in one pass instead of converting the file contents into an archive followed by unpacking it to the filesystem in 2 steps. The optimizing for size remark was about the new function being faster, and the buffer sizes was about tuning the buffer size in said function.
+
+1756526901
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Drixtan: I meant binary size. Sorry for being a little bague.
+
+1756527603
+rvrb!~rvrb@156.146.51.229
+little bague is my fav breakfast spot
+
+1756527643
+clevor!sid649024@id-649024.hampstead.irccloud.com
+vaguette
+
+1756527654
+rvrb!~rvrb@156.146.51.229
+that's for after hours
+
+1756528956
+rvrb!~rvrb@156.146.51.229
+do I still call the complementing function "deinit" when the type has a "create" instead of "init"? or is it init/deinit and create/destroy
+
+1756529034
+rvrb!~rvrb@156.146.51.229
+and are there different expectations calling foo.deinit(allocator) vs foo.destroy(allocator)
+
+1756529099
+rvrb!~rvrb@156.146.51.229
+ok well when I say it out loud that sounds obvious; destroy frees the memory being pointed to
+
+1756529647
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: usually create/destroy, init/deinit
+
+1756531233
+braewoods!~braewoods@user/braewoods
+rvrb, for what it's worth, i think elf uses init and fini.
+
+1756531300
+andrewrk!~andrewrk@mail.ziglang.org
+I believe the question is about zig convention, which has a clear answer
+
+1756540947
+andrewrk!~andrewrk@mail.ziglang.org
+just finished the project that I've been working on for 9 months 🥲
+
+1756541807
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Okay so when making pretty logging output is there some conventional wisdom/approach for aligning information (without using \t)?
+
+1756541947
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+for instance this paste (just some very short text output) https://gist.github.com/tsujp/6a5b0ef952e12fe385bfcec2ae6cd04e you can see in the second case lines 18,19,20 aren't aligned
+
+1756541987
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i imagine i must keep some kind of state machine with the positions of various columns i want to output and how wide the data in those columns is
+
+1756542016
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+but i guess the real meat of my question is: do i really have to scan all the data i want to output beforehand, i imagine i do
+
+1756542077
+andrewrk!~andrewrk@mail.ziglang.org
+tsujp: I think it's kind of a fruitless endeavor... perhaps you should aim for your log output to be processed by some more general purpose semantically-aware thing
+
+1756542139
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+andrewrk: i was thinking about outputting in only logfmt and having a "frontend" (in a terminal) for it that takes logfmt lines and prints them nicely, but would need the same thing on said "frontend"
+
+1756542182
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+andrewrk: essentially i think i am kind of asking how commands like `ls -l` and friends compute their column widths, and i imagine the answer is "scan all the text you would output beforehand to find the widest, then pad by that amount"
+
+1756542267
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+could also log to zon instead of logfmt, and again same "frontend" small utility cli that takes a zon file and pretty-prints it
+
+1756543218
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+andrewrk: i can make some basterdised approximate of this using column(1) which will do for now i think
+
+1756546214
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Hmm padding must be comptime-known for use with format strings yeah?
+
+1756546298
+triallax!~triallax@lacerte/triallax
+what do you mean by padding
+
+1756546326
+triallax!~triallax@lacerte/triallax
+the specifier parameters have names and i'm honestly not sure which one of them you mean
+
+1756546336
+triallax!~triallax@lacerte/triallax
+// `{[argument][specifier]:[fill][alignment][width].[precision]}`
+
+1756546347
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+std.debug.print("{s:<d}\n", .{ "foo", some_runtime_computed_number });
+
+1756546363
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I think I mean fill or alignment then
+
+1756546372
+triallax!~triallax@lacerte/triallax
+fill is the character used to pad
+
+1756546379
+triallax!~triallax@lacerte/triallax
+width is the total width
+
+1756546472
+triallax!~triallax@lacerte/triallax
+std.debug.print("{[0]s:[1]}", .{ "hey", 50 });
+
+1756546476
+triallax!~triallax@lacerte/triallax
+something like this should do it
+
+1756546497
+triallax!~triallax@lacerte/triallax
+i guess [0] isn't required
+
+1756546745
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ah that works, the parameter referenced by [x] must come at the end, it cannot be in the middle otherwise fmt.zig gives an unused parameter error
+
+1756546845
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+[x] here is the index accessor right? i.e. x-th index on the argument tuple?
+
+1756546884
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i see that pattern used in some tests at the bottom of fmt.zig e.g. test "runtime width specifier"
+
+1756547013
+ifreund!2940d10f8b@user/ifreund
+tsujp: example: https://codeberg.org/river/river/src/commit/88a8c45ac027f4b5f747b03b6bd4287cce905769/river/command/rule.zig#L221
+
+1756547059
+ifreund!2940d10f8b@user/ifreund
+if you want something like ls output
+
+1756548728
+triallax!~triallax@lacerte/triallax
+tsujp: you can use named parameters
+
+1756548731
+triallax!~triallax@lacerte/triallax
+like this
+
+1756548757
+triallax!~triallax@lacerte/triallax
+std.debug.print("{[string]s:[width]}", .{ .string = "hey", .width = 50 });
+
+1756571311
+rvrb!~rvrb@156.146.51.229
+andrewrk: what project?
+
+1756571449
+ifreund!2940d10f8b@user/ifreund
+rvrb: writergate
+
+1756571969
+rvrb!~rvrb@156.146.51.229
+ifreund: makes sense, I just thought that was finished with the release of 0.15
+
+1756572013
+rvrb!~rvrb@156.146.51.229
+oh, I guess there was probably post release followup work
+
+1756572348
+ifreund!2940d10f8b@user/ifreund
+the finish line that andrew has now crossed is deleting all the old generic reader/writer code from the source tree and fixing everything that was still using it
+
+1756572384
+ifreund!2940d10f8b@user/ifreund
+there are still regressions to fix and improvements to be made, but further work towards the Io interface is now unblocked
+
+1756573326
+rvrb!~rvrb@156.146.51.229
+Awesome. That must be extremely satisfying. Removing code is my favorite activity
+
+1756573448
+rvrb!~rvrb@156.146.51.229
+Extended buildups to that kind of incredible release of programmer dopamine are rare and coveted 
+
+1756573522
+lxsameer!~lxsameer@Serene/lxsameer
+hey folks, I'm new to zig, in this code https://dpaste.com/GF3KRK456 I get an error saying that alloc is not a public function. here is the error https://dpaste.com/8CWWKTESV
+
+1756573536
+lxsameer!~lxsameer@Serene/lxsameer
+according to the docs, alloc should be public
+
+1756573601
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+lxsameer: you need to call .allocator() on the ArenaAllocator to get the actual public interface that you use for allocation
+
+1756573647
+lxsameer!~lxsameer@Serene/lxsameer
+Gliptic: ah , got it thank you
+
+1756574284
+lxsameer!~lxsameer@Serene/lxsameer
+is there any Atomic integer type in zig ?
+
+1756574361
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.atomic.Value(your type)
+
+1756574367
+lxsameer!~lxsameer@Serene/lxsameer
+cheers
+
+1756575364
+lxsameer!~lxsameer@Serene/lxsameer
+is it common to have more than two allocators in zig? 
+
+1756575471
+ifreund!2940d10f8b@user/ifreund
+its common to have both a gpa and an arena available in the same scope
+
+1756578773
+grayhatter!~grayhatte@user/grayhatter
+uh.... does @field() not work for decls anymore?
+
+1756578878
+grayhatter!~grayhatte@user/grayhatter
+ahh, nevermind, zls is lying to me
+
+1756581891
+triallax!~triallax@lacerte/triallax
+i have a tricky issue in my project
+
+1756581926
+triallax!~triallax@lacerte/triallax
+in my vm i implement a trace mode that logs each instruction, along with some metadata (e.g. the current vm stack state), to stderr
+
+1756581961
+triallax!~triallax@lacerte/triallax
+for some reason i have a script that, when i run the vm on it with trace mode, the trace output always gets stuck at the exact same spot
+
+1756581994
+ifreund!2940d10f8b@user/ifreund
+missing a flush()?
+
+1756582001
+triallax!~triallax@lacerte/triallax
+no, it keeps writing
+
+1756582005
+triallax!~triallax@lacerte/triallax
+at least i think so
+
+1756582014
+triallax!~triallax@lacerte/triallax
+also it's unbuffered when outputting to tty anyway
+
+1756582019
+ifreund!2940d10f8b@user/ifreund
+what do you mean by stuck exactly then?
+
+1756582040
+triallax!~triallax@lacerte/triallax
+when i say it keeps writing, that's what i'm led to believe from strace output at least
+
+1756582047
+triallax!~triallax@lacerte/triallax
+but as for actual stderr output it stops
+
+1756582087
+triallax!~triallax@lacerte/triallax
+also what's weirder is that when i try to interrupt while it's stuck in lldb, then continue, it continues logging
+
+1756582145
+ifreund!2940d10f8b@user/ifreund
+same behavior if you redirect stderr to a file?
+
+1756582148
+triallax!~triallax@lacerte/triallax
+no
+
+1756582168
+triallax!~triallax@lacerte/triallax
+also scratch the buffering thing
+
+1756582171
+triallax!~triallax@lacerte/triallax
+stderr is in fact buffered
+
+1756582182
+triallax!~triallax@lacerte/triallax
+but there shouldn't be a need to flush because my program keeps writing to the writer
+
+1756582210
+ifreund!2940d10f8b@user/ifreund
+well, your program might get stuck doing something else while half a trace message is still in the writer's buffer
+
+1756582221
+ifreund!2940d10f8b@user/ifreund
+you probably want to flush after every instruction in tracing mode
+
+1756582229
+ifreund!2940d10f8b@user/ifreund
+to ensure you always get a full message
+
+1756582254
+triallax!~triallax@lacerte/triallax
+same problem
+
+1756582286
+triallax!~triallax@lacerte/triallax
+for good measure i just tried unbuffered, same problem and same spot where it stops outputting
+
+1756582308
+triallax!~triallax@lacerte/triallax
+and it does keep running
+
+1756582471
+triallax!~triallax@lacerte/triallax
+hmm, maybe it's a bug in my terminal
+
+1756582474
+triallax!~triallax@lacerte/triallax
+i'll try another one
+
+1756582527
+triallax!~triallax@lacerte/triallax
+very interesting
+
+1756582539
+triallax!~triallax@lacerte/triallax
+konsole, gnome-terminal, and gnome-console all get stuck, whereas foot doesn't
+
+1756582548
+triallax!~triallax@lacerte/triallax
+i don't know what the meaning of this is
+
+1756582598
+ifreund!2940d10f8b@user/ifreund
+heh
+
+1756582627
+ifreund!2940d10f8b@user/ifreund
+obivously the correct conclusion is to only support running in foot /s
+
+1756582632
+triallax!~triallax@lacerte/triallax
+based
+
+1756582645
+triallax!~triallax@lacerte/triallax
+but it's a very odd issue
+
+1756582656
+triallax!~triallax@lacerte/triallax
+i'm wondering if it's related to the 0.15 io changes
+
+1756582670
+triallax!~triallax@lacerte/triallax
+i'm not certain but maybe it's a zig stdlib bug
+
+1756582683
+ifreund!2940d10f8b@user/ifreund
+It's certainly possible
+
+1756582718
+ifreund!2940d10f8b@user/ifreund
+the best way to figure that out would be to try and write a (more) minimal reproducer
+
+1756582724
+triallax!~triallax@lacerte/triallax
+i'll do my best
+
+1756582736
+triallax!~triallax@lacerte/triallax
+best-case scenario it's actually my fault
+
+1756582758
+ifreund!2940d10f8b@user/ifreund
+trying to write a reproducer may also help you figure out if it is or not :D
+
+1756583278
+triallax!~triallax@lacerte/triallax
+it's really difficult to debug because when i dig deeper with lldb it doesn't happen
+
+1756583712
+triallax!~triallax@lacerte/triallax
+ok i've narrowed it down to a terminal bug
+
+1756583725
+triallax!~triallax@lacerte/triallax
+or maybe not a bug, but i mean the behavior is from the terminal
+
+1756583772
+triallax!~triallax@lacerte/triallax
+awk 'BEGIN { printf "%c\ntest", 157 }'
+
+1756583774
+triallax!~triallax@lacerte/triallax
+try running this
+
+1756584390
+torque!~tachyon@user/torque
+157 doesn't seem like 7-bit ascii to me
+
+1756584401
+triallax!~triallax@lacerte/triallax
+it's not
+
+1756584410
+torque!~tachyon@user/torque
+dumping random binary into the terminal is going to cause some shit
+
+1756584431
+triallax!~triallax@lacerte/triallax
+well idk i didn't dump it
+
+1756584440
+triallax!~triallax@lacerte/triallax
+it was a string used by the vm program
+
+1756584444
+triallax!~triallax@lacerte/triallax
+i could probably try to escape
+
+1756585268
+Drixtan!~Drixtan@user/Drixtan
+I see `std.fs.File.writeAll` has been deprecated, but there is no mention about the deprication of `std.fs.File.write`. Does it mean that `std.fs.File.write` is a correct way of using the new Io in the case I don't want any buffer for example?
+
+1756585298
+andrewrk!~andrewrk@mail.ziglang.org
+Drixtan: you can pass an empty buffer when creating a File.Writer
+
+1756585333
+Drixtan!~Drixtan@user/Drixtan
+my question was really about the .write function thou
+
+1756585368
+triallax!~triallax@lacerte/triallax
+write is afaik essentially a dumb wrapper around the write syscall
+
+1756585376
+andrewrk!~andrewrk@mail.ziglang.org
+that function will probably stay
+
+1756585378
+triallax!~triallax@lacerte/triallax
+it's not what you want to use for io
+
+1756585381
+triallax!~triallax@lacerte/triallax
+in the general case
+
+1756585420
+Drixtan!~Drixtan@user/Drixtan
+thank you andrewrk. I agree it's not the "best way" or whatever, but I was curious about /that/ particular function and its future. Thank you guys <3
+
+1756585566
+andrewrk!~andrewrk@mail.ziglang.org
+whenever I reason about something, I generally try to steer clear from using phrases like "clean", "best way", "good", "correct", etc. Instead, a more disciplined engineering mindset will talk about exactly what properties changes have
+
+1756585610
+andrewrk!~andrewrk@mail.ziglang.org
+so for example with regards to deprecating writeAll, I would say specifically, it has redundant behavior with File.Writer
+
+1756585633
+Drixtan!~Drixtan@user/Drixtan
+I would rephrase "best way" for "to enjoy all the potential of the new Io system"
+
+1756585636
+Drixtan!~Drixtan@user/Drixtan
+is that good enough?
+
+1756585652
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: I really like the Io interface
+
+1756585658
+andrewrk!~andrewrk@mail.ziglang.org
+to be clear I'm not trying to correct you - just trying to explain more about these decisions
+
+1756585690
+grayhatter!~grayhatte@user/grayhatter
+instead of a messy @ptrCast() takeArray makes the code/cast SO much eaiser to read and see it's correct
+
+1756585702
+andrewrk!~andrewrk@mail.ziglang.org
+I wouldn't expect someone to see me say "it's the best way" and be satisfied with that as an explanation :)
+
+1756585705
+Drixtan!~Drixtan@user/Drixtan
+man, I know I express myself badly and if I can improve in that area, I am ready to make the effort of expressing myself in a better way
+
+1756585726
+andrewrk!~andrewrk@mail.ziglang.org
+Drixtan: I'm sorry I did not intend to criticize you in any way, I was trying to explain myself 
+
+1756585777
+Drixtan!~Drixtan@user/Drixtan
+no need to be sorry, I take it in a good way 
+
+1756585913
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: glad you like it. I wasn't sure if you meant the (not merged into master yet) Io interface, or the Io.Reader/Io.Writer interfaces
+
+1756586407
+grayhatter!~grayhatte@user/grayhatter
+ahh, sorry, I should have said Io.Reader
+
+1756586639
+Drixtan!~Drixtan@user/Drixtan
+lol
+
+1756586658
+Drixtan!~Drixtan@user/Drixtan
+You shall have known better grayhatter !
+
+1756586765
+grayhatter!~grayhatte@user/grayhatter
+lol, I too have fallen into the unfortunate habit of using ambigious phrasing
+
+1756586857
+grayhatter!~grayhatte@user/grayhatter
+in my defense though, I do care about the Reader/Writer API, but don't care about the async/blocking API, so I likely have mentally blocked out the async parts
+
+1756586859
+grayhatter!~grayhatte@user/grayhatter
+:P
+
+1756586958
+grayhatter!~grayhatte@user/grayhatter
+have there been any meaningful fixes to compiler diagnostics following 0.15.1?
+
+1756587009
+grayhatter!~grayhatte@user/grayhatter
+I'm in the middle of refactoring verse to 0.15, and `error: the following command terminated unexpectedly:` is less helpful than I'd hope
+
+1756587096
+andrewrk!~andrewrk@mail.ziglang.org
+well the nice thing about upcoming Io rerrangements is, if you have no interest in concurrency, you can continue to ignore it (other than having to update a bunch of code to take an io parameter, sorry)
+
+1756587130
+Drixtan!~Drixtan@user/Drixtan
+well, when I said "best way" for "enjoying all the potential of the new Io", that what I meant. You could not care about the async, but it will be free for people who cares
+
+1756587188
+Drixtan!~Drixtan@user/Drixtan
+this abstraction is probably the best thing Zig could have received after sliced bread, or something
+
+1756589097
+rvrb!~rvrb@156.146.51.229
+I too think the Io interface is pretty neat, and I am finding myself reaching for Io.Writer/Io.Reader a lot more now than I did before
+
