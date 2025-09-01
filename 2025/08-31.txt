@@ -1,0 +1,348 @@
+1756623315
+rvrb!~rvrb@156.146.51.229
+next Zig Day Portland announced! https://zig.day/usa/portland/1/
+
+1756653901
+fossdd!~fossdd@sourcehut/user/fossdd
+the ziglang.org server is really slow at downloading tarballs
+
+1756653911
+fossdd!~fossdd@sourcehut/user/fossdd
+and sometimes throws 500s
+
+1756654243
+netvor!~netvor@2a00:ca8:a1f:cd0:de30:54f7:cafd:3dff
+i vaguely recall something about mirrors mentioned there, for this reason
+
+1756654295
+netvor!~netvor@2a00:ca8:a1f:cd0:de30:54f7:cafd:3dff
+https://ziglang.org/download/community-mirrors/ fossdd 
+
+1756657427
+fossdd!~fossdd@sourcehut/user/fossdd
+i see
+
+1756666601
+thephred!~thephred@user/thephred
+I'm working with the new reader and writer in zig 0.15+. I'm struggling to understand when an empty buffer is ok and when not when dealing with a pipeline of readers. One option would be to see what others have done. Is there a good resources/project that has multiple readers chained that I can learn from?
+
+1756666807
+thephred!~thephred@user/thephred
+In particular it seems like the code I'm seeing checks the buffer length and does a direct or indirect method depending on if the buffer is length 0 or not. But the direct method works with the inbound reader in ways that won't work if that reader itself has a buffer length of 0. I came up with a third method of using things like readSliceAll which
+
+1756666807
+thephred!~thephred@user/thephred
+is just providing a buffer inline (in my case on the stack) during operations.
+
+1756667044
+thephred!~thephred@user/thephred
+All this to understand how many buffers I need and how to architect my decompression and archive format reader that involves multiple wrapped formats.
+
+1756667617
+grayhatter!~grayhatte@user/grayhatter
+thephred: if you can't tell when a stacked r/w buffer is allowed to be empty or not, that makes me think you're looking at the question from the wrong angle/direction. Correct me if I'm wrong but every stacked reader should be able to request more data from their "parent" reader, and then your decompression algo will return an error if it runs out of data, but expects more.
+
+1756667722
+grayhatter!~grayhatte@user/grayhatter
+I don't know how good of an example this would be, because I only know about it because an edge case broke, but the compression libs in the stdlib might be a useful starting point if you haven't looked at them yet https://ziglang.org/documentation/0.15.1/std/#src/std/compress/zstd.zig
+
+1756667776
+grayhatter!~grayhatte@user/grayhatter
+err, I meant to link to https://ziglang.org/documentation/0.15.1/std/#src/std/compress/zstd/Decompress.zig 
+
+1756668071
+squeek502!~squeek502@user/squeek502
+thephred, if you're talking about `flate.Decompress`, there is one issue that makes it impossible to use fully correctly regardless of buffer size (https://github.com/ziglang/zig/issues/24916) and a few that severely restrict how it can be used with 0 buffer size (https://github.com/ziglang/zig/issues/25035, https://github.com/ziglang/zig/issues/25032)
+
+1756668118
+squeek502!~squeek502@user/squeek502
+i'll be filing an issue soon that explores the more general problem described in #24916
+
+1756668329
+squeek502!~squeek502@user/squeek502
+the tl;dr for now is: if you know for sure that the output buffer is an Allocator.Writing, you can use the direct mode (zero length buffer) but that can still fail if certain Reader APIs are used (streamExact, discard, rebase, readVec). Otherwise, you should use a buffer of size flate.max_window_len and pray that `peekDelimiterInclusive` is not called
+
+1756668432
+squeek502!~squeek502@user/squeek502
+most of that likely applies to zstd as well, have been mostly looking at flate for now though
+
+1756668653
+squeek502!~squeek502@user/squeek502
+sorry, Allocating.Writing should be Writer.Allocating, not sure how i mixed that up
+
+1756670550
+leiu!~leiu@user/leiu
+Howdy. Wrote a synchronised queue based on the LinearFifo and with Thread.Mutex / Thread.Condition. Is there a guideline available to do the migration towards the new std.Io.Writer / std.Io.Reader API? Consulted already the great Don't-forget-to-flush-talk from @andrewrk. Wasn't yet able to obtain the Io.Queue which was used there in a slide. (Looked into lib/std/Io.zig.)
+
+1756670614
+ifreund!2940d10f8b@user/ifreund
+leiu: there isn't a generic queue datastructure included in the 0.15.1 release unfortunately
+
+1756670681
+ifreund!2940d10f8b@user/ifreund
+your options are to either copy LinearFifo into your codebase, copy the new Deque here: https://github.com/ziglang/zig/pull/24968 and replace it with the std version in 0.16, or write your own
+
+1756671214
+leiu!~leiu@user/leiu
+@ifreund: Alrighty, thank you much for your answers. I think I'm going to stick with the new deque. Looks like the deque does only take an allocator but no io parameter. So I assume in my case I have to wrap it with the Thread synchronisation primitives? (Like I did with the LinearFifo.)
+
+1756671398
+thephred!~thephred@user/thephred
+squeek502 Interesting. I was looking at flat.Decompress as an example to learn from before bringing this up and I was confused by the rebase in direct working with the buffer but just assumed I was not understanding so https://github.com/ziglang/zig/issues/25035 is indeed interesting to me.
+
+1756671408
+thephred!~thephred@user/thephred
+I am not using those directly in what I am working on so the problems are mainly useful to inform my exploration of examples.
+
+1756671547
+squeek502!~squeek502@user/squeek502
+thephred, i'm going through the same process actually, my ultimate goal is to write an article on the new reader/writer, not sure how long it'll take to complete though
+
+1756671627
+ifreund!2940d10f8b@user/ifreund
+leiu: indeed, there's still no thread-safe queue in the standard library
+
+1756671738
+thephred!~thephred@user/thephred
+grayhatter it seems quite possible I am looking at this all wrong. I'm trying to understand what is the right way to build readers that stack (think a tar inside a gzip) in such a way that you don't need to provide each and every step in the reader chain with it's own buffer. That may not be sensible however. I may be thinking more like in rust
+
+1756671739
+thephred!~thephred@user/thephred
+where the streaming is more like a big nested state machine with the iterators that the compiler can optimize and doesn't need buffers at every step. Just looking for examples and guidance.
+
+1756671771
+ifreund!2940d10f8b@user/ifreund
+leiu: fwiw, the Io.Queue you mentioned is here: https://github.com/ziglang/zig/blob/5dd4bd3a0d41ac37117da8664bc24b884517b14e/lib/std/Io.zig 
+
+1756671778
+ifreund!2940d10f8b@user/ifreund
+(on the Io.net branch)
+
+1756671808
+ifreund!2940d10f8b@user/ifreund
+I suppose something like that will probably land by 0.16
+
+1756671827
+thephred!~thephred@user/thephred
+squeek502 Awesome! would love to read it. I just read https://joegm.github.io/blog/inside-zigs-new-writer-interface/ which I found on ziggit.dev which was great. Doesn't answer this question though.
+
+1756671882
+thephred!~thephred@user/thephred
+squeek502 where are you likely to post said blog when finished? (like can I watch out for it on ziggit.dev or something like that)
+
+1756671913
+thephred!~thephred@user/thephred
+What is the best way to provide a code snippet here?
+
+1756671920
+squeek502!~squeek502@user/squeek502
+yeah i'll put it on ziggit.dev, but it'll be on https://www.ryanliptak.com/blog/
+
+1756671935
+thephred!~thephred@user/thephred
+squeek502 Thanks!
+
+1756672188
+leiu!~leiu@user/leiu
+ifreund: I could contribute it, if interested. (Also already wrote a bunch of test cases for it.) But it is solely using Threading as concurrency method. Don't know if that is in the interest/direction which the standard library intends go towards with the new Io API.
+
+1756672207
+thephred!~thephred@user/thephred
+To give an example of my question here is a code snippet (the site doesn't seem to be running 0.15+ so you can't actually run it there): https://zig.fly.dev/p/cTetSaO9CtU
+
+1756672278
+leiu!~leiu@user/leiu
+ifreund: Thank you for the link to Io.Queue! Will have a good look at it. Also to help me learn about the new Io API.
+
+1756672368
+thephred!~thephred@user/thephred
+If I do a `takeInt` directly from the `reader` it works but if I do it through the limited reader with 0 buffer it doesn't. In my real use cases there are decompressor custom readers inside limited readers that just read out headers and then pass through inside other readers etc. I want to understand if I need to provide each reader layer with it's
+
+1756672368
+thephred!~thephred@user/thephred
+own buffer. I'm beginning to think the answer is "it depends" and that just means I need to understand more and have a better intuition of what is the common patterns and ergonomics so that I'm doing a good job.
+
+1756672946
+grayhatter!~grayhatte@user/grayhatter
+thephred: just guessing this is the part that you're missing from your answer, but consider the case where you'd read a header for [some type] directly from a file descriptor, you'd know (generally) how much space you'd need for the header. And you'd either allocate for that header/buffer, or if it was small, you might just create an array on the stack because after you read 2 bytes from the 10 byte
+
+1756672948
+grayhatter!~grayhatte@user/grayhatter
+header, you'd return from the function.
+
+1756672981
+grayhatter!~grayhatte@user/grayhatter
+now, that buffer (or possibly header) is put into the reader instead
+
+1756673045
+grayhatter!~grayhatte@user/grayhatter
+for something like decompression, maybe the final size is in the header, and you'd alloc() for the buffer and construct the decompression reader after reading from the header
+
+1756673233
+grayhatter!~grayhatte@user/grayhatter
+so, yes "it depends" but if you already knew how to do that, (which you really have to know to write the code for [de]compression) where now you just have to be much more explicit about exactly where that data lives, but you also have to abstract the answer too
+
+1756673286
+grayhatter!~grayhatte@user/grayhatter
+No idea if that makes any sense, or helps give you a useable answer at all
+
+1756673545
+grayhatter!~grayhatte@user/grayhatter
+Another example; if you're parsing json using SIMD, you might want to "overrun" your input buffer, so if you allocate a reader buffer that's x bytes longer than the string you're checking, you can safely overrun the buffer without hitting a segv. The Io.Reader interface makes that kinda thing easy, but you'd create the buffer for that reader to "custom fit" your json parser. I.e. in Zig you don't
+
+1756673547
+grayhatter!~grayhatte@user/grayhatter
+create a reader to make it look and follow a generic reader, you create a Reader for the exact task that you're writing, and then that reader is now reusable anywhere, but behaves correctly for your use case
+
+1756674508
+rvrb!~rvrb@156.146.51.229
+ifreund: "is implemented from scratch based on the API design lessons learned from ArrayList over the years"; those lessons would be an interesting forum/blog post if you are up for it
+
+1756674714
+thephred!~thephred@user/thephred
+grayhatter are you saying that I should require and assert that the reader I use to pull the header have a buffer passed to it that has at least the size I need to pull in the header?
+
+1756674946
+thephred!~thephred@user/thephred
+Or maybe also allow that you pass no buffer but the reader passed in is expected to be able to pull that same amount? I keep thinking of the consumer of this having to construct 4 different readers and pass each one a buffer of some size. I guess that is fine. (Although the more I think about it the more I wonder if the header example is a bit of a
+
+1756674947
+thephred!~thephred@user/thephred
+miss. If it is just pull the header and then hand off the reader for the remainder it might make sense to either use stack or only have the buffer required for the first part and then let it go. The actual reader stack could skip that layer, i.e. use the original reader.)
+
+1756675143
+thephred!~thephred@user/thephred
+s/The actual reader stack could/The actual reader chain could/
+
+1756675666
+grayhatter!~grayhatte@user/grayhatter
+> are you saying that I should [...]
+
+1756675772
+grayhatter!~grayhatte@user/grayhatter
+no, I'm not being prescriptive. I'm giving that as one of the things you might consider when building up your reader stack
+
+1756676129
+grayhatter!~grayhatte@user/grayhatter
+but, if you're gonna construct the whole header for a given type, that data has to live somewhere, it could live in the reader buffer, or it 10 of the 100 bytes could live in reader, and the other 100 could live somewhere else, one is more wasteful.
+
+1756676207
+grayhatter!~grayhatte@user/grayhatter
+really though, don't get too hung up on picking the exact right size for every single reader buffer. Give your self enough room in the buffer to avoid making a lot of expensive syscalls
+
+1756676460
+grayhatter!~grayhatte@user/grayhatter
+maybe you want your reader to be very memory efficent, and you'll use small buffer sizes, maybe you want it to be really fast, every time you make a kernel syscall it's gonna slow everything down, so you might wanna allocate 2GiB buffers. You should use Reader however you want, there's no "wrong" way (except providing a 0 size buffer, that's probably wrong)
+
+1756676516
+grayhatter!~grayhatte@user/grayhatter
+(wrong because it will be needlessly painfully slow)
+
+1756676832
+smlavine!~smlavine@sourcehut/user/smlavine
+I (kindly and understandably appreciating the work of a volunteer open source contributor) wish the Arch package maintainer would update to 0.15.1 :)
+
+1756676964
+grayhatter!~grayhatte@user/grayhatter
+smlavine: I've grabbed the download from ziglang.org to ~/zigbin and added the dir to $PATH
+
+1756677046
+grayhatter!~grayhatte@user/grayhatter
+it'll use the included stdlib from that dir as well, so you don't have to worry about anything extra, it's how I'm updating my repos now, shockingly easy (easier than fighting pacman)
+
+1756677187
+smlavine!~smlavine@sourcehut/user/smlavine
+Maybe I'll do that :)
+
+1756677807
+thephred!~thephred@user/thephred
+grayhatter thank you for explaining. I'll keep learning and see what comes of it. Ultimately I think I must have started with the assumption that you need a buffer to bring the data into the program memory space (i.e. on the file reader for instance) and then you'll need a buffer to hold the data as the os is writing it out (e.g. maybe out on the
+
+1756677808
+thephred!~thephred@user/thephred
+network or back to file system). Those make sense to me because of the aforementioned sys call and performance discussion. But when the source/parent reader of a given reader is in the program space it doesn't make as much sense to me. You could say it comes down to convenience but that depends on for whom. It might be convenient to have a nice
+
+1756677808
+thephred!~thephred@user/thephred
+buffer with the right size to write clean code when implementing the reader but that is the opposite of the consumer who now has to provide a buffer. So you could swap it and now it has nice ergonomics but the reader is a pain. I'm trying to figure out the best practices or if there is some way to do it that let's the consumer decide.
+
+1756678373
+andrewrk!~andrewrk@mail.ziglang.org
+thephred: here are some rules of thumb: 1/3: in a stream pipeline, buffers belong to *edges* not *nodes*. the node that connects the reader end of the pipeline to the writer end of the pipeline should be empty; the rest populated
+
+1756678427
+andrewrk!~andrewrk@mail.ziglang.org
+2/3: in the middle of a stream pipeline, minimal buffer size that satisfies the constraints of each stream implementation is optimal. this requires reading documentation for the two stream implementations you are connecting and choosing the higher requirement
+
+1756678528
+andrewrk!~andrewrk@mail.ziglang.org
+3/3: in the ends of a stream pipeline (file, network socket) ideal buffer size is sweet spot between trashing cpu cache lines and overcoming syscall overhead. this is typically 1K, 2K, or 4K, but can very across operating systems and architectures
+
+1756678920
+grayhatter!~grayhatte@user/grayhatter
+is this the prefered style? https://zigbin.io/b978c3
+
+1756679001
+squeek502!~squeek502@user/squeek502
+if you're using the value immediately you can just pass the pointer to array to whatever wants a slice, so just `const foo = try reader.takeArray(20); const sha = SHA.init(foo);`
+
+1756679058
+squeek502!~squeek502@user/squeek502
+future `take*`, etc can invalidate the memory pointed to though so keeping the pointer around can lead to problems
+
+1756679087
+thephred!~thephred@user/thephred
+andrewrk Whoa! this is exactly the clarity I was lacking. So if I understand what you are saying, in a pipeline that pumps from reader -> reader -> ... -> reader -> writer. Only that last reader can obviously be buffer 0. Not because of the reader itself but because of its edge being between a reader and writer. That is also the reader you pump if
+
+1756679088
+thephred!~thephred@user/thephred
+you are going to do that. P.S. Thank you for the language!
+
+1756679162
+grayhatter!~grayhatte@user/grayhatter
+that's what I was considering, (that code is the simplest diff), and exactly the question I was considering... was gonna ask if I should be worried about data lifetimes, or what guarentees Reader makes. I.e. data doesn't move without a syscall
+
+1756679252
+andrewrk!~andrewrk@mail.ziglang.org
+thephred: yes exactly
+
+1756679277
+thephred!~thephred@user/thephred
+andrewrk *salute*
+
+1756679434
+squeek502!~squeek502@user/squeek502
+grayhatter, yeah `takeArray` is missing documentation around lifetime, it should have something similar to what `take` says imo
+
+1756679466
+andrewrk!~andrewrk@mail.ziglang.org
+yeah all the "take" functions that return pointers have the same rules
+
+1756679560
+grayhatter!~grayhatte@user/grayhatter
+a number of the docs also say `len` when then mean `n`
+
+1756679688
+grayhatter!~grayhatte@user/grayhatter
+I repeatedly pleased with how intuitive the Io.Reader/Writer is (once I learned read is now called take)
+
+1756679761
+grayhatter!~grayhatte@user/grayhatter
+Just replaced std.ArrayList.writer() with Writer.Allocating, and was able to write the diff without reading the docs/src *chefs kiss* 
+
+1756680932
+grayhatter!~grayhatte@user/grayhatter
+are ziglang.org stdlib docs broken for everyone, or just me?
+
+1756682216
+andrewrk!~andrewrk@mail.ziglang.org
+I noticed a high error rate from nginx; updating kernel version and rebooting the machine
+
+1756683513
+grayhatter!~grayhatte@user/grayhatter
+I had a friend who mentioned that some new nginx update has been a complete nightmare for stability, if you recently updated nginx and the reboot doesn't fix it, might be worth considering rolling back the nginx update
+
+1756683572
+grayhatter!~grayhatte@user/grayhatter
+err, but this was also a bit ago, so I'm now less confident in the connection
+
