@@ -1,0 +1,332 @@
+1756774369
+torque!~tachyon@user/torque
+that's a very vague statement, and casting normally improves the self-descriptiveness of code
+
+1756792329
+andrewrk!~andrewrk@mail.ziglang.org
+Smithx10: I would say that arithmetic and mathematic related casting is not yet in its final form
+
+1756794945
+ifreund!2940d10f8b@user/ifreund
+pop quiz: why is this a bugfix?: https://bpa.st/raw/HXPA
+
+1756795146
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: prevents redundantly discovering over and over that stderr requires streaming writes, not positional writes
+
+1756795265
+andrewrk!~andrewrk@mail.ziglang.org
+however, you can do that preemptively with writerStreaming(). also you're probably better off with std.debug.lockStderrWriter()
+
+1756795834
+ifreund!2940d10f8b@user/ifreund
+lockStderrWriter() is a good tip :)
+
+1756795878
+ifreund!2940d10f8b@user/ifreund
+for those not on zulip, the bigger issue here is that if stderr is a normal file rather than a pipe, the old code writes every log message to the beginning of the file, overwriting the previous one
+
+1756806286
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I need to re-research this but how does Zig fare when C projects have pre-processor macros? IIRC Zig sees the source files _after_ the C pre-processor has processed them, if that's the case does Zig ship the C pre-processor itself or is it tied to the backend in-use (Zig native, LLVM etc)?
+
+1756807016
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Alternately, how do I create a comptime tuple of enum literals? I'm stuck on trying to create a StructField which is an .enum_literal type
+
+1756807038
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+StructField .type seems to require being set as: .@"type" = @Type(.enum_literal)
+
+1756807070
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+However then nothing I can think of when setting .default_value_ptr works, e.g.:                     .default_value_ptr = @as(*const anyopaque, @ptrCast(&@as(@Type(.enum_literal), std.fmt.comptimePrint(".{s}{d}", .{ name_str, rci })))),
+
+1756808268
+hadronized!~hadronize@2001:41d0:a:fe76::1
+tsujp: not sure either but I know you can @cDefine() in a @cImport(), so it probably runs before you get access to the symbols in your code
+
+1756808678
+ifreund!2940d10f8b@user/ifreund
+translate-c operates on the AST of header files, before macros are expanded
+
+1756808701
+ifreund!2940d10f8b@user/ifreund
+this is obvious when you note that it outputs translations of macros into zig functions when possible
+
+1756808733
+ifreund!2940d10f8b@user/ifreund
+compiling C code works just like any other C compiler
+
+1756809008
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Alright, so if I try to replace the C toolchain of another project so I can build it with Zig I don't have to worry about any pre-processor macro stuff
+
+1756809026
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Struggling hard to try and create a tuple of enum literals at comptime.. is this possible..?
+
+1756809132
+ifreund!2940d10f8b@user/ifreund
+tsujp: pretty sure you can't create an enum literal value from a string currently
+
+1756809172
+ifreund!2940d10f8b@user/ifreund
+I'd recommend taking several steps back and reconsidering what you actually want to achieve
+
+1756809214
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: can I create one from a real enum tag?
+
+1756809232
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Alternately I suppose I could use an array instead of a tuple of enum literals if it is impossible
+
+1756809289
+ifreund!2940d10f8b@user/ifreund
+you can create enum values from a string with @field(EnumType, "field_name")
+
+1756809621
+ifreund!2940d10f8b@user/ifreund
+also note that you don't need to set a default value, in case that's the misunderstanding you're having
+
+1756809665
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmmmmmmm how so? Trying to create a StructField without setting default_value_ptr is an error last I tried
+
+1756809678
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+missing struct field: default_value_ptr
+
+1756809704
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's nullable, isn't it?
+
+1756809716
+tonitch!~tonitch@user/tonitch
+Is there a way to force evaluation of everything in a file ? I have some function with dead references and I would like to catch them.
+
+1756809787
+ifreund!2940d10f8b@user/ifreund
+tsujp: set it to null
+
+1756809812
+ifreund!2940d10f8b@user/ifreund
+tonitch: add a test with std.testing.refAllDeclsRecursive(@This())
+
+1756809817
+ifreund!2940d10f8b@user/ifreund
+(assuming I've spelled it right)
+
+1756809887
+tonitch!~tonitch@user/tonitch
+thanks :D
+
+1756810120
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: im confused then, what holds the value of the struct field..? A field has a name, a type, where's the value that field holds if not pointed to by default_value_ptr?
+
+1756810171
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Going that route too if I try and set a default_value_ptr to null and then set name via std.fmt.comptimePrint I get error: tuple cannot have non-numeric field '.DUP1'
+
+1756810216
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Setting name to 0 yields: error: expected type '[:0]const u8', found 'comptime_int'
+
+1756810233
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+lol, so it cannot be a non-numeric value but then it says "give me a nul terminated slice of bytes" wat
+
+1756810261
+ifreund!2940d10f8b@user/ifreund
+name must be "0", "1", "2", etc
+
+1756810309
+ifreund!2940d10f8b@user/ifreund
+I don't understand your first question, maybe this helps: https://ziglang.org/documentation/master/#Default-Field-Values
+
+1756810341
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah I was doing names of "0", "1", "2" beforehand (so I was doing it right). On the reified struct it said I that the type (the struct) did not support indexing too btw
+
+1756810345
+ifreund!2940d10f8b@user/ifreund
+if there is no default value for a field it must be explicitly initialized
+
+1756810362
+ifreund!2940d10f8b@user/ifreund
+well did you set is_tuple = true?
+
+1756810394
+ifreund!2940d10f8b@user/ifreund
+I feel like you need to slow down and read and fully understand the API you are using
+
+1756810414
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yes I did set is_tuple = true
+
+1756810455
+ifreund!2940d10f8b@user/ifreund
+note also that @Type() gives you a type not a value
+
+1756810504
+ifreund!2940d10f8b@user/ifreund
+(well a type is a value with type type in zig, but not generally what people mean when they say value)
+
+1756810962
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund: i mean, i _think_ i do and i am trying to further my understanding via this. Here's a snippet https://gist.github.com/tsujp/a47f76ff4672b2bb03e1d849358565b7
+
+1756811000
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I've had is_tuple etc there from the start, I looked at std/builtin.zig for the struct fields etc beforehand. I've used a similar pattern for EnumFields elsewhere. This works fine without the "incrementing" part (which is where trying to create the enum_literal comes into play)
+
+1756811025
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+It may be easier to just use an array instead but since the rest of the stuff I don't tough is already a tuple of enum_literals I figured it'd be easier to stick with that 
+
+1756811255
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Doing   @compileLog(@typeInfo(@TypeOf(op_names))); it seems that when I attempt to reify a struct (i.e. the true clause of the if statement) the resulting type is @as(builtin.Type, .{ .type = {} }) which is wrong, even though a @compileLog(op_names) shows fields and values. So perhaps the issue here is I need a type annotation at op_names and I was doing everything else pretty much correctly after-all
+
+1756811271
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+However since I cannot create an enum_literal I don't see what possible type annotation could be used, but let's see
+
+1756811652
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Right first derp is I was wrapping the reified struct in @Type by accident, but now that it's a real value and not a type it still has is_tuple and so forth set to false on it even though it's literally `true` in the source
+
+1756811710
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+It's true immediately after it's made but false afterwards
+
+1756811862
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Perhaps a dangling pointer..?
+
+1756812232
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Nope can see the field values, ugh why
+
+1756812322
+ifreund!2940d10f8b@user/ifreund
+the return type of your MakeOpAnnotations function does not depend on the type of the arguments
+
+1756812347
+ifreund!2940d10f8b@user/ifreund
+either you've got the return type wrong, or there is pretty much no reason for you to be using @Type at all here
+
+1756812358
+ifreund!2940d10f8b@user/ifreund
+take like 10 steps back
+
+1756812380
+ifreund!2940d10f8b@user/ifreund
+try out the simplest, isolated examples you can come up with that build towards what you want
+
+1756812413
+ifreund!2940d10f8b@user/ifreund
+also, embrace being stuck
+
+1756812418
+ifreund!2940d10f8b@user/ifreund
+this is how learing happens
+
+1756812422
+ifreund!2940d10f8b@user/ifreund
+being stuck is good
+
+1756812647
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I truncated the rest of MakeOpAnnotations, the rest of it would be to loop op_names and then add an entry to the map with the second tuple item from that definition list
+
+1756812723
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I don't know why but if I instead do `const res = ...` and then `return res;` instead of `break :blk ...` then after `const` and before `return` I can @compileLog() and see that the created struct has is_tuple = true etc. After it's returned via `break :blk` if I do a @compileLog it magically has is_tuple = false
+
+1756812761
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+So _something_ to do with `break` (im not sure) is changing the properties of the struct I am creating, and then when I try and loop it that's where the "cannot index" error is coming from
+
+1756812792
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I think I'll just create an array instead, trying to reify a tuple like this is evidently extremely hard
+
+1756812819
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm not exactly sure whether I am wrong here, or if this is _maybe_ a bug, but this feels like the more complicated approach versus (what I expect) should just work: a comptime array
+
+1756812924
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'm already advancing from the previous working case of this pattern which had no iteration, that one worked fine since I just looped the given tuple of enum literals
+
+1756812961
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+The "only" difference with this one is I was trying to create that list (from the given number, and base name e.g. 16, .DUP) before then iterating it
+
+1756813924
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+ifreund that was much easier and is now working.. I've got an array of opcode names I can now loop over (including the dynamically constructed ones), the rest should be what I already have just with a check if there's .@"fn" and if so.. call it.
+
+1756813946
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i don't know if you wanted me to step back even further (I am listening to your advice, or.. trying to)
+
+1756835600
+rvrb!~rvrb@156.146.51.230
+any opinions on this pattern?  `defer assert(gpa.deinit() != .leak);`
+
+1756835701
+bblack!~bblack@wikimedia/bblack-WMF
+if gpa is always debug_allocator I assume
+
+1756835739
+bblack!~bblack@wikimedia/bblack-WMF
+for me, for now, I'm explicitly using debug_allocator as my only allocator.  I might change later when I get to caring about optimizations at that level more.
+
+1756835753
+bblack!~bblack@wikimedia/bblack-WMF
+so yeah, I do basically that.  near the top of main() or equivalent I tend to have the pattern:
+
+1756835763
+rvrb!~rvrb@156.146.51.230
+good point, I guess I should be using `smp_allocator` in ReleaseFast
+
+1756835767
+bblack!~bblack@wikimedia/bblack-WMF
+        var debug_allocator: std.heap.DebugAllocator(.{ .thread_safe = false, .stack_trace_frames = 0 }) = .init;
+
+1756835770
+bblack!~bblack@wikimedia/bblack-WMF
+        const alloc = debug_allocator.allocator();
+
+1756835773
+bblack!~bblack@wikimedia/bblack-WMF
+        defer if (debug_allocator.deinit() != .ok)
+
+1756835775
+bblack!~bblack@wikimedia/bblack-WMF
+            @panic("main thread allocator detected leaks at shutdown!");
+
+1756835868
+bblack!~bblack@wikimedia/bblack-WMF
+it's helpful to keep me on my toes as I develop, so I know when I did something dumb with an errdefer pattern somewhere and leaked.
+
+1756835876
+bblack!~bblack@wikimedia/bblack-WMF
+or whatever the case may be
+
+1756835953
+bblack!~bblack@wikimedia/bblack-WMF
+(ignore my DA config settings (thread_safe and stack_trace_fames), those are probably not good general advice!)
+
+1756835998
+bblack!~bblack@wikimedia/bblack-WMF
+the model of the program I'm working on is that I never want to concurrently use the same allocator from competing threads.  If a sub-thread needs to make allocations, it spins up its own independent allocator(s).
+
+1756847242
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: "gpa" doesn't necessarily mean debug_allocator - it typically indicates that it will be used with resize and free rather than intentionally leak everything
+
