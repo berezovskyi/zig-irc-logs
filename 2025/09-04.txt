@@ -1,0 +1,444 @@
+1756961583
+andrewrk!~andrewrk@mail.ziglang.org
+smlavine: been there
+
+1756992591
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+more comptime schenanigans, I've got my MakeOpAnnotations finished (or so I thought) but I am getting: call to function with comptime-only return type '?lib.op.OpAnnotation' is evaluated at comptime
+
+1756992652
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Unless I am doing something wrong (definitely possible) it feels like Zig is accidentally marking this stuff as comptime only when it should be available at runtime (as I've intended)
+
+1756993370
+kassiopeia!~kassiopei@user/Kassiopeia
+can someone explain me what is the correct way to create a struct which has an ArrayList of a type. I want it to be empty when instantiating it in my main function, and then use the add function to append new items to the item list. this is my code with the error message: https://voidbin.com/paste/74f3fab8-1e27-44af-a3db-1c5ba9463035 Not sure how i could pass the Allocator right when creating the
+
+1756993372
+kassiopeia!~kassiopei@user/Kassiopeia
+Notes object. Appending to an uniniated ArrayList doesn't seem to work. Maybe there is a smarter way to do this too?
+
+1756994176
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you need to init it kassiopeia 
+
+1756994192
+hadronized!~hadronize@2001:41d0:a:fe76::1
+.notes = std.ArrayList(Note).init(allocator)
+
+1756994240
+kassiopeia!~kassiopei@user/Kassiopeia
+so i would create an init function for my Notes struct that takes the allocator?
+
+1756994251
+hadronized!~hadronize@2001:41d0:a:fe76::1
+.notes = undefined basically allocate the memory for the ArrayList(Note), which is roughly three pointers, nothing else
+
+1756994277
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(one pointer to the heap, a usize for the capacity, and a usize for the length; the first two are bundled as a slice)
+
+1756994283
+hadronized!~hadronize@2001:41d0:a:fe76::1
+kassiopeia: yep
+
+1756994290
+hadronized!~hadronize@2001:41d0:a:fe76::1
+or you can do it lazily in your add() func^tion
+
+1756994292
+hadronized!~hadronize@2001:41d0:a:fe76::1
+function*
+
+1756994309
+hadronized!~hadronize@2001:41d0:a:fe76::1
+but that would require you to track the state of your .notes 
+
+1756994331
+hadronized!~hadronize@2001:41d0:a:fe76::1
+which I would not recommend here; just have an init() function, and a deinit() function you can easily call with a defer 
+
+1756994357
+hadronized!~hadronize@2001:41d0:a:fe76::1
+also, remember that calling ArrayList(_).deinit() won’t call deinit() on the items held by the array
+
+1756994365
+hadronized!~hadronize@2001:41d0:a:fe76::1
+so you want to ensure you do it in your own deinit()
+
+1756994372
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Zig doesn’t have destructors
+
+1756994484
+kassiopeia!~kassiopei@user/Kassiopeia
+perfect, the init works. What did you mean by "ArrayList(_).deinit() won’t call deinit() on the items held by the array", do i need to deinit every item i have stored seperately or did i misinterpret that?
+
+1756994503
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you need to, yes
+
+1756994522
+hadronized!~hadronize@2001:41d0:a:fe76::1
+imagine an ArrayList([]const u8), where the []const u8 represents allocated strings
+
+1756994533
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you just deinit the ArrayList, you get a leak there for all items held
+
+1756994536
+hadronized!~hadronize@2001:41d0:a:fe76::1
+you want to do something like
+
+1756994564
+hadronized!~hadronize@2001:41d0:a:fe76::1
+for (your_array.items) |str| allocator.free(str); your_array.deinit();
+
+1756994566
+hadronized!~hadronize@2001:41d0:a:fe76::1
+something like that
+
+1756994634
+bblack!~bblack@wikimedia/bblack-WMF
+you can also init it in the definition of Notes if you want, like:
+
+1756994640
+bblack!~bblack@wikimedia/bblack-WMF
+notes: std.ArrayList(Note) = .empty,
+
+1756994664
+kassiopeia!~kassiopei@user/Kassiopeia
+bblack would that avoid to use undefined when intiating it in my main function?
+
+1756994671
+bblack!~bblack@wikimedia/bblack-WMF
+yes
+
+1756994698
+bblack!~bblack@wikimedia/bblack-WMF
+.empty is comptime and defines an empty list you can call arraylist methods on
+
+1756994707
+kassiopeia!~kassiopei@user/Kassiopeia
+hadronized i see, couldn't i also just deinit the whole Arena i pass to the ArrayList? or is that not possible/bad practice
+
+1756994781
+kassiopeia!~kassiopei@user/Kassiopeia
+the .empty part is nice, i like that alot
+
+1756994935
+hadronized!~hadronize@2001:41d0:a:fe76::1
+:)
+
+1756995128
+kassiopeia!~kassiopei@user/Kassiopeia
+also is there a way to automatically assign the ID? right now i have to specify the ID for each Note, but instead maybe it just counts up, or uses some other way to generate IDs. The problem is i have to declare the id when creating the Note object, even when using id: ?u32
+
+1756995165
+kassiopeia!~kassiopei@user/Kassiopeia
+i guess one way to do this is to pass title and text to the add function, and then it creates the Note object with the ID that it wants to assign. I wonder if there is another way
+
+1756995737
+kassiopeia!~kassiopei@user/Kassiopeia
+.id = @intCast(@as(usize, @intCast(self.notes.items.len)) + 1), i have it like this now
+
+1756997405
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im not specifying the integer literally but deriving it, and AFAIK comptime_int is for integers only known at comptime like those literally specified in the source file
+
+1756997426
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Is there a way to convert an XML response in zig to json so that I can use parseJSON? I'm trying to send and receive messages from a subsonic server but the responses are xml
+
+1756997789
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+aaaaaaaaaaaaaaand that was the problem
+
+1756997831
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+maybe im dumb or maybe the compiler could be a tad more clear that it was specifically the comptime_int valued field, it appeared like the entire struct to me
+
+1756997834
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+now i know though
+
+1756998021
+bblack!~bblack@wikimedia/bblack-WMF
+JetpackJackson: https://github.com/nektro/zig-xml ?
+
+1756998036
+bblack!~bblack@wikimedia/bblack-WMF
+you could parse xml directly with that, it sounds like
+
+1756998415
+JetpackJackson!739e7f3d14@user/JetpackJackson
+I tried but I guess there's something with the format that behaves weird, like getting it direct from the server resulted in garbage tacked on at the end whereas curl worked fine
+
+1756998418
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Like
+
+1756998437
+JetpackJackson!739e7f3d14@user/JetpackJackson
+It was a while back but i don't remember if it was the library's fault or not
+
+1756998715
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://share.katzenmue.de:9270/file_share/068b9ac3-20d6-70b4-9cbd-3b222a690593/2025-08-24_18-00-27.png
+
+1756998974
+JetpackJackson!739e7f3d14@user/JetpackJackson
+https://zigbin.io/837b3a
+
+1756998990
+JetpackJackson!739e7f3d14@user/JetpackJackson
+if i open the file in helix its got a bunch of junk at the end
+
+1756999005
+JetpackJackson!739e7f3d14@user/JetpackJackson
+if i curl the server api it has no junk
+
+1756999091
+JetpackJackson!739e7f3d14@user/JetpackJackson
+basically before i even get to the library (just writing the reponse to a file to test) im getting weird stuff at the end
+
+1756999901
+bblack!~bblack@wikimedia/bblack-WMF
+the trailing 0xaa bytes are undefined memory, basically
+
+1756999937
+bblack!~bblack@wikimedia/bblack-WMF
+you've got a buffer full of undefined, and xml stored at the start of the buffer, but you're outputting all those excess undefined bytes at the end as part of the xml data?
+
+1756999977
+JetpackJackson!739e7f3d14@user/JetpackJackson
+How do I make it write only the response if I don't know how big the response can be
+
+1757000058
+bblack!~bblack@wikimedia/bblack-WMF
+I don't know for sure, but based on the paste, I suspect: "try xml_file.writeAll(writer.writer.buffer);" is just dumping the whole underlying buffer to the file, which is probably not what you want.
+
+1757000120
+bblack!~bblack@wikimedia/bblack-WMF
+I suspect maybe a better pattern is to create the xml output File first, and pass the file's writer directly to the .response_writer of client.fetch? or something along those lines
+
+1757000144
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think you're supposed to access writer.buffer directly
+
+1757000177
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Oh
+
+1757000213
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.Io.Writer.Allocating has methods for converting it to an ArrayList for instance
+
+1757000225
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+https://ziglang.org/documentation/master/std/#std.Io.Writer.Allocating.toArrayList
+
+1757000279
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but bblack is right too
+
+1757000311
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no need for an intermediate Writer.Allocating
+
+1757000494
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.written() on Writer.Allocating returns a slice of the written data, so avoids reallocating when you don't need it as an ArrayList
+
+1757000543
+bblack!~bblack@wikimedia/bblack-WMF
+lately I keep sort of bumping into this weird idea in my head for some use-cases... of making something like an ArrayList (but which isn't meant for direct .items access, has accessor methods for fetching items), which has std.Io interfaces allowing it to effectively be a deserializer for the object type in the list....
+
+1757000623
+bblack!~bblack@wikimedia/bblack-WMF
+as in like, MagicArrayOf(T).writer consumes data from some bytes source as-needed. and MagicArrayOf(T).get(3) tries to consume enough bytes to deserialize 4 of them (if we haven't already done so) and return the 4th one.
+
+1757000645
+bblack!~bblack@wikimedia/bblack-WMF
+don't ask me what to make of that thought, but I thought I'd spit it out :)
+
+1757000692
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+lazy parser?
+
+1757000715
+bblack!~bblack@wikimedia/bblack-WMF
+yeah something like that, standardized around T having some kind of .deserialize or .parse method from a bytes source.
+
+1757000789
+bblack!~bblack@wikimedia/bblack-WMF
+but I haven't touched the new std.Io stuff deeply-enough yet to even understand what I'm saying yet :)
+
+1757002711
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Gliptic, bblack, alright ill try that, thanks!
+
+1757005285
+JetpackJackson!739e7f3d14@user/JetpackJackson
+epic i changed writer.writer.buffer to writer.writer.buffered() and it works nicely now
+
+1757005835
+JetpackJackson!739e7f3d14@user/JetpackJackson
+... except for getting a reader out of it to parse
+
+1757005903
+JetpackJackson!739e7f3d14@user/JetpackJackson
+wait i can just do xml.Reader.Static
+
+1757007870
+bblack!~bblack@wikimedia/bblack-WMF
+is there a way to declare a stack array of bytes, which has alignment > 1? (I don't want to over-align the array elements themselves, just the start of the whole byte-array)
+
+1757008430
+bblack!~bblack@wikimedia/bblack-WMF
+the way I was doing this kind of thing in C was along the lines of: union { struct foo _alignme; char buf[1024]; }
+
+1757008472
+bblack!~bblack@wikimedia/bblack-WMF
+for that simple case, of course you could just have a struct foo on the stack and use mem.asBytes() on it to get a byte slice of its storage
+
+1757008554
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm, maybe I just have to use structs or unions to get there similarly.  I think there's a way.
+
+1757010322
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Is there a way to import a dependency that doesn't have a build.zig.zon? Realized I was using the wrong XML library
+
+1757013312
+ifreund!2940d10f8b@user/ifreund
+bblack: `const foo: [1]u8 align(16);`
+
+1757013333
+ifreund!2940d10f8b@user/ifreund
+er, s/;/ = undefined;/
+
+1757016908
+clevor!sid649024@id-649024.hampstead.irccloud.com
+JetpackJackson: `zig fetch --save=NAME url` IIRC
+
+1757016960
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Alright ill try that when I'm back at my laptop
+
+1757016962
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Thanks!
+
+1757017881
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: zon_decode doesn't exist, does it?
+
+1757017972
+andrewrk!~andrewrk@mail.ziglang.org
+1. I have no idea what you're talking about 2. was it necessary to ping me?
+
+1757018021
+grayhatter!~grayhatte@user/grayhatter
+updating my system zig broke zig.vim which I thought you maintained?
+
+1757018083
+grayhatter!~grayhatte@user/grayhatter
+and I'm sorry about the ping, I'll avoid doing so but figured you'd be the only one who'd know if it existed, or if this was just cute workaround
+
+1757018403
+andrewrk!~andrewrk@mail.ziglang.org
+I maintain the syntax but that's it. somebody else did the other stuff and I don't care enough to understand it
+
+1757018436
+andrewrk!~andrewrk@mail.ziglang.org
+actually my life has gotten better since that broke because ctrl+n stopped taking forever since it's back the vim default of only scanning open buffers
+
+1757018943
+grayhatter!~grayhatte@user/grayhatter
+depending on how important you find it, it might be worth considering giving the repo to zigtools and/or techatrix; his open PR fixes the primary reason I'm using zls instead of just zig.vim... which I suggest as an idle thought assuming they'd be interested (given they maintain so many other zig dev tools)
+
+1757019070
+andrewrk!~andrewrk@mail.ziglang.org
+didn't realize there was a techatrix pr open
+
+1757019117
+grayhatter!~grayhatte@user/grayhatter
+I've disabled any kind of code/text completion, which I easily recommend everyone should try, as it's drastically improved my ability (speed and depth) to find that sense of flow when writing code... but that's still an interesting observation, I probably should spend time optimizing response time as nvim does seem to be slowing down a bit
+
+1757019248
+bblack!~bblack@wikimedia/bblack-WMF
+FWIW, I never use IDEs or autocompletion tools.  I type everything I type, by hand in (neo)vim.  It is "slower", and I do sometimes curse at having to do something repetitive with my fingers.  But I find it's better in the long run.  It makes me feel the pain when I should, and it slows me down enough to think a little harder as I go, etc.  I'm sure there's reasons I don't even understand why it works better, 
+
+1757019254
+bblack!~bblack@wikimedia/bblack-WMF
+for me :)
+
+1757019355
+grayhatter!~grayhatte@user/grayhatter
+bblack: I've been blaming ADHD for it, (published/reviewed research is where I got the idea) but really, I think slowing down and thinking for a bit longer is the real trick
+
+1757019479
+grayhatter!~grayhatte@user/grayhatter
+Lately, I've "teaching my fingers" to get better at writing macros, and defaulting to s/syntax// and when I remember, it negates all the speed I feel I've lost turning off tab complete
+
+1757019735
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Huh interesting
+
+1757020054
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I have a lot of hardwired vim commands in my fingers.  I doubt I even consciously know what some of them are anymore :)
+
+1757020121
+bblack!~bblack@wikimedia/bblack-WMF
+little vim macros like 'd$' to delete the rest of this line and such.  and I do a lot of :g/foo/s//bar/g types of things.
+
+1757020142
+bblack!~bblack@wikimedia/bblack-WMF
+so I guess that counts as some level of automation, but it's not much :)
+
+1757020184
+grayhatter!~grayhatte@user/grayhatter
+bblack: not shift-D or shift-C?
+
+1757020249
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I don't use those I don't think.
+
+1757020271
+grayhatter!~grayhatte@user/grayhatter
+(delete/change) to end of line or d$
+
+1757020368
+bblack!~bblack@wikimedia/bblack-WMF
+many moons ago (the 90s!), I job-hopped more frequently and was always doing systems-level work on random *nixes, often as root.  I came to abhor customization, like fancy shell settings for autocompletions, or relying on even bash-isms, or the existence of any editor I really liked, etc.  Because if I came to rely on it, and it wasn't on the next machine I touched at this or the next job, I'd be in trouble.
+
+1757020385
+bblack!~bblack@wikimedia/bblack-WMF
+and I couldn't trust it, when it was important that every command was correct.
+
+1757020430
+bblack!~bblack@wikimedia/bblack-WMF
+so it sort of became a "thing", that I would only use the least-common-denominator tools.  luckily by then "vi" was common, or I'd probably be stuck on "ed" or something instead :)
+
+1757020515
+bblack!~bblack@wikimedia/bblack-WMF
+I wanted to be really sure whatever random *nix I connected to in whatever weird way (sometimes over serial ports or from dumb terminals, with faulty terminal settings and bad output), I could trust what I was doing and always know how to operate.
+
+1757020550
+bblack!~bblack@wikimedia/bblack-WMF
+now all that's just ancient history, but I think it had a hand in shaping me as a lifelong vi addict.
+
+1757021214
+grayhatter!~grayhatte@user/grayhatter
+vim is just better; which is an idea I plan to hold until I meet someone respectable who has used vim for a few years, and then switches (willingly) to an electron based editor... people only move in one direction
+
+1757021374
+bblack!~bblack@wikimedia/bblack-WMF
+I don't even really know people that use truly-fancy editors.  Mostly the friends I argue with about editors are emacs people.  If your editor needs a foot pedal, you have a problem :P
+
+1757023665
+baltevl!~baltevl@user/baltevl
+Hello everybody :) Does anyone know if there is a reason why std.http.Client.Connection.host() should not be marked as pub?
+
