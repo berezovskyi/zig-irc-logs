@@ -358,3 +358,107 @@ btw i just found std.fs.Dir.atomicFile() and it seems to do exactly what i need:
 JetpackJackson!739e7f3d14@user/JetpackJackson
 is there a way to read a really large file line by line into an arraylist in 0.15 without allocating a huge amount of memory?
 
+1757182745
+grayhatter!~grayhatte@user/grayhatter
+JetpackJackson: you just described the Io.Reader interface. Create a reader with a buffer the size of the longest line, and you have what you asked for
+
+1757182747
+andrewrk!~andrewrk@mail.ziglang.org
+JetpackJackson: you seem to want conflicting things, do you want the file in an array list or not?
+
+1757182783
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i do want it in an arraylist so i can go through the lines of the file
+
+1757182808
+grayhatter!~grayhatte@user/grayhatter
+oh, you want every line loaded into memory in an Arraylist([]const u8)?
+
+1757182821
+andrewrk!~andrewrk@mail.ziglang.org
+you can go through the lines without an ArrayList
+
+1757182870
+JetpackJackson!739e7f3d14@user/JetpackJackson
+its a list of birds thats really long so i dont wanna try and load/display all at once since its gonna be in a gui that the user scrolls through
+
+1757182887
+grayhatter!~grayhatte@user/grayhatter
+I guess you could calculate the start..end position for every line in the file and put that in an ArrayList(struct{ start: usize, end: usize }); But... I suspect you're trying to solve that problem with the wrong tool
+
+1757182890
+JetpackJackson!739e7f3d14@user/JetpackJackson
+im trying to replicate my android app in zig+qt basically
+
+1757182910
+grayhatter!~grayhatte@user/grayhatter
+JetpackJackson: how long is really long?
+
+1757182947
+JetpackJackson!739e7f3d14@user/JetpackJackson
+err 10985 lines according to `wc -l`
+
+1757182948
+grayhatter!~grayhatte@user/grayhatter
+for 10x the number of birds I can imagine exist, I would still probably load that into memory
+
+1757182982
+JetpackJackson!739e7f3d14@user/JetpackJackson
+so its ok to do a readToEndAlloc?
+
+1757182993
+grayhatter!~grayhatte@user/grayhatter
+the non-shared components of your qt library is probably 2-4x that, are you sure you care about the list of birds?
+
+1757183003
+JetpackJackson!739e7f3d14@user/JetpackJackson
+i just feel like i keep reaching for that when its not the best idea lol
+
+1757183005
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ah true
+
+1757183008
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so that's what, < 1 MB?
+
+1757183022
+JetpackJackson!739e7f3d14@user/JetpackJackson
+yeah
+
+1757183068
+grayhatter!~grayhatte@user/grayhatter
+I mean, hyperoptimization is fun, so go for it if you really want to... but just so it's clear, it doesn't matter, load the whole thing into memory, and yolo :D
+
+1757183068
+netvor!~netvor@2a00:ca8:a1f:cd0:dbfc:7ba9:de8d:e0d2
+btw if you don't have a line limit then whatever solution that tries to avoid reading a lot into memory may need to account for that .. the whole file might be one huge line anyway
+
+1757183099
+JetpackJackson!739e7f3d14@user/JetpackJackson
+ah ok
+
+1757183165
+grayhatter!~grayhatte@user/grayhatter
+if you're working with multi GB files, mmap'ing the file can help the system a lot if it ever reaches memory pressure, but I wouldn't spend much time until it's >100M
+
+1757183179
+JetpackJackson!739e7f3d14@user/JetpackJackson
+oh ok thanks
+
+1757183203
+netvor!~netvor@2a00:ca8:a1f:cd0:dbfc:7ba9:de8d:e0d2
+grayhatter: btw can you imagine there's, like, 10 trillion birds?
+
+1757183205
+JetpackJackson!739e7f3d14@user/JetpackJackson
+man im so rusty i gotta remember how to read the lines of the file 
+
+1757183230
+netvor!~netvor@2a00:ca8:a1f:cd0:dbfc:7ba9:de8d:e0d2
+becausei can, i guess, and my life is harder for it :D
+
+1757183243
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I don't think mmap is a good suggestion here
+
