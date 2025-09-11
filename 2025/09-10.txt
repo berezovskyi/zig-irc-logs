@@ -1,0 +1,564 @@
+1757480615
+rvrb!~rvrb@156.146.51.230
+now that I know comptime is GC'd, why shouldn't I do this: https://zigbin.io/5de901
+
+1757481175
+grayhatter!~grayhatte@user/grayhatter
+rvrb: does it work?
+
+1757481218
+rvrb!~rvrb@156.146.51.230
+yes
+
+1757481230
+grayhatter!~grayhatte@user/grayhatter
+for some reason, I thought deref'ing a ptr was invalid at comptime
+
+1757481300
+rvrb!~rvrb@156.146.51.230
+I ran into that, if the layout is .. unknown? auto? something
+
+1757481302
+rvrb!~rvrb@156.146.51.230
+but this works
+
+1757481346
+grayhatter!~grayhatte@user/grayhatter
+I would write (expect) var new: [_]T = &self.items ++ [1]T{item};
+
+1757481362
+rvrb!~rvrb@156.146.51.230
+that's better
+
+1757481411
+grayhatter!~grayhatte@user/grayhatter
+I said that assuming that would be nicer to the evalbranchquota, but now that I'm considering it, I don't know if that's true?
+
+1757481466
+grayhatter!~grayhatte@user/grayhatter
+I shocked this works
+
+1757481489
+rvrb!~rvrb@156.146.51.230
+I am too, I've done such weird things to work around this
+
+1757481491
+grayhatter!~grayhatte@user/grayhatter
+this is the exact right amounts of horrifying
+
+1757481512
+grayhatter!~grayhatte@user/grayhatter
+this *feels* like it should be against the law
+
+1757481569
+rvrb!~rvrb@156.146.51.230
+lol, well, that was how I felt until I learned yesterday that comptime is garbage collected, and now I am readily abusing that knowledge
+
+1757481643
+grayhatter!~grayhatte@user/grayhatter
+I don't think GC is the right term for this
+
+1757481666
+rvrb!~rvrb@156.146.51.230
+well every append 'leaks' the old slice
+
+1757481747
+grayhatter!~grayhatte@user/grayhatter
+yeah, I considered ref counted before typing that, and while I think that's more specific [more correct too?], it also feels slightly wrong. it really feels like there's a better word for pattern. If not, there should be
+
+1757481784
+grayhatter!~grayhatte@user/grayhatter
+i.e. I would never call something removed by static analysis, garbage collected. even if it's not technically incorrect
+
+1757481810
+rvrb!~rvrb@156.146.51.230
+fwiw this is what I am referencing: 02:56 PM <andrewrk> rvrb: in comptime code, all memory is garbage collected (at compile time). so there's not really any such thing as dangling comptime pointers
+
+1757481850
+grayhatter!~grayhatte@user/grayhatter
+huh, interesting... garbage collected it is then!
+
+1757481878
+rvrb!~rvrb@156.146.51.230
+I mean I am still waiting for someone to tell me not to do this lol
+
+1757481903
+rvrb!~rvrb@156.146.51.230
+but.. it works! you raise a good point - I don't know if this is bloating the binary
+
+1757481905
+grayhatter!~grayhatte@user/grayhatter
+rvrb: SHHHH! don't call attention to it! :P
+
+1757481951
+grayhatter!~grayhatte@user/grayhatter
+quick, deploy it to prod so it's harder to take away later
+
+1757481959
+rvrb!~rvrb@156.146.51.230
+haha
+
+1757482081
+grayhatter!~grayhatte@user/grayhatter
+I'm already doing something similar in srctree, without the *@This() abstraction... I wonder if this wouldn't be a better way of doing it
+
+1757482230
+grayhatter!~grayhatte@user/grayhatter
+rvrb: it would be trival to tell if it's inflating binary size, build two versions, inline for (0..10) and inline for (0..1000); see if size delta is 5050x larger
+
+1757482282
+rvrb!~rvrb@156.146.51.230
+yeah but I am busy building more monstrosities on top of this
+
+1757482317
+grayhatter!~grayhatte@user/grayhatter
+<3
+
+1757482597
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+> why shouldn't I do this
+
+1757482609
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+rvrb: my answer would be "because it's bad for compile times", but that depends on how hot it is :P
+
+1757482631
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Also, hi all! Long time no see, saw the notes for the latest release and my interest has been piqued once again :)
+
+1757482641
+grayhatter!~grayhatte@user/grayhatter
+yeah, srctree compile times are pretty awful
+
+1757482660
+grayhatter!~grayhatte@user/grayhatter
+ACTION *waves* 
+
+1757482669
+grayhatter!~grayhatte@user/grayhatter
+welcome back noam 
+
+1757482920
+rvrb!~rvrb@156.146.51.230
+hi!
+
+1757483137
+rvrb!~rvrb@156.146.51.230
+I think it's hot af
+
+1757483193
+rvrb!~rvrb@156.146.51.230
+but, no, if I use this it would be for a comptime builder API with a pretty low-ish N
+
+1757484426
+rvrb!~rvrb@156.146.51.230
+and for my next trick.. https://zigbin.io/23c747/run
+
+1757484440
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: it's literally called "garbage collection" in linker documentation. look at the man page for gnu ld
+
+1757485213
+torque!~tachyon@user/torque
+<rvrb> now that I know comptime is GC'd, why shouldn't I do this: https://zigbin.io/5de901
+
+1757485248
+torque!~tachyon@user/torque
+I wrote this https://crux.epicyclic.dev/factotum/NOCLIP/src/branch/master/source/meta.zig#L226 a long time ago so it is probably not quite right any more but it let me build tuples at comptime element by element
+
+1757485262
+torque!~tachyon@user/torque
+comptime is Epic and Based
+
+1757485808
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: "why shouldn't i do this?" mainly because std.mem.copyForwards is deprecated :P
+
+1757485848
+andrewrk!~andrewrk@mail.ziglang.org
+well that, and appending a bunch of stuff is O(N^2) rather than amortized O(N)
+
+1757485902
+andrewrk!~andrewrk@mail.ziglang.org
+I think if you implemented overallocation like normal array list, and then a "shrink to fit" method it would actually be quite reasonable
+
+1757485933
+andrewrk!~andrewrk@mail.ziglang.org
+note that my example comptime allocator from https://github.com/ziglang/zig/issues/1291 when combined with std.ArrayList will do exactly this
+
+1757485991
+andrewrk!~andrewrk@mail.ziglang.org
+as soon as the remaining tidbits are in place for that to work we can lock it in with a std lib test so that it doesn't regress
+
+1757486004
+rvrb!~rvrb@156.146.51.230
+oh, is it usable today? I thought it needed changes
+
+1757486500
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: if you're trying to bait me into fixing the inline function pointer thing real quick, you've succeeded
+
+1757486545
+rvrb!~rvrb@156.146.51.230
+lol
+
+1757486622
+rvrb!~rvrb@156.146.51.230
+I mean, if nothing else, the headline "Zig lands comptime allocator support" is definitely HN bait
+
+1757487741
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+nerdsniping at its finest :)
+
+1757487788
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: when I see "this is the way gnu does it" I read that to be more of a warning of what not to do rather than example to emulate 
+
+1757487805
+andrewrk!~andrewrk@mail.ziglang.org
+noam: long time no see. have you tried out the x86 backend yet? have you tried --watch -fincremental yet?
+
+1757487833
+andrewrk!~andrewrk@mail.ziglang.org
+im just saying linkers have beeing doing gc since the dawn of time
+
+1757487874
+grayhatter!~grayhatte@user/grayhatter
+yeah, I'm still happy to admit my original intuition was wrong :)
+
+1757489082
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+andrewrk: indeed! About a year, I'd say, seeing as I heard rumors of a systems distributed 2025 :)
+
+1757489094
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Totally forgot or I'd have tried to make it this year too :/
+
+1757489114
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+I have not tried it out, no; I don't think I've touched the x86 backend since I rewrote it before someone else rewrote it again :)_
+
+1757489202
+andrewrk!~andrewrk@mail.ziglang.org
+well, person who rewrote it again *finished* it 
+
+1757489274
+ifreund!2940d10f8b@user/ifreund
+though they have been talking about rewriting it again anyways :D
+
+1757489328
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+andrewrk: oh I wasn't complaining lol
+
+1757489334
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+I'm glad it's done :)
+
+1757489689
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ifreund: isn't that how it always goes? :)
+
+1757489714
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+I've just about finished rewriting the file system I've been using for the last few years and am already about to do that again lol
+
+1757489735
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Got it simplified enough that I'm pretty sure I can do a full implementation of a working fs, and swap my rootfs to it, in a single 8-hour session :D
+
+1757489746
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Considering doing an implementation in Zig as an experiment
+
+1757489787
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Thaaaat could be an interesting one. Can I do it in _Zig_ in a single go? :)
+
+1757489796
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Having not touched Zig in, what, four releases? :)
+
+1757489819
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Has g-w1 been around, by the way? I know they worked on targeting plan9 in the official compiler a while ago, but haven't heard anything from them in ages :/
+
+1757489908
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+...ah, quick grep through commit logs says no :/
+
+1757489917
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+DOn't be terribly surprised if I open a PR finishing p9 support soon :)
+
+1757489918
+ifreund!2940d10f8b@user/ifreund
+yeah, haven't seen them in a while sadly
+
+1757489965
+andrewrk!~andrewrk@mail.ziglang.org
+noam: I just deleted some p9 code recently due to inactivity, if you plan to do that work you may be interested to find that commit and decide whether it's worth resurrecting
+
+1757489987
+andrewrk!~andrewrk@mail.ziglang.org
+0b3c3c02e30f61da44d6368cb89e1ecb1afb1399
+
+1757489990
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+andrewrk: "not that interesting" Now that's just unnecessary shade :D
+
+1757489997
+andrewrk!~andrewrk@mail.ziglang.org
+ah you found it already
+
+1757489999
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Yeah I was looking over that commit, why I realized they hadn't been around
+
+1757490008
+andrewrk!~andrewrk@mail.ziglang.org
+yeah I was a bit spicy in that commit :P
+
+1757490033
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+And it's more popular than most niche operating systems, I'd argue
+
+1757490038
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+When I send commits upstream, people actually read them :D
+
+1757490054
+andrewrk!~andrewrk@mail.ziglang.org
+that's nice
+
+1757490074
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ha, my zig clone hadn't been updated in..... a _while_. This is going to be fun to reexplore isn't it :D
+
+1757490715
+andrewrk!~andrewrk@mail.ziglang.org
+recommend skimming all the release notes for the releases you missed
+
+1757490721
+andrewrk!~andrewrk@mail.ziglang.org
+at least the TOC
+
+1757490885
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+I skimmed a few of them
+
+1757490896
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+and by skimmed I mean "I spent like an hour reading the entire freaking thing" :)
+
+1757490909
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+There were multiple notes that caught my attention
+
+1757491096
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Literally all my zig code is definitely broken at this point, which is fine, because most of it was crap to begin with :D
+
+1757491112
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Some of it was very _fun_ crap, and there's one or two projects worth updating, but most of it, eh
+
+1757492050
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+andrewrk: looks small enough to probably be worth resurrecting that, testing it, and then opening a PR with it cleaned up
+
+1757492405
+andrewrk!~andrewrk@mail.ziglang.org
+good luck
+
+1757493654
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: yooo I got something
+
+1757494643
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/pull/25198 not quite there yet...
+
+1757499750
+Affliction!affliction@idlerpg/player/affliction
+woo, just wrote a fancy Writer to replace a function which took a buffer, which let me clean up buffering in the call sites.
+
+1757499790
+Affliction!affliction@idlerpg/player/affliction
+Just want to ensure my understanding of drain() is vaguely accurate though. First we handle Writer.buffered(), then each slice in data in turn, then repeat the last slice in data?
+
+1757499810
+Affliction!affliction@idlerpg/player/affliction
+(repeat it splat - 1 times, that is)
+
+1757499987
+Affliction!affliction@idlerpg/player/affliction
+oh splat may be 0, so I want to handle all but the last, then loop 'splat' times on the last one.
+
+1757500013
+Affliction!affliction@idlerpg/player/affliction
+Though this writer is intended for human readable data, I don't really foresee it being used with splat, but, might as well do it right
+
+1757500618
+Affliction!affliction@idlerpg/player/affliction
+A representation of what I have: https://bpa.st/L2TQ
+
+1757506520
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Is it worth the cost to turn a state machine-style write function into a reader? I have multiple specialized functions that write to a Writer given an archive, directory, file, or symlink. https://github.com/myclevorname/narser/blob/master/src/root.zig
+
+1757507323
+braewoods!~braewoods@user/braewoods
+clevor, and what cost would that be?
+
+1757507424
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Making several readers that use state machines to keep track of which token I'm on. It's probably slower that way, but it might be helpful for some users.
+
+1757507933
+braewoods!~braewoods@user/braewoods
+what would a reader accomplish? it doesn't sound necessary for this project?
+
+1757522439
+rvrb!~rvrb@156.146.51.230
+andrewrk: wow, awesome! I genuinely was not nerd sniping you, at least intentionally. I would love to claim to be that masterful at social manipulation, but no, I was just confused :p
+
+1757522466
+rvrb!~rvrb@156.146.51.230
+seems like mlugg had some things to say about your PR
+
+1757524413
+rvrb!~rvrb@156.146.51.230
+I did swap in his implementation and it seemed to work
+
+1757524677
+rvrb!~rvrb@156.146.51.230
+I know comptime is Zig's flagship thing, and it gets tons of attention, and that experienced Zig devs tend toward using it less as they work with Zig more.. but even with all of that, I still feel like we've only scratched the surface on what it is capable of
+
+1757526340
+grayhatter!~grayhatte@user/grayhatter
+I'd like to make a prediction: once the backend matures enough that optimizations start appearing, one of the early targets will be optimizing comptime. The novel optimizations found/invented there will have implications for compilation/codegen in other non-zig languages and it will meaningfully improve CS/software engineering as a whole 
+
+1757526654
+rvrb!~rvrb@156.146.51.230
+I tend to agree, I was gonna say something similar. between comptime performance optimizations and polishing the usability rough spots, I think it will only get easier to experiment, which will lead to more interesting ideas
+
+1757526666
+grayhatter!~grayhatte@user/grayhatter
+I agree with the sentiment that we've only scratched the surface on how much comptime; I feel it's obvious there's plenty of places it improves code, but the much more interesting aspect I see it more from the how can it improve software engineering theory
+
+1757527072
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One time, one of the commands in narser was actually faster in the x86 backend than LLVM's ReleaseSafe. This could still be the case.
+
+1757527135
+grayhatter!~grayhatte@user/grayhatter
+LLVM isn't the compiler it used to be, which is really a shame... > you_were_the_chosen_one.gif
+
+1757527203
+grayhatter!~grayhatte@user/grayhatter
+I can't imagine that zig's backend doesn't beat it in a number of metrics pretty quickly
+
+1757527249
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What about Cranelift for Zig?
+
+1757527319
+rvrb!~rvrb@156.146.51.230
+isn't that basically just AIR + the self hosted backends?
+
+1757527345
+rvrb!~rvrb@156.146.51.230
+if AIR ever stabilized
+
+1757527433
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Cranelift uses e-graphs and has optimizations and whatever.
+
+1757527910
+rvrb!~rvrb@156.146.51.230
+hey it freakin worked! comptime graph + inline for on a comptime topological sort + @call(.always_inline); is this actually any better than the runtime equivalent? no idea! but it's cool and it works https://zigbin.io/1b7d9e/run
+
+1757527950
+rvrb!~rvrb@156.146.51.230
+fair warning I 100% LLM'd the graph sort algorithm since graph algorithms was not my focus for this experiment
+
+1757528139
+rvrb!~rvrb@156.146.51.230
+mlugg's allocator gave me issues since I had to use `extern struct` for defined layouts of the allocated node lists/edge lists, and I could not store function pointers. I tried callconv(.c) and that crashed the compiler. so I resorted back to my dumb list implementation
+
+1757528181
+rvrb!~rvrb@156.146.51.230
+I have tried and failed to make my list implementation over allocate to amortize, I don't know if I am doing something wrong or if it's a comptime issue; it feels like comptime memoizing something
+
+1757529525
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+tbh it'
+
+1757529526
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+oops
+
+1757529536
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+tbh it's probably worth me working on a few quick, self-contained projects before doing anything compilery
+
+1757531747
+rvrb!~rvrb@156.146.51.230
+It was a skill issue, got the overallocating working
+
+1757540956
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+...contemplating doing neoventi in zig on sunday. could be a fun afternoon way to reacquaint myself :)
+
+1757540985
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+...heh, might do it in a few other langs too now I'm thinking about it :D
+
+1757542090
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+dang, I've been using zmath but that package seems unmaintained for 3 years, what was I thinking!
+
+1757542169
+rvrb!~rvrb@156.146.51.230
+this one? https://github.com/zig-gamedev/zmath
+
+1757542234
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh dang, why did this pop up as my first google result? https://github.com/PiergiorgioZagaria/zmath
+
+1757542237
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+thanks!
+
+1757542247
+rvrb!~rvrb@156.146.51.230
+np
+
+1757542688
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: I believe those issues you mentioned will be fixed along with https://github.com/ziglang/zig/issues/2414
+
+1757543492
+rvrb!~rvrb@156.146.51.230
+sweet. I can just keep doing what I am doing for now and swap in a real allocator/ArrayList at some point when it is better supported
+
+1757543601
+rvrb!~rvrb@156.146.51.230
+I've read that issue before; isn't there risk of garbage data having the right ID in that spot? 
+
+1757543692
+rvrb!~rvrb@156.146.51.230
+oh, in safety modes undefined is always 0xAA. does this cover casts from *anyopaque though?
+
+1757543774
+rvrb!~rvrb@156.146.51.230
+hm, I still can't wrap my head around why it's sound, but it's cool that it is
+
+1757544086
+rvrb!~rvrb@156.146.51.230
+I think I understand, the safety checks would only work when casting between types with undefined layouts
+
+1757544206
+andrewrk!~andrewrk@mail.ziglang.org
+right
+
