@@ -1,0 +1,400 @@
+1757644957
+daurnimator!~daurnimat@vultr.daurnimator.com
+Has anyone hit the futex2 related test failures on the 0.15.1 release? I posted my error to https://github.com/ziglang/zig/pull/23464#issuecomment-3283445572
+
+1757674520
+lemons!~doggie@user/doggie-:49517
+can i mark a function with branchHint and have it propagate, instead of marking the entry points? (dummy question ik im just used to prog languages being dumb)
+
+1757678268
+clevor!sid649024@id-649024.hampstead.irccloud.com
+AmandaC: What is a LOIC?
+
+1757679458
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+i assumed this https://en.wikipedia.org/wiki/Low_Orbit_Ion_Cannon
+
+1757679507
+Earnestly!~earnest@user/earnestly
+That's what I know it as
+
+1757680777
+bblack!~bblack@wikimedia/bblack-WMF
+I was playing with something similar to winter yesterday for a different reason: trying to see if I could link the system libc without my zig code compiling as .link_libc .  It doesn't really work like one would wish, even if you hack around some of the auto-magic detection that we're linking libc.  I suspect that's more or less intractable, or at least not worth the pain of making it work.
+
+1757680962
+bblack!~bblack@wikimedia/bblack-WMF
+my use-case was basically: I don't have any std.c or any direct @cImport() of system libc stuff.  I'm just @cImporting the header of one 3rd party library, which itself calls libc internally.  So I figured maybe I could build *my* code in non-link-libc mode and still call into that library.  You can make that scenario compile correctly, but it segfaults as soon as it calls into the 3rd party library :)
+
+1757681005
+bblack!~bblack@wikimedia/bblack-WMF
+s/correctly/successfully/ I guess
+
+1757681531
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What about `linkSystemLibrary("c", .{});"?
+
+1757681536
+clevor!sid649024@id-649024.hampstead.irccloud.com
+`*
+
+1757681830
+bblack!~bblack@wikimedia/bblack-WMF
+there's code in std.Build that checks if the library name is "c" and then sets .link_libc.  I can work/hack around that in various ways (the easiest is to just link the library I'm actually using (libev), and never specify .link_libc = true anywhere)
+
+1757681849
+bblack!~bblack@wikimedia/bblack-WMF
+but I've tried also basically commenting out the detection of system libc and then linking it
+
+1757681882
+bblack!~bblack@wikimedia/bblack-WMF
+the linker will bring in the libev -> libc dep automagically regardless, according to ldd output
+
+1757681952
+bblack!~bblack@wikimedia/bblack-WMF
+I think there's something more-subtle going on here, where if we don't .link_libc at the Zig level, we're missing calling into some kind of libc magic at _start time to relocate symbols or whatever else, and then libc-calling things fail.
+
+1757681987
+bblack!~bblack@wikimedia/bblack-WMF
+because it segfaults on address 0 the very first time I call a libev function, basically.
+
+1757682016
+bblack!~bblack@wikimedia/bblack-WMF
+what I haven't tried yet, is perhaps bringing the libev source into my tree and compiling it as a static lib, and linking it in as a static lib.
+
+1757682073
+bblack!~bblack@wikimedia/bblack-WMF
+but it's only worth so much effort.  eventually I'll lose my libc dependency the proper way, by replacing my use of libev with a real zig replacement (probably std.Io, maybe temporarily libxev along the way)
+
+1757684693
+ifreund!2940d10f8b@user/ifreund
+bblack: indeed, C has a runtime
+
+1757684718
+ifreund!2940d10f8b@user/ifreund
+C libraries assume that the program loading them is using the C runtime
+
+1757684799
+ifreund!2940d10f8b@user/ifreund
+in fact, dynamic linking in general is very tightly coupled to the libc implementation
+
+1757685420
+bblack!~bblack@wikimedia/bblack-WMF
+yeah, I'm vaguely aware.  I did a quick hacking trying to m.addObjectFile() a bunch of of the usual suspects from hardcoded system paths, e.g. /usr/lib/x86_64-linux-gnu/crti.o (and lots of others)
+
+1757685433
+bblack!~bblack@wikimedia/bblack-WMF
+still didn't quite work, and honestly not worth chasing this hard, I just got nerdsniped a little :)
+
+1757685645
+bblack!~bblack@wikimedia/bblack-WMF
+better off expending my efforts on trying out the std.Io dev branch and seeing what I can make work yet
+
+1757692741
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+how to easily dump/load binary data?  i have a dataset which consists of several slices of structs (and one slice of bytes).    what i'm doing now is kind of naiive, basically `try w.writeAll(@ptrCast(item))` for every item in the slice, but i don't know how to read the structs back.   i mean i know how to read the data but don't know how to cast it. 
+
+1757692766
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+here's what i'm trying now (but it's not like i know what i'm doing :D) https://git.sr.ht/~netvor/zig-gtfs/tree/egg/item/src/zgb.zig#L56
+
+1757692792
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+currently i'm getting `src/zgb.zig:56:21: error: pointer element type '[80]u8' cannot coerce into element type 'Dataset.Agency'`
+
+1757692879
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+btw i know (think..) writing the data using @ptrCast is not the best way, so i'd accept some pointers on that side as well.  i tried to use writeSliceEndian but that complained about my custom non-8-divisible ints
+
+1757693132
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+btw the whole format is not meant to be portable, it's basically a local "cache", because the whole dataset in CSV takes too long to parse but changes seldom (~once a week) so i'm thinking about having the parsed thing cached locally. 
+
+1757694091
+dutchie!~dutchie@user/dutchie
+do you want std.mem.asBytes / std.mem.bytesAsValue / other similar functions?
+
+1757694226
+rvrb!~rvrb@156.146.51.230
+^assuming what it sounds like, that netvor has slices (pointers) in the data structures, those methods will not work for him and he's talking about needing to (de)serialize
+
+1757694556
+rvrb!~rvrb@156.146.51.230
+otherwise there's also Writer.writeStruct and Reader.takeStruct/Reader.peekStruct/etc
+
+1757694613
+torque!~tachyon@user/torque
+unless you're using extern/packed structs (i.e. with a known memory layout), dumping raw memory to disk is a bad idea since I don't think the layout of autolayout structs is guaranteed between builds even if the struct doesn't change
+
+1757694630
+torque!~tachyon@user/torque
+writer.writeStruct at least checks for this
+
+1757694634
+rvrb!~rvrb@156.146.51.230
+was about to say that, too; looking at the source for Writer.writeStruct will show you that
+
+1757696407
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+it's bunch of slices of structs with no pointers;  i already got rid of the pointers by writing all string-likes into []u8 and storing just indices
+
+1757696715
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+torque: so would you suggest using packed structs?  but i assume they're not the best for normal usage, so is suppose I should use them just for storage, ie. having 2 structs for each thing and moving the data back/forth?
+
+1757696819
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+i don't have a concept of how much extra complexity is normal for a use case like this but if doing just memory dumps is unsafe as you say then i'd like to avoid that
+
+1757697331
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+or another way would be to just extend the binary format to allow storing the primitives and re-build the structs on load..  i feel there should be a simpler way but maybe i'm wring
+
+1757697335
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+s/i/o/
+
+1757698634
+rvrb!~rvrb@156.146.51.230
+as I understand it, packed struct is probably better thought of as an integer backed struct, and an extern struct is what you want in basically all other cases. to overly generalize, packed structs are for bitfields
+
+1757698808
+rvrb!~rvrb@156.146.51.230
+fwiw I am saying that out loud to find out if I am wrong
+
+1757698815
+rvrb!~rvrb@156.146.51.230
+not because I know it to be certainly true
+
+1757699016
+rvrb!~rvrb@156.146.51.230
+in any case the right thing for you to do depends a lot on the longevity of the solution and who is using it. a shortlived thing for yourself? be reckless. a production ready thing for any number of end users? you need to be very careful about this because it sounds like you are talking about trying to do zero copy serialization/deserialization in
+
+1757699016
+rvrb!~rvrb@156.146.51.230
+a caching use case, which has tons of security and performance footguns
+
+1757699206
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+it's mostly learning but i'd like to give a try to doing things right
+
+1757699272
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+looks like i underestimated it; you are right about what i'm trying to do but i thought it would be much 'simpler
+
+1757699415
+rvrb!~rvrb@156.146.51.230
+I don't mean to discourage you or anything. just focus on challenging the assumption that the data is formatted correctly, what correctly formatted data even means, how you know it is correctly formatted, what happens when it isn't, what happens when the data changes shape between compilations, etc
+
+1757699418
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+maybe i'll give a try to extern structs, although i'm not sure what are implications for using them for main functionality...
+
+1757699492
+rvrb!~rvrb@156.146.51.230
+excuse me if you know this, but in case you don't, the thing on struct/extern struct/packed struct is that struct has no defined layout, you can't depend on how the data is laid out in memory at all; really bad for serde
+
+1757699521
+rvrb!~rvrb@156.146.51.230
+extern struct has a defined layout, and so does packed struct. afaik packed struct is bit packed and extern struct is byte packed. packed struct can bite you on alignment issues, and probably isn't what you would want
+
+1757699558
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+btw what i had in mind was a comment i vaguely recall Primeagen made (if i remember right, it could have been someone else). he said that creating custom binary protocol is relatively straightforward, you can just put a bunch of structs into a byte array and checksum it, then re-interpret them
+
+1757699578
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+but it looks like that would be the case assuming at least well defined memory layout
+
+1757699760
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+extern structs look like good thing to try.  i might need to have 2-layer architecture anyway, ie. extern structs for serde, and normal structs for normal functions.  i kinda didn't want to go there but this might be the reason to do so (and it might make other things easierr)
+
+1757699781
+rvrb!~rvrb@156.146.51.230
+it depends heavily on what you are optimizing for
+
+1757699928
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+in this case, speed.  the thing is, the whole dataset (about 50m of csv) takes 8sec to load & parse.  i want to have a cli and maybe a little gui-ish tool to do query and show result.  (tram departures and stuff)
+
+1757699972
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+so 8s is too much for comfort, so i thought i'd convert the data to more suitable format
+
+1757700081
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+btw other thing i already tried was not loading/parsing the whole file, since any normal use case will always only use small part of the dataset, but what i made there was too complex and not all that super fast, so i wanted to try a different strategy
+
+1757700196
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+btw what Loris said 2y ago is in line with what you said above:  "packed structs have been redesigned to be “fancy integers you can easily extract bit ranges from” and now extern structs are used for everything else.
+
+1757700199
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+"
+
+1757700285
+clevor!sid649024@id-649024.hampstead.irccloud.com
+netvor: The strategy I used in narser was to make a function where the Nix archive is serialized as a directory is traversed.
+
+1757700376
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+oh wait so with extern structs there's a bunch of limitations on what can be in fields.. (other extern structs..?)
+
+1757700539
+rvrb!~rvrb@156.146.51.230
+by definition. a well defined memory layout cannot contain something that does not have a well defined memory layout
+
+1757700550
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+yeah forgot about that :D
+
+1757700564
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+it's a well-defined-format coloring issue :D
+
+1757700583
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+also `src/Dataset.zig:152:21: note: only integers with 0, 8, 16, 32, 64 and 128 bits are extern compatible` and stuff
+
+1757700646
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+so i cannot have my u2 enums cake and eat it, too :'-(
+
+1757700838
+ifreund!2940d10f8b@user/ifreund
+well, if you use a packed struct with explict padding it's ok
+
+1757700838
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Would a packed struct work in this case?
+
+1757700882
+ifreund!2940d10f8b@user/ifreund
+be careful about writing undefined padding bits to your file
+
+1757700996
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+well i thought about that, as i was looking on the hexdump i thought, i better deal with all this "empty"
+
+1757701007
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+.. memory eventually :)
+
+1757701059
+ifreund!2940d10f8b@user/ifreund
+well, if you want to checksum it as you mentioned you at least need to ensure that the padding is zeroed out
+
+1757703961
+lemons!~doggie@user/doggie-:49517
+hrmm i have a function which returns a stringified (hexadecimal) version of a struct which most often is 10 bytes long but sometimes is 9 bytes long (it follows the 0xXXXXXXXX format but if the first X is a 0 its trimmed)
+
+1757704011
+lemons!~doggie@user/doggie-:49517
+any way to handle these without passing an allocator field? first though was having the retval be a [10]u8 but im not sure how that'd behave with something like concat
+
+1757704564
+bblack!~bblack@wikimedia/bblack-WMF
+netvor: if you don't mind the size/efficiency hit, you can serialize/deserialize just about any zig structure with ZON
+
+1757704673
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+hmmm zon might be good option; i forgot about it. thanks
+
+1757704771
+bblack!~bblack@wikimedia/bblack-WMF
+I had a janky custom "protocol" I was using in my C project, that I was using to encode/decode some struct data as efficient binary and pass it between two processes over a pipe.  When I ported it to Zig, I just replaced it with zon and took the hit of making the data a little larger (it's a local fd pipe anyways), and it worked out fine and was easy :)
+
+1757704881
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Is there an equivalent to the `.xdef` directive used by GCC4TI to enable or disable support for certain things at link-time? Is it just `@export`?
+
+1757704883
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+btw i'm currently trying to just encode/decode the fields manually; i've realized most of the fields are basically small ints and there's not that many types (aboout 20 or so)
+
+1757704918
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+so i suppose just writeInt and @intFromEnum and vice versa will get me a long way
+
+1757704930
+bblack!~bblack@wikimedia/bblack-WMF
+probably!
+
+1757704953
+bblack!~bblack@wikimedia/bblack-WMF
+take care about endian-ness though, if you think the data will ever be read from a different cpu than it was written by
+
+1757704983
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+i'll see if i can make it far enough to try and then maybe try also zon (and json for good measure), see who wins :D
+
+1757705112
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+thing is, if most of them fit under 1 byte then maybe i don't need to care (i know there's such thing as bit endianness, not sure how much that's a concern)
+
+1757705174
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It appears I can just use export, at least judging by modifying the assembly generated by GCC4TI.
+
+1757705178
+clevor!sid649024@id-649024.hampstead.irccloud.com
+@export*
+
+1757705236
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I wish my ti89 still worked
+
+1757706845
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+is order of @typeInfo(T).@"struct".fields guarranteed, assuming that source code has not changed?
+
+1757706966
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+it looks like it should be, given that for tuples it is, and tuples are just different kind of structs
+
+1757707010
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I pushed what I have so far here: https://github.com/myclevorname/zig/tree/ams
+
+1757707267
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Running `file` on the object file produced by Zig gives `main.obj: ELF 32-bit MSB relocatable, Motorola m68k, 68020, version 1 (SYSV), not stripped`, yet the object file produced by GCC4TI is `a.o: mc68k COFF object not stripped`. I specified the object format as a COFF, so I don't know why Zig produced an ELF file.
+
+1757709241
+bblack!~bblack@wikimedia/bblack-WMF
+clevor: debug build? try forcing use of llvm?
+
+1757709280
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Same thing with -fllvm.
+
+1757709314
+bblack!~bblack@wikimedia/bblack-WMF
+-flld too?
+
+1757709329
+bblack!~bblack@wikimedia/bblack-WMF
+other than that, I have no brilliant ideas, sorry :)
+
+1757709346
+clevor!sid649024@id-649024.hampstead.irccloud.com
+-flld didn't work either 🤷
+
+1757715167
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Due to calling conventions and such, I would have to implement a lot more stuff, so I give up adding the OS.
+
+1757716767
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+ok so i implemented a very basic binary format (with poor error handling and not optimized, but no unowned bytes afaik) and turns out it takes about 2s to load.  as opposed of csv-parsed 8s.   not excellent but acceptable.
+
+1757716789
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+https://git.sr.ht/~netvor/zig-gtfs/tree/egg/item/src/zgb.zig
+
+1757716864
+netvor!~netvor@2a00:ca8:a1f:cd0:f0de:c682:4a49:b13a
+tomorrow i'll try zon and maybe json for comparison.  i won't feel ashamed if they outperform me :D
+
