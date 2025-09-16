@@ -1,0 +1,288 @@
+1757916006
+donpdonp!~donp@donp.org
+im trying to use gtk3, and I have a callback for a key_press_event, but if I try to use the value: error: type '*cimport.struct__GdkEventKey' does not support field access
+
+1757916007
+Affliction!affliction@idlerpg/player/affliction
+hm, what's the idiomatic way to take a float (IEEE-754, 32 bit, big endian) from a reader? @bitCast(reader.takeInt(u32, .big)) has a hacky feel.
+
+1757916021
+Affliction!affliction@idlerpg/player/affliction
+and, if zig happens to support platforms which don't use IEEE-754 (does it?) might be fragile.
+
+1757916059
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: paste a segment of your code somewhere
+
+1757916138
+donpdonp!~donp@donp.org
+grayhatter: its nothing more than an empty callback pub fn key_press(_: *c.GtkWidget, event: *c.GdkEventKey, _: *c.gpointer) callconv(.c) void {}
+
+1757916155
+donpdonp!~donp@donp.org
+if I try to use event.keyval, then the error occurs.
+
+1757916161
+grayhatter!~grayhatte@user/grayhatter
+Affliction: takeArray, @ptrCast()
+
+1757916194
+grayhatter!~grayhatte@user/grayhatter
+assuming you don't mean to take a u32 int and @intFromFloat()
+
+1757916240
+Affliction!affliction@idlerpg/player/affliction
+grayhatter: bytes are big endian IEEE-754, want an f32.
+
+1757916241
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: I have no idea what the layout of `*c.GdkEventKey` is I'm guessing it's a union?
+
+1757916279
+donpdonp!~donp@donp.org
+yeah its a union from /usr/include/gtk-3.0/gdk/gdkevents.h
+
+1757916353
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: try switch(key_event) {}
+
+1757916411
+donpdonp!~donp@donp.org
+oh that sounds promising. thanks!
+
+1757916422
+Affliction!affliction@idlerpg/player/affliction
+https://docs.gtk.org/gdk3/struct.EventKey.html suggests it'db e a struct
+
+1757916426
+grayhatter!~grayhatte@user/grayhatter
+err, thinking a little deeper, if you're using the c headers, you probably need to cast that union to the correct "zig" struct before trying to reference a field
+
+1757916569
+grayhatter!~grayhatte@user/grayhatter
+`struct _GdkEventKey` doesn't look like a union to me :/
+
+1757916637
+grayhatter!~grayhatte@user/grayhatter
+you could try `key_event.*.state` but I can't think why that would be required... I'd need to see the code to be more helpful
+
+1757916783
+grayhatter!~grayhatte@user/grayhatter
+this header is shockingly readable contrasted with what I remember from last time I looked at gdk... 
+
+1757916925
+grayhatter!~grayhatte@user/grayhatter
+Affliction: did you get your float read?
+
+1757916950
+donpdonp!~donp@donp.org
+i tried casing the event to c.struct__GdkEventKey (with a leading _) but still get 'does not support field access'
+
+1757917025
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: what you're describing doesn't make sense to me; I'd need to see the code to understand that error
+
+1757917064
+donpdonp!~donp@donp.org
+https://github.com/donpdonp/zootdeck/blob/main/src/gui/gtk3.zig#L877
+
+1757917075
+donpdonp!~donp@donp.org
+(laptop is about to die, bbiab)
+
+1757917108
+Affliction!affliction@idlerpg/player/affliction
+grayhatter: Yeah, the bitCast method works, just feels a bit hacky.
+
+1757917149
+Affliction!affliction@idlerpg/player/affliction
+On one hand, "bytes are bytes" are words I've lived by for years. On the other, just because it happens to work, doesn't mean it's Correct.
+
+1757917423
+grayhatter!~grayhatte@user/grayhatter
+@bitCast() is most often the behavior I want when I cast something, no reason to think it's hacky
+
+1757917480
+grayhatter!~grayhatte@user/grayhatter
+fewer guardrails so easier to misuse, but I'm not sure that's hacky
+
+1757917504
+Affliction!affliction@idlerpg/player/affliction
+yeah, should do what I need. "Grab these bits, endian swap if on little endian, interpret them as a float"
+
+1757917583
+Affliction!affliction@idlerpg/player/affliction
+I guess, if this ever runs on a platform where floats aren't actually IEEE-754 (and, that assumes zig even supports any?), my code won't be the only thing that breaks horribly.
+
+1757917652
+grayhatter!~grayhatte@user/grayhatter
+you could always copy the high/low bits into the exponent and mantissa, and construct your own float
+
+1757917668
+Affliction!affliction@idlerpg/player/affliction
+Well, that's all the assurance I need, heh https://ziglang.org/documentation/master/#toc-Floats
+
+1757917711
+Affliction!affliction@idlerpg/player/affliction
+"bytes are bytes" prevails :)
+
+1757917807
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: // /usr/include/gtk-3.0/gdk/gdkevents.h:909:9: warning: struct demoted to opaque type - has bitfield
+
+1757917904
+Affliction!affliction@idlerpg/player/affliction
+huh, zig doesn't turn C bitfields into packed structs? good to know
+
+1757918188
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: try this https://zigbin.io/dc678d
+
+1757918226
+grayhatter!~grayhatte@user/grayhatter
+I *think* this maps to the gdk struct, but I didn't test it because I don't have libgumbo installed, and couldn't be arsed to figure it out :D
+
+1757921113
+Amun-Ra!~amun-ra@retro.rocks
+true, don't make your user code slower
+
+1757921118
+Amun-Ra!~amun-ra@retro.rocks
+argh
+
+1757921143
+Amun-Ra!~amun-ra@retro.rocks
+(cursor up + enter on wrong terminal)
+
+1757922207
+donpdonp!~donp@donp.org
+grayhatter: that did it. thx much. 
+
+1757922228
+donpdonp!~donp@donp.org
+grayhatter: how did you find that struct demoted warning?
+
+1757945883
+ifreund!2940d10f8b@user/ifreund
+donpdonp: you can run `zig translate-c /path/to/gtk/header.h` to see the zig code zig translates the C header in to
+
+1757945919
+ifreund!2940d10f8b@user/ifreund
+you can also find the zig output result of a @cImport() somewhere in your .zig-cache for example
+
+1757945947
+ifreund!2940d10f8b@user/ifreund
+note that @cImport() will go away in favor of running zig translate-c at build time eventually fwiw
+
+1757945982
+ifreund!2940d10f8b@user/ifreund
+which will probably make it a bit more obvious how this machinery works
+
+1757950459
+grayhatter!~grayhatte@user/grayhatter
+donpdonp: to expand on what ifreund said, I used zls and the LSP "go to definition" feature/keybinding
+
+1757950666
+br4tman!~okabe@user/br4tman
+.
+
+1757950680
+br4tman!~okabe@user/br4tman
+anybody here?
+
+1757950683
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no
+
+1757950688
+br4tman!~okabe@user/br4tman
+damn okeg
+
+1757950987
+br4tman!~okabe@user/br4tman
+hey i have a question, do you know any way you can make the translate C not generate symbols for the macros that it failed to compile? i have a stb style header only file that i am trying to use using cinclude, it relies heavily on macros, i can implement the macros as zig functions but those macros are already defined by translate c as compiler error. 
+
+1757951217
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+br4tman: how would you implement those macros in a way that can be used by the @cIncluded module? sounds like you need to modify the generated code and you can do that either way
+
+1757951234
+bblack!~bblack@wikimedia/bblack-WMF
+br4tman: probably the easiest way to deal with that is give your zig replacements different names or a different namespace.
+
+1757951259
+bblack!~bblack@wikimedia/bblack-WMF
+(that's assuming you're only consuming them from Zig)
+
+1757951300
+grayhatter!~grayhatte@user/grayhatter
+I read the problem is more, it generates a literal error, that prevents compilation; I'd go with Gliptic's suggestion, clone the header, and delete the offending macros from the source
+
+1757951319
+bblack!~bblack@wikimedia/bblack-WMF
+yeah if that's the scenario
+
+1757951324
+grayhatter!~grayhatte@user/grayhatter
+s/generates/emits/
+
+1757951328
+br4tman!~okabe@user/br4tman
+i can do that
+
+1757951333
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it only fails compilation if you use them, so I assume they are used by the header itself yeah
+
+1757951438
+br4tman!~okabe@user/br4tman
+well i can clone the header and incrementally remove the macros i am implementing, now that i think about it. thanks for the suggestion.
+
+1757951749
+seti_!~seti_@user/seti-:64798
+Regarding the goal of replacing cImport with translate-c in build system, I was looking at arocc and I was wondering if the final goal is to compile C to zig IR with arocc, then have it all fed through the zig compilers codegen?
+
+1757952071
+ifreund!2940d10f8b@user/ifreund
+seti_: compiling C to machine code is orthagonal to translate-c and cannot replace translate-c
+
+1757952094
+ifreund!2940d10f8b@user/ifreund
+there is a translate-c implementation based on arocc's frontend rather than libclang though
+
+1757952101
+ifreund!2940d10f8b@user/ifreund
+which is what will be switched to eventually
+
+1757952360
+seti_!~seti_@user/seti-:64798
+ifreund: I find it a lil hard to understand what translate-c does, but im assuming that it translates C code to some kind of zig representation to facilitate interop?
+
+1757953029
+bblack!~bblack@wikimedia/bblack-WMF
+seti_: yes, basically translate-c translates C code to some Zig equivalent, as best it can.  There are some C constructs it cannot translate succesfully.  Even when it's successful, it's not as good as a native Zig re-implementation, because e.g. pointers are [*c] because it doesn't know if it's a one-item or many-item pointer or whether it should've been nullable or not.  @cImport() is basically translate-c.
+
+1757953067
+bblack!~bblack@wikimedia/bblack-WMF
+but it's still super-helpful for porting, at least as a starting point, or when just bringing in some 3rd party header file and linking a library.
+
+1757953348
+seti_!~seti_@user/seti-:64798
+right, the thought that popped into my head was that if something like arocc could emit a zig IR then could the regular zig compiler make the final codegen. But its kind of a gimmick idea and I doubt zig maintainers want to moonlight as C compiler devs 
+
+1757953364
+seti_!~seti_@user/seti-:64798
+it made me curious if the same static analysis thats done on zig code could be done on C
+
+1757953466
+bblack!~bblack@wikimedia/bblack-WMF
+well, the point of translate-c is to give you something callable from Zig source code, not just IR.
+
+1757953476
+bblack!~bblack@wikimedia/bblack-WMF
+s/callable/useable/ whatever
+
+1757965865
+ifreund!2940d10f8b@user/ifreund
+seti_: translate-c translates C source code to Zig source code, it's as simple as that
+
