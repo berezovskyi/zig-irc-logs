@@ -1,0 +1,496 @@
+1758419540
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+Is there something I need to do different to debug with 0.15.1? Worked great in 0.14.1 but now I'm seeing "Unable to determine byte size" for every variable. 
+
+1758419587
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+Ohh is this because it's not using LLVM. Duh
+
+1758420076
+andrewrk!~andrewrk@mail.ziglang.org
+deevus: in case you haven't seen this yet: https://github.com/ziglang/zig/wiki/LLDB-for-Zig
+
+1758420116
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+andrewrk: I have not. Thanks!
+
+1758420178
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+At this point it seems like I have to use LLVM anyway. I keep getting segfaults when using the self-hosted from inside Godot. But it will be useful for other projects.
+
+1758420212
+andrewrk!~andrewrk@mail.ziglang.org
+sounds potentially linker related
+
+1758420290
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+I can dig into it further if you think it would be useful. However this might be a niche use-case since Godot is the running program calling into the Zig lib as an extension
+
+1758420351
+andrewrk!~andrewrk@mail.ziglang.org
+I'd suggest continuing with the LLVM backend workaround until the new linker (https://github.com/ziglang/zig/pull/25299) surpasses LLD
+
+1758420409
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+Got it working though! https://imgur.com/a/xEBvFWB
+
+1758420433
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+I've subscribed so I can follow along
+
+1758422799
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+.:13:47:26:. #zig: >> grayhatter<< ezzieyguywuf: don't forget the build.zig <- wdym?
+
+1758422907
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+ezzieyguywuf: You shouldnt need to have `link_libc` anymore
+
+1758422928
+grayhatter!~grayhatte@user/grayhatter
+what deevus said
+
+1758423022
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, I think I tried removing it
+
+1758423074
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+are you talking about "linkSystemLibrary("c")"? b/c that's what I try to take out
+
+1758423139
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it seems that b/c of std.c.if_nametoindex I need to keep it linked
+
+1758423168
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+"/home/wolfgangsanyer/.zvm/0.15.1/lib/std/c.zig:10878:12: error: dependency on libc must be explicitly specified in the build command"
+
+1758423227
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: sounds like you'll have to implement if_nametoindex in zig then :P
+
+1758423249
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+It's because you're using `std.c.AF.PACKET` and perhaps other definitions from `std.c`
+
+1758423367
+grayhatter!~grayhatte@user/grayhatter
+std.os.linux.AF.PACKET exists
+
+1758424502
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+heh
+
+1758424522
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so I should use std.os.linux.blah instead? what about if_nametoindex tho?
+
+1758424688
+grayhatter!~grayhatte@user/grayhatter
+do you want a link to zig code where I've implemented something kinda similar to if_nametoindex or a link to the c source code for it?
+
+1758424740
+grayhatter!~grayhatte@user/grayhatter
+I haven't implemented if_nametoindex, because I didn't need it, and didn't want it, but I do have something that can read that infomation
+
+1758424766
+grayhatter!~grayhatte@user/grayhatter
+the c source was half easy to read, assuming you already know a bit of C
+
+1758424807
+grayhatter!~grayhatte@user/grayhatter
+I looked at if_nametoindex, and went "ew, no thank you, I don't want anything to do with that"
+
+1758425024
+grayhatter!~grayhatte@user/grayhatter
+lol, lobste.rs has lost it's mind
+
+1758425330
+grayhatter!~grayhatte@user/grayhatter
+andrew, your specific pattern of "brilliant jerk" (the definition of jerk must have changed recently?) is a big part of why I love writing code again (zig specifically) and it's why I'm happy to keep donating to zsf... sorry the internet is being stupid in your general direction
+
+1758425352
+grayhatter!~grayhatte@user/grayhatter
+thankfully rvrb already left a better comment then I would have so I don't have to try to undelete my account
+
+1758426109
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+I’m not sure what to call it, but I definitely understand how it can come off as apathetic when you’re running OSS such as zig. For years I’ve been the admin of the ScoopInstaller org. I have found it difficult to conduct myself in a way that is not only effective but doesn’t give the wrong impression to the community. 
+
+1758426497
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I know a core developer of a FOSS project I am interested in who is condescending, unfortunately. I haven't forgiven him for the worst thing he told me yet. :/
+
+1758426754
+grayhatter!~grayhatte@user/grayhatter
+I don't think it's just an OSS problem, the US is very angry, and people (humans), are, predictably, lashing out at each other
+
+1758426805
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Is it due to politics?
+
+1758426834
+grayhatter!~grayhatte@user/grayhatter
+the increased temprature is causing people to interpret things incorrectly, and then because of the attached impatience, forget to assume good faith
+
+1758426851
+grayhatter!~grayhatte@user/grayhatter
+clevor: I think politics are a symptom more than a cause
+
+1758426912
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What do you mean by temperature?
+
+1758426930
+grayhatter!~grayhatte@user/grayhatter
+I don't mean to imply it's an all or nothing thing, if you start shouting at someone because you have a headache, and you have a headache because you're sick and dehydrated. You'd correctly apologize for being mean because of your headache, ever though there are additional causes 
+
+1758426972
+grayhatter!~grayhatte@user/grayhatter
+temperature being a euphemism for "generalized upset or anger"
+
+1758426980
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1758427037
+grayhatter!~grayhatte@user/grayhatter
+e.g. the common phrase would be something like, if you'd put a bunch of people in a room, someone starts being angry, and then everyone else starts being angry back, they "raised the temerature of the room"
+
+1758427123
+grayhatter!~grayhatte@user/grayhatter
+I assume because many people feel physically hotter when they get angry? but I never bothered to verify the etymology
+
+1758427190
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I tend to see people's actions towards me as more critical than they are, making me feel ashamed of making the perceived mistake. I felt that at first when andrewrk reviewed one of my PRs, so I had to think carefully about what he said in order to dispel that cognitive distortion.
+
+1758427356
+grayhatter!~grayhatte@user/grayhatter
+your PR's are getting comments?
+
+1758427389
+clevor!sid649024@id-649024.hampstead.irccloud.com
+They had once.
+
+1758427423
+grayhatter!~grayhatte@user/grayhatter
+lol, I'm only trolling...
+
+1758427431
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I need to delete the other one as the code is pretty bad.
+
+1758427439
+clevor!sid649024@id-649024.hampstead.irccloud.com
+close*
+
+1758427458
+grayhatter!~grayhatte@user/grayhatter
+counter point; you could also fix the PR instead
+
+1758427491
+clevor!sid649024@id-649024.hampstead.irccloud.com
+meh
+
+1758427678
+grayhatter!~grayhatte@user/grayhatter
+historically, I've been very good at ignoring said feelings, and hyper focusing on the specifics/details of the interaction
+
+1758427765
+grayhatter!~grayhatte@user/grayhatter
+recently I've started to adopt the intent to understand the root cause of said feelings
+
+1758427852
+grayhatter!~grayhatte@user/grayhatter
+while I'm very familiar with feeling ashamed except for exceptionally egregious mistakes that caused actual harm to someone else, I can't imagine feeling shame over a PR/review comment
+
+1758427934
+grayhatter!~grayhatte@user/grayhatter
+and probably would say it's unfair if it was someone thought or said you should feel ashamed
+
+1758427942
+grayhatter!~grayhatte@user/grayhatter
+someone else*
+
+1758428100
+grayhatter!~grayhatte@user/grayhatter
+but put another way, if you're sure it wasn't ark's intent to make you feel bad, (I'm sure it wasn't), might be worth trying to figure out what you saw that reminded you to feel bad... you can't fix bugs in a miscalculated perception when you're ignoring them :)
+
+1758428695
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I think the root cause was getting bullied in 5th grade, not that I need sympathy for that.
+
+1758428876
+grayhatter!~grayhatte@user/grayhatter
+I mean, that's always what it is, or something in that genre
+
+1758428960
+grayhatter!~grayhatte@user/grayhatter
+whether you need it or not, you have my sympathy
+
+1758429023
+grayhatter!~grayhatte@user/grayhatter
+unfairness and needless cruelty will never not piss me off, so sorry you had to deal with assholes
+
+1758429055
+grayhatter!~grayhatte@user/grayhatter
+it's another example of people taking out their anger on the wrong person :/
+
+1758429115
+torque!~tachyon@user/torque
+when I first started working on projects with other people, it was a very aggressive group, and I think I learned some wrong lessons from it, but I think the biggest boon was that that sort of behavior doesn't bother me much at all
+
+1758429130
+torque!~tachyon@user/torque
+I don't think it's good to treat people that way but being able to tolerate it is also good, imo
+
+1758429147
+grayhatter!~grayhatte@user/grayhatter
+torque: up to a limit, I completely agree
+
+1758429173
+clevor!sid649024@id-649024.hampstead.irccloud.com
+TBF I was immature and farted a lot, and they were immature as well.
+
+1758429186
+grayhatter!~grayhatte@user/grayhatter
+I was raised by the internet, 4chan and somethingawful included
+
+1758429190
+longlonglongint!~longlongl@user/longlonglongint
+clevor: just remember bullies are retarded and you can think of their opinions as such
+
+1758429236
+grayhatter!~grayhatte@user/grayhatter
+it's very nice to be able to not be offended by stuff, but on the other hand, you probably should be offended when you see someone else being mean to someone else
+
+1758429316
+grayhatter!~grayhatte@user/grayhatter
+I've been repeating the mantra a lot these past few days, (especially around recent events...) Don't treat people as bad as they are, treat them as good as you are.
+
+1758429318
+torque!~tachyon@user/torque
+well, I generally disagree, but I'm not really going to argue it
+
+1758429322
+clevor!sid649024@id-649024.hampstead.irccloud.com
+longlonglongint: It wasn't really anyone's fault as we weren't old enough at the time,
+
+1758429323
+clevor!sid649024@id-649024.hampstead.irccloud.com
+.
+
+1758429365
+longlonglongint!~longlongl@user/longlonglongint
+my point still stands
+
+1758429366
+grayhatter!~grayhatte@user/grayhatter
+torque: you don't think you should say something when someone is being unfairly mean to someone else?
+
+1758429448
+torque!~tachyon@user/torque
+no, it's funny when Linux Torvalds is a dickhead on the linux mailing lists
+
+1758429458
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The developer I mentioned earlier once suggested I commit suicide during a crisis where someone else was considering suicide and we thought he was going to do it, only to find out he fell asleep.
+
+1758429493
+torque!~tachyon@user/torque
+truly abusive behavior should be called out but I've never been in that situation so I haven't had to deal with it
+
+1758429494
+grayhatter!~grayhatte@user/grayhatter
+I don't think calling bullies retarded is very accurate, they're not mean because they're dumb, they're mean because they're really angry and were a) taught they should be mean to others and/or b) don't have a better way to cope with being angry
+
+1758429511
+longlonglongint!~longlongl@user/longlonglongint
+clevor: the internet is a cesspool so thats pretty much par for the course
+
+1758429530
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Unfortunately, yeah.
+
+1758429547
+longlonglongint!~longlongl@user/longlonglongint
+what that dev said was horrible but some people are just jerks i guess
+
+1758429549
+grayhatter!~grayhatte@user/grayhatter
+clevor: I've been in nearly that exact position
+
+1758429633
+longlonglongint!~longlongl@user/longlonglongint
+i read some of the chat history
+
+1758429634
+grayhatter!~grayhatte@user/grayhatter
+the fact that a lot of humans have been badly broken is an unfortunate fact of life... 
+
+1758429688
+longlonglongint!~longlongl@user/longlonglongint
+clevor: (referring to you talking about the FOSS project core developer) personally i recommend you forgive him and move on
+
+1758429697
+longlonglongint!~longlongl@user/longlonglongint
+we cant let people like that drag us down
+
+1758429721
+longlonglongint!~longlongl@user/longlonglongint
+if we just hold on to every stupid insult people have told us then they basically accomplish their goal
+
+1758429733
+longlonglongint!~longlongl@user/longlonglongint
+at least thats my two cents
+
+1758429766
+grayhatter!~grayhatte@user/grayhatter
+torque: I also find said threads amusing, but only because I have the context to know it's not supposed to be taken personally... I'm talking about when it is clearly an attack, or uncalled for.
+
+1758429825
+grayhatter!~grayhatte@user/grayhatter
+the cure for bullying and hostility is standing up for someone, and defending and demanding the respect they deserve as a person
+
+1758429861
+longlonglongint!~longlongl@user/longlonglongint
+this is the internet though
+
+1758429895
+longlonglongint!~longlongl@user/longlonglongint
+most FOSS project devs will just insult you again for demanding respect as a human being
+
+1758429913
+grayhatter!~grayhatte@user/grayhatter
+I think I mostly agree with longlonglongint. But I think I would still stay far far away from said person, who has demonstrated they're going to be vampire, and there are better ways to spend your time than feeding into someone who's going to be toxic
+
+1758429934
+longlonglongint!~longlongl@user/longlonglongint
+^
+
+1758429945
+longlonglongint!~longlongl@user/longlonglongint
+couldnt have put it better myself
+
+1758429995
+clevor!sid649024@id-649024.hampstead.irccloud.com
+At the same time, I hope they will improve as a person in the future.
+
+1758430017
+grayhatter!~grayhatte@user/grayhatter
+clevor: imagine how angry and depressed you would have to be to say such a thing? Ignore them, acknowledge their issues are exclusively about them alone.... and keep on trying to make the world better as you're already doing
+
+1758430025
+torque!~tachyon@user/torque
+I think respect is earned, not deserved
+
+1758430059
+torque!~tachyon@user/torque
+there's a baseline for how people should be treated
+
+1758430063
+grayhatter!~grayhatte@user/grayhatter
+torque: careful that you're using the same version of respect as someone else
+
+1758430075
+longlonglongint!~longlongl@user/longlonglongint
+not sure how many christians there are here but a bible verse describes what grayhatter said pretty well
+
+1758430091
+longlonglongint!~longlongl@user/longlonglongint
+Matthew 12:34: "Brood of vipers! How can you, being evil, speak good things? For out of the abundance of the heart the mouth speaks."
+
+1758430163
+grayhatter!~grayhatte@user/grayhatter
+there's a meme I like, goes something like "some people say if you don't respect me then I wont respect you. But what they're really saying is if you don't respect and treat me as an authority, I won't respect you or your right to exist and be treated fairly as a human." 
+
+1758430177
+grayhatter!~grayhatte@user/grayhatter
+and then they think they're being fair, but they're clearly not
+
+1758430368
+grayhatter!~grayhatte@user/grayhatter
+this is the meme I was thinking about https://gr.ht/i/respect.png
+
+1758435698
+rvrb!~rvrb@156.146.51.230
+grayhatter: thanks, I just wish I could communicate things in less words than I did in that comment
+
+1758435757
+rvrb!~rvrb@156.146.51.230
+that comment became the subject of my post caffeine morning hyperfocus
+
+1758436629
+clevor!sid649024@id-649024.hampstead.irccloud.com
+grayhatter: In the PR review mentioned earlier, I initially expected Andrew to say something harsh along the lines of "Your code sucks." His 
+
+1758436640
+clevor!sid649024@id-649024.hampstead.irccloud.com
+oops, early send
+
+1758436943
+clevor!sid649024@id-649024.hampstead.irccloud.com
+After I processed it and understood what he meant, I was surprised that he wasn't what I thought of him: an intimidating maintainer that I should respect like authority.
+
+1758436989
+grayhatter!~grayhatte@user/grayhatter
+I don't respect "authority"
+
+1758437000
+grayhatter!~grayhatte@user/grayhatter
+IMO, it's a mistake to do so
+
+1758437068
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I meant respect as in fear.
+
+1758437229
+grayhatter!~grayhatte@user/grayhatter
+I hold individuals in high esteem once they've demonstrated some level of curiosity and compassion
+
+1758437369
+grayhatter!~grayhatte@user/grayhatter
+clevor: I knew what you meant by respect... a very useful heuristic that I've found, people who demand or expect you interact with them as your superior, or some kind of authority, are **never** worthy of it
+
+1758437511
+grayhatter!~grayhatte@user/grayhatter
+every single person who's expected some sort of imbalanced interaction, has proven themselves to be backstab-ish, or unbelievebly stupid... often both
+
+1758437570
+grayhatter!~grayhatte@user/grayhatter
+the people who I think would actually be worthy of that imbalanced level of respect have always interacted fairly, and tried to treat me as a peer
+
+1758437812
+grayhatter!~grayhatte@user/grayhatter
+people who are worthy of your time, will never demand subservience or deference, and the ones that do, aren't worthy of it, and are trying to trick you... in other words... don't let stupid people trick you
+
+1758438242
+grayhatter!~grayhatte@user/grayhatter
+another useful heuristic/tool that I've found to be very helpful preventing myself from making mistakes, default to assuming everyone you interact with is trying to be nice, and is trying help you... and assume that any seeming divergence is because they're just bad at helping/explaining/choosing-words/etc, and more likely need some help communicating
+
+1758438354
+grayhatter!~grayhatte@user/grayhatter
+I used to be surprised at how many people actually want to help (and are just bad at communicating it) when you default to assuming they want to help... 
+
+1758438448
+grayhatter!~grayhatte@user/grayhatter
+fair warning: some people are really **really** bad at it, and need multiple tries/chances
+
+1758492560
+longlonglongint!~longlongl@user/longlonglongint
+how do you guys use writers post writergate
+
+1758492594
+longlonglongint!~longlongl@user/longlonglongint
+do you do writer.interface.method or x = &writer.interface and then x.method
+
+1758495406
+grayhatter!~grayhatte@user/grayhatter
+I use both versions
+
+1758498759
+rvrb!~rvrb@156.146.51.230
+hot damn, new linker performance is impressive
+
