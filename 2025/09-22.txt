@@ -1,0 +1,284 @@
+1758503656
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+The benchmarks look great. Haven’t tested it yet. 
+
+1758503975
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I tested it and ran into IB :p
+
+1758504746
+grayhatter!~grayhatte@user/grayhatter
+Am I out of the loop on something?
+
+1758504784
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://github.com/ziglang/zig/issues/24110
+
+1758504804
+clevor!sid649024@id-649024.hampstead.irccloud.com
+wait, wrong pr
+
+1758504805
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://github.com/ziglang/zig/pull/25299
+
+1758505280
+longlonglongint!~longlongl@user/longlonglongint
+thats a lot of changes
+
+1758505440
+grayhatter!~grayhatte@user/grayhatter
+> The performance is fast enough that there's no longer much of a benefit to exposing a -Dno-bin build step. 
+
+1758505445
+grayhatter!~grayhatte@user/grayhatter
+damn.
+
+1758505638
+grayhatter!~grayhatte@user/grayhatter
+clevor: did you git bisect?
+
+1758505734
+grayhatter!~grayhatte@user/grayhatter
+only hitting the bug when starting via `time` seems quite suspicious 
+
+1758505773
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I didn't bisect, and I can't tonight.
+
+1758505785
+clevor!sid649024@id-649024.hampstead.irccloud.com
+s/,//
+
+1758505792
+grayhatter!~grayhatte@user/grayhatter
+I love it when expected behavior is just: I expect it not to crash
+
+1758505888
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I expect it to tell me not to time it because it is "fast enough"
+
+1758505938
+grayhatter!~grayhatte@user/grayhatter
+there's nothing quite like starting a new zig project
+
+1758505982
+grayhatter!~grayhatte@user/grayhatter
+it always trips me up (pleasantly) when I run `zig build && sudo zig-out/bin/dnsd` and expect to see compiler progress output, but I've blinked and it's already running
+
+1758506036
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: yeah. unfortunately I think rewrite was the right call
+
+1758511664
+grayhatter!~grayhatte@user/grayhatter
+has anyone written a RFC1035 compliant DNS server? (in zig or c) I'm attempting to implement one that packs domain names correctly but I'm not smart enough to figure out how to do it in idiomatic zig
+
+1758513930
+andrewrk!~andrewrk@mail.ziglang.org
+no but I do happen to be in the midst of reworking the std lib DNS client code
+
+1758513943
+andrewrk!~andrewrk@mail.ziglang.org
+idiomatic zig looks quite different than what is currently in std.net...
+
+1758513969
+longlonglongint!~longlongl@user/longlonglongint
+i was just trying to implement some sort of async-like setup in (non gnu) c99
+
+1758513993
+longlonglongint!~longlongl@user/longlonglongint
+ive implemented something like it with gnu c since it has nested functions and macro garbage but this time im trying to do it without nested functions
+
+1758514056
+longlonglongint!~longlongl@user/longlonglongint
+where can i find the upcoming zig async stuff for reference
+
+1758514122
+longlonglongint!~longlongl@user/longlonglongint
+im running into some roadblocks related to the stack and invalid pointers
+
+1758514538
+andrewrk!~andrewrk@mail.ziglang.org
+sounds like a roadblock you can overcome by gaining knowledge
+
+1758514607
+longlonglongint!~longlongl@user/longlonglongint
+thats what im trying to do
+
+1758514622
+longlonglongint!~longlongl@user/longlonglongint
+but i think some good old zig code might be better than a freakin nasa paper https://ntrs.nasa.gov/api/citations/19970011669/downloads/19970011669.pdf
+
+1758514642
+andrewrk!~andrewrk@mail.ziglang.org
+?
+
+1758514658
+andrewrk!~andrewrk@mail.ziglang.org
+stack variables expire at the end of scope they're declared in
+
+1758514675
+longlonglongint!~longlongl@user/longlonglongint
+yeah im just trying to figure out a solution for that
+
+1758514690
+longlonglongint!~longlongl@user/longlonglongint
+its a stupid kind of async
+
+1758514707
+longlonglongint!~longlongl@user/longlonglongint
+a thread jmps into the code while the main thread skips it
+
+1758514774
+longlonglongint!~longlongl@user/longlonglongint
+i actually got it "working" one time with *some* code a few months ago but im pretty sure it was firmly in UB territory
+
+1758514814
+donpdonp!~donp@donp.org
+whenever im in a gtk callback, std.debug.print segfaults. the only clue to a problem i can find, is from the gdb debugger, where it calls 0x00000000012988eb in debug.print__anon_42817 (fmt=..., args=...). and the args are fmt = {ptr = 0x1324fbd <__anon_38990> "some output {}", len = 14}
+
+1758514840
+donpdonp!~donp@donp.org
+(continuing) args = <optimized out>
+
+1758514896
+donpdonp!~donp@donp.org
+the source code is std.debug.print("some output {}", .{2});
+
+1758516460
+donpdonp!~donp@donp.org
+ahh the callback was missing callconf(.c). its working now. #phew
+
+1758516467
+donpdonp!~donp@donp.org
+s/callconf/callconv/
+
+1758517586
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: if you haven't already started, I almost submitted the client code I have in my dns repo. The only thing that stopped me was I couldn't decide what to do about memory allocation... (and also idle PRs DoS my attention)
+
+1758517598
+grayhatter!~grayhatte@user/grayhatter
+the record parsing was easy enough
+
+1758517653
+grayhatter!~grayhatte@user/grayhatter
+also decided that I don't need to solve the general case, I can just solve the recursive case and "free" the name pointers once the name is resolved, which I assume is an implementation I'd be happy with
+
+1758517887
+grayhatter!~grayhatte@user/grayhatter
+lmao ezzieyguywuf, you'll love this https://github.com/ziglang/zig/blob/master/lib/std/net.zig#L777
+
+1758518357
+grayhatter!~grayhatte@user/grayhatter
+ah yes, I remember this fn dnsParse() is I think the one bit of stdlib code where I think the zig I've written is better, lol, this is very much not idiomatic zig :D
+
+1758519304
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+What is the best place to see idiomatic zig? I'm obsessed with being idiomatic as it can make refactoring so much easier.
+
+1758522756
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: I've started and I'm quite far along
+
+1758532895
+lemons!~doggie@user/doggie-:49517
+having issues with my build.zig, 0.15 broke it and i thought i fixed it but apparently not
+
+1758532922
+lemons!~doggie@user/doggie-:49517
+(https://bpa.st/QAXA4), exact error im getting is src/_globals/rendering.zig:3:25: error: no module named 'globals' available within module 'globals', const globals = @import("globals");
+
+1758532956
+lemons!~doggie@user/doggie-:49517
+on zig build
+
+1758533500
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+You have a circular dependency. 
+
+1758533567
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+Lines 24-25. Those modules depend on each other. 
+
+1758534675
+lemons!~doggie@user/doggie-:49517
+oh wow, how did i miss that
+
+1758534751
+lemons!~doggie@user/doggie-:49517
+wait no that does seem correct, byondapi needs globals, and globals needs byondapi
+
+1758534809
+lemons!~doggie@user/doggie-:49517
+byondapi uses an allocator located in globals, and globals has a bunch of helpers that rely on byondapi
+
+1758534848
+lemons!~doggie@user/doggie-:49517
+could've sworn that was previously fine though, has anything changed to make these kinds of deps invalid?
+
+1758535020
+deevus!~deevus@7wdf1tt0vhfbrrrfm74p.ip6.superloop.au
+Try creating module C that they both reference for shared code
+
+1758535030
+ifreund!2940d10f8b@user/ifreund
+the obvious fix is to @import("_globals.zig") inside the globals module instead of @import("globals")
+
+1758538345
+lemons!~doggie@user/doggie-:49517
+nvm i was just importing globals inside globals
+
+1758540211
+lemons!~doggie@user/doggie-:49517
+sanity question but a one-field struct containing another one-field struct (containing something of actual substance) will just optimize down to that most-inner field?
+
+1758541944
+bblack!~bblack@wikimedia/bblack-WMF
+should be the case AFAIK.  you could always check by dumping the relevant @sizeOf()s
+
+1758542056
+lemons!~doggie@user/doggie-:49517
+alright, thats great to hear
+
+1758542102
+lemons!~doggie@user/doggie-:49517
+sorry for the redundant questions btw, just way too used to the only compiler optimization at hand being const folding of numbers
+
+1758542115
+lemons!~doggie@user/doggie-:49517
+*number literals
+
+1758561262
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Does the compiler's test-incremental step include fuzz tests?
+
+1758562160
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Looks like no
+
+1758567928
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: no, but the incremental test file format is designed so that it can be generated by a fuzzer
+
+1758567938
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Okay
+
+1758567987
+andrewrk!~andrewrk@mail.ziglang.org
+in other words, steps taken in that direction, but not arrived yet
+
+1758568095
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I find it strange how the new linker only fails if I run it via the `time` command.
+
+1758570883
+mimivalsi!~mimivalsi@user/MimiValsi
+.
+
+1758570892
+mimivalsi!~mimivalsi@user/MimiValsi
+oops sry
+
