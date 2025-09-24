@@ -1,0 +1,240 @@
+1758596270
+andrewrk!~andrewrk@mail.ziglang.org
+https://git.musl-libc.org/cgit/musl/tree/src/network/res_msend.c#n79
+
+1758596292
+andrewrk!~andrewrk@mail.ziglang.org
+if you examine this function carefully, you will find that if you squint hard enough, it actually takes an Io parameter, uses async/await, cancellation, and `select`
+
+1758596688
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It's `std.Io`s all the way down.
+
+1758597290
+Affliction!affliction@idlerpg/player/affliction
+Takes me back to my earliest programming days, when I thought SDL's rwops struct was kinda neat.
+
+1758597331
+andrewrk!~andrewrk@mail.ziglang.org
+this is DNS resolution btw. it's extremely load-bearing code
+
+1758630546
+mimivalsi!~mimivalsi@user/MimiValsi
+after creating an arena alloc with std.heap.ArenaAllocator.init(heap.page_allocator), then a buffer with allocator.alloc(u8, 10) I get an array(?) of []u8. I want to populate with a string. In C lang, I just use char *foo = malloc(10); and use strcpy(). What's a zig equivalent may be?
+
+1758631133
+bblack!~bblack@wikimedia/bblack-WMF
+mimivalsi: the type of the value returned by "allocator.alloc(u8, 10)" is a "Slice" of u8s, which is written "[]u8".
+
+1758631180
+bblack!~bblack@wikimedia/bblack-WMF
+in Zig if you say "[42]u8", that's a 42-element array of u8s with comptime-known length.  while a slice like "[]u8" is basically a pointer to some storage for u8s, and a runtime length value.
+
+1758631235
+bblack!~bblack@wikimedia/bblack-WMF
+how you populate it, though, really depends on the context and what you're copying from where.
+
+1758631340
+bblack!~bblack@wikimedia/bblack-WMF
+"strcpy()" scans the source for a terminal \0 (which would be a "sentinel" value in Zig terms) to find the source length, then blindly copies that many bytes to the destination pointer without any regard to what can be safely written to the destination.
+
+1758631416
+bblack!~bblack@wikimedia/bblack-WMF
+https://ziglang.org/documentation/0.15.1/#Slices
+
+1758631507
+bblack!~bblack@wikimedia/bblack-WMF
+there's a bunch of stdlib functions related to handling sentinels and C-sourced strings and such, e.g. https://ziglang.org/documentation/master/std/#std.mem.sliceTo
+
+1758631629
+bblack!~bblack@wikimedia/bblack-WMF
+for example, if you were starting with a raw C "char*" sort of pointer from some C API, and your goal was to copy it to a sentinel-terminated Zig slice (so it still has a trailing \0 for the convenience of later calling other C APIs)... you could do copying and allocation as [:0]u8 slice all in one go with something like:
+
+1758631699
+bblack!~bblack@wikimedia/bblack-WMF
+const foo: [:0]u8 = allocator.dupeZ(u8, std.mem.sliceTo(c_str_source_ptr, 0));
+
+1758631788
+mimivalsi!~mimivalsi@user/MimiValsi
+ahh ok I see. Thx for the insight
+
+1758631957
+bblack!~bblack@wikimedia/bblack-WMF
+https://ziglang.org/documentation/master/std/#std.mem.span is a little more ergonomic than sliceTo for the common cases I guess :)
+
+1758632011
+bblack!~bblack@wikimedia/bblack-WMF
+const foo: [:0]u8 = allocator.dupeZ(u8, std.mem.span(c_str_source_ptr));
+
+1758632069
+bblack!~bblack@wikimedia/bblack-WMF
+^ after that "foo.len" would tell you the length of the bytes in the duplicated string, not counting the terminal \0 (like strlen()).
+
+1758632163
+mimivalsi!~mimivalsi@user/MimiValsi
+I guess what u show is pertinent coz I'm trying to play with sockets and make a connection to postgres
+
+1758634116
+nicefries!~nicefries@user/nicefries
+still trying to build zig-bootstrap, can anybody help: https://zigbin.io/57efd7
+
+1758653817
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I find it funny that rpkak and I posted nearly identical solutions within minutes of each other.
+
+1758653871
+bblack!~bblack@wikimedia/bblack-WMF
+there must have been some shared trigger
+
+1758653884
+bblack!~bblack@wikimedia/bblack-WMF
+was there a tangentially-related blog post you both read the same day or something?
+
+1758654002
+andrewrk!~andrewrk@mail.ziglang.org
+it was an issue opened yesterday by matklad
+
+1758654231
+clevor!sid649024@id-649024.hampstead.irccloud.com
+bblack: I just saw it in the issues page, thought I could fix it, and I had just enough time to make the PR.
+
+1758654244
+clevor!sid649024@id-649024.hampstead.irccloud.com
+s/just saw/saw/
+
+1758654515
+bblack!~bblack@wikimedia/bblack-WMF
+ah
+
+1758655145
+grayhatter!~grayhatte@user/grayhatter
+other than switch, is there a way to check if it's non-exaustive e.g. `if (some_enum == _)`?
+
+1758655345
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: @typeInfo can tell you at comptime
+
+1758655357
+bblack!~bblack@wikimedia/bblack-WMF
+https://ziglang.org/documentation/master/std/#std.builtin.Type.Enum
+
+1758655409
+grayhatter!~grayhatte@user/grayhatter
+it's on runtime data
+
+1758655444
+grayhatter!~grayhatte@user/grayhatter
+*if the enum value is in the "non-exaustive range" 
+
+1758655510
+bblack!~bblack@wikimedia/bblack-WMF
+there's probably a way, to build an efficient hashmap of the declared enum labels at comptime and make a runtime bool fn that tells you, hmmm
+
+1758655520
+bblack!~bblack@wikimedia/bblack-WMF
+or maybe std.meta already has something? it has some related things
+
+1758655593
+bblack!~bblack@wikimedia/bblack-WMF
+https://ziglang.org/documentation/master/std/#std.enums.values
+
+1758655617
+grayhatter!~grayhatte@user/grayhatter
+`switch (tag) { _ => [...] }` it is then :D
+
+1758655618
+bblack!~bblack@wikimedia/bblack-WMF
+not very efficient, but you could basically compare against all the exhaustive one
+
+1758655627
+bblack!~bblack@wikimedia/bblack-WMF
+yeah :)
+
+1758657756
+lemons!~doggie@user/doggie-:49517
+is there a way to tag struct fields with an enum? i have a couple structs with North|South|East|West fields and am tired of translating between them
+
+1758658657
+lemons!~doggie@user/doggie-:49517
+also any way to iterate over a known-size array such that i get a non-const pointer from the iteration? need to go through [an array of structs with bools] and set the bools to false
+
+1758658703
+lemons!~doggie@user/doggie-:49517
+0..arr.len, right. egh
+
+1758658736
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+same as any slice, for (&arr) |*element| { ... }
+
+1758658789
+lemons!~doggie@user/doggie-:49517
+oo thats handy, cheers
+
+1758658920
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but if you're just setting them all to false, you can use @memset
+
+1758659000
+lemons!~doggie@user/doggie-:49517
+thanks but i was kinda downplaying the structure for brevity
+
+1758659145
+lemons!~doggie@user/doggie-:49517
+in reality i have a struct with (irrelevant field) and [73]*struct{ dir: BitDir [u4], other_data: blackbox }
+
+1758659157
+lemons!~doggie@user/doggie-:49517
+hhh not []* i mean []?
+
+1758659229
+lemons!~doggie@user/doggie-:49517
+(and i only want one of the bits in BitDir false'd)
+
+1758659284
+rvrb!~rvrb@156.146.51.230
+lemons: idk what you mean by tagging struct fields, but you can get an enum of struct fields in std.meta
+
+1758659349
+lemons!~doggie@user/doggie-:49517
+rvrb: im trying to solve having to put switch(dir) { .North => struct.North = 4, .South => struct.South = 4, [...] } everywhere
+
+1758659489
+lemons!~doggie@user/doggie-:49517
+hold on, does trying to &x.? always result in a const pointer?
+
+1758659522
+lemons!~doggie@user/doggie-:49517
+or is zls playing tricks on me
+
+1758659665
+lemons!~doggie@user/doggie-:49517
+..its zls playing tricks on me. sigh
+
+1758659696
+lemons!~doggie@user/doggie-:49517
+https://www.zigfiddle.dev/?lPbxHm1D8Ug
+
+1758663782
+torque!~tachyon@user/torque
+you could do `switch (dir) { inline else => |tag| @field(struct, @tagName(tag)) = 4, }` though the switch can be dropped if the tag is comptime known
+
+1758663852
+torque!~tachyon@user/torque
+basically the `inline else` hoists the tag up from being runtime known to being comptime known.
+
+1758664113
+lemons!~doggie@user/doggie-:49517
+by "if the tag is comptime known" you mean the field that we want to access?
+
+1758664448
+lemons!~doggie@user/doggie-:49517
+oh nvm i see it now
+
+1758664480
+lemons!~doggie@user/doggie-:49517
+yeah i guess that'd work? though i'd be lying if i said its particularly elegant
+
+1758664626
+lemons!~doggie@user/doggie-:49517
+gtg but feel free to shoot a memo if anyone has a better solution
+
