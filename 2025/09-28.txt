@@ -1,0 +1,412 @@
+1759019462
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+do y'all prefer to wrap a mutex.lock()/defer unlock() in a nameless scope (is that what {....} is called?) for a simple e.g. `self.foo = bar;`, or do you just call the unlock() explictly instead of using defer?
+
+1759019716
+lemons!~doggie@user/doggie-:49517
+std uses explicit unlocks.. somewhere, iirc
+
+1759019768
+lemons!~doggie@user/doggie-:49517
+i assume a defer would be more "ziggy" but i myself would just unlock() at end
+
+1759019801
+lemons!~doggie@user/doggie-:49517
+granted ive never used mutices yet lol
+
+1759019808
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea, I feel like defer is more "ziggy" but it just looks so awkward esp. for a 3-line lock/set/unlock
+
+1759019831
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yarg, concurrency is so hard lol
+
+1759019834
+lemons!~doggie@user/doggie-:49517
+then just unlock() by hand
+
+1759019843
+lemons!~doggie@user/doggie-:49517
+dont spend this much time overthinking things 
+
+1759019847
+lemons!~doggie@user/doggie-:49517
+thats MY job
+
+1759019850
+lemons!~doggie@user/doggie-:49517
+>:(
+
+1759019891
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol
+
+1759019925
+Affliction!affliction@idlerpg/player/affliction
+yeah, I've generally not used defer in tiny, infallible blocks in general.
+
+1759019945
+Affliction!affliction@idlerpg/player/affliction
+tiny fallible blocks, sure
+
+1759020346
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm curious https://github.com/ziglang/zig/blob/master/lib/std/Thread/ResetEvent.zig#L91 why is `state` a `u32` rather than, say, an enum with 3-states or a `?bool`?
+
+1759020531
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah yea, this is exactly the awkward defer I was talking about: https://github.com/ziglang/zig/blob/master/lib/std/Thread/Condition.zig#L21-L24
+
+1759021118
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh, also I'm a little confused at the example in https://ziglang.org/documentation/master/std/#std.Thread.Condition <- if the consumer locks the mutex, and doesn't unlock it until after c.wait() returns, then how can the producer ever obtain the lock to set the predicate to `true`?
+
+1759021207
+Affliction!affliction@idlerpg/player/affliction
+why is `state` a `u32` rather than, say, an enum with 3-states or a `?bool`? <- I would guess, there might be some atomic op involved somewhere that doesn't support enums
+
+1759021219
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I mean, I guess in that case it's super important that the thread is spawned before consumer() is called, but is it 100% guaranteed that the the producer's .lock() will run first? I kinda think no...
+
+1759021293
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+Affliction: hm, I guess I figured since it was wrapped in std.atomic.Value() that it wouldn't matter
+
+1759021350
+Affliction!affliction@idlerpg/player/affliction
+ezzieyguywuf: It's a pretty thin wrapper - https://ziglang.org/documentation/master/std/#src/std/atomic.zig
+
+1759021576
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+frm @atomicLoad documentation "T must be a pointer, a bool, a float, an integer, an enum, or a packed struct.
+
+1759021583
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+" so it seems an enum would work
+
+1759021670
+Affliction!affliction@idlerpg/player/affliction
+Sure, for that op. I didn't go through and look at every operation done with it.
+
+1759021762
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea same
+
+1759021762
+Affliction!affliction@idlerpg/player/affliction
+Though I guess that holds for all the atomic builtins, thoguh I'd imagine RMW ops like add or sub might reject enums? can't say I've tried
+
+1759021766
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+:shrug:
+
+1759021812
+Affliction!affliction@idlerpg/player/affliction
+yeah; https://ziglang.org/documentation/master/std/#std.builtin.AtomicRmwOp
+
+1759021916
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but https://ziglang.org/documentation/master/#atomicRmw says it can also be an enum
+
+1759021967
+Affliction!affliction@idlerpg/player/affliction
+Sure, but enums are only supported by the xchg op
+
+1759022051
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh I'm silly, "oh, also I'm a little confused at the example", Condition.wait(&m) unlocks it
+
+1759031483
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there something like channels where I can send data from one thread to another?
+
+1759032668
+Affliction!affliction@idlerpg/player/affliction
+ezzieyguywuf: Not in std so far, afaik. Simplest method would probably be a mutex protected https://ziglang.org/documentation/master/std/#std.deque.Deque
+
+1759032695
+Affliction!affliction@idlerpg/player/affliction
+perhaps someone out there already adapted it to atomic ops
+
+1759032816
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I figured out a different way (I think) thanks for the tip thuogh I'll keep that in mind
+
+1759034623
+Affliction!affliction@idlerpg/player/affliction
+Does zig have any method for interworking between ARM and Thumb? (I was thinking, perhaps through callconv, though it doesn't look like it)
+
+1759034778
+Affliction!affliction@idlerpg/player/affliction
+Am I the first person to try this? duckduckgo: No results found for "zig" "interworking"
+
+1759035466
+Affliction!affliction@idlerpg/player/affliction
+Not a big deal, anyway. Mostly a curiosity at this point.
+
+1759037145
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Could splitting the Thumb code and non-Thumb code into separate modules work?
+
+1759039487
+Affliction!affliction@idlerpg/player/affliction
+hm, and give them separate targets? no idea
+
+1759039708
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I don't know if that would work.
+
+1759040191
+deevus!~deevus@123.51.31.231
+Just created #gdzig for the project that I have been working on with rvrb. Zig bindings for Godot 4+. If anyone is interested :)
+
+1759050880
+vtorri!~vtorri@2a01:e0a:a4f:12e0:90a0:f380:b559:eabf
+hello
+
+1759050948
+vtorri!~vtorri@2a01:e0a:a4f:12e0:90a0:f380:b559:eabf
+will graphic APIs be integrated in zig (GDI/Direct3D, Metal, Xlib/XCB/OpenGL/Vulkan) ? 
+
+1759050959
+vtorri!~vtorri@2a01:e0a:a4f:12e0:90a0:f380:b559:eabf
+Or is it something that I should do myself ?
+
+1759054510
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+theres already some existing opengl binding wrappers
+
+1759056514
+deevus!~deevus@123.51.31.231
+There are raylib bindings that are very good
+
+1759057156
+vtorri!~vtorri@2a01:e0a:a4f:12e0:90a0:f380:b559:eabf
+thnks
+
+1759058280
+Affliction!affliction@idlerpg/player/affliction
+I did a simple opengl model viewer using plain @cImport with glfw. Some of the earliest zig code I wrote, and pretty much sold me on zig.
+
+1759059073
+hadronized!~hadronize@2001:41d0:a:fe76::1
+is it generally okay to glue an atomic counter to a pointer to track its lifetime? I’m wondering whether I can create a small wrapper around « owned » pointers by just adding an atomic pointer that switches to false whenever the actual data is freed
+
+1759059102
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I’m wondering whether that kind of gluing could be done automatically by adding some additional code in the compiler at some places
+
+1759059153
+hadronized!~hadronize@2001:41d0:a:fe76::1
+Affliction: interfacing to C with Zig is really pleasant, yeah
+
+1759059167
+hadronized!~hadronize@2001:41d0:a:fe76::1
+the new way is going to move @cImport into the build.zig IIRC but that shouldn’t change much
+
+1759059184
+Affliction!affliction@idlerpg/player/affliction
+makes sense
+
+1759064683
+mimivals1!~mimivalsi@user/MimiValsi
+after creating a StringHashMap, I attempted to insert a null value like this, "try arr.put("foo", null);". Ofc I get "thread 198739 panic: attempt to use null value". Is there a way to put that null value wihtout panic? the arr variable is: arr = std.StringHashMap([]const u8)
+
+1759065546
+mimivals1!~mimivalsi@user/MimiValsi
+I even tried StringHashMap(?[]const u8) ^^' 
+
+1759066205
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+mimivals1: I don't understand why the compiler would let you pass null to put when V is []const u8, there's something missing here
+
+1759066246
+mimivals1!~mimivalsi@user/MimiValsi
+oh but the compiler doesn't let me
+
+1759066251
+mimivals1!~mimivalsi@user/MimiValsi
+it crashes
+
+1759066264
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the compiler crashes?
+
+1759066270
+mimivals1!~mimivalsi@user/MimiValsi
+I was just wondering if there's a way to wrap the crash and return an error instead
+
+1759066272
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I thought your program crashed
+
+1759066285
+mimivals1!~mimivalsi@user/MimiValsi
+sry, the program crash not the compiler 
+
+1759066299
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so how come the compiler let's you pass null as a []const u8
+
+1759066302
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+do you have a snippet
+
+1759066545
+mimivals1!~mimivalsi@user/MimiValsi
+here's my gist
+
+1759066547
+mimivals1!~mimivalsi@user/MimiValsi
+https://gist.github.com/MimiValsi/d65740dcc4e87eda59ba6a4be0709b2e
+
+1759066566
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+mimivals1: but you're not passing null to put, you're doing .?
+
+1759066590
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+dereferencing the null and crashing the program, panic has nothing to do with StringHashMap
+
+1759066603
+mimivals1!~mimivalsi@user/MimiValsi
+hmm ok ok
+
+1759066722
+mimivals1!~mimivalsi@user/MimiValsi
+so if I want to pass the null, i need to create StringHashMap(?[]const u8)  ??
+
+1759066728
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, of course
+
+1759066736
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+`[]const u8` cannot store a null
+
+1759066748
+mimivals1!~mimivalsi@user/MimiValsi
+ohhhh I see
+
+1759066854
+mimivals1!~mimivalsi@user/MimiValsi
+thx !
+
+1759066903
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+np
+
+1759089385
+mimivals1!~mimivalsi@user/MimiValsi
+That's odd, when trying to connect to a socket with: 'std.net.connectUnixSocket(url)', I can access the writer.interface for Io.Writer but not the Reader...
+
+1759089552
+mimivals1!~mimivalsi@user/MimiValsi
+the only interface I get is "interface_state", even so still got an error saying "no field named ..."
+
+1759089780
+mimivals1!~mimivalsi@user/MimiValsi
+created a gists if any1 is curiose. I may be doing something wrong after all, 
+
+1759089782
+mimivals1!~mimivalsi@user/MimiValsi
+https://gist.github.com/MimiValsi/b53904b2c71f53d0f8634408f6ac1d32
+
+1759090112
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+use the .interface() method instead of the field directly
+
+1759090229
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+mimivals1: ^
+
+1759090365
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+but only on the reader, the Stream.Writer is a bit inconsistent API-wise
+
+1759090721
+mimivals1!~mimivalsi@user/MimiValsi
+huh, changed to: 'stream.reader(&r_buf).interface()' and now got an error saying that it founds "*const net.Stream.Reader__struct" instead of "*net.Stream.Reader__struct". I don't user const here. Gona try to dig a little bit ^^
+
+1759090825
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+reader variable should be var not const, makes little sense otherwise
+
+1759090893
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm, that or the .reader().interface() chain runs into some const-deducing problems
+
+1759090919
+mimivals1!~mimivalsi@user/MimiValsi
+maybe yeah
+
+1759090928
+mimivals1!~mimivalsi@user/MimiValsi
+i separated into 2 variables
+
+1759090959
+mimivals1!~mimivalsi@user/MimiValsi
+var reader = stream.reader(&buf); and then: var in = reader.interface();
+
+1759091034
+mimivals1!~mimivalsi@user/MimiValsi
+it seems pretty fine now, but the test hangs, which may be normal
+
+1759093507
+squeek502_!~squeek502@user/squeek502
+mimivalsi, here's an explanation of the problem with your previous code: https://github.com/ziglang/zig/issues/25057#issuecomment-3232258568
+
+1759093689
+longlonglongint!~longlongl@user/longlonglongint
+would anybody happen to know what this error means: expected type '*[]u8', found '*[32]u8'
+
+1759093715
+longlonglongint!~longlongl@user/longlonglongint
+im still training my brain to think in zig instead of c
+
+1759094567
+squeek502_!~squeek502@user/squeek502
+longlonglongint, *[]u8 is a pointer to a slice, which is itself a pointer type, so that's a pointer to a pointer. You almost never want to use that type in practice. *[32]u8 is a pointer to an array of 32 bytes (array is a value type). Note that a pointer to an array will coerce to a slice type, so if your goal is to call a function that takes a `[]u8` you can just give it `*[32]u8` and it'll coerce to a `[]u8`
+
+1759094623
+squeek502_!~squeek502@user/squeek502
+if you haven't seen it, check out https://ziglang.org/documentation/master/#Pointers
+
+1759094712
+squeek502_!~squeek502@user/squeek502
+(judging by the error you're getting, you probably want to change the `*[]u8` to `[]u8`)
+
+1759094716
+longlonglongint!~longlongl@user/longlonglongint
+how do i make a function take an aligned slice as a parameter
+
+1759094802
+squeek502_!~squeek502@user/squeek502
+`[]align(x) T`
+
+1759094809
+squeek502_!~squeek502@user/squeek502
+https://ziglang.org/documentation/master/#Alignment
+
+1759094851
+longlonglongint!~longlongl@user/longlonglongint
+oh dang
+
+1759094858
+longlonglongint!~longlongl@user/longlonglongint
+i had *align(x) []T
+
+1759094862
+longlonglongint!~longlongl@user/longlonglongint
+thanks
+
+1759094885
+squeek502_!~squeek502@user/squeek502
+yeah, pointer to a slice is almost never what you want
+
+1759094923
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I used to have a function that took a mutable pointer to a slice, but I deleted it when I moved it to use a reader instead.
+
