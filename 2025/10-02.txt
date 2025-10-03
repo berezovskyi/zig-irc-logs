@@ -1,0 +1,692 @@
+1759365582
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i do `zig build` it works fine, but `python3 zigbuild build` i get all kinds of errors https://zigbin.io/7d6263
+
+1759365612
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+*ziglang build
+
+1759365628
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`python3 -m ziglang build`
+
+1759365738
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, its the `const lib = b.addLibrary(.{.use_llvm = false})};` that was causing the problem commenting it out works now. 
+
+1759366045
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so, https://pypi.org/project/ziglang/ still uses llvm then? also .so file size small as well
+
+1759366351
+deevus!~deevus@123.51.31.231
+Which version of Zig are you using?
+
+1759366363
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for both 0.15.1
+
+1759366381
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, crap
+
+1759366400
+deevus!~deevus@123.51.31.231
+Try zig master
+
+1759366432
+deevus!~deevus@123.51.31.231
+I had an issue with the linker that may have been resolved here: https://github.com/ziglang/zig/pull/25299
+
+1759366438
+deevus!~deevus@123.51.31.231
+That is similar to what you're seeing
+
+1759366512
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no, no this was totally my fault, ziglang was using 0.14.1 (not sure why) i just installed the 0.15.1 and it works now :D
+
+1759366534
+deevus!~deevus@123.51.31.231
+Ah nice
+
+1759366598
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+deevus, are using ziglang with setup.py file as well? 
+
+1759366653
+andrewrk!~andrewrk@mail.ziglang.org
+🤨
+
+1759366683
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am talking about https://pypi.org/project/ziglang/#description when i say ziglang
+
+1759366684
+deevus!~deevus@123.51.31.231
+stealth_ no I was using it with translate-c
+
+1759366700
+deevus!~deevus@123.51.31.231
+Not ziglang
+
+1759366758
+torque!~tachyon@user/torque
+lol
+
+1759366787
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+for -fincremental, what is meant by -fno-emit-bin in https://ziglang.org/download/0.15.1/release-notes.html#Incremental-Compilation ? do I need to add this flag myself with a -Dno-bin flag?
+
+1759366857
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+deevus, cool, i was going to use python compiler but its such a bitch, i might get ziglang build to create .so and just move it over.
+
+1759367014
+deevus!~deevus@123.51.31.231
+Hello andrewrk, why the face?
+
+1759367090
+andrewrk!~andrewrk@mail.ziglang.org
+that's my reaction to the idea of "using ziglang with setup.py"
+
+1759367175
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, that's what your usage message recommends https://pypi.org/project/ziglang/#description `subprocess.call([sys.executable, "-m", "ziglang"])`
+
+1759367213
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+btw that needs to change to `subprocess.run([sys.executable, "-m", "ziglang"])` .call is deprecated
+
+1759367271
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its done done but this is what i am planning around with: https://zigbin.io/c53438
+
+1759367292
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: yes however with the new elf linker which is now default with -fincremental, you don't really need -fno-emit-bin
+
+1759367312
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/pull/25299#issuecomment-3316280569
+
+1759367350
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah nice thanks
+
+1759367373
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+this is strictly for builds though, I can't expect `zig build -fincremental --watch test` to reliably work?
+
+1759367778
+andrewrk!~andrewrk@mail.ziglang.org
+pretty sure that works fine
+
+1759367809
+andrewrk!~andrewrk@mail.ziglang.org
+well if you're doing that on zig itself, `zig build test` runs a lot of tests. you probably want to limit the set of things being tested
+
+1759367825
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+nah I'm trying it on my project
+
+1759367833
+andrewrk!~andrewrk@mail.ziglang.org
+try it
+
+1759367855
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+does "error: TODO implement tls reloc for elf2" mean I'm doing smthn wrong?
+
+1759367895
+andrewrk!~andrewrk@mail.ziglang.org
+no, if you see TODO that generally means something isn't implemented yet. in this case the new elf linker doesn't support thread local storage relocations yet
+
+1759367914
+andrewrk!~andrewrk@mail.ziglang.org
+i.e. complicated expressions inside the initialization value of threadlocal variables
+
+1759367953
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+multithreading is hard
+
+1759367958
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+any concurrency rly
+
+1759368141
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, https://bholley.net/blog/2015/must-be-this-tall-to-write-multi-threaded-code.html
+
+1759368270
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea I generally avoid it
+
+1759368283
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but, like, for performance and stuff...sometimes I sully my hands
+
+1759368325
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I wonder if I can simplify my "initialization value of threadlocal variables" enough to not trigger the TODO
+
+1759368382
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oops, accidentally added it with `error message` instead of `bug`.
+
+1759368412
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol
+
+1759368452
+andrewrk!~andrewrk@mail.ziglang.org
+if you're not writing an event loop, or implementing threads, it's unlikely that threadlocal is appropriate for your use case
+
+1759368505
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, I don't think I have an event loop, and I don't think I'm implementing threads. I'm running an http server on one thread, a 3d renderer on another thread.
+
+1759368518
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it's probs httpz, it does a bunch of workerthread stuff I think
+
+1759368769
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you should really look into using async/await/event-loop if you are doing any type of server, those are on a different scale to using threads.
+
+1759368807
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+nah I'm waiting for async/await to drop
+
+1759368830
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+plus I don't rly want to design/maintain a server, I just want to use someone else's
+
+1759369791
+andrewrk!~andrewrk@mail.ziglang.org
+I happen to be working on that right now
+
+1759369905
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrew is there no way to keep async/await keywords? i founds those visual clear to read code
+
+1759370035
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also it would be better to use something like `aend` vs calling `cancel` to close the async. 
+
+1759370130
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What's wrong with `io.async` and `io.await`?
+
+1759370165
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nothing wrong with it, just the cool factor. 
+
+1759370525
+andrewrk!~andrewrk@mail.ziglang.org
+it's pretty clearly better to have them in userland
+
+1759370552
+andrewrk!~andrewrk@mail.ziglang.org
+suspend and resume likely to make a comeback tho
+
+1759370639
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
++1 std.Io is dope af
+
+1759370836
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono how ppl will feel about using io.async/io.await with resume/suspend. mixing keywords/none-keywords.
+
+1759371043
+andrewrk!~andrewrk@mail.ziglang.org
+resume/suspend are low level. similar to threadlocal, would only be used by event loop implementations
+
+1759371179
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose it should be ok, wouldn't `await` fall into that category as well? 
+
+1759371332
+andrewrk!~andrewrk@mail.ziglang.org
+no, await is high level
+
+1759371345
+andrewrk!~andrewrk@mail.ziglang.org
+right along with cancel
+
+1759371457
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright, can you please think about changing cancel to aend or something? cause when i think about cancel, i think of io_uring cancel that tried to cancel an event, but cancel in zig is not the same right? it close/ends async() ?  
+
+1759371548
+andrewrk!~andrewrk@mail.ziglang.org
+absolutely not. cancel is a great name, and aend is an unfamiliar, nonconforming, nondescriptive name
+
+1759371588
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+reminds me of aeon
+
+1759371590
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+like aeon flux
+
+1759371613
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Yeah
+
+1759371662
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well you can cancel an order but still go onto order another item, not same same and ending/closing and transaction
+
+1759371747
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+a_sycn, a_wait, a_end, those all go together
+
+1759372140
+clevor!sid649024@id-649024.hampstead.irccloud.com
+`a_sync` implies synchrony IMO
+
+1759372182
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes
+
+1759372264
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`a_sync` short for `a_synchronous` 
+
+1759373512
+rvrb!~rvrb@156.146.51.229
+sounds like andrew aend gonna do that
+
+1759373715
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i first heard async/await i was like what are these words, later it made sense and now those are awesome.
+
+1759373828
+clevor!sid649024@id-649024.hampstead.irccloud.com
+inb4 asource
+
+1759377859
+mbrock!~mbrock@user/mbrock
+i just used zig vectors for the first time, to do an obscenely unnecessary optimization, drawing std.Progress style UTF-8 tree line prefixes with @select on splats of box drawing characters
+
+1759377909
+mbrock!~mbrock@user/mbrock
+haven't had this much fun in weeks
+
+1759378128
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+glad you are enjoying...  i am taking a break from what i normally do just so i can code in zig :p
+
+1759378210
+mbrock!~mbrock@user/mbrock
+it's the life I want to live and the love I want to give
+
+1759378639
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nice
+
+1759378704
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looks like this setup.py installing using ziglang is working:D
+
+1759384209
+longlonglongint!~longlongl@user/longlonglongint
+this is interesting
+
+1759384246
+longlonglongint!~longlongl@user/longlonglongint
+ive managed to screw things up so bad that i broke the stack tracing
+
+1759384248
+longlonglongint!~longlongl@user/longlonglongint
+Unwind information for `???:0xd145520effd217cc` was not available, trace may be incomplete
+
+1759384288
+longlonglongint!~longlongl@user/longlonglongint
+but on the plus side apparently gdb works with zig
+
+1759384295
+longlonglongint!~longlongl@user/longlonglongint
+i didnt know that
+
+1759384474
+longlonglongint!~longlongl@user/longlonglongint
+i guess its something to do with the way im doing whatever its called when you create a struct based on parameters in a function
+
+1759384850
+longlonglongint!~longlongl@user/longlonglongint
+i have the function Struct(x, y) that returns a struct with slight modifications based on x and y
+
+1759384872
+longlonglongint!~longlongl@user/longlonglongint
+and then i have some pre defined versions of it like const Struct1 = Struct(1, 2)
+
+1759384881
+longlonglongint!~longlongl@user/longlonglongint
+for some reason only the first one that i define works
+
+1759388186
+andrewrk!~andrewrk@mail.ziglang.org
+longlonglongint: https://github.com/ziglang/zig/wiki/LLDB-for-Zig
+
+1759388205
+andrewrk!~andrewrk@mail.ziglang.org
+gdb works better with the llvm backend; this fork of lldb works better with self-hosted backend
+
+1759389589
+mbrock!~mbrock@user/mbrock
+oh wow, i can also just memcpy the tree box drawing segments in a loop over an IntegerBitSet, and as long as both segment templates are 4 bytes, it gets autovectorized to seemingly optimal splat/blend SIMD code on both AVX512 and ARM NEON. that's so neat
+
+1759389694
+mbrock!~mbrock@user/mbrock
+autovectorized optimal high throughput ASCII art. what a world
+
+1759392378
+andrewrk!~andrewrk@mail.ziglang.org
+what a world indeed
+
+1759392885
+mbrock!~mbrock@user/mbrock
+i was considering updating std.Progress with this invention to make sure it doesn't miss the 12FPS animation frame target
+
+1759393062
+mbrock!~mbrock@user/mbrock
+but i think i'll go to sleep instead
+
+1759393357
+mbrock!~mbrock@user/mbrock
+a sound and happy sleep having confirmed that my autovectorized ascii art cross compiled on ARM64 to LoongArch64 uses 256 bit SIMD and runs correctly in user mode QEMU
+
+1759395139
+andrewrk!~andrewrk@mail.ziglang.org
+it's hard to sleep otherwise
+
+1759404620
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol
+
+1759407150
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://xkcd.com/571/
+
+1759407250
+gog!~ada@user/meow/gog
+32767 sheep should be enough for anybody
+
+1759407285
+gog!~ada@user/meow/gog
+but i guess we'll need the hardcore insomniac patch that makes the sheep accumulator i32
+
+1759407444
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That's 20 bytes per sheep, with 20 bytes left over for important things like your name, assuming it can fit.
+
+1759407496
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My full name doesn't fit in 20 bytes without compression.
+
+1759407664
+gog!~ada@user/meow/gog
+it's 4 bytes for the sheep counter
+
+1759407701
+gog!~ada@user/meow/gog
+my name is 23 bytes
+
+1759407808
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Including whitespace, mine takes up 30 bytes, but my first and last name alone is 15 bytes, leaving 1 byte for the null terminator.
+
+1759407912
+gog!~ada@user/meow/gog
+oh yeah 24 for the null terminator
+
+1759407960
+gog!~ada@user/meow/gog
+https://www.reddit.com/media?url=https%3A%2F%2Fexternal-preview.redd.it%2FIFD0_wH8vaWDnUzxQy5AJFCCzBYVgt_NzdP63JG_HHQ.png%3Fwidth%3D640%26crop%3Dsmart%26auto%3Dwebp%26s%3D7361c434621155c564fc7d114550b0fa29cf05ae
+
+1759407987
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My school Chromebook blocks Reddit.
+
+1759407991
+gog!~ada@user/meow/gog
+oh
+
+1759408029
+clevor!sid649024@id-649024.hampstead.irccloud.com
+and imgur :p
+
+1759408037
+gog!~ada@user/meow/gog
+http://0x0.st/KM1H.webp
+
+1759408053
+clevor!sid649024@id-649024.hampstead.irccloud.com
+heh
+
+1759416057
+dutchie!~dutchie@user/dutchie
+https://0x0.st/KMei.txt I'm writing a not-particularly-sophisticated scanner (for a slightly more complicated language than this). it's ugly as hell. i feel like there should be some stuff in Reader to make this less horrendous
+
+1759416137
+dutchie!~dutchie@user/dutchie
+like when i'm parsing a Token.word I should be able to just fill the Reader's buffer up with a bunch of peeks then just allocator.dupe it into the Token to return
+
+1759416167
+dutchie!~dutchie@user/dutchie
+and all this .toss(1) looks a bit dubious
+
+1759416227
+dutchie!~dutchie@user/dutchie
+and there's a lot of repetition of turning error.EndOfStream into Token.eof but passing other errors back to the caller
+
+1759416380
+dutchie!~dutchie@user/dutchie
+any tips for improving it would be welcome
+
+1759419215
+clevor!sid649024@id-649024.hampstead.irccloud.com
+This looks like a good use case for something like `reader.peekShort`.
+
+1759420066
+clevor!sid649024@id-649024.hampstead.irccloud.com
+maybe not
+
+1759421206
+clevor!sid649024@id-649024.hampstead.irccloud.com
+dutchie: https://zig.fly.dev/p/FC0q0ftWBYB
+
+1759421533
+dutchie!~dutchie@user/dutchie
+oh even std.mem.findNone makes things easier
+
+1759421546
+dutchie!~dutchie@user/dutchie
+thanks clevor, perusing it now
+
+1759421569
+dutchie!~dutchie@user/dutchie
+simdification is interesting
+
+1759422304
+dutchie!~dutchie@user/dutchie
+what's the e.len on line 57?
+
+1759422397
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I meant `if (stream.reader.bufferedLen() == 0) break;`
+
+1759422625
+clevor!sid649024@id-649024.hampstead.irccloud.com
+IDK if SIMD-ifying would've be done automatically by LLVM if I were to use `stream.reader.rebase` followed by `stream.reader.buffered` anyway.
+
+1759422694
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Actually, let me try to make the while loop better.
+
+1759422814
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://zig.fly.dev/p/fRI-QxO66jr
+
+1759422881
+clevor!sid649024@id-649024.hampstead.irccloud.com
+s/make the while loop better/refactor the loop/
+
+1759424947
+longlonglongint!~longlongl@user/longlonglongint
+turns out the problem was an index out of bounds in a []u8 casted to a [_][_]u128
+
+1759431336
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+I'm having a hard time compiling together a Zig program a colleage put together. It's a weird thing using LLVM MLIR and what-not other libraries.
+
+1759431371
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+I get lots of "error: undefined symbol: std::thread::_State::~_State()" errors
+
+1759431410
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+what bugs me is that the error goes on like "… in archive /nix/store/s9rpllwmnhj551gn7ippalk8396v7lk7-mlir-22.0.0-unstable-2025-08-17/lib/libMLIRIR.a"
+
+1759431486
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+… so I'm obviously on NixOS and I cannot get the flake right to get the whole thing linked together.
+
+1759431588
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+I don't get why it does not link these libraries dynamically to start with
+
+1759431750
+andrewrk!~andrewrk@mail.ziglang.org
+tbd: you can't mix c++ artifacts together from different c++ compilers because c++ does not have a stable ABI
+
+1759431790
+andrewrk!~andrewrk@mail.ziglang.org
+/nix/store/... stuff is built with system toolchain (GCC), your other C++ thing is built from zig (clang)
+
+1759431817
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+I'm sorry, I'm obviously not a master of this whole c/c++-stuff.
+
+1759431834
+andrewrk!~andrewrk@mail.ziglang.org
+no need to apologize, it's a rude awakening the first time one learns this ugly fact about c++
+
+1759431903
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+yeah, that's something I already learned along the way: there is the LLVM/clang/libcxx world and the GNU/GCC/stdc++ world. -- Nix leans toward the latter on Linux (on Darwin its a different story.) -- So I have to teach Zig to use the GCC world? Is that doable?
+
+1759431940
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+-- or the other way around? Have a clean LLVM environment somehow?
+
+1759432095
+andrewrk!~andrewrk@mail.ziglang.org
+no it's not possible to mix really. if you have c++ code, you have to build ALL of it with system toolchain, or ALL of it with zig
+
+1759432162
+andrewrk!~andrewrk@mail.ziglang.org
+take it up with bjarne if you don't like it 🤷
+
+1759432170
+andrewrk!~andrewrk@mail.ziglang.org
+personally, my strategy is to avoid c++ 
+
+1759432224
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+hmmz, *shiver*
+
+1759433007
+vtorri!~vtorri@2a01:e0a:a4f:12e0:1dc6:627c:c9b4:d4d0
+is there some kind of benchmarks to compare C and zig ? speed and memory consumption
+
+1759433247
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what to do when zig doesn't convert C code properly to Zig? https://zigbin.io/c9c43a and later it complains about that function?
+
+1759433666
+hadronized!~hadronize@2001:41d0:a:fe76::1
+ vtorri both languages compile to very similar assembly code, so there shouldn’t be much of a difference; I think what’s more interesting is to compare how more maintainable and readble/easy it is to write optimized Zig vs. optimized C
+
+1759433878
+clevor!sid649024@id-649024.hampstead.irccloud.com
+stealth_: Did you try exporting it?
+
+1759434485
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+clevor, no, i am not even calling/using `__io_uring_peek_cqe` i am using `io_uring_cqe_seen` its like under the hood kind of function.
+
+1759434551
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+or using `io_uring_peek_cqe`, there are many function that call that `__io_uring_peek_cqe` internally
+
+1759434887
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that top bit of code i didn't write, it was created by zig-cache
+
+1759434966
+tbd!~user@2a00:6020:4119:a000:aab1:3bff:fef0:2e4d
+andrewrk: fyi, I just found that there is a set of packages bootstrapped and entirely compiled with LLVM. I hope that will solve the issue. Thanks a lot for your hint (and your very good work).
+
+1759434990
+andrewrk!~andrewrk@mail.ziglang.org
+tbd: it might! good luck
+
+1759436312
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+"c++ does not have a stable ABI" heh, and yet they may it so hard to add backwards-incompatible changes to the standard.
+
+1759436315
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+what a mess
+
+1759439369
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrewrk, i am running into this issue again but this time my solution doesn't work anymore (i worked before) https://github.com/ziglang/translate-c/issues/165
+
+1759443593
+andrewrk!~andrewrk@mail.ziglang.org
+yeah it would be great if we could get some more contributors to help veikka out with all the translate-c issues right now
+
+1759443620
+andrewrk!~andrewrk@mail.ziglang.org
+I'm happy to help anyone here who wants to step up and do that
+
+1759448627
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤔
+
+1759448641
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: what's a good place for me to look to get a sense for the breadth/scope of the work?
+
+1759448785
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: I recommend to look at some of the merged PRs such as https://github.com/ziglang/translate-c/pull/23
+
+1759448899
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+👍
+
+1759448941
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh neat, translate-c is a whole seperate project
+
+1759448960
+andrewrk!~andrewrk@mail.ziglang.org
+yes it's on an independent release schedule than zig
+
+1759448980
+clevor!sid649024@id-649024.hampstead.irccloud.com
+How do I emit docs for a module specifically?
+
+1759449054
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol what are the odds, today's nightly zig is the same version as the one I compiled yesterday 2025
+
+1759449057
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤣
+
