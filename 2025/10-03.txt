@@ -1,0 +1,256 @@
+1759449676
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Ah, it looks like I am experiencing https://github.com/ziglang/zig/issues/24402
+
+1759449891
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Workaround applied and it works
+
+1759452241
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+how do y'all decide whether to, for example in Foo.zig create a `const Foo = struct {....}` or to simply use the module itself as the struct? later, `const Foo = @import("Foo.zig").Foo` feels awkward, and doubly so if I end up wanting to `const foo = @import("Foo.zig")` to access other things that aren't the Foo struct.
+
+1759452326
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: https://ziglang.org/documentation/0.15.1/#Avoid-Redundant-Names-in-Fully-Qualified-Namespaces
+
+1759452391
+andrewrk!~andrewrk@mail.ziglang.org
+try to organize your code such that your fully qualified names make sense and have no redundancy
+
+1759452416
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea, that makes a lot of sense
+
+1759452427
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+maybe I should do a better job naming my modules
+
+1759452438
+andrewrk!~andrewrk@mail.ziglang.org
+in my experience, it really helps one reason about the code
+
+1759452481
+andrewrk!~andrewrk@mail.ziglang.org
+people complain that naming things is hard, but that's because if you name things properly that's actually part of the effort of designing and architecture
+
+1759452521
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+like for example https://github.com/ezzieyguywuf/zcad/blob/main/src/World.zig#L5 , "World.World" is redundant, but I didn't make this the top-level struct b/c I also have World.Tesselator. but honestly i was probably just rushing and didn't really figure out the best way to organize these two
+
+1759452540
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+"that's actually part of the effort of designing and architecture" yea I 100% agree with this
+
+1759452547
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it's hard b/c it _should_ be hard
+
+1759453653
+andrewrk!~andrewrk@mail.ziglang.org
+I'm confused about your example because in one case you have World.World and World.Tesselator, and in the other case you have World and World.Tesselator. the latter seems clearly better to me?
+
+1759454275
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yes I think the latter is better, and that's what I use in HttpServer.zig since it doesn't use World.Tesselator, but in main since I use both I just import it once. like I said earlier though I think with the whole World thing I just rushed and didn't rly take the time to figure out the best way to organize things
+
+1759454963
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so my question was motivated by https://github.com/ezzieyguywuf/zcad/blob/main/src/Application.zig - I just refactored things a bit and added this Application.zig. originaly I had a nested Application struct in the module (is it called a module?) in order to segregate the Application logic from e.g. `pub fn InputCallback` which only needs an AppContext but not the full Application (at least that's how 
+
+1759454969
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it was originally written and I just ported it over whole hog during the refactor). After we talked I lifted up the nested Application struct, but it still feels a little odd to (1) have "top-level" fields e.g. app_ctx, renderer, etc... defined at the module-scope, and (2) have other standalon functions like InputCallback defined at the same scope.
+
+1759454974
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+am I just over thinking it?
+
+1759458440
+andrewrk!~andrewrk@mail.ziglang.org
+the way I see it, anything that we're not used to feels awkward. but we get used to things really quickly. it definitely applies to top level fields 
+
+1759459557
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Speaking of things feeling awkward, I used to think that Rust was the best when I was in my Rust phase, but I eventually realized that the right language for the job depends on the requirements and personal preference.
+
+1759459742
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I thought that Zig was too complex at the time due to the sheer number of builtin functions, but I stopped thinking that when I had a use case that Rust couldn't solve without libraries and decided to try Zig.
+
+1759459762
+clevor!sid649024@id-649024.hampstead.irccloud.com
+s/number/quantity/
+
+1759459852
+andrewrk!~andrewrk@mail.ziglang.org
+pretty sure C and Rust have a lot of builtin functions too
+
+1759459870
+andrewrk!~andrewrk@mail.ziglang.org
+https://gcc.gnu.org/onlinedocs/gcc/Built-in-Functions.html
+
+1759464324
+longlonglongint!~longlongl@user/longlonglongint
+the compiler works in mysterious ways
+
+1759464362
+longlonglongint!~longlongl@user/longlonglongint
+my rng went from 740 megabytes per second to 1 gigabyte per second after ADDING 4 @shuffles
+
+1759465293
+PowerUser64!~grip@50.34.78.4
+yo
+
+1759465505
+andrewrk!~andrewrk@mail.ziglang.org
+yo
+
+1759465512
+rvrb!~rvrb@156.146.51.229
+PowerUser64: hey!
+
+1759466739
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+🤦 I spent the night fixing these silly dangling pointer problems after I refactored things: https://github.com/ezzieyguywuf/zcad/commit/c62d3aa1e146df1160f9d9ad1b6a1f7388148cee . it's worth it though, even though I just moved a bunch of stuff out of main it feels a lot "cleaner" lol
+
+1759473143
+longlonglongint!~longlongl@user/longlonglongint
+well i found out why it got faster after adding 4 @shuffles
+
+1759473191
+longlonglongint!~longlongl@user/longlonglongint
+apparently there was a typo so it was overwriting vectors c and d with b
+
+1759473200
+longlonglongint!~longlongl@user/longlonglongint
+so i gues the shuffles cancelled eachother out or something
+
+1759477121
+grayhatter!~grayhatte@user/grayhatter
+you know what might be a fantastic thing to have? an [rss] feed of changes (appears, removed] to the stdlib namespace
+
+1759477267
+Affliction!affliction@idlerpg/player/affliction
+That'd be neat, indeed. Maybe I could cobble something together by just following the commits. Probably only showing simple diffs, but that might just be enough.
+
+1759477394
+grayhatter!~grayhatte@user/grayhatter
+Affliction: I thought about how that would be the easy way to do it myself, but actually thinking about it, the git diff/log would be really noisy and annoying to parse in a lazy way. I only reasonable way that I can think of would be to parse the AST, and then scan that for the delta
+
+1759477457
+grayhatter!~grayhatte@user/grayhatter
+if you do end up hacking something together let me know, I'd be happy to turn it into a site and host it as best effort
+
+1759477519
+Affliction!affliction@idlerpg/player/affliction
+Yeah, I was just thinking that. Never really looked at interfacing with git on a lower level.
+
+1759477582
+Affliction!affliction@idlerpg/player/affliction
+Delta of AST nodes, though, that sounds interesting.
+
+1759477621
+Affliction!affliction@idlerpg/player/affliction
+Might play around with both methods over the weekend, no promises I"ll get anywhere, or lose interest and go do something else, heh.
+
+1759477650
+grayhatter!~grayhatte@user/grayhatter
+honestly, it sounds like something fun, that I'd enjoy playing around with... but I'm trying to teach myself self control and not adopt another project
+
+1759477660
+Affliction!affliction@idlerpg/player/affliction
+heh
+
+1759477699
+grayhatter!~grayhatte@user/grayhatter
+Affliction: even if you get something 1/2 working, I'd be interested in it if you decided to publish it somewhere
+
+1759477744
+Affliction!affliction@idlerpg/player/affliction
+I'll let you know if I end up with something
+
+1759477762
+Affliction!affliction@idlerpg/player/affliction
+Pretty much both methods would teach me something new, so it wouldn't be a complete waste of time
+
+1759477807
+grayhatter!~grayhatte@user/grayhatter
+an easy POC, just to see if it's something that you'd wanna invest time in is generate the ast from some git commit, check out the next commit, and run the ast, traverse them in sequence, and print differences... would be super messy, but it'd be enough for other people to use or jump into
+
+1759477848
+grayhatter!~grayhatte@user/grayhatter
+std.zig.Ast exists if you didn't already know
+
+1759477863
+Affliction!affliction@idlerpg/player/affliction
+Yeah, awfully convenient having this stuff in std :)
+
+1759477919
+grayhatter!~grayhatte@user/grayhatter
+part of the reason I'd love this feed, is because I've implemented something that already has a much better version in stdlib and I just didn't see it
+
+1759477949
+grayhatter!~grayhatte@user/grayhatter
+the catalyst for this question was wondering if std.process.child has the new std.Io.R/W interface yet
+
+1759478307
+grayhatter!~grayhatte@user/grayhatter
+Affliction: I by no means want to imply that I know what I'm doing, but when I was implementing parts of git for srctree, I spent a bunch of time reading about how the various diff algos that git uses work. I'd have to go back and refresh my memory to know how well they'd translate, but If you wanna learn something really cool, I can recommend all of them. :)
+
+1759478868
+Affliction!affliction@idlerpg/player/affliction
+Heh, much like compression, I'm comfortable with the abstract theory, but implementation feels somewhat magic.
+
+1759478884
+Affliction!affliction@idlerpg/player/affliction
+Especially while keeping things human-friendly
+
+1759479097
+grayhatter!~grayhatte@user/grayhatter
+sample size of n=1, but after writing zig for a bit over a year now, I've stopped writting code that I hate looking at the next day/week
+
+1759479168
+grayhatter!~grayhatte@user/grayhatter
+I'm starting to believe that the human friendlyness part just comes from familarity. Onec you write enough, and really get use to it, it becomes so much easier to emit source code that easy to read too
+
+1759479189
+grayhatter!~grayhatte@user/grayhatter
+s/easy/comfortable
+
+1759482779
+seti_!~seti_@user/seti-:64798
+The compiler intrinsics like @memcpy, are they defined inside the compiler or in the standard lib? Could someone use an "old" std lib but use new @ compiler intrinsics?
+
+1759484522
+ifreund!2940d10f8b@user/ifreund
+seti_: they are implemented in compiler-rt
+
+1759484568
+ifreund!2940d10f8b@user/ifreund
+your std version has to match the version of zig you are using though in any case
+
+1759499041
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+dang I just watched a video that explained utf-8 encoding, it's super neat
+
+1759516827
+rcharles!~rcharles@pool-71-245-173-142.bltmmd.fios.verizon.net
+has anyone encountered the following error when using `streamRemaining` function on FreeBSD:
+
+1759516827
+rcharles!~rcharles@pool-71-245-173-142.bltmmd.fios.verizon.net
+thread 100803 panic: integer does not fit in destination type
+
+1759516827
+rcharles!~rcharles@pool-71-245-173-142.bltmmd.fios.verizon.net
+Unwind information for `libc.so.7:0x804a6f1a0` was not available, trace may be incomplete
+
+1759516827
+rcharles!~rcharles@pool-71-245-173-142.bltmmd.fios.verizon.net
+off_in = @intCast(file_reader.pos);
+
+1759534791
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/45aa1a how to handle this error? 
+
