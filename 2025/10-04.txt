@@ -1,0 +1,492 @@
+1759536708
+grayhatter!~grayhatte@user/grayhatter
+stealth_: using error handling code
+
+1759536722
+grayhatter!~grayhatte@user/grayhatter
+if you have a more specific question, I can offer a more specific answer
+
+1759536735
+grayhatter!~grayhatte@user/grayhatter
+also, welcome back, long time no see :)
+
+1759536789
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, o hey, ya i figure i continue the process i left off many months ago, now i am just dealing with error from what i already had working. 
+
+1759536810
+grayhatter!~grayhatte@user/grayhatter
+did you read and understand the error? 
+
+1759536816
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like `usingnamespace` being removed cased a lot of issues
+
+1759536830
+grayhatter!~grayhatte@user/grayhatter
+if not: you can ask a question about what the error says 
+
+1759536893
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well zig translates-c to `pub const struct_statx = opaque {};` and clearly it doesn't have any fields that i am trying to access.
+
+1759537038
+grayhatter!~grayhatte@user/grayhatter
+the clue, about why it's not working the way you want is on line 5
+
+1759537077
+grayhatter!~grayhatte@user/grayhatter
+the compiler is being very helpful, here, it's also giving you line 9 as a hint about why that error is happening
+
+1759537110
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.. 
+
+1759537693
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i rearranged the code this is what i am getting now: https://zigbin.io/03747b
+
+1759537903
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, this is the error i was getting before: https://zigbin.io/51aadd i am using uring as import which has <sys/stat.h> in it.
+
+1759538211
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is what the build file looks like btw https://zigbin.io/9dbf81 i even got it working with python's setup.py so that part is working good.
+
+1759539759
+torque!~tachyon@user/torque
+why would struct statx be translated as opaque? it shouldn't have any fields that are opaque. is there some reason you put this in a different `cImport` block than your other headers
+
+1759539790
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, i have tried all combinations 
+
+1759539799
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just get different errors
+
+1759539838
+torque!~tachyon@user/torque
+changing things at random without understanding the errors is very unlikely to lead to a good outcome
+
+1759539888
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, if you are asking me why opaque? then i have no clue, i didn't write that code, its zig translate-c thing 
+
+1759539921
+torque!~tachyon@user/torque
+for the sake of getting help, "tried all combinations, got different errors" is not helpful and doesn't help me to understand why you put the `<sys/stat.h>` include in a different cimport block
+
+1759539962
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i have put it in same cimport block as well, i am just trying random things cause the error makes no sense. 
+
+1759540009
+torque!~tachyon@user/torque
+my `statx` manpage implies that `sys/stat.h` should be included after `fcntl.h`, but it also shows a struct that zig should have no trouble translating so the fact that you are getting `opaque` out implies there is a problem
+
+1759540030
+torque!~tachyon@user/torque
+I would recommend trying to understand the error, rather than dismissing it as nonsensical
+
+1759540047
+torque!~tachyon@user/torque
+this is not always the case, but error messages are not usually nonsense
+
+1759540100
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/f4cf4d 
+
+1759540181
+torque!~tachyon@user/torque
+what about that do you think is nonsense?
+
+1759540218
+torque!~tachyon@user/torque
+it seems like a relatively clear error to me and the solution appears to be lurking in the code it references
+
+1759540244
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well it just means you have no experience with zig vs me.
+
+1759540341
+torque!~tachyon@user/torque
+here's a tip: in the C header, there is both `statx()`, which is a function, and `struct statx` which is the datastructure the function populates
+
+1759540385
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes that function is suppose to be for different os?
+
+1759540400
+torque!~tachyon@user/torque
+the error message is telling you that `C.statx` is the name of the function, but what want to declare is a pointer to the data structure
+
+1759540432
+torque!~tachyon@user/torque
+they cannot both be called `C.statx`, so what is the name of the data structure
+
+1759540534
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, i am look at /usr/include/ files 
+
+1759540561
+torque!~tachyon@user/torque
+that's not going to be particularly helpful to you, since you need to know the name translated by zig
+
+1759540595
+torque!~tachyon@user/torque
+`src/liburing/statx.zig:15:14: error: expected type 'type', found 'fn (c_int, noalias [*c]const u8, c_int, c_uint, noalias [*c]cimport.struct_statx) callconv(.c) c_int'`
+
+1759540597
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+u talking about struct_statx ? 
+
+1759540603
+torque!~tachyon@user/torque
+this error message gives you a very heavy hint
+
+1759540608
+torque!~tachyon@user/torque
+yes
+
+1759540682
+torque!~tachyon@user/torque
+in C, `struct`, `union`, and `enum` act as pseudo namespaces in that you can declare `struct foo {};` `union foo {};` and `enum foo {};` and these names will not collide. but that's not how that works in zig
+
+1759540713
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i c
+
+1759540723
+torque!~tachyon@user/torque
+so when doing translation, zig has to prefix the name to make it unique
+
+1759540735
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i figure zig was just renamed statx to struct_statx internally! for its naming 
+
+1759540882
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+would this be the right way to go about it? https://zigbin.io/458269 cause that gives other errors. 
+
+1759540919
+torque!~tachyon@user/torque
+I'd make that change and then look at what the other errors are
+
+1759540948
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/9fb935
+
+1759541060
+torque!~tachyon@user/torque
+you're c translating `sys/stat.h` twice (I guess the uring header has to include this internally)
+
+1759541106
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i changed it to statx: *U.struct_statx 
+
+1759541124
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+now i am getting: https://zigbin.io/d6c493
+
+1759541451
+torque!~tachyon@user/torque
+I would probably focus on why struct_statx is getting translated as opaque, since that seems wrong
+
+1759541573
+torque!~tachyon@user/torque
+you may need to include additional headers in the cImport block where you include the uring headers, perhaps?
+
+1759541604
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+:/ how should i know why its doing that? maybe translate-c doesn't figure out that /usr/incldue/sys/stat.h actually has struct_statx all the way in /usr/include/bits/types/struct_statx.h
+
+1759541653
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+line: 24-29 is how i am including uring https://zigbin.io/9dbf81
+
+1759541729
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its not using system library so i went that route.
+
+1759542245
+torque!~tachyon@user/torque
+why are you using system libraries for some things but not others?
+
+1759542326
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cause i supply liburing code with my library, everyone else needs to be on users system. 
+
+1759542343
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+or else they would have to install liburing as well, which can be pain for most users. 
+
+1759542403
+torque!~tachyon@user/torque
+ah right, liburing is a separate library
+
+1759542422
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i can try using my systems liburing as well, i bet i will get the same errors. 
+
+1759542504
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cause the library itself works fine! i have gotten this library to install and test few functions, now i am adding statx function and thus running into issues. 
+
+1759543190
+torque!~tachyon@user/torque
+my initial recommendation would be to remove the build system translate c if you were not using that before just to check
+
+1759543222
+torque!~tachyon@user/torque
+it seems to me that that API may not be fully baked yet
+
+1759543287
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i can give it a try 
+
+1759543700
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well it does build fine, now i am running into a knows issue `undefined symbol: io_uring_load_sq_head`
+
+1759543751
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://github.com/ziglang/translate-c/issues/165
+
+1759543984
+torque!~tachyon@user/torque
+I thought you were using clang translate-c with 0.15.1
+
+1759544033
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am just running `zig build` or same thing in python
+
+1759544137
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+but i am using 0.15.1 
+
+1759544299
+torque!~tachyon@user/torque
+it seems unlikely this would have worked for you before and suddenly regressed in 0.15
+
+1759544347
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it was working before in 0.14.1 many months ago i stopped working on this project cause i had no more time to work on it
+
+1759544386
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was using usingnamespace within c.zig 
+
+1759544402
+torque!~tachyon@user/torque
+that would not affect this in the slightest
+
+1759544411
+torque!~tachyon@user/torque
+this is a linker error
+
+1759544417
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+see i even commented https://github.com/ziglang/translate-c/issues/165#issuecomment-3336682309 as it was working, now same thing doesn't work. 
+
+1759544421
+torque!~tachyon@user/torque
+usingnamespace has absolutely nothing to do with this
+
+1759544425
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no clue. 
+
+1759544545
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`pub const c = @cImport({` was having random errors in 0.14.1 as well, same as now, thus why using `pub usingnamespace @cImport({` solved those issues. 
+
+1759544564
+torque!~tachyon@user/torque
+I guarantee you the errors were not random
+
+1759544651
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i think grayhatter said it was reloading the c.zig over and over or something along that line and usingnamespace didn't do that?
+
+1759544684
+torque!~tachyon@user/torque
+that's, uh, not even slightly how that works
+
+1759544780
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no clue, i just want to code and it needs to work... i am just a casual coders. all these errors are just wasting time. 
+
+1759544785
+torque!~tachyon@user/torque
+if you had the `cImport` block in multiple different files it would cause problems
+
+1759544826
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, i think i was doing that. figure zig would only import things once not multiple times
+
+1759544833
+torque!~tachyon@user/torque
+well, maybe you should just plug it into an LLM chatbot and ask it to fix it for you if you're going to abandon all the responsibility for actually understanding what you're doing
+
+1759544930
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono what else i can do other then talk to ppl on here to get some help with these issues. 
+
+1759545067
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`undefined symbol: io_uring_load_sq_head` error i am getting now after compiling, i am not even using that function or calling it, its like a under the hood function liburing uses.
+
+1759545101
+torque!~tachyon@user/torque
+that implies that your compiled `liburing.a` is missing that function
+
+1759545137
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am using system liburing library lib_mod.linkSystemLibrary("uring-ffi", .{});
+
+1759545191
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its an internal function for liburing to use.
+
+1759545220
+torque!~tachyon@user/torque
+I thought you said you were distributing liburing so people didn't need to have it installed
+
+1759545262
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am, but you told me to not use ``addTranslateC`` do i had to use system library
+
+1759545278
+torque!~tachyon@user/torque
+translate c does not compile the library
+
+1759545288
+torque!~tachyon@user/torque
+it is just translating the header into a form that zig can use
+
+1759545314
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm... would it be better to give zig .c source files to compile with? 
+
+1759545321
+torque!~tachyon@user/torque
+except for functions defined in the header (of which there should hopefully be very few), you still have to compile the c code
+
+1759545355
+torque!~tachyon@user/torque
+it would probably be good to do that, yes
+
+1759545385
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm, i would have to figure it out. 
+
+1759545477
+torque!~tachyon@user/torque
+yes, normally you have to look at the C library build system, though since liburing is linux-specific, it may be quite simple
+
+1759545551
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well that would be really cool, i sometimes forget how powerful zig is. 
+
+1759546026
+torque!~tachyon@user/torque
+https://github.com/allyourcodebase most of the repositories here show how to build c libraries with zig
+
+1759549631
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, how do you include .h ?
+
+1759550385
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.15.1/std/#std.Build.Module.addIncludePath
+
+1759550436
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i already tried that gives me error. 
+
+1759550531
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, https://zigbin.io/0431b9
+
+1759551093
+torque!~tachyon@user/torque
+you should probably not set .use_llvm = false, to start with
+
+1759551120
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't that the default for 0.15.1 ? 
+
+1759551146
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i ran just this code, and this does work! https://zigbin.io/53437a
+
+1759551162
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its only including version.c 
+
+1759551195
+torque!~tachyon@user/torque
+you should probably also call `linkLibC()`
+
+1759551222
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have `.link_libc = true,`
+
+1759551267
+torque!~tachyon@user/torque
+that's on lib_mod, which is notably not on your lib.root_moduale
+
+1759551321
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't think you can call it there, but i can add that function
+
+1759551374
+torque!~tachyon@user/torque
+linking libc makes it so that c files can pick up c standard library includes
+
+1759551398
+torque!~tachyon@user/torque
+also not using llvm is only the default for debug builds on linux 
+
+1759551403
+torque!~tachyon@user/torque
+you shouldn't hardcode it
+
+1759551440
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o i c, will remember it
+
+1759551926
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am getting the same error, do you want to try it? https://github.com/axboe/liburing/tree/cb02d22dba0c6005c877c14a2cd2574a4b95462c just download and try the build.zig i used. 
+
+1759557734
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so the same code all of a sudden started working! now struct_statx actually starts populating, wtf
+
+1759557789
+torque!~tachyon@user/torque
+part of your problem with liburing is that the build system does generate a configuration header
+
+1759557823
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i actually manage that or run configure as well. 
+
+1759557891
+torque!~tachyon@user/torque
+struct_statx would not magically start working on its own. you would be better off if you could correlate the changes you make with their outcomes
+
+1759557999
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am trying to narrow down the problem! and i can't find it, i even kept the old code, its pretty much same as the new code!
+
+1759558140
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+could there be some kind of cache that cause problems? but i do delete the .zig-cache at times as well
+
+1759558424
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe it was b.addTranslateC( like you mentioned since i was mixing both way, it was creating this liburing.zig cache file now it doesn't, only create cimport.zig
+
