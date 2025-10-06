@@ -1,0 +1,120 @@
+1759655005
+mbrock!~mbrock@user/mbrock
+clevor: i've had some good luck with autovectorization of writer loops after making sure to use the mutable slice api to avoid bounds checking. but then anyway you're just writing into a byte slice so the writer interface isn't helping much :)
+
+1759655148
+mbrock!~mbrock@user/mbrock
+autovectorizing buffered writer/reader pipelines is a pretty charismatic nerdsnipe idea
+
+1759657167
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+I have a c enum "io_uring_op", why does zig convert it to "pub const io_uring_op = enum_io_uring_op; pub const enum_io_uring_op = c_uint;" ?
+
+1759657568
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was hoping to use it in for loop, now it shows up as c_uint type!
+
+1759660701
+ifreund!2940d10f8b@user/ifreund
+stealth_: because C enums aren't very strongly typed, they are essentially just names for integers
+
+1759660758
+ifreund!2940d10f8b@user/ifreund
+they don't have the same semantics as zig enums
+
+1759660812
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well translate-c should be able to convert that o normal zig enum, no? 
+
+1759660909
+Affliction!affliction@idlerpg/player/affliction
+That'd probably get annoying when you have C enums used as bitfields; having to @intFromEnum to combine them.
+
+1759660977
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how do i actually use this c enum in zig then ? 
+
+1759661473
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+crap, sleep time, l8z
+
+1759661536
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+oh no, iouring guy is back
+
+1759661847
+ifreund!2940d10f8b@user/ifreund
+the fact that C enums don't have the same semantics as Zig enums means that translate-c cannot simply convert them to a "normal Zig enum"
+
+1759661902
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+he left
+
+1759676858
+lemons!~doggie@user/doggie-:49517
+does @addWithOverflow return intmax or a wrapped value?
+
+1759677954
+dutchie!~dutchie@user/dutchie
+wrapped: https://0x0.st/KMd8.zig --> 44 1
+
+1759677975
+dutchie!~dutchie@user/dutchie
+with Zig 0.15.1
+
+1759678022
+lemons!~doggie@user/doggie-:49517
+wait you can UNWRAP STRUCTS LIKE THAT?
+
+1759678063
+lemons!~doggie@user/doggie-:49517
+anyways in that case i assume +| is what im looking for then?
+
+1759678072
+lemons!~doggie@user/doggie-:49517
+hh if i want it to cap
+
+1759679366
+dutchie!~dutchie@user/dutchie
+yes
+
+1759679476
+dutchie!~dutchie@user/dutchie
+and destructuring has been around since 0.12.0: https://ziglang.org/download/0.12.0/release-notes.html#Aggregate-Destructuring
+
+1759696241
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there a way to use c enum in zig directly? or copy & paste?
+
+1759698172
+torque!~tachyon@user/torque
+the enum members just become constants in the cImport namespace
+
+1759698190
+torque!~tachyon@user/torque
+you use them like you would use any other constant, like `c.SOME_ENUM_MEMBER`
+
+1759699799
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i did notice enum fields turned into constant, it would have been nice to used name enum from c to loop through, o well, thanks for you input. 
+
+1759705549
+longlonglongint!~longlongl@user/longlonglongint
+is there a way to cast a []u8 offset by n bytes to a []u64
+
+1759705595
+longlonglongint!~longlongl@user/longlonglongint
+x: []u64 = @ptrCast(@alignCast(buf[n..])) doesnt work for whatever reason
+
+1759705619
+longlonglongint!~longlongl@user/longlonglongint
+panic about invalid alignment
+
+1759705860
+longlonglongint!~longlongl@user/longlonglongint
+crap nevermind i think i just realized the problem
+
+1759707205
+Affliction!affliction@idlerpg/player/affliction
+Yeah, values have to be aligned, for perf on some CPU architectures, and other CPU architectures just don't allow unaligned accesses. So you need to annotate such unaligned values so the compiler knows to generate the appropriate code.
+
