@@ -1,0 +1,120 @@
+1759709145
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+calling this is correct right? `defer C.Py_DECREF(dict);` or does defer only work with zig? no error on compile.
+
+1759709556
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+nm
+
+1759714150
+deevus!~deevus@123.51.31.231
+I've got some code like this: https://github.com/gdzig/gdzig/blob/f1f42b4e0467c60b7f5e89edbed716975a0f1f5c/gdzig_bindgen/Context/Constant.zig#L67-L171
+
+1759714222
+deevus!~deevus@123.51.31.231
+Is there any way to pass a `[]const []const u8` to `allocPrint` without having to do it at runtime like this? 
+
+1759714322
+deevus!~deevus@123.51.31.231
+Ideally I'd like to be able to do `allocPrint(allocator, fmt, args)` but that doesn't work because `args` isn't a struct or tuple
+
+1759715857
+grayhatter!~grayhatte@user/grayhatter
+deevus: have you tried passing `args`?
+
+1759715876
+deevus!~deevus@123.51.31.231
+grayhatter: yes
+
+1759715912
+deevus!~deevus@123.51.31.231
+error: expected tuple or struct argument, found []const []const u8
+
+1759715915
+grayhatter!~grayhatte@user/grayhatter
+sorry, was off scroll by one line 
+
+1759716251
+grayhatter!~grayhatte@user/grayhatter
+lol, have you tried the inverse of https://ziglang.org/documentation/0.15.1/#Type-Coercion-Tuples-to-Arrays ?
+
+1759716308
+deevus!~deevus@123.51.31.231
+I'd have to write the definition for the tuple, which is a variant of the same problem
+
+1759716457
+grayhatter!~grayhatte@user/grayhatter
+if it's the format style that's bothering you, you can collapse some of the lines so 2 lines of 3 args[..], but other that than... I'll just parrot the advice I have to keep reminding myself.. there's more important parts of the code base to spend your time on, avoid over indexing on style of code that works
+
+1759716718
+deevus!~deevus@123.51.31.231
+You make a good point. Though I did find a solution!
+
+1759716742
+deevus!~deevus@123.51.31.231
+https://ziggit.dev/t/comptime-code-to-create-a-tuple-from-an-array/11329/3?u=_sh
+
+1759716788
+deevus!~deevus@123.51.31.231
+I had to modify Sze's example a bit to make len comptime but otherwise it works
+
+1759716884
+deevus!~deevus@123.51.31.231
+https://zigbin.io/373bd9
+
+1759716919
+deevus!~deevus@123.51.31.231
+Only works because the array length is comptime known
+
+1759716960
+grayhatter!~grayhatte@user/grayhatter
+yeah, the fact that it's called "anytype" can be a bit misleading, the type has to be comptime known
+
+1759717029
+grayhatter!~grayhatte@user/grayhatter
+I wonder if doing that some kind of runtime preformance impact
+
+1759717070
+deevus!~deevus@123.51.31.231
+Definitely would, but this is a codegen step, so it doesn't really matter
+
+1759717185
+deevus!~deevus@123.51.31.231
+Actually it might be negligible if nothing at all, considering the previous code required an assignment to an anonymous struct. 
+
+1759732241
+torque!~tachyon@user/torque
+you could use a loop
+
+1759732439
+torque!~tachyon@user/torque
+to make the format expressions a bit nicer
+
+1759756306
+clevor!sid649024@id-649024.hampstead.irccloud.com
+For some reason, I've run into this bizarre bug where running `zig build run -- pack include` on the contents of this archive works just fine on my ext4 filesystem, but fails if I run it in a tmpfs. This happens in 0.15.1, but not master, so IDK exactly why this is happening. https://github.com/myclevorname/narser https://usercontent.irccloud-cdn.com/file/IdlXfktE/include.tar.xz
+
+1759756398
+clevor!sid649024@id-649024.hampstead.irccloud.com
+This is the exact subdirectory of the Linux kernel source code where it fails, and it doesn't fail if I run it in any subdirectories. My kernel is `Linux clevor-laptop-nixos 6.12.49 #1-NixOS SMP PREEMPT_DYNAMIC Thu Sep 25 09:13:51 UTC 2025 x86_64 GNU/Linux`
+
+1759759147
+clevor!sid649024@id-649024.hampstead.irccloud.com
+currently bisecting
+
+1759761480
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It looks like 6dd0270a1926661e339d993a825fffa82be6bd51 fixed it
+
+1759793834
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+how do I build my exe with thread sanitizer?
+
+1759794257
+andrewrk!~andrewrk@mail.ziglang.org
+-fsanitize-thread
+
+1759794268
+andrewrk!~andrewrk@mail.ziglang.org
+there's a corresponding flag to set on the module in the build system
+
