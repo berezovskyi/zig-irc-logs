@@ -1,0 +1,508 @@
+1759883878
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+trying to set memory space to 0 using memset but getting error https://zigbin.io/c1b22a
+
+1759884069
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i also tried @memset(self.statx, 0); same error
+
+1759884152
+longlonglongint!~longlongl@user/longlonglongint
+memset works differently in zig
+
+1759884171
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looks like it
+
+1759884178
+braewoods!~braewoods@user/braewoods
+"indexable pointer"?
+
+1759884196
+longlonglongint!~longlongl@user/longlonglongint
+@memset(dest, elem) void
+
+1759884198
+longlonglongint!~longlongl@user/longlonglongint
+This function sets all the elements of a memory region to elem.
+
+1759884200
+longlonglongint!~longlongl@user/longlonglongint
+dest must be a mutable slice or a mutable pointer to an array. It may have any alignment, and it may have any element type.
+
+1759884202
+longlonglongint!~longlongl@user/longlonglongint
+elem is coerced to the element type of dest.
+
+1759884218
+longlonglongint!~longlongl@user/longlonglongint
+(from https://ziglang.org/documentation/master/#memset)
+
+1759884242
+braewoods!~braewoods@user/braewoods
+Wait, isn't this a struct not an array?
+
+1759884271
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would have been nice if zig had something like calloc 
+
+1759884318
+clevor!sid649024@id-649024.hampstead.irccloud.com
+`std.mem.zeroes`
+
+1759884321
+longlonglongint!~longlongl@user/longlonglongint
+i think std.mem.zeroes can works for this
+
+1759884329
+braewoods!~braewoods@user/braewoods
+stealth_, would it work if you could treat it as an array of one element?
+
+1759884330
+braewoods!~braewoods@user/braewoods
+o.O
+
+1759884336
+longlonglongint!~longlongl@user/longlonglongint
+x = std.mem.zeroes(@TypeOf(x))
+
+1759884339
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm let me try that zeroes
+
+1759884397
+longlonglongint!~longlongl@user/longlonglongint
+@splat(x) also lets you initialize arrays or vectors with x
+
+1759884417
+longlonglongint!~longlongl@user/longlonglongint
+test "array @splat" {
+
+1759884419
+longlonglongint!~longlongl@user/longlonglongint
+    const scalar: u32 = 5;
+
+1759884421
+longlonglongint!~longlongl@user/longlonglongint
+    const result: [4]u32 = @splat(scalar);
+
+1759884423
+longlonglongint!~longlongl@user/longlonglongint
+    try expect(std.mem.eql(u32, &@as([4]u32, result), &[_]u32{ 5, 5, 5, 5 }));
+
+1759884425
+longlonglongint!~longlongl@user/longlonglongint
+}
+
+1759884496
+longlonglongint!~longlongl@user/longlonglongint
+i dont think zig has a calloc() equivalent though
+
+1759884504
+andrewrk!~andrewrk@mail.ziglang.org
+zero init is problematic for several reasons
+
+1759884564
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i am using `std.heap.c_allocator.create` since it points to C struct. just need those struct to be 0'ed. 
+
+1759884566
+andrewrk!~andrewrk@mail.ziglang.org
+1. most allocators will reuse memory, so zero initializing is superfluous
+
+1759884594
+andrewrk!~andrewrk@mail.ziglang.org
+2. zero init is incompatible with optionals, enums, and other types as well
+
+1759884602
+andrewrk!~andrewrk@mail.ziglang.org
+3. zero init is incompatible with various kinds of safety checks
+
+1759884618
+andrewrk!~andrewrk@mail.ziglang.org
+4. zero init hides bugs
+
+1759884634
+andrewrk!~andrewrk@mail.ziglang.org
+typically obsession with zero init is a bad habit that zig newbies have to learn to break
+
+1759884691
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in my use-case, if struct has random values in python those values turn into something and thus leads to bug with random results. 0'ing i can return None.
+
+1759884748
+andrewrk!~andrewrk@mail.ziglang.org
+I don't really understand the use case from your description, but so far it doesn't sound like an exception to the rule
+
+1759884798
+andrewrk!~andrewrk@mail.ziglang.org
+also stat and io_uring are already included in zig std lib so you're going to have a subpar experience with using the translated C APIs
+
+1759884836
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/f9d838 in this usecase if line: 3 isn't used ppl can still call line: 2 and get wrong results.
+
+1759884846
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its more like dummy proofing
+
+1759884914
+andrewrk!~andrewrk@mail.ziglang.org
+it's been a while since I've done serious python but I'm quite confident that None is based on reference not based on contents
+
+1759885000
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well the content of the `statx.isline` will return True cause the content of the memory with random value makes it so.
+
+1759885045
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/001d9b
+
+1759885076
+andrewrk!~andrewrk@mail.ziglang.org
+it sounds like you think I'm suggesting not initializing the memory
+
+1759885105
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no, i am ok with initializing memory, i just want to figure out how to set the memory to 0
+
+1759885154
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.15.1/#struct
+
+1759885209
+andrewrk!~andrewrk@mail.ziglang.org
+foo = .{ .field = value }
+
+1759885264
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, you are saying i should manually set the value to be 0? the problem is there are lots of fields. 
+
+1759885299
+andrewrk!~andrewrk@mail.ziglang.org
+just set 'em all, it'll be fun
+
+1759885344
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol, no thankx, actually that gave me an idea, all the info for statx is derived from `statx.stx_mode` i can set that to 0 manually and that should do it. 
+
+1759885393
+andrewrk!~andrewrk@mail.ziglang.org
+it's a slightly different story when it's an extern struct btw
+
+1759885411
+andrewrk!~andrewrk@mail.ziglang.org
+such things are sometimes designed to be zero initialized. my advice applies to non-extern structs
+
+1759885433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+darn it only applies to Inode functions
+
+1759885447
+andrewrk!~andrewrk@mail.ziglang.org
+check the doc comments for std.mem.zeroes
+
+1759885471
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i suppose i can add an "active: c_int = 0" and use that field to see if the content been added or not. 
+
+1759885491
+andrewrk!~andrewrk@mail.ziglang.org
+sounds wasteful
+
+1759885565
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is what struct looks like https://zigbin.io/3ac961
+
+1759885584
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its managed by python gc, only statx is managed in zig. 
+
+1759886597
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+@memset and zeroes doesn't seem to work! i dono how to get them to work, i am just going to go with using struct {active = true} way even though its a pain to code and manage. 
+
+1759886757
+andrewrk!~andrewrk@mail.ziglang.org
+it's better to understand why something does or doesn't work than to work around it
+
+1759887025
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+memset says "error: type '*cimport.struct_statx' is not an indexable pointer"
+
+1759887101
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+note: operand must be a slice, a many pointer or a pointer to an array
+
+1759887122
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i am providing it with pointer to c struct. 
+
+1759887422
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+changing statx: [1]C.struct_statx, does work but it pretty much breaks my entries class with C struct. 
+
+1759888031
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+done, find & replace :D multi line edits are the best.
+
+1759889184
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am looking at what zig produces for statx struct and it shows up as: ```pub const struct_statx = extern struct { stx_mask: __u32 = @import("std").mem.zeroes(__u32)```
+
+1759889279
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if zig already produces struct with 0 value why does it create memory with random values? wouldn't it be better to just memcpy struct into memory? 
+
+1759889386
+andrewrk!~andrewrk@mail.ziglang.org
+are you talking about the Allocator interface?
+
+1759889454
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+those codes are from zig cache file.
+
+1759889524
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it might be neat if Allocator could create memory based on those struct values as 0, wouldn't it? as an option.
+
+1759889634
+andrewrk!~andrewrk@mail.ziglang.org
+after you allocate memory, you must initialize it
+
+1759889717
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm.
+
+1759890073
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+for 99% of the case your point about reused memory would be correct but i think for that 1% of the case where someone might be using other language/ffi with zig it might be better to have that 0 initialized memory.
+
+1759890121
+andrewrk!~andrewrk@mail.ziglang.org
+well, for those cases you can spend 1 line zero initializing the memory
+
+1759890435
+longlonglongint!~longlongl@user/longlonglongint
+i think a function variant for every possible case is the main reason c++ stl is so bloated
+
+1759890550
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i tried ``self.statx = std.mem.zeroes(C.struct_statx);`` i get `error: expected type '*cimport.struct_statx', found 'cimport.struct_statx' self.statx = std.mem.zeroes(C.struct_statx);`
+
+1759890586
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+trying to find anything online when it comes to example is a mess/outdated
+
+1759890599
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+why can't this packed struct be a std.atomic.Value? https://pastebin.com/PKDgxDLf the compiler says "error: extern structs cannot contain fields of type 'main.Foo'" but I haven't declared an extern struct, just a packed one
+
+1759890737
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: you can make packed struct have well-defined memory layout, and thus extern-compatible, by giving it an explicit backing integer, at which point it has the same ABI as that integer
+
+1759890768
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: that error seems pretty helpful, did you try `self.statx.* = std.mem.zeroes(C.struct_statx);`?
+
+1759890787
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, already tried it
+
+1759890795
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: without the backing integer, is it not well-defined?
+
+1759890801
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+stealth_: can you link some code?
+
+1759890822
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wtf, why is it working now!
+
+1759890833
+longlonglongint!~longlongl@user/longlonglongint
+when you have a pointer
+
+1759890842
+longlonglongint!~longlongl@user/longlonglongint
+doing x = value assigns the pointer
+
+1759890849
+longlonglongint!~longlongl@user/longlonglongint
+x.* = value assigns whatever the pointer is pointing to
+
+1759890857
+longlonglongint!~longlongl@user/longlonglongint
+x.* is just *x
+
+1759890864
+andrewrk!~andrewrk@mail.ziglang.org
+stealth_: because, with the help of others, you stuck with the same problem long enough to understand it rather than haphazardly working around it
+
+1759890869
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, i did try it, i must have forgotten to same the file before compiling :(
+
+1759890896
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+save*
+
+1759890911
+longlonglongint!~longlongl@user/longlonglongint
+on the plus side now you know more about zig than you did a couple hours ago
+
+1759891004
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya, i did lean de-reference .* trick in ziglings, err can't believe i forgot to save the file before running it, and run into old error. 
+
+1759891044
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+k, so rounding up to 8 bits works https://pastebin.com/raw/CbCrXVYS <- maybe I'm deing daft but this wasn't very clear to me from the error message
+
+1759891109
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Thanks you guys for helping out in your weir ways but its cool now i know how to use that function ;)
+
+1759891119
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+weird*
+
+1759891121
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol, I also now realize I don't need to add this manually, I get it for free if I specify the backing integer https://github.com/ezzieyguywuf/zcad/blob/main/src/VulkanRenderer.zig#L1890-L1894
+
+1759891155
+andrewrk!~andrewrk@mail.ziglang.org
+😎
+
+1759891209
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+:rock-on-gif:
+
+1759909623
+mountaingoat!~mountaing@user/mountaingoat
+is it better/faster to compare a [8]u1 slice to another constant [8]u1 slice or to convert the slice to an integer first and compare it to a u8 constant?
+
+1759909726
+grayhatter!~grayhatte@user/grayhatter
+mountaingoat: sounds like hyperoptimizing the wrong thing
+
+1759909807
+mountaingoat!~mountaing@user/mountaingoat
+so just compare a [8]u1 slice to a constant [8]u1?
+
+1759909821
+grayhatter!~grayhatte@user/grayhatter
+yeah
+
+1759909849
+grayhatter!~grayhatte@user/grayhatter
+@sizeOf([8]u1]) == 8
+
+1759909864
+grayhatter!~grayhatte@user/grayhatter
+so a [8]u1 is 8 bytes
+
+1759909980
+mountaingoat!~mountaing@user/mountaingoat
+yeah i figured that, but just wasn't sure if there was some efficient u1->u8 conversion. i don't really care which way i do it
+
+1759910005
+mountaingoat!~mountaing@user/mountaingoat
+comparing the slice is a bit easier so i'll do that
+
+1759910373
+grayhatter!~grayhatte@user/grayhatter
+that's probably eaiser on the cpu too
+
+1759918590
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I wish `@sizeOf([8]u1) == 1`
+
+1759918764
+ifreund!2940d10f8b@user/ifreund
+hat statement is correct
+
+1759918787
+ifreund!2940d10f8b@user/ifreund
+er no, I can't read and just woke up
+
+1759918806
+ifreund!2940d10f8b@user/ifreund
+it would be a big problem if [8]u1 was not eight bytes in size
+
+1759918871
+ifreund!2940d10f8b@user/ifreund
+[8]u1 is pretty much code smell in any case
+
+1759918887
+ifreund!2940d10f8b@user/ifreund
+I'd use either a packed struct or a bitset abstraction
+
+1759919032
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+when i set `self.io_uring.enter_ring_fd = -1;` for some reason it sets it to `4294967295`
+
+1759919162
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+struct field is set to `int enter_ring_fd;`
+
+1759919489
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_, what is 2^32 - 1?
+
+1759919539
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, well i am on 64bit system, that seems to be limit if i was on 32bit, no?
+
+1759919569
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how did you determine that it "sets it to `4294967295`"?
+
+1759919585
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+64-bit doesn't matter, int is 32-bit
+
+1759919587
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have a test to check for values
+
+1759919605
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and what is that doing?
+
+1759919616
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i have 2 fields "ring_fd" and "enter_ring_fd" this only effects enter_ring_fd
+
+1759919637
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i also set ring_fd = -1 and it returns as is 
+
+1759919640
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L168-L171
+
+1759919675
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm asking what code you're using that says the value is 2^32 - 1
+
+1759919792
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+good point, thanks. 
+
+1759919842
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i had ``C.Py_BuildValue("I", ring.io_uring.enter_ring_fd);`` should have been `C.Py_BuildValue("i", ring.io_uring.enter_ring_fd);`
+
+1759961377
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sometimes .zig-cache doesn't seem to account for new changes in file content, even when running `zig build`. have to delete and compile for it to find changes.
+
+1759961735
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+might not be checking for `root.zig` file timestamp change
+
