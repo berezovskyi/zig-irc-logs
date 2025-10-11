@@ -1,0 +1,344 @@
+1760056008
+erock!8a023a9e4a@pico/erock
+very cool
+
+1760056680
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I'm excited for 0.15.2 to come out, and especially for it to hit nixos-unstable.
+
+1760058188
+JetpackJackson!739e7f3d14@user/JetpackJackson
+rockorager: oooh thats cool, I'll have to try that out
+
+1760085417
+mordnis!~mordnis@user/mordnis
+hello all, i want to open a PR for adding compiler rt functions. do i need to follow some procedure for this? like opening an issue first? or discussing the functions with someone?
+
+1760099317
+deevus!~deevus@123.51.31.231
+rockorager: I tried out `zigdoc` with CC and it is stellar. Thanks!
+
+1760099613
+deevus!~deevus@123.51.31.231
+Does the Zig compiler "decide" to run comptime code? Or is it only when code is in a comptime context or marked as comptime explicitly? 
+
+1760100228
+meidam!~meidam@user/meidam
+constant variables also have to be comptime known
+
+1760100525
+bblack!~bblack@wikimedia/bblack-WMF
+it will even complain, at least in some cases if you use explicit "comptime" in a block that defines a const, since a const is already a comptime thing.
+
+1760100645
+bblack!~bblack@wikimedia/bblack-WMF
+e.g.: error: 'comptime var' is redundant in comptime scope
+
+1760100809
+deevus!~deevus@123.51.31.231
+What about a function `foo` that is comptime compatible, but not explicitly marked as such? 
+
+1760100853
+deevus!~deevus@123.51.31.231
+const bar = foo(); // global scope: this will work
+
+1760100892
+deevus!~deevus@123.51.31.231
+fn main() void { const baz = foo(); } // what about this?
+
+1760100928
+deevus!~deevus@123.51.31.231
+Does calling `foo` in `main` happen at comptime? 
+
+1760100987
+deevus!~deevus@123.51.31.231
+Or do I have to write
+
+1760100998
+deevus!~deevus@123.51.31.231
+fn main() void { const baz = comptime foo(); }
+
+1760101049
+deevus!~deevus@123.51.31.231
+Heading to bed. Will check back later.
+
+1760101100
+bblack!~bblack@wikimedia/bblack-WMF
+deevus: my experience has been that zig will generally infer that something is comptime-compatible, and the "comptime" keyword is just for cases where you need/want to be explicit.
+
+1760102035
+bblack!~bblack@wikimedia/bblack-WMF
+deevus: checking a similar case in my code: yes, it can infer comptime compat even if the const is inside an fn.
+
+1760102184
+ifreund!2940d10f8b@user/ifreund
+deevus, bblack: functions are only run at comptime if called in a comptime scope
+
+1760102229
+ifreund!2940d10f8b@user/ifreund
+inline functions blur this clear rule a bit though, since they propogate comptime-known-ness of their arguments and can return a comptime-known value even if not called in a comptime scope as a result
+
+1760102328
+bblack!~bblack@wikimedia/bblack-WMF
+yes, but "const x = ..." counts as a comptime scope always, right?
+
+1760102345
+bblack!~bblack@wikimedia/bblack-WMF
+or not?
+
+1760102345
+ifreund!2940d10f8b@user/ifreund
+bblack: only for globals, not for locals
+
+1760102374
+bblack!~bblack@wikimedia/bblack-WMF
+oh right, I guess my test "worked" by running my comptime-compatible function at runtime then
+
+1760102377
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm
+
+1760102397
+ifreund!2940d10f8b@user/ifreund
+feel free to use @inComptime() to improve your intuition
+
+1760102473
+ifreund!2940d10f8b@user/ifreund
+(and by globals, I mean container-level variables with a static lifetime)
+
+1760102495
+bblack!~bblack@wikimedia/bblack-WMF
+right
+
+1760102537
+ifreund!2940d10f8b@user/ifreund
+note that `var x = ...` is also a comptime scope for container-level variables
+
+1760102559
+ifreund!2940d10f8b@user/ifreund
+the const/var thing is a red herring
+
+1760102577
+ifreund!2940d10f8b@user/ifreund
+the lifetime is the determining factor
+
+1760102627
+ifreund!2940d10f8b@user/ifreund
+(const/var does affect whether the container-level variable itself can be used at comptime though)
+
+1760102651
+ifreund!2940d10f8b@user/ifreund
+I'm pretty sure these details are explained in the language reference these days
+
+1760102700
+bblack!~bblack@wikimedia/bblack-WMF
+ok so for the case deevus was talking about: if you have a comptime-compatible value-generating function (which isn't explicitly marking itself as comptime anywhere), and you want a function-level const defined from it at comptime...
+
+1760102718
+bblack!~bblack@wikimedia/bblack-WMF
+fn foo { const x = comptime value_maker(); ... }
+
+1760102733
+bblack!~bblack@wikimedia/bblack-WMF
+[is what seemed to work now that I'm using @inComptime() to verify]
+
+1760102776
+ifreund!2940d10f8b@user/ifreund
+yes
+
+1760102804
+bblack!~bblack@wikimedia/bblack-WMF
+thanks!
+
+1760113916
+lemons!~doggie@user/doggie-:49517
+today i found out that "structfield: u8 align(4)" exists
+
+1760114008
+lemons!~doggie@user/doggie-:49517
+though i do have to wonder, because currently i have "extern struct{var_a: u8, junk1: u8, junk2: u8, junk3: u8, var_b: 32}", and while i could replace that (i think) with that align, why cant we just have discards in extern structs?
+
+1760114039
+lemons!~doggie@user/doggie-:49517
+extern struct{var_a: u8, _: u8, _: u8, _: u8, var_b: u32}
+
+1760114055
+lemons!~doggie@user/doggie-:49517
+conveys the intent infinitely more clearly i think
+
+1760114847
+lemons!~doggie@user/doggie-:49517
+could even compress it into _: u24 though i dont know if parsing "can we express it as multiples of powers of two" is worth it
+
+1760127407
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is there any function that can count length/count of struct items? like len() in python.
+
+1760127473
+mimivals1!~mimivalsi@user/MimiValsi
+@sizeOf() maybe?
+
+1760127484
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+or is it something you need to keep track of manually?!
+
+1760127530
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+@sizeOf This function returns the number of bytes it takes to store T in memory. 
+
+1760127590
+lemons!~doggie@user/doggie-:49517
+stealth_: whats your usecase?
+
+1760127670
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lemons, i am writing something like this: https://zigbin.io/9b705a len: would keep track of how many iovec: struct/array contains 
+
+1760127724
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not sure if i need to keep track of this manually or maybe there is a function in zig that gives me that value @something(my_iovec) // 123
+
+1760128812
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: a plain pointer doesn't keep track of any length
+
+1760129264
+squeek502!~squeek502@user/squeek502
+stealth_, if `Iovec` is a struct you control, here's what i'd probably do: https://zigbin.io/02db11
+
+1760129293
+squeek502!~squeek502@user/squeek502
+when working with it from Zig code, you'd call `slice()` to make it nicer to work with
+
+1760129380
+squeek502!~squeek502@user/squeek502
+(but note that when making modifications, you'd need to be sure to update the struct fields and not just the slice ptr/len)
+
+1760129782
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cool, thanks, so slice() works like get all elements in the array? 
+
+1760130435
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it is common to implement `index` field as well? lets say you want get item 5? `return self.iovec[index];` ?
+
+1760131029
+squeek502!~squeek502@user/squeek502
+stealth_, if you haven't seen it yet, i'd recommend checking out https://ziglang.org/documentation/master/#Pointers and https://ziglang.org/documentation/master/#Slices
+
+1760131149
+squeek502!~squeek502@user/squeek502
+you could add an `index` function if you think it'd be useful
+
+1760131288
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i will, since i am porting this code to python, over there using dict like indexing is common
+
+1760131422
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wait here it says array already have a field called .len .ptr and so on.. i might now need to keep track of it manually?
+
+1760131523
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not*
+
+1760131830
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't have an array
+
+1760131850
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+arrays are comptime-known length
+
+1760131872
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, lene:5 is array right? https://zigbin.io/02db11
+
+1760131882
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+?
+
+1760131891
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am going to give it memory 
+
+1760131957
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+nothing there is an array
+
+1760131997
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am saying its going to be array after assigning it memory
+
+1760132006
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+"assigning it memory"?
+
+1760132023
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not going to be an array in zig
+
+1760132038
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+arrays are `[N]T`, for some length N
+
+1760132041
+deevus!~deevus@123.51.31.231
+Thanks ifreund and bblack
+
+1760132055
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya like `self.iovec = std.heap.c_allocator.alloc(C.iovec, 123);`
+
+1760132101
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+length = 123; this later becomes .len to access that 123 info. 
+
+1760132201
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.alloc returns a slice
+
+1760132205
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't expose a slice to C
+
+1760132210
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+directly
+
+1760132239
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its C.iovec so its a c struct!? 
+
+1760132261
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if nothing in C accesses iovec, it might be ok
+
+1760132307
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmmm.. not directly no, everything is accessed by zig, and passed into cPython api 
+
+1760132313
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if iovec is []C.iovec, it can only be used from zig
+
+1760132316
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+all right
+
+1760132447
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i had it as `iovec: *C.iovec` since that struct is known by python as well but as far as it knows its just a pointer. and that content is handled in zig side. 
+
+1760132494
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*C.iovec is not the right type either way
+
+1760132505
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it can only point to a single element
+
+1760132533
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i c, i haven't played around multi items pointer in zig yet. 
+
