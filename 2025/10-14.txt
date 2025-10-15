@@ -1,0 +1,376 @@
+1760402429
+midipix!~midipix@mail.culturestrings.org
+andrewrk: ping
+
+1760403709
+andrewrk!~andrewrk@mail.ziglang.org
+hello
+
+1760403770
+midipix!~midipix@mail.culturestrings.org
+andrewrk: just as an fyi, xldd (and perk) are implemented as libraries (each with its own front-end utility)
+
+1760403789
+midipix!~midipix@mail.culturestrings.org
+should that be relevant to your tooling, etc.
+
+1760403825
+midipix!~midipix@mail.culturestrings.org
+although if memory serves the zig (de facto?) policy is to implement everything in-house
+
+1760403927
+midipix!~midipix@mail.culturestrings.org
+i just finished overhauling/finalizing libperk's api, and am about to finish the same task for libxldd
+
+1760403941
+midipix!~midipix@mail.culturestrings.org
+so now would be a good time to try them out, if you're interested
+
+1760409471
+rvrb!~rvrb@156.146.51.228
+trying to test a contribution to Zig compiler by testing it on the project where I am reproducing the bug; but with my self compiled zig I get error: producing machine code via LLVM requires using the LLVM library
+
+1760409525
+rvrb!~rvrb@156.146.51.228
+is it because I need to statically link LLVM with -Dstatic-llvm? if so, I cannot get Zig to compile with that (likely due to nix environment)
+
+1760410076
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: with `zig build`, the default is `-Denable-llvm=false`
+
+1760410133
+andrewrk!~andrewrk@mail.ziglang.org
+you can use your system LLVM package if it is the correct version and you already built with cmake. `zig build` will pick up the cmake configuration. you shouldn't pass `-Dstatic-llvm` 
+
+1760410156
+andrewrk!~andrewrk@mail.ziglang.org
+I think you simply need to add -Denable-llvm 
+
+1760410200
+midipix!~midipix@mail.culturestrings.org
+andrewrk: is the above relevant at all?
+
+1760410239
+andrewrk!~andrewrk@mail.ziglang.org
+midipix: to what?
+
+1760410261
+midipix!~midipix@mail.culturestrings.org
+andrewrk: to the zig tooling
+
+1760410272
+andrewrk!~andrewrk@mail.ziglang.org
+umm I'm not sure what you are envisioning 
+
+1760410284
+andrewrk!~andrewrk@mail.ziglang.org
+can you be more specific?
+
+1760410321
+midipix!~midipix@mail.culturestrings.org
+well if you're creating PE images you might want to run (x)ldd on them to ensure all dependencies (libraries+symbols) are satisfied prior to packaging/shipping
+
+1760410367
+andrewrk!~andrewrk@mail.ziglang.org
+sounds like developers could potentially benefit from installing that software separately and using it as they see fit, no?
+
+1760410384
+andrewrk!~andrewrk@mail.ziglang.org
+where does integration with zig project fit in?
+
+1760410423
+midipix!~midipix@mail.culturestrings.org
+only for verification (for instance of the toolchain), not critical; would indeed be more benificial to devs
+
+1760410462
+andrewrk!~andrewrk@mail.ziglang.org
+wouldn't such verification be redundant with linker errors?
+
+1760410474
+midipix!~midipix@mail.culturestrings.org
+andrewrk: speaking of dependency libraries: I still argue that zig's choice to use .idata (as opposed to one or more framework-specific named section) makes the zig framework weaker for no good reason
+
+1760410530
+midipix!~midipix@mail.culturestrings.org
+andrewrk: re. redundancy: not with PE; linking requires the .a, which you could have without the .dll (that's exactly what you do for system libraries)
+
+1760410545
+andrewrk!~andrewrk@mail.ziglang.org
+I'm guessing that decision is inherited from LLD which is being actively replaced by in house linker: https://github.com/ziglang/zig/blob/master/src/link/Coff.zig
+
+1760410568
+midipix!~midipix@mail.culturestrings.org
+fair
+
+1760410595
+andrewrk!~andrewrk@mail.ziglang.org
+you're more than welcome to file an issue about this - I haven't been working on COFF linking so unfortunately I have no clue what you're talking about :)
+
+1760410661
+midipix!~midipix@mail.culturestrings.org
+andrewrk: no worries:-) really, the most important decision to make before your abi on coff/pe becomes stable has to do with ditching .idata for framework-specific named sections
+
+1760410672
+midipix!~midipix@mail.culturestrings.org
+even without being an expert, here's a scenario for you:
+
+1760410693
+midipix!~midipix@mail.culturestrings.org
+someone double-clicks a zig-created program, and there's a missing library
+
+1760410726
+midipix!~midipix@mail.culturestrings.org
+with .idata, loading happens before you reach _start(), and is performed by ntdll.dll on behalf of the program based on what's in .idata
+
+1760410763
+midipix!~midipix@mail.culturestrings.org
+--> library is missing: error dialog window, you need to OK
+
+1760410782
+midipix!~midipix@mail.culturestrings.org
+with a custom section, you can gracefully handle everything, just like on linux/bsd/etc.
+
+1760410827
+midipix!~midipix@mail.culturestrings.org
+you could use/copy the format that i've already created for midipix, and use either the tooling that already exists or come up with your own
+
+1760410846
+andrewrk!~andrewrk@mail.ziglang.org
+I see
+
+1760410870
+midipix!~midipix@mail.culturestrings.org
+side benefits could be native rpath support, proper external data variables, true dlopen/dlsym semantics, etc.
+
+1760410890
+andrewrk!~andrewrk@mail.ziglang.org
+I think most people targeting Windows are enjoying making the binaries as static as possible
+
+1760410949
+midipix!~midipix@mail.culturestrings.org
+i believe you, but the reason is that with .idata, which all frameworks/toolchain except for midipix use, you must plop your libraries in the same directory as the binary
+
+1760410960
+midipix!~midipix@mail.culturestrings.org
+or else depend on PATH, which nobody wants to do
+
+1760410965
+midipix!~midipix@mail.culturestrings.org
+so people end up statically linking stuff
+
+1760410973
+midipix!~midipix@mail.culturestrings.org
+there's no reason though
+
+1760410986
+andrewrk!~andrewrk@mail.ziglang.org
+well it's pretty handy to reduce the number of things that can go wrong at runtime
+
+1760410998
+midipix!~midipix@mail.culturestrings.org
+on midipix, there's proper /bin and /lib and proper LD_LIBRARY_PATH support etc.
+
+1760411022
+andrewrk!~andrewrk@mail.ziglang.org
+zig toolchain is aiming more to meet windows developers where they're at rather than trying to bring unix to it
+
+1760411042
+midipix!~midipix@mail.culturestrings.org
+just something for you to think about, should that become relevant i'd be happy to walk you through this:=)
+
+1760411052
+andrewrk!~andrewrk@mail.ziglang.org
+understood - thanks for stopping by!
+
+1760411062
+midipix!~midipix@mail.culturestrings.org
+of course:=)
+
+1760411086
+rvrb!~rvrb@156.146.51.228
+I remember when I could ctrl+f a commit on github, those were the days
+
+1760411188
+andrewrk!~andrewrk@mail.ziglang.org
+instructions unclear; burning down a forest to hallucinate a wrong answer to your search query... do u like this?
+
+1760411207
+rvrb!~rvrb@156.146.51.228
+pls no
+
+1760411271
+andrewrk!~andrewrk@mail.ziglang.org
+I love it when you strace and the answer is super obvious
+
+1760411274
+andrewrk!~andrewrk@mail.ziglang.org
+bind(3, {sa_family=0xaaaa /* AF_??? */
+
+1760411279
+andrewrk!~andrewrk@mail.ziglang.org
+BUSTED
+
+1760411316
+rvrb!~rvrb@156.146.51.228
+0xaa in debug is extremely helpful
+
+1760411336
+rvrb!~rvrb@156.146.51.228
+man, the entire zig compiler is going to comple before github renders this diff in my browser
+
+1760411493
+rvrb!~rvrb@156.146.51.228
+andrewrk: thanks! it worked. unfortunately, my 'fix' did not
+
+1760411579
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: be sure to try out --watch -fincremental too - you can get a quick iteration cycle on further attempts. but note that -fincremental uses the new elf linker which doesn't support debug info yet (bad stack traces)
+
+1760411736
+torque!~tachyon@user/torque
+that looks undefined AF
+
+1760411898
+andrewrk!~andrewrk@mail.ziglang.org
+I see what you did there
+
+1760413194
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The only problem I had with `--watch` is it occasionally causing my program to constantly rebuild if I don't change the debounce.
+
+1760415321
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: just speculating... perhaps your text editor is taking a long time to save?
+
+1760416009
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+andrew would you mind upgrading https://pypi.org/project/ziglang/#history to 0.15.2 when you get a chance, thanks
+
+1760426837
+lemons!~doggie@user/doggie-:49517
+is there a version of std.log which works/can be customized to work per-module?
+
+1760426906
+lemons!~doggie@user/doggie-:49517
+or well, "module" as in some chunk of code and not zig modules. i suppose both would work though
+
+1760427288
+sbt!~drone@user/sbt
+Test
+
+1760427294
+sbt!~drone@user/sbt
+Success.
+
+1760427296
+Affliction!affliction@idlerpg/player/affliction
+test failed successfully
+
+1760427314
+sbt!~drone@user/sbt
+Story of my life 
+
+1760427336
+Affliction!affliction@idlerpg/player/affliction
+dammit I have a response cued for lemons aaaaa
+
+1760427347
+Affliction!affliction@idlerpg/player/affliction
+ACTION mumbles something about scopes and handlers
+
+1760446205
+mimivals1!~mimivalsi@user/MimiValsi
+is there a reason for why `source` and `dest` must have the same length when using `@memmove()` ? 
+
+1760446587
+mimivals1!~mimivalsi@user/MimiValsi
+maybe trailling zeros is kinda bad?
+
+1760446733
+neothechosen!~militaryc@user/neothechosen
+am I the only one who's getting timeouts when trying to access language reference page? I don't use any VPNs or firewalls
+
+1760448143
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+mimival, how would it work if they were different lengths?
+
+1760452367
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: Maybe, but it's plain-old Vim. Most of the time, it only rebuilds once, but if there is a compile error, it sometimes gets stuck in a loop printing the error multiple times a second for at least a few seconds until I restart Zig. I haven't checked whether resaving or waiting a while stops it, but it's easy enough to work around anyway.
+
+1760459252
+rvrb!~rvrb@156.146.51.228
+does zig use its own hash (or some other heuristic) to invalidate build caches? if I am iterating on the compiler, do I need to delete caches before rebuilding a project after making a change on the compiler?
+
+1760460305
+rvrb!~rvrb@156.146.51.228
+TIL of SPIR-V visualizer, which is very helpful: https://www.khronos.org/spirv/visualizer/
+
+1760460501
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: the output of `zig version` is part of the cache namespace
+
+1760460520
+andrewrk!~andrewrk@mail.ziglang.org
+when iterating on the compiler, this value does not change unless you make a commit
+
+1760460561
+rvrb!~rvrb@156.146.51.228
+andrewrk: got it, thanks 
+
+1760460563
+andrewrk!~andrewrk@mail.ziglang.org
+depending on what you're working on, it may be necessary to clear caches, or it may just be a waste of time
+
+1760460611
+rvrb!~rvrb@156.146.51.228
+spir-v codegen, so I think so
+
+1760460843
+andrewrk!~andrewrk@mail.ziglang.org
+well, typically the first thing I would do when working on the compiler is try to come up with a one-file reduction and use the build-obj command
+
+1760460861
+andrewrk!~andrewrk@mail.ziglang.org
+in this case there is no cache that needs to be cleared
+
+1760460924
+rvrb!~rvrb@156.146.51.228
+yeah - that is all working - I am trying to rule out an end to end issue
+
+1760461634
+andrewrk!~andrewrk@mail.ziglang.org
+gotcha
+
+1760485816
+Xe!~Xe@perl/impostor/xe
+andrewrk: is zig still the best minimum effort C to wasm+wasip1 converter?
+
+1760485886
+andrewrk!~andrewrk@mail.ziglang.org
+probably
+
+1760485946
+andrewrk!~andrewrk@mail.ziglang.org
+Xe: I'm assuming you're talking about https://00f.net/2023/01/04/webassembly-benchmark-2023/ and https://github.com/ziglang/zig/blob/master/stage1/wasm2c.c
+
+1760486005
+Xe!~Xe@perl/impostor/xe
+andrewrk: i more mean for the "I do not want to maintain a clang install, just give me the thing i can pass to `make`" angle lol
+
+1760486091
+andrewrk!~andrewrk@mail.ziglang.org
+sorry I don't think I'm following the question
+
+1760486309
+Xe!~Xe@perl/impostor/xe
+andrewrk: if i want to compile a C program from source such that the compiler outputs a .wasm file targeted to wasip1, is zig still the best way to do that / requires the least steps to go from a completely fresh/clean ubuntu to a working result
+
+1760486364
+andrewrk!~andrewrk@mail.ziglang.org
+oh I see. yeah that use case still works great
+
+1760486393
+andrewrk!~andrewrk@mail.ziglang.org
+just pass `-target wasm32-wasi` to `zig cc`
+
