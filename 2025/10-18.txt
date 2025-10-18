@@ -110,3 +110,35 @@ this was (is?) a specific feature of the language but I believe it has been most
 luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
 I'd like to clarify two things about cancelation plans for std.Io, my understanding so far: when user calls cancel(), the inner operations will always return error.Canceled, and there is no way of shielding from that. this approach makes it very difficult to handle error.Canceled, because sometimes you need to do io operation in the cleanup path
 
+1760808574
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+and you don't want that to be canceled. in zio, I've followed the python async io approach, when you run cancel(), the code gets one error.Canceled, and is expected to propagate it, so if you for example run sleep() and it returns error.Canceled, your mutex.lock() in defer will not return error.Canceled, unless it was canceled again. that makes it
+
+1760808575
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+possible to re-try the lock, if you really need it (python sync primitives do this). even better, it should support shielding, so that you can stay that you don't want operations to return error.Canceled from here to here, but following operations will still return error.Canceled, so the flag is not lost.
+
+1760808819
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I'm not completely understanding the Io.EventLoop, but I think mutex.lock() can't be canceled in that implementation, is that correct? that simplifies code like condition, but it's a questionable design. and if mutex.lock will be made cancelable, then it significantly complicates the waiter list management, as you need to remove the canceled item
+
+1760808819
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+from there and it needs to be done atomically.
+
+1760809126
+torque!~tachyon@user/torque
+you may get an answer in here but just in case you weren't aware of it, you may be better off asking in the zsf zulip chat, which has a topic for the new async IO implementation
+
+1760809287
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think futex better for async 
+
+1760809334
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does making stuff comptime considered micro optimization or good practice? 
+
+1760809452
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+torque: thank you, I wasn't sure which medium is more active
+
