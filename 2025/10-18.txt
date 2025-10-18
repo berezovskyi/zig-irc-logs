@@ -266,3 +266,75 @@ a simple way to coordinate the independent tasks to avoid concurrent requests wo
 stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
 well the way to go about it in io_uring for example is to have 1 main event loop, this controls all the events coming/going but it also starts/maintains others threads with its own event loops, and you communicate/manage using futex2. there is no need for locks and such 
 
+1760810392
+torque!~tachyon@user/torque
+calling the use of futex not a lock seems to be suspect at best
+
+1760810416
+torque!~tachyon@user/torque
+but more importantly now you have multiple threads and a big mess, and you're assuming a linux implementation
+
+1760810433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even in 1 event as controllers in single thread, it can handle millions of events per second, so you wouldn't have a problem with it.
+
+1760810471
+torque!~tachyon@user/torque
+this has nothing to do with performance, though? I mentioned nothing about performance. it's about synchronizing multiple concurrent tasks
+
+1760810477
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+at any given time it is dealing with 1 event at a time, so locks doesn't make sense is async
+
+1760810482
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in async*
+
+1760810536
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+locks do make sense, because even on a single thread, you need to make sure you own some resource across yields to the scheduler, there are real use cases for this
+
+1760810562
+torque!~tachyon@user/torque
+the point is that there are two distinct events (first the request, then the response) that must be conceptually fused into a single event by use of some synchronization mechanism
+
+1760810570
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you can implement them using io_uring, but those are still async locks
+
+1760810634
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+obviously, if you want to program in terms of io_uring, that's fine, but people don't want to do that, hence we std.Io
+
+1760810692
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if resource is busy internally event loop would do other task and come back to it when its freed. without using lock. i mean lock would break your event loop from working if its non-blocking lock 
+
+1760810718
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I think you don't understand what async lock is :)
+
+1760810750
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if anything i am not explaining my point properly=
+
+1760810786
+torque!~tachyon@user/torque
+your point is nonsense because there are obviously async applications that require locks, which is exactly why `asyncio.Lock` exists
+
+1760810831
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+asyncio isn't that good! why i use io_uring. 
+
+1760810849
+torque!~tachyon@user/torque
+what
+
+1760810899
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are talking about pythons asyncio right?
+
+1760811217
+Drixtan!~Drixtan@user/Drixtan
+came in for zig, staying for stealth_ <3
+
