@@ -142,3 +142,127 @@ does making stuff comptime considered micro optimization or good practice?
 luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
 torque: thank you, I wasn't sure which medium is more active
 
+1760809531
+torque!~tachyon@user/torque
+I'd say they're similar, but the zulip has more activity from the core team and is definitely more focused on the language design topics
+
+1760809554
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+hm, I actually can't find zfs zulip, only a community one
+
+1760809568
+torque!~tachyon@user/torque
+https://zsf.zulipchat.com
+
+1760809580
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+thank you!
+
+1760809594
+torque!~tachyon@user/torque
+it's hidden down here: https://github.com/ziglang/zig/wiki/Community#compiler-development for future reference
+
+1760809617
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why you using locks in async even loop?
+
+1760809660
+torque!~tachyon@user/torque
+locks are a general synchronization primitive that are useful in concurrent programming applications
+
+1760809676
+torque!~tachyon@user/torque
+I mean python has `asyncio.Lock` and indeed it is very useful
+
+1760809677
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you need locks to protect resources across yields
+
+1760809695
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+and even more important than that ,you need things like condition variables to wait on stuff
+
+1760809737
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+based on that, you can implement things like channels, where you have one end waiting on the other
+
+1760809742
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't think you need lock in async. i think asyncio.lock is probably not what you think it is.
+
+1760809757
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I implement async lock myself, I know what is it :)
+
+1760809790
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you need to register the waiting coroutines somewhere
+
+1760809808
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+plus, even the std.io.eventloop implmentation is multi-threaded
+
+1760809856
+torque!~tachyon@user/torque
+<stealth_> don't think you need lock in async. i think asyncio.lock is probably not what you think it is.
+
+1760809865
+torque!~tachyon@user/torque
+you need it for the exact same reason  you need locks with threads
+
+1760809872
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+another plus, the lock needs to be cancelable, unliked std.thread.mutex
+
+1760809923
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i know the argument, i think if you are using locks with async the event loop design or way you are using it is flawed. 
+
+1760809955
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also you can use futex with async in multiple threads, its a better option
+
+1760809969
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you can't use futex, it will block all coroutines running on the current thread
+
+1760809995
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am talking about futex2 not normal futex that isn't for async. 
+
+1760809996
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you need to allow the event loop run while the lock is waiting
+
+1760810094
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://www.kernel.org/doc/html/latest/userspace-api/futex2.html its already in io_uring
+
+1760810116
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+but that's a way of implementing async lock on linux, not a replacement for async lock
+
+1760810137
+torque!~tachyon@user/torque
+the async implementation does need to support more platforms than just linux
+
+1760810175
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i am only talking about linux since i don't really develop in other os's 
+
+1760810176
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+e.g. see my cross-platform async mutex that supports cancelation - https://github.com/lalinsky/zio/blob/main/src/sync/Mutex.zig
+
+1760810242
+torque!~tachyon@user/torque
+also as an example, imagine you have two computers communicating over a network socket. the application-level protocol is request-response, and there cannot be two requests in flight at the same time. architecturally it may make sense for the requestor to have several independent async tasks running that are not aware of each other, while still being single-threaded
+
+1760810312
+torque!~tachyon@user/torque
+a simple way to coordinate the independent tasks to avoid concurrent requests would be to have all requests go through some kind of dispatcher that uses a lock to ensure the transactionality of the request-response protocol
+
+1760810356
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well the way to go about it in io_uring for example is to have 1 main event loop, this controls all the events coming/going but it also starts/maintains others threads with its own event loops, and you communicate/manage using futex2. there is no need for locks and such 
+
