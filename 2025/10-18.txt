@@ -1,0 +1,888 @@
+1760745851
+bblack!~bblack@wikimedia/bblack-WMF
+a style linter would be nice
+
+1760745879
+bblack!~bblack@wikimedia/bblack-WMF
+for the basic style guidelines like functioNaming vs TypeNaming vs var_naming
+
+1760745989
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well there is also `zig fmt` which is very neat as well.  
+
+1760748784
+torque!~tachyon@user/torque
+formatting is fine, generally, though I disagree with zig fmt on a couple of things it's mostly ok
+
+1760748795
+torque!~tachyon@user/torque
+a style linter would be annoying as shit
+
+1760748831
+torque!~tachyon@user/torque
+style guidelines are just that, guidelines. a linter turns them into rules and the rules are usually dogshit for morons that actively degrade the code quality
+
+1760748963
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it sure can get annoying and wastes a lot of time if you have to edit manually, with zig fmt everything is auto done for you so thats saves time.
+
+1760751742
+squeek502!~squeek502@user/squeek502
+bblack, there are two that i'm aware of, each have a bit of style linting: https://github.com/nektro/ziglint and https://github.com/DonIsaac/zlint
+
+1760753342
+torque!~tachyon@user/torque
+unfortunate that one is actually under active development
+
+1760759326
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+does loris hang out in here or nah?
+
+1760759549
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+have these tech companies lost the plot with Ai?
+
+1760760663
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ezzieyguywuf, i think i saw some of his video online where he does streaming maybe you can ask him stuff there.
+
+1760760981
+torque!~tachyon@user/torque
+I haven't seen him in here. he is on the zulip and probably various discords
+
+1760763962
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+kthnx
+
+1760790759
+CakeVision!~CakeVisio@user/CakeVision
+hello there, i have a question. I really enjoy zig, having used it in some toy projects, but am put off by the looming io rewrite. Is it worth commiting now or waiting. I know it's a personal preference thing mostly, but would like some opinions from those who have used zig a bit more than me
+
+1760790853
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Io has already been rewritten and is out for 0.15.1 +
+
+1760790910
+CakeVision!~CakeVisio@user/CakeVision
+so sad I cant send a surprised pikachu here. Seems I'm off to learn zig then
+
+1760790931
+CakeVision!~CakeVisio@user/CakeVision
+thanks for the response btw
+
+1760791040
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what version of zig did you use? if you used e.g 0.14.1 and your software is working, you can release it and have it only be compiled using 0.14.1
+
+1760791091
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+than you can learn + recode and release the updated code for 0.15.2 + 
+
+1760795325
+seti_!~seti_@user/seti-:64798
+I was reading zig issue #7769 on pinned structs and saw that Andrew unaccepted it saying "Unaccepting for reconsideration of result pointers in the language"
+
+1760795366
+seti_!~seti_@user/seti-:64798
+I couldnt find what result pointers were supposed to be, are they an "alternative" or is it for some meta-problem that wasnt adequately solved for which it was unaccepted?
+
+1760803963
+torque!~tachyon@user/torque
+<stealth_> Io has already been rewritten and is out for 0.15.1 +
+
+1760803969
+torque!~tachyon@user/torque
+this isn't really true for what it's worth
+
+1760804016
+torque!~tachyon@user/torque
+the reader/writer interface was indeed changed in 0.15, but the total io interface overhaul is still in progress and will be in 0.16
+
+1760806678
+torque!~tachyon@user/torque
+seti_, I believe "result pointers" refers to an optimization where a pointer to the return value location is passed as a hidden parameter to the function so that the return value does not end up being copied between the callee and caller
+
+1760806724
+torque!~tachyon@user/torque
+this was (is?) a specific feature of the language but I believe it has been mostly moved away from because it introduced some implicit footguns around pointer aliasing
+
+1760808574
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I'd like to clarify two things about cancelation plans for std.Io, my understanding so far: when user calls cancel(), the inner operations will always return error.Canceled, and there is no way of shielding from that. this approach makes it very difficult to handle error.Canceled, because sometimes you need to do io operation in the cleanup path
+
+1760808574
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+and you don't want that to be canceled. in zio, I've followed the python async io approach, when you run cancel(), the code gets one error.Canceled, and is expected to propagate it, so if you for example run sleep() and it returns error.Canceled, your mutex.lock() in defer will not return error.Canceled, unless it was canceled again. that makes it
+
+1760808575
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+possible to re-try the lock, if you really need it (python sync primitives do this). even better, it should support shielding, so that you can stay that you don't want operations to return error.Canceled from here to here, but following operations will still return error.Canceled, so the flag is not lost.
+
+1760808819
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I'm not completely understanding the Io.EventLoop, but I think mutex.lock() can't be canceled in that implementation, is that correct? that simplifies code like condition, but it's a questionable design. and if mutex.lock will be made cancelable, then it significantly complicates the waiter list management, as you need to remove the canceled item
+
+1760808819
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+from there and it needs to be done atomically.
+
+1760809126
+torque!~tachyon@user/torque
+you may get an answer in here but just in case you weren't aware of it, you may be better off asking in the zsf zulip chat, which has a topic for the new async IO implementation
+
+1760809287
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think futex better for async 
+
+1760809334
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does making stuff comptime considered micro optimization or good practice? 
+
+1760809452
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+torque: thank you, I wasn't sure which medium is more active
+
+1760809531
+torque!~tachyon@user/torque
+I'd say they're similar, but the zulip has more activity from the core team and is definitely more focused on the language design topics
+
+1760809554
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+hm, I actually can't find zfs zulip, only a community one
+
+1760809568
+torque!~tachyon@user/torque
+https://zsf.zulipchat.com
+
+1760809580
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+thank you!
+
+1760809594
+torque!~tachyon@user/torque
+it's hidden down here: https://github.com/ziglang/zig/wiki/Community#compiler-development for future reference
+
+1760809617
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why you using locks in async even loop?
+
+1760809660
+torque!~tachyon@user/torque
+locks are a general synchronization primitive that are useful in concurrent programming applications
+
+1760809676
+torque!~tachyon@user/torque
+I mean python has `asyncio.Lock` and indeed it is very useful
+
+1760809677
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you need locks to protect resources across yields
+
+1760809695
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+and even more important than that ,you need things like condition variables to wait on stuff
+
+1760809737
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+based on that, you can implement things like channels, where you have one end waiting on the other
+
+1760809742
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't think you need lock in async. i think asyncio.lock is probably not what you think it is.
+
+1760809757
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I implement async lock myself, I know what is it :)
+
+1760809790
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you need to register the waiting coroutines somewhere
+
+1760809808
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+plus, even the std.io.eventloop implmentation is multi-threaded
+
+1760809856
+torque!~tachyon@user/torque
+<stealth_> don't think you need lock in async. i think asyncio.lock is probably not what you think it is.
+
+1760809865
+torque!~tachyon@user/torque
+you need it for the exact same reason  you need locks with threads
+
+1760809872
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+another plus, the lock needs to be cancelable, unliked std.thread.mutex
+
+1760809923
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i know the argument, i think if you are using locks with async the event loop design or way you are using it is flawed. 
+
+1760809955
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also you can use futex with async in multiple threads, its a better option
+
+1760809969
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you can't use futex, it will block all coroutines running on the current thread
+
+1760809995
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am talking about futex2 not normal futex that isn't for async. 
+
+1760809996
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you need to allow the event loop run while the lock is waiting
+
+1760810094
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://www.kernel.org/doc/html/latest/userspace-api/futex2.html its already in io_uring
+
+1760810116
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+but that's a way of implementing async lock on linux, not a replacement for async lock
+
+1760810137
+torque!~tachyon@user/torque
+the async implementation does need to support more platforms than just linux
+
+1760810175
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i am only talking about linux since i don't really develop in other os's 
+
+1760810176
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+e.g. see my cross-platform async mutex that supports cancelation - https://github.com/lalinsky/zio/blob/main/src/sync/Mutex.zig
+
+1760810242
+torque!~tachyon@user/torque
+also as an example, imagine you have two computers communicating over a network socket. the application-level protocol is request-response, and there cannot be two requests in flight at the same time. architecturally it may make sense for the requestor to have several independent async tasks running that are not aware of each other, while still being single-threaded
+
+1760810312
+torque!~tachyon@user/torque
+a simple way to coordinate the independent tasks to avoid concurrent requests would be to have all requests go through some kind of dispatcher that uses a lock to ensure the transactionality of the request-response protocol
+
+1760810356
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well the way to go about it in io_uring for example is to have 1 main event loop, this controls all the events coming/going but it also starts/maintains others threads with its own event loops, and you communicate/manage using futex2. there is no need for locks and such 
+
+1760810392
+torque!~tachyon@user/torque
+calling the use of futex not a lock seems to be suspect at best
+
+1760810416
+torque!~tachyon@user/torque
+but more importantly now you have multiple threads and a big mess, and you're assuming a linux implementation
+
+1760810433
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even in 1 event as controllers in single thread, it can handle millions of events per second, so you wouldn't have a problem with it.
+
+1760810471
+torque!~tachyon@user/torque
+this has nothing to do with performance, though? I mentioned nothing about performance. it's about synchronizing multiple concurrent tasks
+
+1760810477
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+at any given time it is dealing with 1 event at a time, so locks doesn't make sense is async
+
+1760810482
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in async*
+
+1760810536
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+locks do make sense, because even on a single thread, you need to make sure you own some resource across yields to the scheduler, there are real use cases for this
+
+1760810562
+torque!~tachyon@user/torque
+the point is that there are two distinct events (first the request, then the response) that must be conceptually fused into a single event by use of some synchronization mechanism
+
+1760810570
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+you can implement them using io_uring, but those are still async locks
+
+1760810634
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+obviously, if you want to program in terms of io_uring, that's fine, but people don't want to do that, hence we std.Io
+
+1760810692
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if resource is busy internally event loop would do other task and come back to it when its freed. without using lock. i mean lock would break your event loop from working if its non-blocking lock 
+
+1760810718
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I think you don't understand what async lock is :)
+
+1760810750
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if anything i am not explaining my point properly=
+
+1760810786
+torque!~tachyon@user/torque
+your point is nonsense because there are obviously async applications that require locks, which is exactly why `asyncio.Lock` exists
+
+1760810831
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+asyncio isn't that good! why i use io_uring. 
+
+1760810849
+torque!~tachyon@user/torque
+what
+
+1760810899
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are talking about pythons asyncio right?
+
+1760811217
+Drixtan!~Drixtan@user/Drixtan
+came in for zig, staying for stealth_ <3
+
+1760811968
+torque!~tachyon@user/torque
+<stealth_> does making stuff comptime considered micro optimization or good practice?
+
+1760811973
+torque!~tachyon@user/torque
+meant to respond to this earlier but forgot
+
+1760812039
+torque!~tachyon@user/torque
+my opinion is that comptime should mainly be used in cases where it makes the program more ergonomic or easier to understand (obviously it needs to be used in places where comptime-only features are needed, like type reflection)
+
+1760812108
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thanks, i notice it doesn't work with c types or maybe it might have to do with cpython cpi functions
+
+1760812134
+torque!~tachyon@user/torque
+an example of this would be generating lookup tables for CRC routines. it's possible to build the lookup tables at runtime, and it's possible to hardcode them (possibly generated with an external code generator), but it ends up working the best to use a funciton to generate these into constants at compile time
+
+1760812237
+torque!~tachyon@user/torque
+you can manipulate C types at compile time (e.g. reflection) but you probably can't create python objects at compile time very well
+
+1760812286
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, i tired it with https://docs.python.org/3/c-api/structures.html#c.Py_TYPE not much luck
+
+1760812337
+torque!~tachyon@user/torque
+you can't call functions from external libraries at compile time
+
+1760812342
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was thinking in terms of `comptime var value = 123;` could endup at micro optimization
+
+1760812379
+torque!~tachyon@user/torque
+well, you can't modify a comptime var at runtime, so your example is underspecified
+
+1760812461
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+sure you can, give me a sec. 
+
+1760812491
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+of course you can't
+
+1760812497
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://codeberg.org/ziglings/exercises/src/branch/main/exercises/067_comptime2.zig
+
+1760812514
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+line: 38 you change it to `comptime var count`
+
+1760812525
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's not modifying anything at runtime
+
+1760812540
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i didn't say runtime 
+
+1760812547
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, torque did
+
+1760812556
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+suppose he/she assumed it. 
+
+1760812563
+torque!~tachyon@user/torque
+what
+
+1760812600
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, saying you assumed i was talking abut runtime, i wasn't 
+
+1760812631
+torque!~tachyon@user/torque
+if you're talking about optimization, you're talking about runtime performance
+
+1760812664
+torque!~tachyon@user/torque
+my point was that in a vacuum, `comptime var value = 123` is indistinct from `const value = 123` so it was entirely unclear what you were even trying to say
+
+1760812667
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+isn't making stuff comptime make things faster? 
+
+1760812679
+torque!~tachyon@user/torque
+uh
+
+1760812695
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I mean, no?
+
+1760812701
+torque!~tachyon@user/torque
+it makes the compiler interpret the code when compiling and affects what actual runtime code gets generated
+
+1760812701
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can't say that in general
+
+1760812721
+torque!~tachyon@user/torque
+but it doesn't just magically emit the engage afterburners instruction that the cpu keeps hidden otherwise
+
+1760812763
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, you can run this code https://zigbin.io/cddd26
+
+1760812785
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+even though its var and comptime `count` value is modified 
+
+1760812811
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+comptime there makes the code _work at all_
+
+1760812886
+torque!~tachyon@user/torque
+you're not modifying the value at runtime
+
+1760812887
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so its not same as `const value`
+
+1760812923
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+indistinct doesn't mean it's exactly the same
+
+1760813042
+torque!~tachyon@user/torque
+I said "in a vacuum" and indeed by providing additional context you have made things more clear
+
+1760813107
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what does "in a vacuum" mean! lol i don't know how to nerd talk :p 
+
+1760813149
+torque!~tachyon@user/torque
+and indeed your example is no different than https://zigbin.io/019295
+
+1760813195
+seti_!~seti_@user/seti-:64798
+torque: I see i hope pinning is accepted again then, I'll have to think more about it but it feels like some safe semantics could be modelled without overhead if pinning is available
+
+1760813220
+torque!~tachyon@user/torque
+(also you should use @splat for this sort of array initialization)
+
+1760813240
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see what you are saying, i understand code better.. so comptime will convert every like `count += 1` into const value
+
+1760813424
+torque!~tachyon@user/torque
+that's essentially what it's doing, yes
+
+1760813436
+torque!~tachyon@user/torque
+you can think of comptime operations as code generation
+
+1760813499
+torque!~tachyon@user/torque
+since `**` is also a comptime operation, the actual code used to generate the machine code is even still a bit different than what is written there
+
+1760813555
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well since all these is does at comptime now your function should run faster since zig doesn't have to do all these calculations at runtime. 
+
+1760813654
+torque!~tachyon@user/torque
+your example is specious because even without use of "comptime" features that particular code would always do the same amount of runtime work, which is just the print statement
+
+1760813700
+torque!~tachyon@user/torque
+if you were comparing initializing the array with a runtime loop vs the static initialization, that would be a bit different
+
+1760813702
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i just got that example from ziglings since thats where i saw that feature mentioned in use-case.
+
+1760813705
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+comptime is not really about making code faster, but more "specialized", you write some generic, and the compiled code is specific
+
+1760813803
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i heard someone mentioned zig is faster cause of its comptime features
+
+1760813821
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+faster than what?
+
+1760813835
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+other languages '
+
+1760813903
+clevor!sid649024@id-649024.hampstead.irccloud.com
+There is nothing in comptime that couldn't be done via code generation in other languages.
+
+1760813907
+lemons!~doggie@user/doggie-:49517
+stealth_: c has macros and constexpr, rust has macros and otherthing
+
+1760813928
+lemons!~doggie@user/doggie-:49517
+comptime by itself doesnt provide anything more that you couldnt emulate in other languages
+
+1760813930
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+comptime just allows you to generate code using zig, which is nice, much nicer than C macros or C++ templates, or godforbid Rust macros
+
+1760813937
+lemons!~doggie@user/doggie-:49517
+^
+
+1760813951
+lemons!~doggie@user/doggie-:49517
+comptime arguments are nice though
+
+1760813968
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Jai's compile-time scares me.
+
+1760813986
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe comptime feature allows for better/easier optimization in zig vs other languages
+
+1760813994
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+it does not
+
+1760814038
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+it's a convenience feature, a huge convenience, but still just a convenience
+
+1760814042
+clevor!sid649024@id-649024.hampstead.irccloud.com
+^
+
+1760814080
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+having the right tool at hand makes all the difference though. 
+
+1760814364
+torque!~tachyon@user/torque
+I have to resist the urge in here to complain about C++ on a daily basis. i hate it so much
+
+1760814476
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why not point your code over to zig and if you need to add anything new to the project do it in zig side.
+
+1760814518
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like slowly replace the project into zig 1 function at a time.
+
+1760814531
+lemons!~doggie@user/doggie-:49517
+stealth_: that is what i myself am doing
+
+1760814539
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lemons, nice
+
+1760814552
+lemons!~doggie@user/doggie-:49517
+..but also my alternative is an engine that does bit math with floats
+
+1760814618
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig doesn't really have C++ interop
+
+1760814637
+clevor!sid649024@id-649024.hampstead.irccloud.com
+lemons: An interpreted engine?
+
+1760814663
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+^ ya curious
+
+1760814682
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o, though zig did c++ as well, i have only use it with c and its so awesome.
+
+1760814685
+lemons!~doggie@user/doggie-:49517
+clevor: it works off an intermediary but yeah
+
+1760814757
+lemons!~doggie@user/doggie-:49517
+on that note, love how zig lets me work around that with custom bit sizes
+
+1760814787
+lemons!~doggie@user/doggie-:49517
+engine-side i can use up to 24 bits, so in zig i just take three of these variables, stitch them together and get a u72
+
+1760814853
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there is too many cool features in zig, i was trying to do that 24bit thing in cython it was a pain.
+
+1760814862
+torque!~tachyon@user/torque
+unfortunately I cannot use zig at work
+
+1760814867
+torque!~tachyon@user/torque
+I would never use C++ for a personal project
+
+1760814944
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you should just convince your work how zig is better! and it will save them lots of $
+
+1760814994
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just the $ saved on compile time makes it worth it. 
+
+1760815033
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+zig release builds are not particularly fast :)
+
+1760815111
+torque!~tachyon@user/torque
+unfortunately it'd be a hard sell with the stdlib being as unstable as it is and the language/ecosystem not being mature. it's a lot easier to get buy-in on rust or go
+
+1760815163
+torque!~tachyon@user/torque
+disregarding the sunk cost fallacy, it's also an uphill battle to sell people on throwing 5ish years of producing a huge pile of C++ dog doo + all of the horrible tooling into the trash
+
+1760815172
+Drixtan!~Drixtan@user/Drixtan
+convince your workplace to use a not released language that will have breaking changes that you will have to fix all the time, I see where all that $ saving goes
+
+1760815196
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, first step would be to use zig just for compiling, no for code itself. not sure if your project does cross-compilation that would make your point stronger.
+
+1760815244
+torque!~tachyon@user/torque
+I used zig at my last job, including upgrading from 0.11 to 0.13, but I was pretty much the sole developer
+
+1760815247
+lemons!~doggie@user/doggie-:49517
+stealth_: the other day i needed help with compiling a c++ bug reproduction case, folk told me to just use zig 
+
+1760815260
+lemons!~doggie@user/doggie-:49517
+so im pretty sure thats already done when possible
+
+1760815305
+torque!~tachyon@user/torque
+the toolchain already exists and switching to zig doesn't make the c++ ecosystem less horrible
+
+1760815317
+torque!~tachyon@user/torque
+*switching to zig as the compilier
+
+1760815319
+torque!~tachyon@user/torque
+compiler
+
+1760815347
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its a start, 1 step at a time, unless you want to be stuck with C++
+
+1760815386
+torque!~tachyon@user/torque
+that's not really how it works
+
+1760815410
+torque!~tachyon@user/torque
+I'm pretty sure all of the companies that use zig as a cross-compile toolchain have no intention of adopting the language itself
+
+1760815469
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well they don't want to break their software, so adapting compiler is a quick win... as time passes by you can slowly port over other features...
+
+1760815510
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no real path to porting piecemeal, unless you want to wrap everything in C on both sides
+
+1760815524
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe your C++ needs a library, create that in zig and just import it in C++, u know...
+
+1760815577
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+like a standalone library.
+
+1760815669
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're suggesting writing a library in zig and exposing it with a C ABI?
+
+1760815676
+torque!~tachyon@user/torque
+the abi would be C and C++ guys freaking hate C
+
+1760815709
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+Hmm could rust be transpiled to zig
+
+1760815747
+lemons!~doggie@user/doggie-:49517
+davros1: God no
+
+1760815764
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+I probably also asked this 20 times already but are rust and zig slices compatible 
+
+1760815793
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+define compatible
+
+1760815795
+lemons!~doggie@user/doggie-:49517
+i dont know how rust handles slices so similarly have no clue if they match
+
+1760815802
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they aren't ABI compatible because neither defines an ABI for them
+
+1760815814
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am currently using C library in zig and i find it very easy to use, not sure how its other way around, but zig is really good at working with C struct and such.
+
+1760815826
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: C != C++
+
+1760815833
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i know
+
+1760815856
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in my pov C > C++
+
+1760815875
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+C++ seems like a nightmare 
+
+1760815921
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+Can't interface with c++ without being c++ basically
+
+1760815948
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+c++ is ok when you get to choose the subset and all your coworkers agree with it
+
+1760815989
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+Rust & zig teams should get together and agree on a slice layout
+
+1760815998
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+'Is it pointer, size or size,pointer'
+
+1760816015
+torque!~tachyon@user/torque
+c++ is never ok
+
+1760816048
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+davros1: what would it help? rust and zig can only communicate through C APIs and it's ptr + len there
+
+1760816066
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, why not find a different job where you can work in zig? problem solved :D i won't think you can fix that C++ issue in this lifetime.
+
+1760816077
+davros1!~davros2@2a01:4b00:f01b:3e00:6170:e4a0:4ae8:ce7b
+You could go one step up.. C APIs extended to include slices
+
+1760816100
+torque!~tachyon@user/torque
+I do think it would be neat for zig to define a zig abi, even if you can't do comptime across libraries, being able to use tagged unions and slices between libraries would be cool
+
+1760816163
+torque!~tachyon@user/torque
+(and having real arrays rather than C's idiot clown style arrays)
+
+1760816364
+grayhatter!~grayhatte@user/grayhatter
+clevor: std.fs.File.Writer exists if you only want a writer when it's a file
+
+1760816557
+grayhatter!~grayhatte@user/grayhatter
+luks: honestly, you have enough example and can describe your usecase so explitly, I would open an issue as a "feature request"
+
+1760816690
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+grayhatter: what feature do yo mean?
+
+1760816716
+grayhatter!~grayhatte@user/grayhatter
+> I'd like to clarify two things about cancelation plans for std.Io [...]
+
+1760816806
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+ah, well, that's a discussion really, I don't know what is the intention, I just saw that issue while developing zio and noticed that the current development version of std.Io is not really well designed regarding cancelation, but maybe there are plans for changes already
+
+1760816876
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I'm just trying to make sure that when std.Io get's release, it's going to be possible for me to implement the interface
+
+1760816905
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+it's already difficult, due to how the locks and condition variables have 64bit state, makes FIFO semantics and cancelation a lot harder
+
+1760816956
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+I'll probably have better locks as zio.Mutex and simpler locks for the Io interface
+
+1760817001
+grayhatter!~grayhatte@user/grayhatter
+luks: that's why I suggested opening an issue, because you can continue the discussion, and even if the decision is not to support that specific usecase, it's useful to have the conversation in a harder to lose place, possibly have a documented work around, or given reason, or if nothing else even if it's not accepted/supported, it might be able to influence the design and intent a bit to make a
+
+1760817003
+grayhatter!~grayhatte@user/grayhatter
+suggested workaround easier?
+
+1760817038
+luks!~luks@2a01:c844:254c:8a00:9cf:33f2:a1dd:3f00
+hm, OK, I'll try to write it down tomorrow
+
+1760817110
+grayhatter!~grayhatte@user/grayhatter
+just an option, I don't think you'd have to if you just wanted to check in and ask questions... but I also think it's better thought out than most discussions and worth asking for
+
+1760817670
+grayhatter!~grayhatte@user/grayhatter
+technically, assuming the same optimizing compiler; zig's comptime might be slower, assuming the runtime execution is perfectly optimized, comptime will take longer to generate the source code... 
+
+1760817728
+grayhatter!~grayhatte@user/grayhatter
+it's almost like if you want your runtime execution to be fast, you have to really understand what your doing, in every language.... and have to invest a lot of time really working to understand both the language, and how the compiled code will function on the system/hardware
+
+1760817860
+grayhatter!~grayhatte@user/grayhatter
+has anyone ported zig to a new target? I want to do something a bit absurd, but there's an upper bound on the amount of work before the idea stops making sense
+
