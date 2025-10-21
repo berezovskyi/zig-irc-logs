@@ -1,0 +1,560 @@
+1760918428
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you are missing the .root above .files to tell it where those files are located. e.g `.root = b.path("lib/liburing/src"),`
+
+1760918582
+longlonglongint!~longlongl@user/longlonglongint
+thats good to know
+
+1760918606
+longlonglongint!~longlongl@user/longlonglongint
+but unfortunately all the files in ./renderers/ include ./RSGL.h
+
+1760918626
+longlonglongint!~longlongl@user/longlonglongint
+i cant think of a way to make that work outside of including ./
+
+1760918778
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+shouldn't you be pointing to .c files? 
+
+1760918849
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also using `lib.linkLibC();` is better then `.link_libc = true`
+
+1760918944
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+o.O you are missing the main ``b.installArtifact(lib);``
+
+1760918947
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+at the end. 
+
+1760919003
+longlonglongint!~longlongl@user/longlonglongint
+its a single header library
+
+1760919007
+longlonglongint!~longlongl@user/longlonglongint
+well
+
+1760919016
+longlonglongint!~longlongl@user/longlonglongint
+technically 2 header library since each backend has its own header file
+
+1760919080
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i would work with just 1 library first, make sure its working later add the second
+
+1760919213
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think u need to add `b.addLibrary`  
+
+1760919392
+longlonglongint!~longlongl@user/longlonglongint
+i think at the moment its not even using libraries
+
+1760919394
+longlonglongint!~longlongl@user/longlonglongint
+just modules
+
+1760919600
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't know you will have to wait for someone here who know what they are talking about... adding library is probably important step since it has .linkage = .dynamic to tell zig how to link
+
+1760919641
+longlonglongint!~longlongl@user/longlonglongint
+either way thanks for the help
+
+1760919730
+torque!~tachyon@user/torque
+<stealth_> also using `lib.linkLibC();` is better then `.link_libc = true`
+
+1760919738
+torque!~tachyon@user/torque
+i think this is backwards, the former is marked as deprecated
+
+1760919744
+torque!~tachyon@user/torque
+see: https://ziglang.org/documentation/0.15.2/std/#std.Build.Step.Compile.linkLibC
+
+1760919775
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+aren't you the one who told me to use .linkLibC  is better? 
+
+1760919823
+torque!~tachyon@user/torque
+I don't think I said it was better
+
+1760919844
+torque!~tachyon@user/torque
+I did recently suggest you were missing it on something, but that was before I had read through the 0.15 docs
+
+1760919874
+torque!~tachyon@user/torque
+unfortunately it is somewhat difficult to keep up with the build api changes because they are not really exhaustively documented in one place
+
+1760919900
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i was confused as well, but i didn't doubt your expertise
+
+1760919911
+torque!~tachyon@user/torque
+and they tend to be one of the highest churn areas
+
+1760919974
+torque!~tachyon@user/torque
+well, let this be a good lesson that I am no expert
+
+1760920031
+torque!~tachyon@user/torque
+<longlonglongint> i created a module for rsgl_gl and added some c source files with rsgl_gl.addCSourceFiles
+
+1760920051
+torque!~tachyon@user/torque
+the root problem appears to be that you have no added an `addTranslateC` step
+
+1760920064
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol its all good, but thanks to your help i did get the build process working correctly.
+
+1760920094
+longlonglongint!~longlongl@user/longlonglongint
+dang
+
+1760920104
+torque!~tachyon@user/torque
+adding C source files just compiles a static library. for zig interop, the headers have to be translated to zig. In other words "addCSourceFiles" is not a replacement for @cImport, but `addTranslateC` is.
+
+1760920115
+torque!~tachyon@user/torque
+in your case you probably need both
+
+1760920342
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+torque, isn't `b.installArtifact(lib);` needed as well? 
+
+1760920523
+torque!~tachyon@user/torque
+not necessarily, it depends. if the library is something that the build system is supposed to install, then yes, but internally, adding one module to another should be enough to work when the lib is only intended to be used internally by the build system
+
+1760920699
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm
+
+1760920728
+longlonglongint!~longlongl@user/longlonglongint
+how do i use `addTranslateC` with `addCSourceFiles`
+
+1760920784
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+longlonglongint, https://zigbin.io/ff9b4c line: 27 - 46 adapt it to your code. 
+
+1760921181
+torque!~tachyon@user/torque
+they're sort of independent
+
+1760921280
+torque!~tachyon@user/torque
+addTranslate C is the compile-time bridge between zig and the c headers, which uses arocc to parse the c headers and output a zig module that can be imported by zig sources. addCSourceFiles is for generating the corresponding C code for linking and running
+
+1760921395
+longlonglongint!~longlongl@user/longlonglongint
+i think `addTranslateC` is the one i need since the library im porting doesnt get compiled or anything
+
+1760921417
+longlonglongint!~longlongl@user/longlonglongint
+how do i give it a define
+
+1760921852
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/0.15.2/std/#std.Build.Step.TranslateC shows a `defineCMacro` method
+
+1760923121
+longlonglongint!~longlongl@user/longlonglongint
+crap
+
+1760923127
+longlonglongint!~longlongl@user/longlonglongint
+i cant get it working
+
+1760923994
+longlonglongint!~longlongl@user/longlonglongint
+finally
+
+1760923997
+longlonglongint!~longlongl@user/longlonglongint
+i think its working now
+
+1760929826
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm interesting having a "var field" doesn't conflict with "@field()" name
+
+1760929875
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose @ is not just there for show. 
+
+1760929911
+Affliction!affliction@idlerpg/player/affliction
+by my understanding, the @ is considered part of the name
+
+1760929941
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i c, i c. 
+
+1760929948
+Affliction!affliction@idlerpg/player/affliction
+now var @"@field" might be interesting, wonder what the compiler would do with that, or other @names
+
+1760930060
+Affliction!affliction@idlerpg/player/affliction
+Naturally even if it appears to work on the surface, you're very likely shooting your future self in the foot
+
+1760930373
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+looks like zig it at next level with no conflicts https://zigbin.io/030424
+
+1760930470
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am not sure how i feel about `const "var" = 123;` using var as string literal to begin with, sure its handy at time but it can be lead to confusion.
+
+1760930501
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose having @ in front might make it a bit less confusing. hmm..
+
+1760930642
+Affliction!affliction@idlerpg/player/affliction
+It's pretty much intended for when you need something named that might match a keyword. Eg, exported symbol names, and enum variants
+
+1760930741
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mhmm... looks like it. will take bit of getting used to
+
+1760930824
+Affliction!affliction@idlerpg/player/affliction
+At least, give some thought about it before you introduce more of them. Main situation they come up for me is doing reflection; @typeInfo(T).@"struct" for instance
+
+1760930920
+Affliction!affliction@idlerpg/player/affliction
+oh, and allocAligned changed to this in... 0.14 I think; https://ziglang.org/documentation/master/std/#std.mem.Alignment
+
+1760931019
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose since you can't use int first for naming
+
+1760931056
+Affliction!affliction@idlerpg/player/affliction
+well, the func used to take an int, but I guess they wanted to make the valid values more explicit.
+
+1760931164
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+suppose they could have used roman numerical I, II, IV = 2 would have been funny, lol
+
+1760931428
+donpdonp!~donp@donp.org
+ziglang.org says "Latest release 0.15.2" yet the Changes button below links to /0.15.1/release-notes.html,
+
+1760931453
+donpdonp!~donp@donp.org
+the github releases page also stops at 0.15.1. 
+
+1760931459
+donpdonp!~donp@donp.org
+ACTION scratches his head
+
+1760931493
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+docs is buggy, but 0.15.2 is bug release only from what i hear. 
+
+1760931511
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+bug fix* 
+
+1760931532
+Affliction!affliction@idlerpg/player/affliction
+I think someone mentioned there was one breaking change to something...
+
+1760931614
+Affliction!affliction@idlerpg/player/affliction
+squeek502 │ stealth_, afaik there was exactly 1 breaking change in 0.15.2 around `Reader.takeDelimiterExclusive`: https://zsf.zulipchat.com/#narrow/channel/454371-std/topic/.E2.9C.94.20is.20takeDelimiterExclusive.20broken.3F/near/544414002
+
+1760931630
+Affliction!affliction@idlerpg/player/affliction
+well, there you go, bug fix, 'from a certain point of view' :V
+
+1760931631
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not sure it was mainly the docs 0.15.2 linked to 0.16.+ dev someone fixed it so its kind of working!
+
+1760931662
+donpdonp!~donp@donp.org
+ok ill just stick with 0.15.1. thx.
+
+1760931686
+Affliction!affliction@idlerpg/player/affliction
+0.15.2 will probably be fine, now that you know about the one change heh
+
+1760931711
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+0.15.2 release is actually good though, i would use that, its just the docs was messed up is all. 
+
+1760938054
+torque!~tachyon@user/torque
+<donpdonp> the github releases page also stops at 0.15.1.
+
+1760938072
+torque!~tachyon@user/torque
+afaik this will not get a "release" since that's a github feature and the team is reducing the use of github features
+
+1760938106
+torque!~tachyon@user/torque
+however, there were a variety of glitches on the website related to 0.15.2, which have been getting fixed
+
+1760938368
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think andrew mentioned its in the tags https://github.com/ziglang/zig/tree/0.15.2
+
+1760965249
+mimivals1!~mimivalsi@user/MimiValsi
+In a struct like `Foo { .x: i32, .y: i32 };`, where `foo: *Foo`. I can either use foo.x or foo.*.x
+
+1760965274
+mimivals1!~mimivalsi@user/MimiValsi
+is there any really difference?
+
+1760965505
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, nobody would use the later though
+
+1760965564
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*latter
+
+1760965595
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mimivals1, if you haven't you should go through ziglings exercises, it mentions this problem in https://codeberg.org/ziglings/exercises/src/branch/main/exercises/043_pointers5.zig
+
+1760965775
+mimivals1!~mimivalsi@user/MimiValsi
+stealth_: I've done ziglings. And remembered short after my question that they talked about. ^^'
+
+1760965807
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+cool
+
+1760965883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+they add new exercises every time there is a new release with new features, so it might be worth going through it over time, i am going through it again
+
+1760965967
+mimivals1!~mimivalsi@user/MimiValsi
+yeah, I dind't the last update with async. Might redo it for sure. One thing they don't teach is the module import. I want to import some code from another folder without success
+
+1760966009
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+all the async lessons are skipped since its not implemented yet in zig 
+
+1760966083
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm `stuff = @import("from_another_folder/some_file.zig");`
+
+1760966103
+mimivals1!~mimivalsi@user/MimiValsi
+eh? Didn't they rewrite async? I thought they release a new version for 0.15.1
+
+1760966162
+mimivals1!~mimivalsi@user/MimiValsi
+I get the error: no module named "../foo/file" available within module 'test'
+
+1760966210
+mimivals1!~mimivalsi@user/MimiValsi
+and using @import("../foo/file.zig"); I get 'import of file outside module path'
+
+1760966281
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, i think they were planning on adding it and changed their mind? i am not really sure.
+
+1760966349
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i suppose all the modules needs to be within the folder you are using.
+
+1760966451
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it would have been nice if zig could import a whole folder with zig files @import("my_functions/"); 
+
+1760966469
+grayhatter!~grayhatte@user/grayhatter
+mimivals1: imports need to be within the same directory as the "root.zig" listed in the build.zig 
+
+1760966476
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+maybe "my_functions/*.zig"
+
+1760966506
+grayhatter!~grayhatte@user/grayhatter
+if you want to import something outside of that directory, the file needs to be listed in the build.zig 
+
+1760966549
+mimivals1!~mimivalsi@user/MimiValsi
+ grayhatter: I may say be wrong, but I'm creating a lib. I'm not suppose to use build, right? and every folder I import are in the root folder. I guess at least since I don't used build
+
+1760966562
+grayhatter!~grayhatte@user/grayhatter
+you can use addAnonymousImport or addImport https://ziglang.org/documentation/master/std/#std.Build.Module.addAnonymousImport
+
+1760966659
+grayhatter!~grayhatte@user/grayhatter
+I don't know how you'd build a zig library without build
+
+1760966718
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mimivals1, build works for both build-lib and build-exe, in your build.zig it has both lib and exe, if you don't want exe you can just delete/comment out that part.
+
+1760966734
+grayhatter!~grayhatte@user/grayhatter
+mimivals1: not the root folder of the repo, the folder of the module(.{ .root_source_file = "src/lib.zig" })
+
+1760966734
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+just use root.zig and not main.zig.
+
+1760966750
+mimivals1!~mimivalsi@user/MimiValsi
+oh... didn't notice... my bad 
+
+1760966790
+grayhatter!~grayhatte@user/grayhatter
+in that case, the root for that module is src/ and so you wouldn't be able to include foo/file.zig, if you don't add it as an import in the build.zig
+
+1760966815
+grayhatter!~grayhatte@user/grayhatter
+you could however include src/foo/file.zig, with @import("foo/file.zig")
+
+1760978022
+Comstar!~Comstar@user/Comstar
+I was just reading through the stackless coroutines proposal (https://github.com/ziglang/zig/issues/23446), and had sort of like a meta-zig question: if you constrained any such async function to use `.always_tail` from the `std.builtin.CallModifier` enum, wouldn't that necessarily allow for stackless coroutines without the need for the frame stuff in the proposal? 
+
+1760978048
+Comstar!~Comstar@user/Comstar
+idk if it's out of scope for the proposal so I'm currently not posting there
+
+1760986911
+Comstar!~Comstar@user/Comstar
+oh dang this channel isn't logged anymore so I wouldn't be able to see if anyone replied ;_;
+
+1760986951
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no one did, u will have to wait for andrew or someone to answer your question 
+
+1760987668
+Comstar!~Comstar@user/Comstar
+stealth_, thank you, much appreciated
+
+1760988754
+emneo!8c21cc4b68@user/emneo
+Hello, I'm currently trying to port some 0.14 zig code to 0.15 and I'm having quite a moment trying to understand some writergate stuff. How would one get a writer (new api) to a managed array_list? I'm trying to use the adaptToNewApi function, but I'm getting nothing written to the managed array_list :/
+
+1760990687
+emneo!8c21cc4b68@user/emneo
+Ok so I definitely have not understood how the reader/writer stuff works. I made this very simple code (https://zigbin.io/f94b200), that to me looks ok, and it just instantly crashes with a bad file descriptor. Looking at it through gdb it looks like the file descriptor is undefined?
+
+1760990717
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Paste does not exist
+
+1760990775
+emneo!8c21cc4b68@user/emneo
+Woops sorry, I added an extra 0
+
+1760990776
+emneo!8c21cc4b68@user/emneo
+https://zigbin.io/f94b20
+
+1760990980
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+emneo, have you done ziglings? https://codeberg.org/ziglings/exercises/ 
+
+1760991025
+emneo!8c21cc4b68@user/emneo
+I have done so, but quite a while ago. Did I just miss something very stupid? I'll check the exercices though x)
+
+1760991067
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+emneo: as far as I know, you're not supposed to _copy_ .interface
+
+1760991184
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I might be wrong about that, but when I've used it, I've used &writer.interface
+
+1760991372
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because after all, how could the interface work as a copy, it has no pointers to the writer at all
+
+1760991409
+emneo!8c21cc4b68@user/emneo
+Yeah I just realized that it's using @filedParentPtr, so that might be it. I'll try to use it on the bigger code I'm porting. I never really had to touch those APIs before, that's making me quite confused :/
+
+1760991483
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I am trying to add basic eZ80 support to Zig, and it turns out that the compiler implicitly asserts pointer bit widths are powers of two. https://github.com/myclevorname/zig/tree/ez80 https://www.irccloud.com/pastebin/k9EEyZwn/
+
+1760991602
+emneo!8c21cc4b68@user/emneo
+Gliptic: yeah that definitely fixed it, I just missed that part of the API. Now it just works :)
+
+1760991737
+Comstar!~Comstar@user/Comstar
+would you recommend CodeBerg, Stealth? 
+
+1760991893
+bblack!~bblack@wikimedia/bblack-WMF
+you can copy around &interface, so long as interface and the thing it came from still exist somewhere (they didn't go away because they were stack items in a function that already returned)
+
+1760991911
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+&interface, yes, but not interface :)
+
+1760993314
+clevor!sid649024@id-649024.hampstead.irccloud.com
+How do I add a custom calling convention to a new target for the C backend? I want to add the convention `.ez80_iy_flags` that adds `__attribute__((__tiflags__))` to the extern fn declaration.
+
+1760993556
+grayhatter!~grayhatte@user/grayhatter
+clevor: I was confused about implicitly asserts... but that's explicit, it expliticly asserts... 
+
+1760993569
+clevor!sid649024@id-649024.hampstead.irccloud.com
+🤦
+
+1760993593
+grayhatter!~grayhatte@user/grayhatter
+does it work if you delete that assert? asserts are for debugging, not for flow control, so it *should* just work
+
+1760993638
+grayhatter!~grayhatte@user/grayhatter
+the way to read that "should" is "might, if you're lucky"
+
+1760993695
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I added a check that returns `.fromByteUnits(1)` if the CPU is eZ80.
+
+1760993806
+grayhatter!~grayhatte@user/grayhatter
+why does wikipedia say it's 8 or 16bit?
+
+1760993857
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The address width is 24-bit, yet it still uses an 8-bit data bus.
+
+1760997610
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Comstar, I haven't used CodeBerg so can't comment on it. looks alright enough since others are using it. 
+
+1760997646
+Comstar!~Comstar@user/Comstar
+stealth_, thanks!
+
+1760997793
+Comstar!~Comstar@user/Comstar
+it seems interesting.  If you were to have been familiar I would've just asked about the developer experience with it 
+
