@@ -1,0 +1,184 @@
+1761010034
+clevor!sid649024@id-649024.hampstead.irccloud.com
+With my minimal usage so far, it's worked alright, but I wish Codeberg allowed pull mirrors.
+
+1761010080
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Forgejo itself supports pull abd push mirrors, but Codeberg instance only allows the latter.
+
+1761019913
+Comstar!~Comstar@user/Comstar
+clevor, thank you for the insight!
+
+1761035361
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I want to use a bitmask as a data structure to later do some simple "is this bit set at index X?" type logic. The size of the bitmask is only runtime known. Should I use stdlib DynamicBitSetUnmanaged or is that overkill?
+
+1761035406
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I mean, it does look like what I want but wouldn't making a single integer (since Zig supports arbitrary sized integers) of size (known at runtime) and setting bits on it achieve the same result?
+
+1761035471
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+If you are afraid I am XY-ing this, I am specifically scanning a string of runtime-known size and recording the indices where a specific byte-value occurs so I can later check "is this index valid?"
+
+1761035497
+Affliction!affliction@idlerpg/player/affliction
+the size of the integer has to be comptime known doesn't it? though I suppose you could generate a tagged union
+
+1761035514
+Affliction!affliction@idlerpg/player/affliction
+I'd probably go with DynamicBitSetUnmanaged. That is what it's there for, after all.
+
+1761035531
+Affliction!affliction@idlerpg/player/affliction
+u<UpperBound> might work, if UpperBound is reasonable
+
+1761035540
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Oh right, forgot that it'd need to be comptime known if I use a simple integer
+
+1761035563
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah, not possible to know the UpperBound in this case. Rightio! DynamicBitSetUnmanaged it is!
+
+1761035580
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Very cool that that's just in the stdlib honestly
+
+1761035587
+Affliction!affliction@idlerpg/player/affliction
+could certainly generate a tagged union that supports u0 through u65535, though you'd be paying the full memory cost heh
+
+1761035602
+Affliction!affliction@idlerpg/player/affliction
+Yeah, nice data structures in std is part of what sold zig for me
+
+1761035633
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I don't intend to use it, but if it's not too much trouble could you whip up a tiny example of that tagged union approach for my understanding?
+
+1761035735
+Affliction!affliction@idlerpg/player/affliction
+Might be better to tell you the tools I'd use? naturally an inline for loop from the lower to upper bound, which fills in an array of enum fields for the tag, and union fields for each int type.
+
+1761035781
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'll ruminate on that as a thought experiment later then (what you've just said), cheers :)
+
+1761035825
+Affliction!affliction@idlerpg/player/affliction
+sure, probably help you more than me emitting code neither of us would ever use. If you think through it, or build it yourself, you'll learn a lot more about building types at comptime
+
+1761035886
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Yeah that's right, and just the hints of the tools you'd use gives me a good starting point to then try and solve that from as a little thought experiment
+
+1761035887
+Affliction!affliction@idlerpg/player/affliction
+But yeah, you'd still be paying for eg, (uUpperBoundSize/8 bits per byte) + enum tag type (u16 probably) + alignment hole
+
+1761035900
+Affliction!affliction@idlerpg/player/affliction
+of memory, in the stack frame it exists
+
+1761039792
+emneo!8c21cc4b68@user/emneo
+Affliction: I had some trouble some time ago with DynamicBitSetUnmanaged, it was very slow and copying a lot. I don't know if it's still the same nowadays but if it is in a hotpath you may want to profile it a bit
+
+1761039844
+Affliction!affliction@idlerpg/player/affliction
+interesting
+
+1761039846
+Affliction!affliction@idlerpg/player/affliction
+tsujp: ^ 
+
+1761041133
+mimivals1!~mimivalsi@user/MimiValsi
+Does any1 made a lib with build bt any chance?
+
+1761041152
+mimivals1!~mimivalsi@user/MimiValsi
+I'm trying to figure it out, atm have something like this https://gist.github.com/MimiValsi/fc4b5a62a4a3056ce403abeed0a821da
+
+1761041207
+mimivals1!~mimivalsi@user/MimiValsi
+Oh tried to use `addAnonymousImport` but still not working atm
+
+1761041252
+mimivals1!~mimivalsi@user/MimiValsi
+I saw that for every module options there's a `root_source_file` but that's not what I need
+
+1761041419
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mimivals1, did you know you can `zig init` and it will create the default build.zig file for you? it comes with both lib and exe options you can comment/delete the one you don't need.
+
+1761041465
+mimivals1!~mimivalsi@user/MimiValsi
+yh I did that
+
+1761041513
+mimivals1!~mimivalsi@user/MimiValsi
+what's I'm trying to figure it out is the hability to add a folder with files and create the ability to import it in another folder
+
+1761041521
+mimivals1!~mimivalsi@user/MimiValsi
+all, of course, inside 'src/'
+
+1761041561
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+you don't really need to do that you can just `const bar = @import("bar/bar_file1.zig");`
+
+1761041600
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+and start using that `bar` in your code. 
+
+1761041684
+mimivals1!~mimivalsi@user/MimiValsi
+I either get no module name "..." or import of file outside module path.
+
+1761041931
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+think createModule should be point to root.zig file
+
+1761042975
+mimivals1!~mimivalsi@user/MimiValsi
+So I guess, for each module there must be an entrypoint
+
+1761042980
+mimivals1!~mimivalsi@user/MimiValsi
+like "root.zig"
+
+1761046900
+chmod222!~chmod222@user/chmod222
+Quick question, I'm catching up on the changes since 0.14 in order to port some of my code  to 0.15.2 and the one thing I can't seem to find is what the new replacement for the old LinearFifo reader is
+
+1761046920
+chmod222!~chmod222@user/chmod222
+i.e. I want to have a Reader (and Writer) to an in-memory fixed (or maybe not so fixed) u8 slice
+
+1761046942
+chmod222!~chmod222@user/chmod222
+All the synonymes I'm throwing at the autodocs seem to miss the mark
+
+1761047120
+chmod222!~chmod222@user/chmod222
+Ahh, I found the reader, std.Io.Reader.fixed()
+
+1761047129
+dutchie!~dutchie@user/dutchie
+yeah I was about to say Reader.fixed
+
+1761047135
+dutchie!~dutchie@user/dutchie
+there's a Writer.fixed as well
+
+1761047192
+dutchie!~dutchie@user/dutchie
+and Writer.Allocating if you want that behaviour
+
+1761047221
+chmod222!~chmod222@user/chmod222
+Very nice, thank you!
+
