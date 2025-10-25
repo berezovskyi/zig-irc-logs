@@ -1,0 +1,676 @@
+1761276681
+Comstar!~Comstar@user/Comstar
+are there any cool blogs about making cache-aligned data structures in zig? I feel like that'd be a good late night read
+
+1761276715
+Comstar!~Comstar@user/Comstar
+anything so low level it scrapes the archetecture like that would also qualify for the discussion of 'good late night reads'
+
+1761302902
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+If you are bored: I wrote this function `removeChar()` https://zigbin.io/102efb any critics welcome :)
+
+1761303551
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm didn't need that trim for loop, just `return output[0..count];` works
+
+1761304135
+dutchie!~dutchie@user/dutchie
+you're returning stack memory there
+
+1761304156
+dutchie!~dutchie@user/dutchie
+not sure how that interacts with inline but not a good habit to get into
+
+1761304196
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm... whats better way to go about it? 
+
+1761304233
+dutchie!~dutchie@user/dutchie
+I'd add an out param, like `fn removeChar(comptime T: type, string: []const T, remove: []const T, out: []T) []T`
+
+1761304294
+dutchie!~dutchie@user/dutchie
+assert that out.len >= string.len, and you should still return the slice so the caller knows how much you wrote to
+
+1761304316
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that would mean i am managing `output` outside of that function
+
+1761304334
+dutchie!~dutchie@user/dutchie
+yes
+
+1761304336
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+currently i use that function like so: `const clean_fmt = removeChar(u8, fmt, "|");`
+
+1761304350
+dutchie!~dutchie@user/dutchie
+the other way would be to allocate an ArrayList
+
+1761304388
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i kind of dislike managing memory outside of the function being called, or is that how its done in zig!
+
+1761304410
+dutchie!~dutchie@user/dutchie
+it's not unusual, the memory has to go somewhere
+
+1761304423
+dutchie!~dutchie@user/dutchie
+and if you want it to live long enough it either has to be on the caller's stack or in the heap
+
+1761304465
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+doesn't it just go to whatever function is being called? in this case `const clean_fmt = removeChar(u8, fmt, "|");` now `clean_fmt` should manage that stack still its done with it, no?
+
+1761304504
+dutchie!~dutchie@user/dutchie
+slices are pointers so they don't manage the memory they point to
+
+1761304531
+dutchie!~dutchie@user/dutchie
+if it returned an array then it would be ok, but obviously you can't really do that as you don't know how long it'll be at compile time
+
+1761304696
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hmm... i am kind of noob when it comes to memory management. i can try your way, i did notice such pattern used in other functions, probably for good reason
+
+1761304702
+Affliction!affliction@idlerpg/player/affliction
+Generally you'd pass in an allocator, or, yeah, a buffer to be filled.
+
+1761304747
+Affliction!affliction@idlerpg/player/affliction
+it CAN be done with a static too, though that, naturally won't be thread-safe or re-entry safe.
+
+1761304754
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its weird zig doesn't raise any error, that would be helpful, if something is going to be out of scope. 
+
+1761304788
+Affliction!affliction@idlerpg/player/affliction
+exactly what rusts' borrow checker does
+
+1761304886
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i never used rust so i can't comment on it, i come from coding python/cython 
+
+1761304886
+Affliction!affliction@idlerpg/player/affliction
+It's possible zig might be able to catch the blatant cases in the future, if it doesn't already, but solving it in the general case would involve basically becoming rust.
+
+1761304940
+Affliction!affliction@idlerpg/player/affliction
+That said, your function would only really run at comptime, and I think memory works differently there.
+
+1761305017
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+yes, its inline and both `string` and `remove` are string so it should be fixed sizes.
+
+1761305083
+dutchie!~dutchie@user/dutchie
+https://zigbin.io/2f649a is how i'd do it with an arraylist (also note std.testing.expectEqualStrings)
+
+1761305128
+dutchie!~dutchie@user/dutchie
+missed some deallocations and typoed one expected output in the tests, fixing left as an exercise ;)
+
+1761305144
+Affliction!affliction@idlerpg/player/affliction
+defer!
+
+1761305173
+Earnestly!~earnest@user/earnestly
+But do you need to really allocate when you know that the result is going to be <= the input?
+
+1761305191
+dutchie!~dutchie@user/dutchie
+right, that's why my first suggestion was an out param
+
+1761305226
+Earnestly!~earnest@user/earnestly
+For such a thing, perhaps in-place
+
+1761305255
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+the function i wrote is kind of like replace() but for each char, https://ziglang.org/documentation/0.15.2/std/#std.mem.replace
+
+1761305391
+dutchie!~dutchie@user/dutchie
+(is there a way to do it in-place without having to copyBackwards O(n) times?)
+
+1761305417
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what is this in-place mean?
+
+1761305434
+dutchie!~dutchie@user/dutchie
+without creating another buffer
+
+1761305477
+Earnestly!~earnest@user/earnestly
+I don't quite see why, it could work like replace (the lookup for each character (unicode?) could be a for loop or hash, whatever makes sense)
+
+1761305510
+Earnestly!~earnest@user/earnestly
+Essentially implementing tr(1) -d
+
+1761305649
+dutchie!~dutchie@user/dutchie
+right but when you actually remove you have to move the whole rest of the string back one place (in the obvious dumb solution at least)
+
+1761305887
+Earnestly!~earnest@user/earnestly
+dutchie: I would walk the array, writing back non-matches, skipping matches
+
+1761305906
+Earnestly!~earnest@user/earnestly
+(Not sure what I'd return)
+
+1761305910
+dutchie!~dutchie@user/dutchie
+ah so you'd have a "read head" and a "write head"
+
+1761305923
+dutchie!~dutchie@user/dutchie
+yeah that works
+
+1761305999
+dutchie!~dutchie@user/dutchie
+i guess return the bit that's actually been written
+
+1761306184
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/05bf09
+
+1761306497
+dutchie!~dutchie@user/dutchie
+looks good
+
+1761306542
+dutchie!~dutchie@user/dutchie
+in place version: https://zigbin.io/d9abd9
+
+1761306547
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since its inline `output` buffer seems to be checked at compile time :)
+
+1761306865
+Earnestly!~earnest@user/earnestly
+Much nicer
+
+1761306919
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+which way is more zig thing to do? 
+
+1761306966
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+passing in the buffer or this in-place thing. 
+
+1761307041
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One ziggy thing would be returning `output[0..count]` instead of `count`.
+
+1761307117
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+clevor, this is what i had previously https://zigbin.io/0cccf5
+
+1761307731
+Earnestly!~earnest@user/earnestly
+stealth__: What dutchie had is nice, I'm not sure if it's more zig-way or not
+
+1761307780
+Earnestly!~earnest@user/earnestly
+"bring your own buffer" is common in C, but then so are out pointers
+
+1761307917
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Earnestly, which one? https://zigbin.io/d9abd9 or https://zigbin.io/2f649a
+
+1761307931
+Earnestly!~earnest@user/earnestly
+stealth__: The first
+
+1761307996
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Earnestly, my thinking is, it might have too much overhead, and having try can be pain, now i have to account for errors.
+
+1761308002
+Earnestly!~earnest@user/earnestly
+Although I'm not entirely sure why outer: is used as opposed to old fashioned if else statements, but there might be a trick to it
+
+1761308119
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i wanted to try out the labeling feature in zig :D
+
+1761308129
+Earnestly!~earnest@user/earnestly
+stealth__: in-place having overhead? Unlikely, but you can measure it if you want. You can always early return the buffer untouched if remove is empty. Functions that are intended to be fast do tend to require valid inputs (error checking done before calling them)
+
+1761308174
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Earnestly, my bad i was looking at the other one. 
+
+1761308192
+Earnestly!~earnest@user/earnestly
+But you're fairly safe here, the output buffer is always going to be smaller (or equal) to the input, making it quite difficult to have an invalid input
+
+1761308265
+Earnestly!~earnest@user/earnestly
+Generally, if you want to catch problems, they typically occur when you use one of three inputs for your types: empty, max, min. Everything inbetween is usually fine outside of weird runtime behaviour on crafted inputs depending on what you're doing
+
+1761308295
+Earnestly!~earnest@user/earnestly
+(There is also the cryptographic side where you don't want to leak timing information, but that's an entirely different world)
+
+1761308323
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+in-place is a better choice, indeed. 
+
+1761308330
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+not doing anything crypto. 
+
+1761308415
+Earnestly!~earnest@user/earnestly
+Always think about what you've already got, like the box of tacs and candle experiment. You've already got an input buffer, can you use it? A lot of pointless copying and duplication be avoided
+
+1761308440
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`std.mem.indexOfScalar` seems like that might have a bit of overhead.
+
+1761308502
+Earnestly!~earnest@user/earnestly
+Check the machine code/measure it
+
+1761308617
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ok, lets got with in-place one, :D
+
+1761308830
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+`var s = string.*;` is this making a new copy of `string` to `s` right and mutable. 
+
+1761308865
+dutchie!~dutchie@user/dutchie
+yeah
+
+1761308891
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+alright cool, i still want o use the original string in other places. 
+
+1761308946
+dutchie!~dutchie@user/dutchie
+more precisely, since `string` has type *const [N:0]u8, it's copying the null-terminated array backing it
+
+1761309662
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/90f0aa
+
+1761311810
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+zig type can be such a pain `var str: []u8 = "hi... bye!";` // error: expected type '[]u8', found '*const [10:0]u8'
+
+1761311846
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+wondering if i can do this: https://zigbin.io/3375d3
+
+1761312525
+dutchie!~dutchie@user/dutchie
+you have to copy it because the bytes pointed to by a string literal are read-only
+
+1761312573
+dutchie!~dutchie@user/dutchie
+https://www.youtube.com/watch?v=VgjRyaRTH6E this is a good watch to understand what's going on
+
+1761312617
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+dutchie, alright, will watch it, thanks.
+
+1761312637
+dutchie!~dutchie@user/dutchie
+(it's 5 years old, so there's probably some outdated stuff in there, but the concepts will all be valid still)
+
+1761312665
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its like that with most of the videos/sites out there, most are outdated. 
+
+1761313645
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+does zig have anything like `id()` in python? 
+
+1761313935
+hemisputnik!~hemisputn@user/hemisputnik
+stealth__: in cpython that usually returns the memory address of the object, so i'm guessing you need `@intFromPtr`? i'm not sure what you'd use that for
+
+1761314008
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hemisputnik, i tried that wasn't much luck, i just want to find out what a variable is like, is it list, array, mutable or not, unique idea, so on.. just info about a variable.
+
+1761314026
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since i am learning it would be heady to know what something is. 
+
+1761314116
+hemisputnik!~hemisputn@user/hemisputnik
+stealth__ do you mean `@TypeOf` then?
+
+1761314174
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+hemisputnik, i tried that as well, maybe it doesn't work for everything. 
+
+1761314221
+hemisputnik!~hemisputn@user/hemisputnik
+you can pair it with a `@typeInfo` to get type reflection
+
+1761314229
+hemisputnik!~hemisputn@user/hemisputnik
+i'm not sure what issue you're having
+
+1761314265
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i tried that as well, maybe i did something wrong, no worries, thanks for your input.
+
+1761317576
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+dutchie, that was actually pretty good video, thanks. I was loosing my mind over that []u8 and string showing up as []const u8, like i didn't assign that!!!
+
+1761317632
+dutchie!~dutchie@user/dutchie
+yeah, there is a huge difference between `const foo: []T` and `var foo: []const T`
+
+1761317654
+dutchie!~dutchie@user/dutchie
+all 4 possible combinations can exist and have uses
+
+1761317677
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+mhmm
+
+1761321555
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+these weird error never end https://zigbin.io/c96f9d
+
+1761322011
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth__: what do you expect fmt.* to do?
+
+1761322057
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, it uses this function https://zigbin.io/90f0aa
+
+1761322073
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, it doesn't, fmt.* doesn't use any function
+
+1761322095
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+line: 24 
+
+1761322106
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+also, you'll have to check the `inline for` docs to see when you can actually ues it
+
+1761322108
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+*use it
+
+1761322114
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am talking about how `fmt.*` is being used.
+
+1761322126
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and I wasn't, I asked what fmt.* is supposed to do
+
+1761322158
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+.* is an operator that dereferences pointers, fmt is not a pointer
+
+1761322199
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well that link i sent it works in it for const string line: 23
+
+1761322204
+ifreund!2940d10f8b@user/ifreund
+perhaps your confusion comes from the fact that string literals are pointer-to-arrays not slices
+
+1761322222
+ifreund!2940d10f8b@user/ifreund
+e.g. *const [4:0]u8 for a string literal of length 4
+
+1761322227
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yeah, what ifreund said
+
+1761322263
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well string is general is confusing, but i haven't changed much, it calling the same way. 
+
+1761322272
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it's not the same thing
+
+1761322296
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the one that works is a *const [4:0]u8, and the one that doesn't is a []const u8
+
+1761322357
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the main problem for []const u8 is that the size of it is not known at comptime
+
+1761322382
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am passing that function string as shown in error how its being called. 
+
+1761322393
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if (h.parseArgs("io_uring_prep_statx", "OOs|iIi", args, .{ &sqe, &stat, &path, &flags, &mask, &dfd })) return null;
+
+1761322404
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it doesn't matter how it's called
+
+1761322416
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the parameter is a []const u8 no matter how it's called
+
+1761322443
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you want fmt to not be a []const u8, you have to change its type
+
+1761322450
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am doing the same here line:11 `string: []T` https://zigbin.io/90f0aa
+
+1761322461
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, you are not
+
+1761322470
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+`string` is not a []const u8
+
+1761322478
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as ifreund and I have said already
+
+1761322482
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i tried both []u8 as wlel 
+
+1761322492
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+[]u8 is not any better
+
+1761322506
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+slices do not have comptime-known lengths
+
+1761322559
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what exactly is the solution  here? 
+
+1761322628
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+even if I told you how to solve this specific problem, you will run into more problems later in the function
+
+1761322654
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+ya i am sure i will cause this is so very confusing every time. 
+
+1761322666
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but first of all, fmt needs to be comptime-known to do what you want to do in this function
+
+1761322680
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+how does it work in test and not when i am trying to use it in function! doesn't make any sense.
+
+1761322707
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+as we already said, in the test the string is a _different type_
+
+1761322735
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a string literal is a pointer to a const array
+
+1761322742
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can do .* on pointers
+
+1761322751
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+a []const u8 is not a pointer, it's a slice
+
+1761322800
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can pass a string literal as a []const u8 parameter only because zig _converts_ it automatically to a []const u8
+
+1761322822
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+after it has been converted to a []const u8 you can no longer do .* because it's no longer a pointer
+
+1761322872
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, `var s = fmt[0..].*;` works, i think. 
+
+1761322882
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+that should convert is back to slice? 
+
+1761322887
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, it does not
+
+1761322900
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+fmt[0..] is in fact exactly the same thing as fmt
+
+1761322947
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its not giving me that error anymore
+
+1761323097
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+maybe you've managed to confuse the compiler further
+
+1761323123
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol we are all confused together. 
+
+1761323291
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I know exactly what you want to do, but I'm not going to rewrite the code for you
+
+1761323342
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+no worries
+
+1761323390
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If `fmt` is a slice with a comptime-known length, then that would work for some reason.
+
+1761323437
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fmt = "OOs|iIi"
+
+1761323448
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, fmt is []const u8
+
+1761323459
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its being passed to inline function. 
+
+1761323495
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+so it should know the value at comptime, no?
+
+1761323647
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://zigbin.io/5a0e72
+
+1761323679
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+why would [0..] do anything here
+
+1761323712
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It turns the comptime-known slice into a pointer to an array.
+
+1761323755
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+^ ya some kind of conversion going on. 
+
+1761323764
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so it does
+
+1761323912
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Also see https://zigbin.io/24a58d
+
+1761323916
+stealth__!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it was mentioned in  https://www.youtube.com/watch?v=VgjRyaRTH6E 
+
+1761323944
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+clevor: `f` needs to be inline fn
+
+1761324127
+clevor!sid649024@id-649024.hampstead.irccloud.com
+ik
+
+1761324152
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+aight
+
+1761346620
+mattnite!~mattnite@172.103.236.154
+Finally getting back into irc, how's everyone doing?
+
+1761346682
+erock!8a023a9e4a@pico/erock
+good, hbu
+
+1761346713
+mattnite!~mattnite@172.103.236.154
+Busy week at work, but taking friday afternoon off to work on some Zig projects
+
+1761347109
+erock!8a023a9e4a@pico/erock
+nice! I’m hoping to continue on my first big project as well
+
+1761347779
+mattnite!~mattnite@172.103.236.154
+Nice, what are you planning on building?
+
+1761348339
+erock!8a023a9e4a@pico/erock
+terminal session persistence, like tmux but without the windows/splits: https://github.com/neurosnap/zmx
+
