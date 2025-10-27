@@ -1,0 +1,860 @@
+1761452870
+JailBird!jailbird@user/jailbird
+Okay, I'm not sure if I'm doing something wrong, or if there was a regression in 0.15.2 vs 0.15.1. In 0.15.1, this works fine:
+
+1761452880
+JailBird!jailbird@user/jailbird
+    while (state.stream_reader.takeDelimiterExclusive('\n')) |tmp| {
+
+1761452880
+JailBird!jailbird@user/jailbird
+        const line = mem.trimEnd(u8, tmp, "\r");
+
+1761452905
+JailBird!jailbird@user/jailbird
+in 0.15.2, the first time it reads it works, and then the loop immediately spins in a tight loop returning strings with a length of 0
+
+1761452959
+JailBird!jailbird@user/jailbird
+and the length of the string (62 bytes) is WAY below the size of the reader buffer (4096)
+
+1761453127
+JailBird!jailbird@user/jailbird
+Okay, must be a bug.. dropping the Exclusive part and changing it to:
+
+1761453127
+JailBird!jailbird@user/jailbird
+    while (state.stream_reader.takeDelimiter('\n')) |tmp| {
+
+1761453127
+JailBird!jailbird@user/jailbird
+        const line = mem.trimEnd(u8, mem.trimEnd(u8, tmp.?, "\n"), "\r");
+
+1761453134
+JailBird!jailbird@user/jailbird
+makes it work, I'll file an issue
+
+1761453304
+squeek502!~squeek502@user/squeek502
+JailBird, https://github.com/ziglang/zig/issues/25597#issuecomment-3410445340
+
+1761453336
+JailBird!jailbird@user/jailbird
+ah, thanks.. my github searchfu obviously sucks :)
+
+1761456027
+rvrb!~rvrb@156.146.51.228
+Is anyone aware of any projects like a “non-standard lib”? it would be fun to see other takes on a zig standard library, just for reading through
+
+1761456072
+rvrb!~rvrb@156.146.51.228
+I’m really not sure what I would do differently if I did it; but I bet someone out there is more creative than me
+
+1761457488
+grayhatter!~grayhatte@user/grayhatter
+rvrb: 1) I wouldn't be so sure about that (re: creativity) 2) there's ziglibs group, but they're less stdlib the remix, and more extra stuff
+
+1761457569
+grayhatter!~grayhatte@user/grayhatter
+I've been thinking about something like that. I was considering how nice it would be to have an "extlib", that was a bit more loose than stdlib, and could include some things that might not belong in the stdlib
+
+1761463024
+squeek502!~squeek502@user/squeek502
+rvrb, there's one out there that i've seen mentioned before but can't remember what it's called at the moment
+
+1761463043
+squeek502!~squeek502@user/squeek502
+there's also https://github.com/nektro/zig-extras which is kinda similar
+
+1761463659
+squeek502!~squeek502@user/squeek502
+i think https://github.com/ntrrg/ntz is what i was thinking of but there's a lot less implemented than i remembered
+
+1761463679
+squeek502!~squeek502@user/squeek502
+other random projects i found while searching: https://github.com/jwhear/zig_alt_std and https://github.com/kobolds-io/stdx
+
+1761467118
+rvrb!~rvrb@156.146.51.228
+awesome, thanks!
+
+1761488395
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am still waiting for ziglang to upgrade to 0.15.2 on pypi https://pypi.org/project/ziglang/#history
+
+1761488483
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+it should be very easy! you just run already build code once and it will download and create all the files, just upload those files to pypi 
+
+1761489762
+fleischie!~fleischie@vm069.de
+Hey, I am trying to understand how to use zig's IoUring correctly, and am stumbling over the `user_data: u64` part.
+
+1761489778
+fleischie!~fleischie@vm069.de
+Is there someone who knows of a resource that explains that bit a bit more meaningful?
+
+1761489822
+fleischie!~fleischie@vm069.de
+(For context: I have no previous experience with liburing, which IoUring seems to be modeled after.)
+
+1761489922
+fleischie!~fleischie@vm069.de
+(Most of my "knowledge" on io_uring is from here: https://unixism.net/loti/low_level.html )
+
+1761491151
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fleischie, sqe.user_data is a unique number you can set for example 123, when the task is complete the cqe.user_data will be 123, this way you know which task completed.
+
+1761491304
+fleischie!~fleischie@vm069.de
+The "guide" I referenced mentioned, that this "unique number" is to hold a pointer address, that can be used to share non-numeric data between the submission and completion queues.
+
+1761491323
+fleischie!~fleischie@vm069.de
+And I tried with @intFromPtr(), @ptrFromInt() but this does not seem to work.
+
+1761491338
+fleischie!~fleischie@vm069.de
+Or I made several huge mistakes on the way... :O
+
+1761491482
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well if you pass it pointer int, you will need to convert back that int to pointer once the task is done. 
+
+1761492692
+fleischie!~fleischie@vm069.de
+Hmm, I wonder whether the object I am referencing with the pointer seizes to exist at function-end, thus my loading-from-completion-queue is working but it's loading garbage data.
+
+1761492695
+fleischie!~fleischie@vm069.de
+thinking emoji
+
+1761492766
+fleischie!~fleischie@vm069.de
+stealth_: Thank you for your effort, even if I didn't manage to come to a successful conclusion of my endeavor.
+
+1761493118
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+fleischie, ya you can't give it pointer of object that will be deleted soon, better to give it number
+
+1761499115
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Hey guys, very new to zig, and have a question about the working of a function. https://ziglang.org/download/0.15.1/release-notes.html#Upgrading-stdiogetStdOutwriterprint , the 2ns line calls the .writer function on the File struct. However, the function (per https://ziglang.org/documentation/0.15.2/std/#src/std/fs/File.zig) takes in 2 parameters,
+
+1761499116
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+only the buffer is given. Where is the file parameter derived from?
+
+1761499197
+grayhatter!~grayhatte@user/grayhatter
+Harm133: do you know another language, or is zig your first?
+
+1761499212
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+I know a few others, most familiar with C# tho
+
+1761499219
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+I also know go, if that helps
+
+1761499291
+grayhatter!~grayhatte@user/grayhatter
+go's most common pattern is object oriented, are you not familar with calling functions (methods) on an object?
+
+1761499515
+grayhatter!~grayhatte@user/grayhatter
+from the upgrade section, you could also write that in 3 lines `const stdout_file: std.fs.File = std.fs.File.stdout();`  `var stdout_writer: std.fs.File.Writer = stdout_file.writer(&buffer_for_the_writer);` `var stdout: *std.Io.Writer = &stdout_writer.interface;`
+
+1761499573
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Ah wait, I see my confusion
+
+1761499616
+grayhatter!~grayhatte@user/grayhatter
+so in that example the *File object it takes is simply .{ .handle = 1 }; which is the default file descriptor for stdout in linux 
+
+1761499628
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+In go you'd psuedo write `func (x *myStruct) Myfunction(x MyParameter) {}`
+
+1761499634
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+But in zig its combined?
+
+1761499654
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+method calling syntax will pass the object as the first parameter
+
+1761499654
+grayhatter!~grayhatte@user/grayhatter
+`std.fs.File` provides a nice stdout() helper function to be reasonable cross platform
+
+1761499675
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Gliptic: thx, thats what I was wondering about.
+
+1761499677
+grayhatter!~grayhatte@user/grayhatter
+Harm133: yeah, closer to the C, Python, Javascript syntax
+
+1761499691
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Will it always pass it in?
+
+1761499692
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not javascript though, which has implicit this
+
+1761499713
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and C doesn't have method calling syntax at all
+
+1761499726
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: wait... I'm sure I've seen that before... wait, I'm dumb... what am I thiking of :/
+
+1761499750
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: I've both seen, and written that in C before
+
+1761499776
+grayhatter!~grayhatte@user/grayhatter
+I meantioned C because I was planning to mention that you can directly call that function as well
+
+1761499789
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+I'm following https://zig.guide/master/ but found out its for 13/14 and I have 15 installed, so the "old" stdout writing method doesn't work anymore
+
+1761499790
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you do it explicitly, sure
+
+1761499798
+grayhatter!~grayhatte@user/grayhatter
+`std.fs.File.writer(your_file_thing, &buffer);`
+
+1761499815
+grayhatter!~grayhatte@user/grayhatter
+which is == `your_file_thing.writer(&buffer);`
+
+1761499876
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Yea those things I understand, it just wasn't mentioned yet that a function gets passed in an object
+
+1761499901
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Harm133, most of the sites online are outdated, since most new zig is breaking release! so watch out for that.
+
+1761499912
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+I found that out yea :)
+
+1761499981
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+But, if a function has this, `fn Test(fileType1: File, fileType2: File2)` what happens then?
+
+1761500033
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that function is in the File struct?
+
+1761500047
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+No, but neither is write
+
+1761500059
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it is
+
+1761500083
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+fn writer() is in File.zig (which is a file struct)
+
+1761500113
+grayhatter!~grayhatte@user/grayhatter
+I wonder if I've been assuming "use strict" is normal js ... I'm sure I've seen js written this way :<
+
+1761500124
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in zig, whole files are structs and this is freqently used to cut down verbosity a little
+
+1761500140
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so File.zig itself defines the whole File struct
+
+1761500163
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: I'm not sure what "written this way" means exactly
+
+1761500176
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Aaaah, the file defines the struct
+
+1761500180
+grayhatter!~grayhatte@user/grayhatter
+Harm133: if that function lives within the std.fs.File = struct {}, then it can be called as a method
+
+1761500189
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+that is a bit confusing as structs also seem to have functions in them
+
+1761500203
+grayhatter!~grayhatte@user/grayhatter
+if you define it somewhere else, you can *only* call it with `Test(file1, file2);`
+
+1761500232
+grayhatter!~grayhatte@user/grayhatter
+Harm133: if you haven't read through the whole standard lang (not std lib) docs, I would consider it
+
+1761500235
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+Harm133: functions have to be inside the structs to be used with the method calling syntax
+
+1761500250
+grayhatter!~grayhatte@user/grayhatter
+you don't have to read it in depth, skimming is fine, but I think that will help a lot
+
+1761500271
+grayhatter!~grayhatte@user/grayhatter
+in this case I mention it, because in Zig struct {} is a container, just like almost everything
+
+1761500305
+grayhatter!~grayhatte@user/grayhatter
+thinking of it more as a container, (maybe namespace container is a good description) and less like like a strict C/Go struct, might help
+
+1761500314
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+I see, I'll read up more
+
+1761500315
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+https://ziglang.org/documentation/master/#Introduction
+
+1761500319
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+This one you mean?
+
+1761500355
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes, but better to look at the version you're using to avoid confusion, e.g. https://ziglang.org/documentation/0.15.2/
+
+1761500386
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+although I don't think there's much difference master vs 0.15.2 yet
+
+1761500389
+grayhatter!~grayhatte@user/grayhatter
+your whole program is a contianer, where you can have globals (const and var), just like your struct can have "globals", and your struct can have another struct that has it's own, but it can also have fields that have lifetimes created with the object for that struct
+
+1761500398
+grayhatter!~grayhatte@user/grayhatter
+Harm133: that's exactly what was about to link :)
+
+1761500454
+grayhatter!~grayhatte@user/grayhatter
+Gliptic's advice is very good for stdlib, but I find the language itself doesn't meaningfully change, so I always default to the docs for the master branch
+
+1761500490
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+fair enough, but there's sometimes exceptions :)
+
+1761500492
+grayhatter!~grayhatte@user/grayhatter
+I've found sometimes @builtinFunction() doesn't exist yet in my version, and have had to implement them myself, but that's about it
+
+1761500524
+grayhatter!~grayhatte@user/grayhatter
+still good advice to use the tagged version docs if there's *ever* any confusion, just to be sure
+
+1761503181
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Thx guys :)
+
+1761508072
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+darn it, after I coded all the class and functions and this https://zigbin.io/34a7fb
+
+1761508288
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+also getting this https://zigbin.io/2c01c6 not sure how to deal with this error! i haven't coded that function yet. 
+
+1761508414
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+this is a bug in c code? https://github.com/axboe/liburing/blob/master/src/include/liburing.h#L428
+
+1761508465
+grayhatter!~grayhatte@user/grayhatter
+why do you think that's a bug?
+
+1761508500
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i dono, why zig is giving me that error
+
+1761508541
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/a1edb0
+
+1761508565
+grayhatter!~grayhatte@user/grayhatter
+because everything is a number in C and everything is not a number in zig. Zig demands explicit conversion, and C allows implicit conversion
+
+1761508622
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i c, how should i deal with this? its not something i coded. 
+
+1761508674
+grayhatter!~grayhatte@user/grayhatter
+if anything, it's a bug in translate-c... I'm not sure I agree that !! is a boolean operator
+
+1761508711
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think !! would ever make sense in zig
+
+1761508712
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you should try to understand what the code is doing, why it's doing it, and then from that, implement the parts you need
+
+1761508749
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: it wouldn't, it's a C idiom 
+
+1761508760
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or javascript
+
+1761508780
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, i am not really planning on learning C why i am using zig.
+
+1761508792
+grayhatter!~grayhatte@user/grayhatter
+stealth_: then don't use a C library
+
+1761508799
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and don't use a C api
+
+1761508806
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for python
+
+1761508824
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+lol, can't be helped, i have used all the ffi for python and they all have limits.
+
+1761508849
+grayhatter!~grayhatte@user/grayhatter
+stealth_: if you want to work with iouring, you have no choice but to learn C
+
+1761508862
+grayhatter!~grayhatte@user/grayhatter
+it's a linux kernel API, and the linux kernel is C
+
+1761508883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well zig was doing super good job so far, i just updated liburing to latest release and this started happening 
+
+1761508945
+grayhatter!~grayhatte@user/grayhatter
+to be fair, the other options are waiting for someone else to do it for you... you could also ask the random noise to token machine to do your thinking for you
+
+1761508971
+grayhatter!~grayhatte@user/grayhatter
+a lot of people who don't want to learn or expend effort enjoy the random noise to token machine
+
+1761509014
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+don't think learning C is going to fix this problem
+
+1761509094
+grayhatter!~grayhatte@user/grayhatter
+stealth_: nearly every single problem or question you have when building your project would be solved if you attempted to learn and understand the why behind the issue/error, or the reasons
+
+1761509129
+grayhatter!~grayhatte@user/grayhatter
+I don't think learning how the code I'm trying to use works will fix my problem that I don't understand what it's doing, is a wild take
+
+1761509247
+grayhatter!~grayhatte@user/grayhatter
+to be completely fair... I understand what the code is doing, but it's a bad/insane way to do what it's doing... 
+
+1761509251
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i don't have time to learn everything man, i was hoping to start releasing this zig code soon, i need to move on to other things, i am back to no more time thing, like last time. 
+
+1761509311
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+u mean the C code? or zig? 
+
+1761509371
+grayhatter!~grayhatte@user/grayhatter
+IMO, the Zig code is the incorrect code to emit given the source C code. But the Zig code is more correct, and more reasonable than the C code.
+
+1761509409
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if i ask the C coders to change their code, they will just tell me to use C and not python or zig
+
+1761509417
+grayhatter!~grayhatte@user/grayhatter
+lmao
+
+1761509421
+grayhatter!~grayhatte@user/grayhatter
+stealth_: never change
+
+1761509449
+grayhatter!~grayhatte@user/grayhatter
+but, I'm glad they're telling you the same thing that Gliptic and I are both telling you
+
+1761509474
+grayhatter!~grayhatte@user/grayhatter
+you need to use and by proxy understand C, if you want to use code written in C
+
+1761509496
+grayhatter!~grayhatte@user/grayhatter
+if you don't understand C, you can not use C
+
+1761509614
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i would say i know basic and enough to do what i do with C 
+
+1761509620
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i just don't wana code in it. 
+
+1761509622
+grayhatter!~grayhatte@user/grayhatter
+oh, I was wrong. This is the correct Zig code to emit given the source C code.
+
+1761509733
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but you don't know how to convert `return 1U << !!(cqe->flags & IORING_CQE_F_32);` to zig?
+
+1761509744
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's basic af shit
+
+1761509744
+grayhatter!~grayhatte@user/grayhatter
+well, arguably correct. because this is the safer (more correct) version of Zig to emit, any different translation would require understanding the code because the translator doesn't wanna guess
+
+1761509785
+grayhatter!~grayhatte@user/grayhatter
+I don't think I'd call `1U << !!(thing);` basic af
+
+1761509801
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, i am not converting it zig is the one doing that. 
+
+1761509819
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: well, zig is not doing that, it told you
+
+1761509825
+grayhatter!~grayhatte@user/grayhatter
+stealth_: you are converting it, wtf?
+
+1761509833
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+https://zigbin.io/a1edb0
+
+1761509837
+grayhatter!~grayhatte@user/grayhatter
+just because you're using a tool doesn't mean you get to prentend like you're not involved
+
+1761509843
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+thats from zig cache cimport.zig file 
+
+1761509859
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so zig can't convert it
+
+1761509863
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you do then?
+
+1761509883
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+why do you think i am bitching about it here? so many you guys know whats going on :p
+
+1761509914
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you want us to solve your problem for you
+
+1761509955
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: not just that, but do all of the work so he doesn't have to learn anything
+
+1761509969
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am 100% say its this update that zig can't convert anymore https://github.com/axboe/liburing/commit/ffc3237f13a5433a9bb19d202a00b785b1d6e074
+
+1761509982
+grayhatter!~grayhatte@user/grayhatter
+there's a big difference between asking for solutions, and asking for solutions and rejecting them because they require attention
+
+1761509982
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: indeed
+
+1761510015
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you don't even need to convert it to zig
+
+1761510030
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can just write a little C shim
+
+1761510036
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that is dynamically linked
+
+1761510048
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but this requires you to know some C
+
+1761510069
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ehm, not dynamically linked, I mean not inlined
+
+1761510114
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i see, well i am sure as soon as i fix that one function other will pop up as errors as well. 
+
+1761510151
+grayhatter!~grayhatte@user/grayhatter
+if only there was a way to read the code and understand what changes would make it work
+
+1761510160
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's when knowing C comes in handy, isn't it?
+
+1761510231
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its that `io_uring_cqe_nr` function that is causing zig issue
+
+1761510233
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: you can't just *LEARN* C
+
+1761510270
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+was C one of those first language you guys learned? 
+
+1761510296
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I certainly learned it before trying to use C libs
+
+1761510301
+grayhatter!~grayhatte@user/grayhatter
+in other news, kinda excited that verse has support for union(enum) now
+
+1761510427
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well its different for me, I was more of a website designer so learning graphic/flash/html/css/js, ... was more my thing then learn php, python, cython, now zig, so i am going backwards for high level langue to low. 
+
+1761510477
+grayhatter!~grayhatte@user/grayhatter
+it's not meaningfully different
+
+1761510502
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+its easy to go from low level to high level language when you are programmer. 
+
+1761510519
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+most people that do graphics don't really go into learning coding. 
+
+1761510550
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+since the mind set is different one is very creative other (coding) is very logical 
+
+1761510586
+grayhatter!~grayhatte@user/grayhatter
+it's easier to go from one language to another language
+
+1761510640
+grayhatter!~grayhatte@user/grayhatter
+if you know php, python, cython, and zig, learning C should be easier than learning C as a first language
+
+1761510700
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i just don't want to learn it cause zig is good for me and i don't really want to waste time learning a dying language.
+
+1761510757
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+plus I do coding as hobby now, i have tons of other stuff to learn that more important then C
+
+1761510857
+grayhatter!~grayhatte@user/grayhatter
+then I don't want to help you fix the error you don't understand
+
+1761510895
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+is writing a monkey patch code really a way to fix this? 
+
+1761510909
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+there must be something wrong either in zig side of liburing side.
+
+1761511140
+rvrb!~rvrb@156.146.51.228
+when wrapping Zig code in a C FFI, is there any special consideration necessary for which allocator you use internally? 
+
+1761511198
+rvrb!~rvrb@156.146.51.228
+should I use std.heap.c_allocator, or is it alright to use whatever
+
+1761511257
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: translate-c cannot translate all C code, that's it
+
+1761511300
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+rvrb: as long as all those allocations are only made and freed inside the library, it doesn't really matter what allocator you use
+
+1761511316
+rvrb!~rvrb@156.146.51.228
+ok, I thought so
+
+1761511371
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+Gliptic, well i made a comment on the changes they liburing made, maybe they can fix on their end.
+
+1761511388
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+stealth_: there's nothing wrong in liburing
+
+1761511437
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and there's no reason they would change anything just because translate-c can't handle it
+
+1761511550
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+then what was the point of saying it was my fault for not knowing C better?
+
+1761511560
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+??
+
+1761511566
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+who said it was your fault?
+
+1761511572
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I said you can fix this if you knew C
+
+1761511725
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i had to do that when i was using cython write bunch of C code to monkey patch, i didn't really like it. now i am not using cython and moving to zig, and if i still have to write C monkey patches it make zig look bad.
+
+1761511855
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig looks bad because it can't automatically handle all code of a _different language_?
+
+1761511935
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i am sure zig ppl are working on it, suppose just have to wait and see. 
+
+1761515398
+grayhatter!~grayhatte@user/grayhatter
+stealth_: that's not a monkey patch
+
+1761516238
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+grayhatter, the problem is been known for around 5-years now https://github.com/ziglang/translate-c/issues/165 its like the core of everything liburing does
+
+1761516422
+grayhatter!~grayhatte@user/grayhatter
+that issue isn't related to your error
+
+1761516448
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+well i got multiple errors 
+
+1761516450
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and 5 years later _Atomic is still not supported
+
+1761516463
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+waiting it out is probably not a viable strategy
+
+1761516634
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: well, if you refuse to write code just to make your code work... I think waiting is the only option
+
+1761516662
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+what code? 
+
+1761516689
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+if it was such a easy fix why wasn't that bug fixed already? 
+
+1761516691
+grayhatter!~grayhatte@user/grayhatter
+what you're calling a monkey patch, is more correctly called a shim, or tranlation layer
+
+1761516725
+grayhatter!~grayhatte@user/grayhatter
+you want to use a library written in C, within zig. But refuse to write the code needed to translate from one to the other
+
+1761516755
+stealth_!~stealth_@216-197-160-97.regn.static.sasknet.sk.ca
+i clearly don't know how to write it, if did i would have done so. 
+
+1761516857
+grayhatter!~grayhatte@user/grayhatter
+you are also clearly refusing to learn how to write it
+
+1761516872
+grayhatter!~grayhatte@user/grayhatter
+which you can do, but haven't done so
+
+1761517248
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you refuse to entertain the only solution to this problem right now, I guess you are screwed
+
+1761519604
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Hey guys, floats with the need for great precision, what type would I use? Like `Decimal` in Rust/C#
+
+1761519650
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Or is it just go with ints and divide
+
+1761519728
+grayhatter!~grayhatte@user/grayhatter
+Harm133: No idea how Decimal behaves in rust, but first instinct is have you looked at std.math yet?
+
+1761519840
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+In C# I know it guarantees 28 digits of precision, not too familiar with the rust one :)
+
+1761519906
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+I dont think std.math has what I'm looking for :)
+
+1761520010
+grayhatter!~grayhatte@user/grayhatter
+I could have sworn there was a float next to int in big...
+
+1761520117
+grayhatter!~grayhatte@user/grayhatter
+yeah, it looks like math.big.int supports floats
+
+1761520152
+grayhatter!~grayhatte@user/grayhatter
+so if f128 is too small, I'd reach for math.big.int
+
+1761520166
+grayhatter!~grayhatte@user/grayhatter
+if that didn't work, I'd make sure I understand what I'm doing
+
+1761520199
+Harm133!~Harm133@customer-082-139-100-165.solcon.nl
+Thanks :), still working thru the docs, but this is needed for my usecase
+
