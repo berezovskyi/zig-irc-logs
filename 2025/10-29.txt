@@ -1,0 +1,376 @@
+1761696158
+torque!~tachyon@user/torque
+I like fried fish
+
+1761700915
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Is it legal for `fn f(x: f32) void {std.debug.assert(x == x);}` to panic in ReleaseSafe builds?
+
+1761701348
+grayhatter!~grayhatte@user/grayhatter
+clevor: is the assert calling panic, or is it crashing somehow?
+
+1761701384
+grayhatter!~grayhatte@user/grayhatter
+because in release, that function probably isn't ever called
+
+1761701424
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://godbolt.org/z/Kjq6ahPW8
+
+1761701821
+grayhatter!~grayhatte@user/grayhatter
+huh, that's not the output I would have expected, I've got no idea then
+
+1761701919
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: NaN != NaN
+
+1761701965
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I don't think it should panic for non-NaN values as well.
+
+1761702029
+andrewrk!~andrewrk@mail.ziglang.org
+?
+
+1761702285
+grayhatter!~grayhatte@user/grayhatter
+If I'm guessing correctly, I think he means; I wouldn't expect to see `call zig_panic@PLT` in this code at all. With the expection that if I was wrong, I also wouldn't expect it to be reachedUnreachable 
+
+1761702308
+andrewrk!~andrewrk@mail.ziglang.org
+but it's possible to pass NaN which would trigger the panic
+
+1761702350
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My problem with that is that passing `0.0` would still trigger the panic.
+
+1761702351
+grayhatter!~grayhatte@user/grayhatter
+debug.assert() will panic in ReleaseSafe?
+
+1761702354
+grayhatter!~grayhatte@user/grayhatter
+oh
+
+1761702383
+grayhatter!~grayhatte@user/grayhatter
+nan==nan will panic, the debug isn't involved
+
+1761702416
+grayhatter!~grayhatte@user/grayhatter
+it's because ever calling b() will panic... I would have expected the asm label to be something different from reachedUnreachable
+
+1761702432
+grayhatter!~grayhatte@user/grayhatter
+TIL
+
+1761702441
+andrewrk!~andrewrk@mail.ziglang.org
+I have no idea what you are talking about
+
+1761702491
+grayhatter!~grayhatte@user/grayhatter
+the panic, is because in release safe, the code NaN == NaN will panic, right? or do I misunderstand?
+
+1761702551
+andrewrk!~andrewrk@mail.ziglang.org
+(NaN == Nan) evaluates to false
+
+1761702600
+andrewrk!~andrewrk@mail.ziglang.org
+assert(false) evaluates to unreachable
+
+1761702614
+andrewrk!~andrewrk@mail.ziglang.org
+unreachable evaluates to panic in Debug and ReleaseSafe modes
+
+1761702614
+grayhatter!~grayhatte@user/grayhatter
+then I'm completely lost again, I would expect std.debug.assert(false) to be a nop in ReleaseSafe
+
+1761702637
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.15.2/#unreachable
+
+1761702712
+grayhatter!~grayhatte@user/grayhatter
+one day I'll stop remembering wrong things about debug.assert() today is not that day
+
+1761702752
+andrewrk!~andrewrk@mail.ziglang.org
+it's pretty easy to remember considering it is 1 line and completely unspecial
+
+1761702913
+grayhatter!~grayhatte@user/grayhatter
+yeah, I'm aware... believe me.... it feels quite frustrating to be unable to correctly update my mental model 
+
+1761703021
+grayhatter!~grayhatte@user/grayhatter
+clevor: that's a cute trick
+
+1761703099
+grayhatter!~grayhatte@user/grayhatter
+are you passing a literal comptime `0.0`, or something different?
+
+1761704090
+torque!~tachyon@user/torque
+adding `a(0.0);` to that godbolt does not trigger a panic as far as I can tell
+
+1761704221
+torque!~tachyon@user/torque
+`a(std.math.nan(f32));` does panic as expected
+
+1761704767
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+can anyone recommend a redis client for zig?
+
+1761705247
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: https://github.com/kristoff-it/zig-okredis
+
+1761705287
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: ah neat, thanks! that was the first google result, wasn't sure if it was generally accepted as the best alternative
+
+1761705554
+andrewrk!~andrewrk@mail.ziglang.org
+I think Loris did a good job with this package
+
+1761706030
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+sweet
+
+1761707737
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+is https://github.com/ziglang/zig/issues/5471#issuecomment-640186608 still the best way to parse 'localhost'? my app accepts a `--server` and `--port` to specify a redis instance to connect to, and I'd like to gracefully handle the case where the server is specified as `localhost`
+
+1761707751
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+well shoot I guess I need to also consider `foo.myredis.com` too...
+
+1761707915
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+I tried std.net.Address.resolveIp but it returned an error.InvalidIPAddressFormat
+
+1761708353
+andrewrk!~andrewrk@mail.ziglang.org
+there's a function for looking up a host name
+
+1761708581
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+std.net.getAddressList
+
+1761708590
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+I guess I should just use any of the returned addresses?
+
+1761708840
+andrewrk!~andrewrk@mail.ziglang.org
+they are sorted by priority
+
+1761710017
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+oh dope - how can I tell if it's an ipv4 or ipv6? I can't switch on std.net.Address b/c it's not a tagged union
+
+1761710409
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+I guess probs okredis.Client.init(...) will fail for ipv4, but if I have a list off addresses and the first is ipv6 and the second is ipv4 I'd rather just use the second right-away instead of `try`ing to init the client with each address
+
+1761710427
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+but maybe it's easiest to just do that lol - since they're in order, I can just try them all until or if one succeeds
+
+1761713036
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+is there a less obtuse way to do this? https://github.com/ezzieyguywuf/ezzieyguywuf.com/blob/d7a78928a9f849d960336705ebca1bc8f48099de/backend/src/main.zig#L92-L95
+
+1761713057
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+"maybe_redis_client" is that part that feels obtuse
+
+1761713082
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+also `catch continue`
+
+1761715685
+Travelan!~travelan@user/travelan
+Over on Github, the latest release is still 0.15.1, while I’m quite sure 0.15.2 should be latest. Is this an oversight or should 0.15.2 not yet be considered latest stable?
+
+1761716947
+ha0tiX!~ha0tiX@user/ha0tiX
+Travelan on the website you have 0.15.2
+
+1761717550
+Travelan!~travelan@user/travelan
+I know, but there is disparity which is making me uncomfortable. That might be a me-problem though ;-)
+
+1761717762
+torque!~tachyon@user/torque
+the official line is that github "releases" are a proprietary github feature, and the team is moving away from github vendor lockin. 0.15.2 exists as a git tag on github and on the website
+
+1761717778
+torque!~tachyon@user/torque
+afaik there are currently no plans to make a release on github for any future versions
+
+1761718232
+Travelan!~travelan@user/travelan
+Interesting! Less Microsoft in my life is always a celebratory occasion! That probably also explains why I see more and more links to repo’s on Codeberg.
+
+1761718527
+torque!~tachyon@user/torque
+there is https://codeberg.org/ziglang/zig though I don't know if the plan is for this to eventually become the canonical upstream or not.
+
+1761747861
+andrewrk!~andrewrk@mail.ziglang.org
+torque: we've been working with codeberg/forgejo folks test driving their "actions" functionality. they were missing some really basic features
+
+1761747871
+andrewrk!~andrewrk@mail.ziglang.org
+such as not canceling all previous runs when any master branch commits land
+
+1761748302
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Is std.Io in master yet?
+
+1761748414
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/pull/25592
+
+1761748440
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Github is blocked at my school :p
+
+1761748518
+andrewrk!~andrewrk@mail.ziglang.org
+it's not merged yet
+
+1761762804
+rvrb!~rvrb@156.146.51.228
+a source forge being blocked at a school feels sad
+
+1761762927
+andrewrk!~andrewrk@mail.ziglang.org
+on the other hand, it's the beginning of learning about networking and security 😈
+
+1761763556
+rvrb!~rvrb@156.146.51.228
+my brother got a high school suspension in like, 2002, for "hacking the school network".. he used `net send` to send a stupid message to every computer
+
+1761763669
+rvrb!~rvrb@156.146.51.228
+we would also annoy each other at home by interrupting games of counterstrike to tell each other dinner was ready etc. I miss the 2000s
+
+1761764572
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I pinged my district's router once after my networking teacher told us not to.
+
+1761764959
+rvrb!~rvrb@156.146.51.228
+the rebellion began with a ping
+
+1761765041
+rvrb!~rvrb@156.146.51.228
+might a generalization of the typed index enum pattern be considered for inclusion in std? I find myself reimplementing it all the time; https://zigbin.io/26bed8
+
+1761766318
+grayhatter!~grayhatte@user/grayhatter
+the admins at my HS could never figure out why doom kept appearing on the school computer labs
+
+1761766332
+grayhatter!~grayhatte@user/grayhatter
+I miss TA'ing for complab 
+
+1761766381
+grayhatter!~grayhatte@user/grayhatter
+sorry, that was quake 3, not doom
+
+1761766469
+grayhatter!~grayhatte@user/grayhatter
+I'd be willing to bet you could specify custom a DoH server for your browser
+
+1761767102
+clevor!sid649024@id-649024.hampstead.irccloud.com
+proxy and Chrome OS :/
+
+1761767146
+grayhatter!~grayhatte@user/grayhatter
+I'm starting to believe that chrome os is the worst thing to happen to schools
+
+1761767471
+grayhatter!~grayhatte@user/grayhatter
+has anyone implmented any kind of code search? or read any interesting guides/whitepapers on it?
+
+1761768472
+andrewrk!~andrewrk@mail.ziglang.org
+https://andrewkelley.me/post/zig-new-async-io-text-version.html
+
+1761768475
+andrewrk!~andrewrk@mail.ziglang.org
+text version of my zigtoberfest demo from last week
+
+1761773262
+rvrb!~rvrb@156.146.51.228
+is juicy main a gucci mane reference or am I imagining things
+
+1761774156
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I see the resemblance too 👀
+
+1761774386
+bblack!~bblack@wikimedia/bblack-WMF
+oh my, std.Io is merged
+
+1761774467
+rvrb!~rvrb@156.146.51.228
+🎉
+
+1761774503
+rvrb!~rvrb@156.146.51.228
+must resist urge to stop everything I am doing and play with it
+
+1761775382
+bblack!~bblack@wikimedia/bblack-WMF
+rvrb: if it makes you feel any better, step zero of "play with it" is tracking down all the ways it broke your existing code that now needs updating :)
+
+1761775575
+rvrb!~rvrb@156.146.51.228
+bold of you to assume I've ever gotten past one or two weeks of work on any of the dozens of projects I've started in the last 3 months
+
+1761775739
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: it's a reference to https://indiedevcorner.com/game-juice-the-difference-between-a-good-game-and-a-great-one/
+
+1761775809
+rvrb!~rvrb@156.146.51.228
+ah, infusing your zig with juice
+
+1761775953
+grayhatter!~grayhatte@user/grayhatter
+I'm reading `Io.Writer.Discarding.init()` is that vtable valid?
+
+1761775993
+grayhatter!~grayhatte@user/grayhatter
+doesn't it go out of scope on return? Or is there something I'm missing?
+
+1761776110
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: it's a comptime known constant
+
+1761776115
+andrewrk!~andrewrk@mail.ziglang.org
+infinite lifetime
+
+1761776230
+grayhatter!~grayhatte@user/grayhatter
+that's what my original assumption was; I assume it lives in .data?
+
+1761776528
+grayhatter!~grayhatte@user/grayhatter
+ahh, nm question retracted, my understanding of the data and text segments was incomplete
+
+1761776779
+andrewrk!~andrewrk@mail.ziglang.org
+generally, comptime constant data will be in .rodata (this helpfully causes segfault if you try to mutate it)
+
