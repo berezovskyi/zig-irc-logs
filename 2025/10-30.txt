@@ -1,0 +1,568 @@
+1761784792
+deevus!~deevus@123.51.31.231
+I'm thankful for the text version of the "Zig's New Async I/O" video. I started laughing uncontrollably when I heard the audience questions that sounded like Animal Crossing villagers. 
+
+1761784972
+deevus!~deevus@123.51.31.231
+andrewrk I don't know what happened with the audio but I haven't laughed this hard for ages
+
+1761785033
+deevus!~deevus@123.51.31.231
+I'm sorry 😅
+
+1761787857
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Wait now I gotta hear it, ive only seen the text version
+
+1761789334
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+lol am I reading this right? https://ziglang.org/documentation/master/std/#std.Io.Writer.format std.Io.Writer.format only works with a struct with a .x and .y?
+
+1761789375
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+ah I want std.Io.Writer.print
+
+1761790189
+torque!~tachyon@user/torque
+the uh documentation picking up a function defined in a type defined in a test is probably a bug though
+
+1761790861
+ezzieygu1wuf!~Unknown@user/ezzieyguywuf
+😅
+
+1761791415
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Something too small to be a Github issue: std.Io.File.WriteError doesn't exist, as used by std.Io.File.WriteFileError.
+
+1761791615
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Dir.WriteFileError*
+
+1761792813
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Other than that and another bug with std.Io.Dir.writeFile, I got narser updated to `std.Io`.
+
+1761839168
+bblack!~bblack@wikimedia/bblack-WMF
+got my project building and working again post-std.Io.  out of ~24K lines of zig that uses a lot of the touched things, it was only a couple hundred lines of diff.
+
+1761839205
+bblack!~bblack@wikimedia/bblack-WMF
+my fixes so far are ugly of course, just bare minimum "make it compile and pass tests again" hackery, no actual real switch over to using the new stuff usefully.
+
+1761839293
+bblack!~bblack@wikimedia/bblack-WMF
+the largest pain point, for me, was the std.net.Address -> std.Io.net.{IpAddress,UnixAddress} change.
+
+1761839347
+bblack!~bblack@wikimedia/bblack-WMF
+(mostly because the new ones don't reuse the system sockaddr stuff)
+
+1761839407
+bblack!~bblack@wikimedia/bblack-WMF
+the new design seems fine, esp once calling code moves to really using the std.Io-based interfaces for all related things.  Just kind of messy for existing non-std.Io code to do basic initial adaptation.
+
+1761839641
+bblack!~bblack@wikimedia/bblack-WMF
+other bits to look out for: posix.SIG (and related) are now an enum, std.time.timestamp() (and variants) are gone, std.Thread.sleep() is gone.
+
+1761839676
+bblack!~bblack@wikimedia/bblack-WMF
+but those were all more trivial.  most of my diff lines were dealing with the IpAddress change.
+
+1761839795
+bblack!~bblack@wikimedia/bblack-WMF
+(and I guess there were a few adaptations needed for some calls into std.fs stuff for files/dirs, but those were pretty trivial too)
+
+1761840094
+bblack!~bblack@wikimedia/bblack-WMF
+all in all it's pretty exciting though.  I'm starting to see the shape of how my code will change to the better when I flip everything over to actually-using std.Io in place of my legacy eventloops and such.
+
+1761840133
+bblack!~bblack@wikimedia/bblack-WMF
+(need socket support in the Evented impls first, but I can already ~see what that will look like based on Threaded)
+
+1761847000
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+https://pastebin.com/F671yywF
+
+1761847001
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+ the compiler complains that poptGetContext expects a [*c]const cimport.struct_poptOption, but if i change it from _ to *c, it tells me that the type '[*c]cimport.struct_poptOption' doesn't support array initialization syntax
+
+1761847878
+grayhatter!~grayhatte@user/grayhatter
+[*c]thing is just a pointer, [_]thing is an array, that same &[_]thing (with &) makes it a ptr + length
+
+1761847949
+grayhatter!~grayhatte@user/grayhatter
+I'm assuming it only wants 1, so `&popt.struct_poptOption` sounds like what it wants
+
+1761848028
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+no, it wants an array
+
+1761848099
+grayhatter!~grayhatte@user/grayhatter
+null terminated array?
+
+1761848227
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+yes
+
+1761848247
+grayhatter!~grayhatte@user/grayhatter
+if it doesn't need to be null terminated, you can use `poptions[0..].ptr`
+
+1761848272
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+is there any short syntax to have a whole struct initialized to 0?
+
+1761848283
+grayhatter!~grayhatte@user/grayhatter
+if it does need to be null term, you need to use poptions = [_:null]popt.strcut_poptOption
+
+1761848315
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+oh that's handy
+
+1761848328
+grayhatter!~grayhatte@user/grayhatter
+yabobay: Zig explicitly discourages that behavior, but yes @splat(), or in some very select c interop cases `std.mem.zeros` but the latter is very discouraged
+
+1761848424
+grayhatter!~grayhatte@user/grayhatter
+discouraged because, it's better to init with the actual value the object should have. If it should be completely filled with 0, @splat(0) is correct
+
+1761848446
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+it doesn't seem to like '&[_:null]popt.struct_poptOption' as a type
+
+1761848509
+grayhatter!~grayhatte@user/grayhatter
+you didn't include enough information to say why it doesn't like it
+
+1761848518
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+it doesn't think null is a poptOption struct
+
+1761848560
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+right, it can't be null-terminated
+
+1761848562
+grayhatter!~grayhatte@user/grayhatter
+oh, sorry that's my bad [_:null]?popt.strcut_poptOption
+
+1761848588
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+what does that mean
+
+1761848591
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but that's not a type compatible with C
+
+1761848608
+grayhatter!~grayhatte@user/grayhatter
+yes it is?
+
+1761848612
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+also i did that and now it says it's a non-scalar sentinel type
+
+1761848625
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+grayhatter: a nullable struct? is the ABI of that even defined
+
+1761848653
+grayhatter!~grayhatte@user/grayhatter
+for example execve.... :<
+
+1761848664
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+i think i should just splat
+
+1761848669
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not compatible with a [*c]const cimport.struct_poptOption either way
+
+1761848671
+grayhatter!~grayhatte@user/grayhatter
+I swear... I'm usually smarter than this
+
+1761848684
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+hey, i didn't know any of it to begin with :D
+
+1761848699
+grayhatter!~grayhatte@user/grayhatter
+Gliptic is right, I don't know how you'd make that null terminated 
+
+1761848722
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+by nulling some specific member or the whole struct, is usually how that's done
+
+1761848772
+grayhatter!~grayhatte@user/grayhatter
+I would expect [_:null]?*struct_poptOption
+
+1761848772
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I don't think @splat will work either
+
+1761848789
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+and splat seems only to work with arrays and vectors
+
+1761848799
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@splat doesn't work with structs, does it
+
+1761848801
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yes
+
+1761848805
+grayhatter!~grayhatte@user/grayhatter
+what c lib are you using?
+
+1761848825
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+popt
+
+1761848830
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+https://linux.die.net/man/3/popt ?
+
+1761848832
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+yeah
+
+1761848865
+grayhatter!~grayhatte@user/grayhatter
+do you have to use it?
+
+1761848877
+grayhatter!~grayhatte@user/grayhatter
+it might be easier to parse the argv in zig yourself
+
+1761848879
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+well, i would *like* to use it 🤷‍♀️
+
+1761848914
+grayhatter!~grayhatte@user/grayhatter
+are you using it because you like it, and you want to, or do you want to because you expect it'll be easier?
+
+1761848920
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+i really don't mind just typing .{0,0,0,0,null,null} or whatever
+
+1761848923
+grayhatter!~grayhatte@user/grayhatter
+happy to help with either
+
+1761848964
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I can't find anything about null termination
+
+1761848970
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it's a lot to skim
+
+1761849005
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah
+
+1761849007
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+`The final structure in the table should have all the pointer values set to NULL and all the arithmetic values set to 0, marking the end of the table.`
+
+1761849018
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+yeah i read that
+
+1761849023
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so yeah, std.mem.zeros seems apt here
+
+1761849043
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+btw not related but how come you can't array-initialize structs in zig
+
+1761849047
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+it'd be really handy
+
+1761849060
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because it's confusing probably
+
+1761849072
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and error-prone
+
+1761849106
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+if you think it might be error prone then just use struct syntax instead :D
+
+1761849153
+grayhatter!~grayhatte@user/grayhatter
+yeah, reading findOption, it's as Gliptic thought, it checks if the next index is valid by checking if longName == null
+
+1761849195
+grayhatter!~grayhatte@user/grayhatter
+so std.mem.zeros() is the correct function to call, because this is c magic that you should never do in zig
+
+1761849214
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+i know this library i just didn't know how to type the array in zig
+
+1761849219
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+but thanks either way
+
+1761849237
+grayhatter!~grayhatte@user/grayhatter
+yabobay: I would define it as such...
+
+1761849519
+grayhatter!~grayhatte@user/grayhatter
+https://zigbin.io/96fa70
+
+1761849556
+grayhatter!~grayhatte@user/grayhatter
+I made no attempt to validate this, so user beware, but then unless I missed something, this will @ptrCast() to your c api
+
+1761849583
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+at least some of those pointers can be null, so better to use [*c]
+
+1761849584
+grayhatter!~grayhatte@user/grayhatter
+@ptrCast(&options)
+
+1761849611
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: that's what I **wanted** to do, and that's how I would write it in my code, but I got roasted the last time I suggested that
+
+1761849620
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what!
+
+1761849653
+grayhatter!~grayhatte@user/grayhatter
+*c only exists for autotranslated C code, and it should never appear in written Zig code
+
+1761849670
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+either way longName and descrip need to be optional
+
+1761849689
+grayhatter!~grayhatte@user/grayhatter
+I disagree with this assesment, I like it as a warning that this data type will flow into something less safe/less strict
+
+1761849699
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I agree with you
+
+1761849706
+grayhatter!~grayhatte@user/grayhatter
+<3
+
+1761849707
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well
+
+1761849715
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+at least in those cases when it can be null
+
+1761849742
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I guess if it cannot be null, it's better to use a normal pointer and maybe prevent some bugs
+
+1761849778
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+especially if more info is known about the API, like when the pointer is to a single element rather than many
+
+1761849829
+grayhatter!~grayhatte@user/grayhatter
+explicitly longName should have been `longName: ?[*]const u8,`
+
+1761849855
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+?[*:0]const u8 ;)
+
+1761849866
+yabobay!~pizza@2a02:85f:fcd5:1601:439e:d9b3:6a5d:d567
+i'm just gonna use the autogenerated stuff but thanks anyway
+
+1761849896
+grayhatter!~grayhatte@user/grayhatter
+sigh: time to buy a redbull, brb
+
+1761849899
+grayhatter!~grayhatte@user/grayhatter
+ACTION &
+
+1761853459
+segfaultfizzbuzz!~segfaultf@23-93-74-222.fiber.dynamic.sonic.net
+hey i have been using rust in prod for like,... idk six or seven years now or something and have recently become zig-curious,... is there any nice and reasoanble comparison zig folks want to point me at? what can i do in zig that i can't do in rust easily and vice versa?
+
+1761853771
+rvrb!~rvrb@156.146.51.228
+easier/better in Zig: work directly with C libraries, using custom memory allocators, compile time metaprogramming instead of the questionable state of Rust macros, lower overall cognitive overhead due to less abstractions between you and the machine. coming soon: colorless(*) async/await/concurrency model means no divide in community with async vs
+
+1761853771
+rvrb!~rvrb@156.146.51.228
+sync runtime like with Rust
+
+1761854103
+rvrb!~rvrb@156.146.51.228
+imo Rust started as a systems language and found itself as an applications language with the baggage of a systems language. it's actually pretty decent at bolting together high level abstractions into an application, if that is your thing
+
+1761854127
+grayhatter!~grayhatte@user/grayhatter
+segfaultfizzbuzz: imo, everything is easier in zig. Writing rust it feels like I'm fighting the compiler when I know I'm right, in zig, when I'm fighting the compiler, it's exclusively because I'm doing something wrong. This makes everything feel easier when writing Zig
+
+1761854252
+grayhatter!~grayhatte@user/grayhatter
+Zig is a language can easily learn zig in a weekend, you can read the entire language reference in about an hour (if you read fast)
+
+1761854302
+grayhatter!~grayhatte@user/grayhatter
+ok, just skimmed through it now, it's longer than I remember, many more examples and builtins, so I'll reduced that to the important parts (the first half) in an hour
+
+1761854312
+rvrb!~rvrb@156.146.51.228
+yeah I think that might not be so true these days, personally
+
+1761854421
+grayhatter!~grayhatte@user/grayhatter
+2 years ago, I remember finishing it in about a hour or two (across a few attempts), but I skipped the builtins, and started writing code
+
+1761854516
+rvrb!~rvrb@156.146.51.228
+the main issue "learning" Zig is not the syntax or anything, imo, but the build system and tooling; especially if you are coming from Rust and Cargo (spoken as a Rust -> Zig convert)
+
+1761854536
+rvrb!~rvrb@156.146.51.228
+it is very good but not yet well documented and still evolving
+
+1761854539
+grayhatter!~grayhatte@user/grayhatter
+is there anything easier to write in rust? Rust has a **much** larger ecosystem, but I always find myself implementing it myself instead of adding a new dep
+
+1761854559
+grayhatter!~grayhatte@user/grayhatter
+rvrb: have you read the current build docs in the last 2mo or so?
+
+1761854588
+grayhatter!~grayhatte@user/grayhatter
+I kept face planting into that, but just recently everything I've wanted to do with the build system had a documented example
+
+1761854589
+rvrb!~rvrb@156.146.51.228
+no, honestly, I reached the point that I don't need them, so maybe that opinion is out of date now
+
+1761854609
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/learn/build-system/
+
+1761854618
+grayhatter!~grayhatte@user/grayhatter
+same
+
+1761854698
+grayhatter!~grayhatte@user/grayhatter
+honestly, I don't think cargo is easier to work with than zig's package manager
+
+1761854751
+rvrb!~rvrb@156.146.51.228
+Rust has an incredible language server and linting and generally best in class tooling. the lifetimes and borrow checker are novel and can nerd snipe you for months. the community is huge and there is a crate for basically everything at this point. you can write pretty performant code that looks like Java or C# or something
+
+1761854789
+rvrb!~rvrb@156.146.51.228
+I find those things a net negative these days, but I want to try to be fair :P
+
+1761854872
+grayhatter!~grayhatte@user/grayhatter
+I was gonna be snarky and troll by saying "that's because it's impossible to write rust without all that infra" 
+
+1761854875
+rvrb!~rvrb@156.146.51.228
+my hypothesis is that once you get good enough at Rust to write 'unsafe' and work with the borrow checker, you can and should just use Zig, because you're going to be writing the same code but have an infinitely better time doing it
+
+1761854888
+grayhatter!~grayhatte@user/grayhatter
+but then I remembered, I'm the weird one that even avoids tab complete
+
+1761854921
+rvrb!~rvrb@156.146.51.228
+that's not a hypothesis, that's just a highly subjective opinion
+
+1761854928
+rvrb!~rvrb@156.146.51.228
+take it for what you will
+
+1761854929
+grayhatter!~grayhatte@user/grayhatter
+rvrb: don't forget, unsafe zig is safer than unsafe rust
+
+1761854968
+grayhatter!~grayhatte@user/grayhatter
+lol, I've also been promted to mention how nice --watch -fincremental is
+
+1761854979
+rvrb!~rvrb@156.146.51.228
+oh, yeah, build times
+
+1761855050
+grayhatter!~grayhatte@user/grayhatter
+which I didn't because I've already become accustom to things being fast, and forgotten how awfully slow everything else is
+
+1761855066
+grayhatter!~grayhatte@user/grayhatter
+you're welcome to join the conversation too nameless person :)
+
+1761855217
+rvrb!~rvrb@156.146.51.228
+segfaultfizzbuzz: matklad was (is?) a core contributor rust-analyzer; he works with Zig professionally and has written a lot about both languages. I think he might be the best source for comparison between the two, because I think most other people prefer one over the other. he seems to have a pretty pragmatic view on it
+
+1761855231
+rvrb!~rvrb@156.146.51.228
+https://matklad.github.io/
+
+1761855318
+grayhatter!~grayhatte@user/grayhatter
+matklad is a fantastic suggestion... I've learned to avoid anything that tries to compare the two
+
+1761855394
+bblack!~bblack@wikimedia/bblack-WMF
+from a totally different POV (I never really wrote any serious rust code): coming from a systems-level programmer writing low-level *nix network-related software in C for many years.
+
+1761855438
+grayhatter!~grayhatte@user/grayhatter
+I just read another that was written by someone who just wanted to be mad that zig exists because it's not as memory safe as rust... so many compairsons include intentional misunderstandings, or misdirections... I was starting to think there weren't any
+
+1761855441
+bblack!~bblack@wikimedia/bblack-WMF
+a lot of my most-recent years, being in that world is chasing ever-better ways to stop on top of code quality, which is hard in C.  You have all these analyzers and tools and quality checks, but you're still going to miss things sometimes, because the language is so crufty
+
+1761855474
+bblack!~bblack@wikimedia/bblack-WMF
+I really *wanted* to start porting some of my stuff to Rust as it was becoming popular, but every time I tried, it just turned me off and seemed all wrong, and I never made any significant progress in Rust.
+
+1761855503
+bblack!~bblack@wikimedia/bblack-WMF
+when Zig came into my field of view, it was exactly the opposite.  I knew on day 1 that this is the language I always wished C was.
+
+1761855517
+grayhatter!~grayhatte@user/grayhatter
+bblack: you're describing exactly why I've stopped comparing Zig to C... Zig is actually a good language, with modern language features, that is arguably the most powerful that exists. C, if judged by the standard Zig sets, would be a toy... 
+
+1761855581
+grayhatter!~grayhatte@user/grayhatter
+but because the comparison nearly always goes chronologically, I feel it does a disservice to how fantastic a framework zig offers, while still being as simple as possible
+
