@@ -1,0 +1,228 @@
+1762074781
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+im derping out, how can I insert the bytes "cafebabe" into a u256 (big endian) such that those bytes are right-padded with zeroes
+
+1762074817
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i could write 0xcafebabe0...0 (where 0...0 are the required zeroes to have that u256 represented literally) but im curious about doing it without literally writing that out
+
+1762075040
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Oh derp yeah just do 0xcafebabe << 224 
+
+1762076623
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Given an integer how can I get a slice of the bytes that comprise it, I think I'm derping out again
+
+1762076735
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+std.mem.asBytes if you want native endian
+
+1762076781
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i need to enforce it being big endian always
+
+1762076844
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+then probably byte swap if native endian isn't big endian
+
+1762076904
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+@byteSwap
+
+1762076968
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+if you really need it as a slice
+
+1762077268
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+actually there's nativeToBig
+
+1762077299
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+might go that route, im trying to compare the hex digest of two hashes in some tests. expectEqualSlices looks like the best approach no? Other expectEquals will convert the output to decimal if the test fails which is less helpful
+
+1762078206
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+hmm, not the most terse. First call std.fmt.hexToBytes so I can provide the expected bytes as a string in source, then the actual value from u256 requires      &@as([32]u8, @bitCast(the_u256_value))     all up giving
+
+1762078256
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+try std.testing.expectEqualSlices(u8, &utils.htb("foobar"), &@as([32]u8, @bitCast(the_u256_value));
+
+1762078271
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+that'll need a nativeToBig wrap on the bitCast too
+
+1762103319
+grayhatter!~grayhatte@user/grayhatter
+has anyone tried used a reader at comptime?
+
+1762103903
+ajrdck!e0a4b72d53@user/ajrdck
+hey i am thinking of "Introduction to Zig", but getting a paperback copy.  does anyone know if it's due an update soon so it'll be a waste of money?
+
+1762104236
+grayhatter!~grayhatte@user/grayhatter
+ajrdck: I'm not sure I would call it a waste of money, if you enjoy having a paper book to read. After 10s of looking through the IO section, which I was expecting to be out of date. It does already mention the new Reader/Writer API. It doesn't have anything about the newest Io api that was recently merged into master. So some of it is already out of date.
+
+1762104285
+grayhatter!~grayhatte@user/grayhatter
+looking at the github repo, there is a new async branch, but no commits/updates in 2 months so I don't know where your bar is for books that can go out of date
+
+1762104556
+ajrdck!e0a4b72d53@user/ajrdck
+i'd say there isn't a bar, it's just i want to learn zig and i figured that book was the best
+
+1762105948
+grayhatter!~grayhatte@user/grayhatter
+updating code to v0.16.0-dev.1220, I find I'm still very much a C developer, because I feel very angry about this new error `src/zwsgi.zig:160:22: error: expected type 'c_int', found 'os.linux.SIG__enum_4234'`
+
+1762108106
+grayhatter!~grayhatte@user/grayhatter
+it feels odd to me that Timestamp is in std.Io, std.Io.Clock.Timestamp makes sense, but even that references std.Io.Timestamp, which it self feels more "pure" than something that does Io. Am I missing something?
+
+1762108165
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how can you have side-effects without time /deep
+
+1762108287
+grayhatter!~grayhatte@user/grayhatter
+How Can Mirrors Be Pure If Our Timestamps Aren't Pure
+
+1762108476
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+timers might be the least pure thing (below perhaps truely random generators) as they keep changing state without anyone doing anything
+
+1762108506
+grayhatter!~grayhatte@user/grayhatter
+a timestamp isn't a timer though
+
+1762108521
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+true
+
+1762108557
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I suppose you could be using timestamps without any timer being involved anywhere
+
+1762108706
+grayhatter!~grayhatte@user/grayhatter
+I'm constructing a "dictionary of events" that have already happened, this can be inspected and interacted with without using IO, it's obvious that I will likely want to relate this to the current reality, and at that point I'd need Io, but... *shrug*
+
+1762109043
+grayhatter!~grayhatte@user/grayhatter
+follow up question, should std.Io.Duration be an enum(i96)?
+
+1762112581
+reykjalin!7e28cf3a41@user/reykjalin
+I remember seeing a lot of talk about putting @import statements at the bottom of files, but I'm not seeing that applied in std anymore. Was that a stylistic recommendation that was walked back at some point? 🤔
+
+1762115236
+grayhatter!~grayhatte@user/grayhatter
+if I recall my lore correctly, it was originally something to make giving a talk easier, and was never expected/intended to leak out... [mlugg] I think was advocating for it. Might be misremembering the person
+
+1762115303
+grayhatter!~grayhatte@user/grayhatter
+I still put anything that's not a pub import at the bottom. I like that the top of my files are clean with just the important parts (fields, pub defines, etc)
+
+1762116101
+erock!8a023a9e4a@pico/erock
+is there a std lib for cli flag parsing? if not anyone have any recs?
+
+1762116228
+Earnestly!~earnest@user/earnestly
+erock: (Here's plan9's impl. of -abc and -a -b -c equivalence, only short-opts, in C. Maybe you like; https://0x0.st/HpZy.c )
+
+1762116285
+grayhatter!~grayhatte@user/grayhatter
+erock: write my own every time, while (std.process.args().next()) |arg| is too easy to bother with anything else
+
+1762116305
+grayhatter!~grayhatte@user/grayhatter
+Earnestly: did you mean to suggest a c program in #zig?
+
+1762116340
+Earnestly!~earnest@user/earnestly
+I don't think this is possible in zig, largely due to use of macros but even the clever use of pre/post increment
+
+1762116352
+Earnestly!~earnest@user/earnestly
+But it would be nice to see something as simple
+
+1762116643
+grayhatter!~grayhatte@user/grayhatter
+for (args_list) |arg| { if (startsWith(u8, arg, "--")) longOpt(arg, args) else if (arg[0] == '-') for (arg[1..]) |char| switch (char)
+
+1762116705
+grayhatter!~grayhatte@user/grayhatter
+arguably, simpler
+
+1762116706
+Earnestly!~earnest@user/earnestly
+Remember to handle "--" as termination sentinel
+
+1762116740
+Earnestly!~earnest@user/earnestly
+Also yes, slices might help a lot here
+
+1762116740
+grayhatter!~grayhatte@user/grayhatter
+-_-
+
+1762116849
+grayhatter!~grayhatte@user/grayhatter
+erock: see if you can get away with using words instead of --opts
+
+1762116887
+grayhatter!~grayhatte@user/grayhatter
+I much prefer the style of something like `zig build` over `zig -b` or `zig --build`
+
+1762116919
+Earnestly!~earnest@user/earnestly
+To be fair, those aren't flags and so implementing mode as flags is usually surprising
+
+1762116938
+Earnestly!~earnest@user/earnestly
+(Iow, flags should always be optional, requiring a flag is a tell that something has gone wrong)
+
+1762116955
+grayhatter!~grayhatte@user/grayhatter
+that'll likely drastically reduce the complexity of parsing, and then if (eql(arg, flag)) else if (eql(arg, otherflag)) ... is much easier to write and work with
+
+1762116993
+Earnestly!~earnest@user/earnestly
+zig build is subcommand, which is quite nice way to express modes of operation
+
+1762117104
+Earnestly!~earnest@user/earnestly
+grayhatter: I initially thought you meant turning clis in mini langs like nft(8)
+
+1762117133
+Earnestly!~earnest@user/earnestly
+(or the iproute(8) suite)
+
+1762117160
+grayhatter!~grayhatte@user/grayhatter
+I do
+
+1762117295
+grayhatter!~grayhatte@user/grayhatter
+`nft -a list table inet filter` is drastically easier than `nft -a list --table inet --filter filter`
+
+1762117334
+Earnestly!~earnest@user/earnestly
+erock: fwiw, https://github.com/joegm/flags - it basically implements getopts_long which is probably the most sensible approach as its what will be expected
+
+1762117530
+Earnestly!~earnest@user/earnestly
+erock: Otherwise you could see what zig(1) itself does https://github.com/ziglang/zig/blob/master/src/main.zig#L1029
+
+1762117581
+reykjalin!7e28cf3a41@user/reykjalin
+thanks grayhatter 
+
+1762119600
+erock!8a023a9e4a@pico/erock
+I have been using zig-clap and I’m not a huge fan
+
