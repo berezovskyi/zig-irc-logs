@@ -1,0 +1,160 @@
+1762214886
+tsmanner!~tsmanner@ewr-208-c16733.saasprotection.com
+I'm writing some initialization code and have a slice of floats that I want to fill with 1s.  The slice is created as `var weights = try allocator.alloc(f64, foo.len);` where foo is a slice of things I want to weigh.  To set the 1s, I tried `for (weights) |*weight| { weight = 1.0; }` but get an error `cannot assign to constant`.  Am I missing
+
+1762214887
+tsmanner!~tsmanner@ewr-208-c16733.saasprotection.com
+something here?
+
+1762214993
+bblack!~bblack@wikimedia/bblack-WMF
+tsmanner: { weight.* = 1.0 }
+
+1762215016
+bblack!~bblack@wikimedia/bblack-WMF
+you need the *weight part to have a writeable pointer, but then you need to dereference it, instead of assigning to the pointer itself
+
+1762215089
+tsmanner!~tsmanner@ewr-208-c16733.saasprotection.com
+Ahhh ok, so the builtin types are a little different than a struct where `for (foos) |*foo| { foo = .{ .bar = bar, .baz = baz }; }` would work
+
+1762215146
+tsmanner!~tsmanner@ewr-208-c16733.saasprotection.com
+That feels true but probably isn't :'), I am thinking about field access with side-effects like foo.setBar(bar)
+
+1762215211
+tsmanner!~tsmanner@ewr-208-c16733.saasprotection.com
+That works, thanks!
+
+1762215356
+bblack!~bblack@wikimedia/bblack-WMF
+tsmanner: I think you need "foo.* = .{ .bar = ..." in your other example,too
+
+1762215371
+bblack!~bblack@wikimedia/bblack-WMF
+np!
+
+1762215513
+tsmanner!~tsmanner@ewr-208-c16733.saasprotection.com
+Yeah you're right, I was thinking of field access where `*foo` being a pointer uses the same syntax when doing `foo.setBar(bar)`
+
+1762215660
+bblack!~bblack@wikimedia/bblack-WMF
+playing with std.Io in my code has my mind running all kinds of random directions now.  will memory allocation become part of the std.Io interface? I know that seems weird, but technically there's syscalls at the bottom that can page fault or even in theory do disk or network i/o...
+
+1762217469
+grayhatter!~grayhatte@user/grayhatter
+earlier I said I was looking forward to v0.17, but I'd like to revise that to 0.18
+
+1762217633
+grayhatter!~grayhatte@user/grayhatter
+there's something I can quite articulate related to what I don't like about the async/concur API/ABI. I felt the same way about small parts of the Reader/Writer API or their counter parts, but those have been removed, or replaced with something that feels "correct" for lack of a better term
+
+1762217746
+grayhatter!~grayhatte@user/grayhatter
+I suspect v0.16 will have a few of thoes same imperfections, and there's nothing quite as rewarding as some of the commits I've written lately that have all been red diffs.
+
+1762224250
+reykjalin!7e28cf3a41@user/reykjalin
+I'm working on a code editor project and I'm trying to copy the std.Io.Writer approach to interfaces but I'm running into an issue where a field is `const` when I'm not expecting it to be. I know I can get around the problem by managing a pointer to the struct I'm using, but I was hoping to avoid that. Here's a minimal example exhibiting the compilation error I'm running into: https://zig.godbolt.org/z/hP46zz5ac . (more detailed question coming in a follo
+
+1762224344
+reykjalin!7e28cf3a41@user/reykjalin
+The problem I'm having in that example is that I don't understand why the formatter is `const` in this example. I'm sure it has something to do with what `Zig.init()` is doing, but I don't understand the semantics that make it const. At first I thought it was because the `VTable` in `Formatter` is const, but making that a plain pointer doesn't fix the problem. I tried reading through the Zig language reference but couldn't find anything there to point me 
+
+1762224358
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is std.http.Server mostly meant for testing e.g. not for production http servers?
+
+1762224364
+reykjalin!7e28cf3a41@user/reykjalin
+If someone here has some time to explain what understanding I'm missing here I'd love the help
+
+1762224459
+reykjalin!7e28cf3a41@user/reykjalin
+I should add that the code example I shared is 60 lines of code
+
+1762224600
+reykjalin!7e28cf3a41@user/reykjalin
+Now that I'm thinking about this a bit more; is the reason I haven't run into a similar problem with (for example) std.fs.File.Writer because of the `interface` in that struct that points to a std.Io.Writer interface? 🤔 That particular pattern would be a bit clunky in my case because I'd rather not maintain a reference to all the possible language support structs, and instead just one `Language` struct at a time
+
+1762224643
+reykjalin!7e28cf3a41@user/reykjalin
+ezzieyguywuf: to my knowledge std.http.Server is fine for an HTTP server, including production HTTP servers, but it's not meant to be the highest performing HTTP server implementation out there
+
+1762226738
+clevor!sid649024@id-649024.hampstead.irccloud.com
+reykjalin: `if (state.lang) |l|` creates a copy, and copies are
+
+1762226752
+clevor!sid649024@id-649024.hampstead.irccloud.com
+const
+
+1762226788
+clevor!sid649024@id-649024.hampstead.irccloud.com
+a copy of `state.lang.?`*
+
+1762226831
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Wait, let me reword that.
+
+1762226884
+clevor!sid649024@id-649024.hampstead.irccloud.com
+`if (state.lang) |l|` creates a copy of `state.lang.?`. You'd want to capture by pointer with `|*l|`.
+
+1762227620
+reykjalin!7e28cf3a41@user/reykjalin
+ohhhhhhhhhhhhhhhhh
+
+1762227622
+reykjalin!7e28cf3a41@user/reykjalin
+omg
+
+1762227633
+reykjalin!7e28cf3a41@user/reykjalin
+I should've known that 🤦‍♂️
+
+1762227635
+reykjalin!7e28cf3a41@user/reykjalin
+thank you clevor!
+
+1762229154
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+reykjalin: I see, thanks for your thoughts. I'm a little annoyed with http.zig since it's crashed on my a few times under heavy load, so I'm investingating alternatives. I'm trying to decide between pulling in another c-library as a dependency or maybe raw dogging it with std.http.Server
+
+1762277930
+grayhatter!~grayhatte@user/grayhatter
+ezzieyguywuf: where did it crash?
+
+1762280460
+purplellama!~purplella@user/purplellama
+while updating code for 0.16.0-dev.1225+bf9082518 I noticed Io.Threaded.lookupDns fails (error.InvalidDnsCnameRecord) on domains with www or domains that redirect to www. In the case of an automatic redirect adding a host header override to the fetch options bypasses the issue. If the domain doesn't have an automatic redirect you can just remove
+
+1762280460
+purplellama!~purplella@user/purplellama
+www from the url. Interestingly I can't recreate this on my M1 mac but it occurs on Arch x86_64 and my coworker can recreate it on Ubuntu x86_64.
+
+1762280616
+purplellama!~purplella@user/purplellama
+Also if you bypass fetch and make a direct client request the issue occurs in hostname.zig. I can't seem to pin it down any further but happy to share code examples if anyone is interested.
+
+1762280937
+grayhatter!~grayhatte@user/grayhatter
+purplellama: can you open an issue on github?
+
+1762280971
+purplellama!~purplella@user/purplellama
+yeah absolutely
+
+1762281210
+grayhatter!~grayhatte@user/grayhatter
+<3
+
+1762290208
+grayhatter!~grayhatte@user/grayhatter
+would you accept a PR that makes std.Io.Timestamp an enum(i96)?
+
+1762290276
+grayhatter!~grayhatte@user/grayhatter
+I'm working on some authentication code (from an out of date zig/stdlib build) and the API feels hard for me to reason about (It's unclear if I should use the Io or the Io.Clock abstraction)
+
