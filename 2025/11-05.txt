@@ -1,0 +1,132 @@
+1762323722
+ledx_!~thomas@user/ledx
+I've created net.Server and got a Connection from the accept() function. I struggle a bit when I try to read from the connection's stream. I managed to use the read function, but it is marked deprecated in favour of Reader. Here I've not yet figured out what to do. I can get a reader, but there is no doc, only source for this struct. I assume I should use the interface method to get an io.Reader, but I haven't 
+
+1762323728
+ledx_!~thomas@user/ledx
+managed to get any data out of it. Any advice on how to learn this?
+
+1762324774
+ledx_!~thomas@user/ledx
+reading the tests for io.Reader I managed to read _some_ of the stream, and can probably figure out how to read until the end, but if there are any exampels or docs I would be happy to know :)
+
+1762334478
+mountaingoat!~mountaing@user/mountaingoat
+what's a good resource for understanding the role of buffer in File .reader() and .writer(), an just getting a std.io.Reader / std.io.Writer to a file?
+
+1762334563
+mountaingoat!~mountaing@user/mountaingoat
+looks like i can get the generic reader with .interface, but do i need a buffer?
+
+1762334805
+Affliction!affliction@idlerpg/player/affliction
+mountaingoat: The buffer can be an empty slice, but then every call to the reader or writer will result in a syscall
+
+1762334831
+Affliction!affliction@idlerpg/player/affliction
+https://www.youtube.com/watch?v=f30PceqQWko explains the rationale behind the new Io stuff.
+
+1762334930
+mountaingoat!~mountaing@user/mountaingoat
+Affliction: ok, makes sense, thanks
+
+1762335022
+Affliction!affliction@idlerpg/player/affliction
+I'd recommend at least a couple of KB of buffer on top of eg, File readers/writers, same for net sockets. Some fancier readers might have requirements on buffer size since they use it for in-place transformations of the data, eg, TLS readers and writers
+
+1762335041
+Affliction!affliction@idlerpg/player/affliction
+Others might be happy with no buffering, generally they'll document what they need.
+
+1762335120
+Affliction!affliction@idlerpg/player/affliction
+If you want to compare to C, most C libraries bring their own buffer on top of files. Zig makes that explicit.
+
+1762335129
+Affliction!affliction@idlerpg/player/affliction
+er, most C standard libraries*
+
+1762337394
+lemons!~doggie@user/doggie-:49517
+is there any ETA on x86-windows extern structs being fixed? currently using them causes a segfault from bad codegen
+
+1762340178
+squeek502!~squeek502@user/squeek502
+lemons, not sure that bug has been reported, would be good to confirm it's a bug (can post a reproduction here) and open an issue
+
+1762340253
+lemons!~doggie@user/doggie-:49517
+squeek502: a repro was appended to the x86 test issue, https://github.com/ziglang/zig/issues/10852#issuecomment-3450345957
+
+1762340285
+lemons!~doggie@user/doggie-:49517
+unsure if it should be its own thing
+
+1762377476
+grayhatter!~grayhatte@user/grayhatter
+why does sleep take a clock?
+
+1762377579
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: fundamentally, so you can sleep for different conceptions of time (e.g. the difference between 10 seconds of wallclock time, 10 seconds of monotonic system time-since-boot, or 10 seconds of system-is-actually-awake time)
+
+1762377604
+bblack!~bblack@wikimedia/bblack-WMF
+given leap seconds and dst adjustments and suspend/resume, they're all different
+
+1762377608
+grayhatter!~grayhatte@user/grayhatter
+is that guarenteed?
+
+1762377695
+bblack!~bblack@wikimedia/bblack-WMF
+as much as the underlying system gaurantees it via the different clocks they offer (e.g. linux CLOCK_REALTIME vs CLOCK_MONOTONIC vs CLOCK_BOOTTIME and such)
+
+1762377881
+grayhatter!~grayhatte@user/grayhatter
+I hate CS definitons for seconds
+
+1762377897
+grayhatter!~grayhatte@user/grayhatter
+thanks bblack :)
+
+1762378066
+bblack!~bblack@wikimedia/bblack-WMF
+https://github.com/ziglang/zig/blob/ebcc6f166c9c34d00b750f26687c9ee36b243cb0/lib/std/Io.zig#L708
+
+1762378068
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Relevant xkcd comic https://xkcd.com/2867/
+
+1762378215
+bblack!~bblack@wikimedia/bblack-WMF
+ACTION defines std.Io.Clock.vector, which sleeps until my data update is eventually-consistent across a quorum of my nodes
+
+1762378228
+grayhatter!~grayhatte@user/grayhatter
+bblack: yeah, I was reading through the the implementation, and it dawned on me that just because the kernel API isn't trustworthy, doesn't mean zig can't provide an API that behaves correctly between yield() and a rt deadline sleep
+
+1762378246
+grayhatter!~grayhatte@user/grayhatter
+I'd forgotten that rtos exist
+
+1762378363
+grayhatter!~grayhatte@user/grayhatter
+clevor: I mostly agree, but datetime != seconds
+
+1762378416
+grayhatter!~grayhatte@user/grayhatter
+I don't default think in wall time, my default is "real time" and I have a translation layer to wall time that accounts for the extra noise/drift
+
+1762378785
+grayhatter!~grayhatte@user/grayhatter
+inb4:  std.Io.Clock takes in a vector for the strength of current gravity well, to account for the relativity time distortion :D
+
+1762379543
+bblack!~bblack@wikimedia/bblack-WMF
+time is only well-defined with respect to a single point in space anyways, everything else is variably-relative :P
+
+1762380076
+grayhatter!~grayhatte@user/grayhatter
+yeah, that was the joke I was making about the other clock flavors
+
