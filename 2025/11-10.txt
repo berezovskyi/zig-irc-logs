@@ -1,0 +1,196 @@
+1762740032
+grayhatter!~grayhatte@user/grayhatter
+sunflr: my site isn't on cloudflare, it's something different that just that
+
+1762740195
+grayhatter!~grayhatte@user/grayhatter
+> Couldn't Russia just block all of the exit nodes?  || I think you mean entry nodes
+
+1762746734
+sunflr!~sunflr@user/sunflr
+grayhatter: yeah it's really odd… And really annoying
+
+1762751132
+sunflr!~sunflr@user/sunflr
+grayhatter: ok i downloaded the compiler through tor from your website, thanks!
+
+1762751168
+sunflr!~sunflr@user/sunflr
+also verified it with minisign
+
+1762751529
+grayhatter!~grayhatte@user/grayhatter
+sunflr: was gonna suggest verifying the sig :) glad you found one that works
+
+1762751747
+sunflr!~sunflr@user/sunflr
+grayhatter: m-hm :3 I only found on ziglang.org the minisign signature so i used that. I remember i used a sha256 one before but didn't find it now for some reason
+
+1762751936
+grayhatter!~grayhatte@user/grayhatter
+that's what you'd want to use, I meant glad you found a mirror, or way to download the compiler that worked
+
+1762755697
+sunflr!~sunflr@user/sunflr
+yaay
+
+1762789206
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+grayhatter: hey sorry I missed your message back on the 4th. I was talking about how http.zig crashed on me and you asked where it crashed. if you're still interested, these are the two crashes I experienced: https://termbin.com/kmm9
+
+1762801407
+karhunkynsi!~user@user/karhunkynsi
+Hi! I was initially doing an exercise on buffered IO (medium.com), then i turned it into an exercise in recovering from error. So, i'm without training wheels now! Not sure i'm doing it right. Anyone care to give some feedback to this? https://zigbin.io/002fb0
+
+1762801479
+karhunkynsi!~user@user/karhunkynsi
+I'm trying to recover from error.StreamTooLong by discarding the input and returning to the reader. I wrapped the whole reader loop in another loop...
+
+1762801499
+karhunkynsi!~user@user/karhunkynsi
+Is there a better way of doing that?
+
+1762801750
+grayhatter!~grayhatte@user/grayhatter
+stream too long means stdin buffer isn't big enough to hold all the input data without deleting some of it to reach the delimiter
+
+1762801891
+karhunkynsi!~user@user/karhunkynsi
+Right, if the input is too long i just want to write a message, delete the entire input and wait for another input line.
+
+1762801893
+grayhatter!~grayhatte@user/grayhatter
+you're instructing the reader to find the next \n, so the reader goes looking for the \n and finds more than 5 chars, but no \n so it returns an error, because it can't find the \n you asked for without deleteting some of the data before the \n.
+
+1762801935
+grayhatter!~grayhatte@user/grayhatter
+then next is to write that code that deletes that extra data, (figure out how much to delete, and reader.toss())
+
+1762801954
+grayhatter!~grayhatte@user/grayhatter
+IIRC there's a function that does exactly that :)
+
+1762802004
+karhunkynsi!~user@user/karhunkynsi
+I got the deleting part. It's the return to reading part i feel could be better.
+
+1762802159
+grayhatter!~grayhatte@user/grayhatter
+that's a matter of taste... I would write `while (reader.takeDelimiterExclusive('\n')) |raw_input| { if (raw_input) |line| { ... } else |err| switch (err) { StreamTooLong => { ...; continue }, }
+
+1762802232
+grayhatter!~grayhatte@user/grayhatter
+well... I would actually make stdin [0x8000]u8, because I'd rather not optimize expecting for errors. The less often I have to handle StreamTooLong and restart the loop, the faster my code will be
+
+1762802328
+karhunkynsi!~user@user/karhunkynsi
+Sure, i'm just looking into how i could handle that case, and a tiny buffer is easy too experiment with ;)
+
+1762802344
+grayhatter!~grayhatte@user/grayhatter
+a large buffer is easier to experment with
+
+1762802403
+karhunkynsi!~user@user/karhunkynsi
+Not for triggering error.StreamTooLong!?
+
+1762803020
+grayhatter!~grayhatte@user/grayhatter
+you can't ignore errors in zig, so what are you attempting to optimize for? Do you want to write code that egarly jumps into an error state? Or do you want to write code that's made to avoid errors? I have to admit, I don't see much value in trying to trigger specific errors (out side of something like fuzz testing) Instead, I try to focus more on writing code that can make better decisions faster. I
+
+1762803022
+grayhatter!~grayhatte@user/grayhatter
+can't imagine a line longer than 8k to be likely to not be invalid data. So what should your code do when you start getting invalid data? Yes, you should correctly handle StreamTooLong, but is restarting the loop the best way to do that? Stdin (in most cases) is line buffered by default. So no data is waiting or read for your code, until it's a full line. And then once it's a full line, it's an
+
+1762803024
+grayhatter!~grayhatte@user/grayhatter
+"expensive" syscall to get that data, if you have to call read() 1000 times to get 5k bytes of data, (because the line is invalid) that's gonna make your code very slow. Which is what I understand you're asking? What's the correct way to handle invalid data? The correct way isn't a nested loop, but it's to write your code in a way where you make a decision when you know it. Currently, you only check
+
+1762803026
+grayhatter!~grayhatte@user/grayhatter
+the first char, so you don't need to look for \n and you could just make stdin 1 byte, and look for \n then q add discard otherwise.
+
+1762803366
+nephele!~vision@i59F516C7.versanet.de
+> can't imagine a line longer than 8k to be likely to not be invalid data
+
+1762803378
+nephele!~vision@i59F516C7.versanet.de
+Why not? Websites are constantly served like that
+
+1762803395
+karhunkynsi!~user@user/karhunkynsi
+I'm sorry if i was unclear about my goal here. I'm doing exercises and i just happened to be on a buffered IO exercise whet i wanted to see how i can recover from an error.
+
+1762803428
+karhunkynsi!~user@user/karhunkynsi
+I haven't seen that explained anywhere yet.
+
+1762803552
+grayhatter!~grayhatte@user/grayhatter
+nephele: I wouldn't tokenize an html page line by line, and I equally wouldn't attempt to validate an html tag that's longer than 8k
+
+1762803616
+grayhatter!~grayhatte@user/grayhatter
+karhunkynsi: the way you recover from any error is very specific to what the error is, and what caused it, and how the program should behave. There's no one right way to write error handling code.
+
+1762803702
+karhunkynsi!~user@user/karhunkynsi
+Ok, thank you!
+
+1762803741
+grayhatter!~grayhatte@user/grayhatter
+karhunkynsi: your example here is a perfect one. StreamTooLong, and EndOfStream are very different cases, and the code will likely want to branch to very different code between the two. Having them next to eachother makes the code slower, and harder to understand
+
+1762803969
+grayhatter!~grayhatte@user/grayhatter
+StreamTooLong is like your friend talking to fast, and EndOfStream is like them saying "thanks, have a good day, goodbye!" One of these is a mistake, tho other, not so much
+
+1762804023
+karhunkynsi!~user@user/karhunkynsi
+Right :)
+
+1762804033
+grayhatter!~grayhatte@user/grayhatter
+hope any of that helps :)
+
+1762804055
+karhunkynsi!~user@user/karhunkynsi
+Yes, much appreciated :)
+
+1762809630
+grayhatter!~grayhatte@user/grayhatter
+has anyone tested Io.Theraded.io() with cpu_count == 1. Is it expected that a call to async()/await() would hang?
+
+1762810066
+bblack!~bblack@wikimedia/bblack-WMF
+with .init_single_threaded?
+
+1762810090
+grayhatter!~grayhatte@user/grayhatter
+no
+
+1762810178
+bblack!~bblack@wikimedia/bblack-WMF
+yeah seems like an edge case then.  it could at least kick out some kind of error?
+
+1762811910
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh snap, async and await have arrived?
+
+1762812665
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: not as keywords, but as part of the std.Io abstraction
+
+1762812756
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+right. is the plan to bring them back as keywords?
+
+1762812775
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I thought the plan was to always keep them as part of the std.Io interface
+
+1762814660
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: as far as I've seen that's still the plan (to not have keywords)
+
