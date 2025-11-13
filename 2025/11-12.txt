@@ -1,0 +1,304 @@
+1762906054
+cws!~cws@user/cws
+torque: I think whatever release system in place is really not working out, like some others pointed out. I hopped into Zig last weekend, and newcomers will face two immediate annoyances. 1 - the language is for a lack of better terms, rolling release, so it seems preferable to stay in unstable releases to remain current but this isn't immediately
+
+1762906054
+cws!~cws@user/cws
+apparent unless you look into the current lifecycle of std and lang features. 2 - Releases should not be skipped, adjust release schedule and SOP to match...
+
+1762906474
+JodiJodington!~jodijodin@user/JodiJodington
+I wouldn't say users should stay on unstable releases by default. I didn't for a long time and many people don't (both projects and individuals). It's all up to what you prefer
+
+1762908681
+lrvick!1002@2a01:4f8:141:1272::2
+Hey all. I have to disable AMDGPU target support in LLVM for my distro to acheive reproducibiltiy right now, but this means it is no longer possible to build zig which errors saying we must enable AMDGPU support. Can this be worked around on the zig side?
+
+1762908702
+lrvick!1002@2a01:4f8:141:1272::2
+Even ideas on patches/hacks are welcome
+
+1762911413
+vimproved!~vimproved@user/vimproved
+have you brought that upstream to LLVM?
+
+1762911730
+lrvick!1002@2a01:4f8:141:1272::2
+Not yet, but that will take weeks/months of bike shedding and I need a workaround to unblock a giant wall of work atm.
+
+1762913879
+torque!~tachyon@user/torque
+cws, while it is possible to follow the language nightly releases, I cannot recommend it for anything except toy projects or other experimentation. All of the serious projects I'm aware of stay with stable releases
+
+1762913904
+torque!~tachyon@user/torque
+trying to follow master is a good way to spin your wheels, as there is frequently a lot of breakage that happens in the middle of a development cycle
+
+1762913965
+torque!~tachyon@user/torque
+I can't say anything about the newcomer experience except that newcomers should use their own judgment to decide what language versions they want to support
+
+1762918687
+grayhatter!~grayhatte@user/grayhatter
+lrvick: what is the error specifically? I would be surprised if zig had a hard dep on AMDGPU
+
+1762932171
+lrvick!1002@2a01:4f8:141:1272::2
+1.366 CMake Error at cmake/Findllvm.cmake:30 (message):          
+
+1762932173
+lrvick!1002@2a01:4f8:141:1272::2
+1.366   LLVM (according to /usr/bin/llvm-config) is missing target AMDGPU.  Zig
+
+1762932175
+lrvick!1002@2a01:4f8:141:1272::2
+1.366   requires LLVM to be built with all default targets enabled.
+
+1762932237
+lrvick!1002@2a01:4f8:141:1272::2
+Feels like a hard dep I need to patch around somehow
+
+1762932270
+lrvick!1002@2a01:4f8:141:1272::2
+but I would love if someone could point out some obvious config flag, hack, or workaround
+
+1762940103
+mountaingoat!~mountaing@user/mountaingoat
+is there a suggested one liner to write to stderr?
+
+1762941004
+Affliction!affliction@idlerpg/player/affliction
+mountaingoat: std.debug.print
+
+1762941010
+Affliction!affliction@idlerpg/player/affliction
+Though, look into std.log too
+
+1762941037
+Affliction!affliction@idlerpg/player/affliction
+But, both give you infallible easy printing
+
+1762941854
+mountaingoat!~mountaing@user/mountaingoat
+just feels weird to use std.debug.print in a non-debug setting
+
+1762943219
+przmk!~przmk@user/przmk
+Doesn't `std.log.err()` simply print to stderr?
+
+1762944922
+Affliction!affliction@idlerpg/player/affliction
+all the std.log funcs do, afaik, unless you override it
+
+1762950009
+bblack!~bblack@wikimedia/bblack-WMF
+the std.log is pretty nifty actually, in how you can customize its behavior along various dimension
+
+1762950085
+bblack!~bblack@wikimedia/bblack-WMF
+I have a custom log scope called ".net", to which I send any log messages triggered by network traffic, and then I was able to put a custom rate-limiter on just messages from that log scope in my custom logfn.
+
+1762950151
+bblack!~bblack@wikimedia/bblack-WMF
+(also, my custom logfn knows how to runtime-switch the output of std.log between stderr and syslog based on other user-provided config/settings)
+
+1762953890
+mimivals1!~mimivalsi@user/MimiValsi
+how would you init a struct with { x: u32, params: std.StringArrayHashMap([]const u8) } has fields? Do I allocate a new pointer to struct and with the same alloc allocate the HashMap or do I pass 2 allocs?
+
+1762954589
+JodiJodington!~jodijodin@user/JodiJodington
+join #gentoo-chat
+
+1762954593
+JodiJodington!~jodijodin@user/JodiJodington
+whoops
+
+1762955281
+bblack!~bblack@wikimedia/bblack-WMF
+mimivals1: generally the idiomatic way is to have your struct's init method return the whole struct rather than a pointer to an allocated struct, and to initialize your StringArrayHashMap with .empty .
+
+1762955353
+bblack!~bblack@wikimedia/bblack-WMF
+basically avoid allocations until/unless they're needed
+
+1762955392
+bblack!~bblack@wikimedia/bblack-WMF
+but if they're needed in your case, yes, you'd generally use the same allocator for the sub-parts of a struct as you would for the struct itself? that's really more a you question though, depends on what you're doing :)
+
+1762956094
+JodiJodington!~jodijodin@user/JodiJodington
+if your struct is big enough to where you don't want to return it by copy, consider taking an out pointer as a paramter instead
+
+1762956288
+bblack!~bblack@wikimedia/bblack-WMF
+I think in the general case, the copy is optimized out anyways, when you're doing e.g.: const foo: LargeFooStruct = .init(...);
+
+1762956520
+JodiJodington!~jodijodin@user/JodiJodington
+yeah hopefully
+
+1762959706
+mimivals1!~mimivalsi@user/MimiValsi
+hmm I see
+
+1762959795
+mimivals1!~mimivalsi@user/MimiValsi
+So I guess, I create my struct with 'alloc.create' the struct, StringArrayHashMap with '.empty'. And once I get the return, I recreate a new alloc to the HashMap.
+
+1762959797
+mimivals1!~mimivalsi@user/MimiValsi
+thx for the tip
+
+1762960312
+bblack!~bblack@wikimedia/bblack-WMF
+it's hard to follow what you reall mean.  A code example would be easier to dissect and debate.
+
+1762960315
+bblack!~bblack@wikimedia/bblack-WMF
+*really
+
+1762960475
+mimivals1!~mimivalsi@user/MimiValsi
+sure, just a sec
+
+1762960532
+mimivals1!~mimivalsi@user/MimiValsi
+https://gist.github.com/MimiValsi/fc4b5a62a4a3056ce403abeed0a821da
+
+1762960552
+mimivals1!~mimivalsi@user/MimiValsi
+Made a little gists. Still finding out, how to init the HashMap empty lol
+
+1762960716
+bblack!~bblack@wikimedia/bblack-WMF
+mimivals1: I'm making a lot of assumptions, but a more-idiomatic way would be something like: https://zigbin.io/799d2b
+
+1762960806
+bblack!~bblack@wikimedia/bblack-WMF
+if you're returning a whole StartupMessage, you don't need to allocate that, just return the whole object to the caller.  Whereas, if you really wanted your "init" function (which I would probably then call "create" instead) to take an allocator and allocate an instance of the struct, it should return "!*StartupMessage" (an error or a pointer to the allocated struct)
+
+1762961004
+bblack!~bblack@wikimedia/bblack-WMF
+a create() variant might look like: https://zigbin.io/046444
+
+1762961127
+mimivals1!~mimivalsi@user/MimiValsi
+ohhh I see
+
+1762961134
+bblack!~bblack@wikimedia/bblack-WMF
+I missed the "try" before allocator.create() in that paste, oops :)
+
+1762961170
+mimivals1!~mimivalsi@user/MimiValsi
+apparently StringArrayHashMap doesn't contain '.empty'
+
+1762961216
+bblack!~bblack@wikimedia/bblack-WMF
+ah what zig version are you using?
+
+1762961249
+bblack!~bblack@wikimedia/bblack-WMF
+I pretty much operate from the bleeding edge, where some of these structures are now by-default the "Unmanaged" kind
+
+1762961265
+mimivals1!~mimivalsi@user/MimiValsi
+0.15.2
+
+1762961292
+bblack!~bblack@wikimedia/bblack-WMF
+oh even in the latest master, arrayhashmap hasn't made the switch yet, so that's on me heh
+
+1762961296
+mimivals1!~mimivalsi@user/MimiValsi
+ah duck!
+
+1762961312
+mimivals1!~mimivalsi@user/MimiValsi
+I'm using the WithAllocator
+
+1762961321
+bblack!~bblack@wikimedia/bblack-WMF
+ok
+
+1762961341
+bblack!~bblack@wikimedia/bblack-WMF
+the general trend is towards using the Unmanaged variants and eventually making them the default variants
+
+1762961363
+bblack!~bblack@wikimedia/bblack-WMF
+then you only pass in an allocator when needed (like when putting new values into them), not when initializing them.
+
+1762961374
+mimivals1!~mimivalsi@user/MimiValsi
+yh I see
+
+1762961398
+mimivals1!~mimivalsi@user/MimiValsi
+thx for the help
+
+1762961410
+bblack!~bblack@wikimedia/bblack-WMF
+generally speaking, for a lot of common cases, it's an anti-pattern to store an allocator in a data structure
+
+1762961458
+bblack!~bblack@wikimedia/bblack-WMF
+(I still do it in some of my own structures, but that's because they have fns that are callbacks through a C library with only "self" as the available context)
+
+1762961567
+bblack!~bblack@wikimedia/bblack-WMF
+the ideal zig zen state is that allocators are passed down the call chain explicitly, reaching all the way to the actual thing that's going to need to do real allocating at that moment, rather than storing the allocator in a struct and then having a random struct method that doesn't take an allocator parameter invoke an allocator when it needs one.
+
+1762962067
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I break the pattern in `narser.NixArchive`, `narser.NixArchive.UnpackIterator`, and `z9.Session` :p
+
+1762962196
+clevor!sid649024@id-649024.hampstead.irccloud.com
+The last two would be relatively simple as `UnpackIterator` only uses a single `ArrayList`, and I am rewriting `z9.Session` anyway.
+
+1762968760
+lrvick!1002@2a01:4f8:141:1272::2
+I was able to force zig to build by removing AMDGPU from this list: https://github.com/ziglang/zig/blob/master/cmake/Findllvm.cmake#L86 however it dies with lots of missing symbol errors still
+
+1762968784
+lrvick!1002@2a01:4f8:141:1272::2
+so guess I have to patch out all references to AMDGPU in the zig tree because it actually is a hard dependency. Fun...
+
+1762970726
+lrvick!1002@2a01:4f8:141:1272::2
+Okay so went through the zig tree trying to remove every hardcoded reference to AMDGCN/AMDGCU and my god this patch is massive: https://termbin.com/ey62
+
+1762970737
+lrvick!1002@2a01:4f8:141:1272::2
+Any suggestions for a less terrible way to do this are welcome
+
+1762970812
+grayhatter!~grayhatte@user/grayhatter
+lrvick: if you haven't I'd join the zulip server, and post the question there. If you're doing it to add support for a distro, not only will a core dev be better able to answer that question. They'd probably be able to help upstream that patch so that you don't have to maintain it downstream
+
+1762971007
+lrvick!1002@2a01:4f8:141:1272::2
+zulip server? TIL
+
+1762971010
+lrvick!1002@2a01:4f8:141:1272::2
+ACTION searches
+
+1762971056
+grayhatter!~grayhatte@user/grayhatter
+lrvick: https://zsf.zulipchat.com/
+
+1762971961
+lrvick!1002@2a01:4f8:141:1272::2
+Posted. Thanks
+
+1762980777
+clevor!sid649024@id-649024.hampstead.irccloud.com
+For a filesystem abstraction, would it be okay to pass a parent Io as a parameter and copy the non-filesystem functions over to a new vtable?
+
+1762981134
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My intuition says no :p
+
