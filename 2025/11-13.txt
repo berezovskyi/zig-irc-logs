@@ -1,0 +1,100 @@
+1762997867
+torque!~tachyon@user/torque
+<bblack> generally speaking, for a lot of common cases, it's an anti-pattern to store an allocator in a data structure
+
+1762997884
+torque!~tachyon@user/torque
+the only case I really disagree with this is using arena allocators to bulk-manage lifetimes
+
+1762997907
+torque!~tachyon@user/torque
+I've found that usually arena allocators work best when tied to the lifetime of a particular object
+
+1762997972
+torque!~tachyon@user/torque
+I would agree that storing most other types of allocators is an anti-pattern, though
+
+1763001025
+grayhatter!~grayhatte@user/grayhatter
+I wouldn't call it an anti-pattern, I'd call it poorly optimized 
+
+1763001044
+grayhatter!~grayhatte@user/grayhatter
+and poorly refined style
+
+1763001064
+grayhatter!~grayhatte@user/grayhatter
+it's not wrong, it's just lazy, but not the good kind of lazy, the kind that results in worse code
+
+1763001853
+torque!~tachyon@user/torque
+that's kind of the definition of an antipattern to me
+
+1763024815
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Previously I've been using struct fields for this, but if I want to change them to methods on a struct I have to mark all those functions `extern` right? The idea is I have a struct whose runtime implementation is provided by the caller of my library, so the method prototypes on the struct that I define are purely for an "interface"
+
+1763025257
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Another semi-related question, can one provide an implementation for a function in a decl literal? I have a pattern already which sets fields, but I don't know if you can provide an implementation (akin to a default field value) in a decl literal
+
+1763025388
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+I'll whip up a small concrete example in godbolt to make this clearer
+
+1763025901
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Here's a 30 line example of what I mean: https://godbolt.org/z/xe7Pceod4
+
+1763042761
+palanix!~palanix@dynamic-077-179-230-061.77.179.pool.telefonica.de
+tsujp: you either have to use comptime magic or create a vtable
+
+1763042776
+palanix!~palanix@dynamic-077-179-230-061.77.179.pool.telefonica.de
+i would recommend a vtable to avoid ballooning the executable size
+
+1763042843
+bblack!~bblack@wikimedia/bblack-WMF
+^ I've recently realized that over-abusing comptime can really do that :)
+
+1763042904
+bblack!~bblack@wikimedia/bblack-WMF
+I wrote some parser-related stuff that used comptime strings as "error message fragments", so it could ++ more error message context as it went deeper in the parse and then spit out a complete and useful error message.
+
+1763042908
+bblack!~bblack@wikimedia/bblack-WMF
+so bloaty, bad idea :)
+
+1763043006
+bblack!~bblack@wikimedia/bblack-WMF
+(with formatted args to boot!)
+
+1763043049
+bblack!~bblack@wikimedia/bblack-WMF
+basically the last two args of every function look like: ", comptime efmt: []const u8, eargs: anytype)"
+
+1763043087
+bblack!~bblack@wikimedia/bblack-WMF
+and then that function calls the next deeper one with: ..., efmt ++ "more {s} context", eargs ++ .{ x });
+
+1763043099
+bblack!~bblack@wikimedia/bblack-WMF
+it's so bad :)
+
+1763043117
+palanix!~palanix@dynamic-077-179-230-061.77.179.pool.telefonica.de
+tsujp: also you can't use extern functions for that. This is because extern functions are just a declaration and then fulfilled by the ~linker~
+
+1763043615
+bblack!~bblack@wikimedia/bblack-WMF
+(and at the outermost layer, random application code calls into the parser funcs with its own initial custom context).  Just checking via strings on an executable, one of my "parse a simple value" functions in that parser has 471 variants in the executable :P
+
+1763050038
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://zigbin.io/cbddea
+
+1763059319
+torque!~tachyon@user/torque
+rather than marking them "extern" they would be marked as "export", which may have just been some terminology confusion
+
