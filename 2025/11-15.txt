@@ -1,0 +1,140 @@
+1763238633
+grayhatter!~grayhatte@user/grayhatter
+anyone know why I'm still getting program exit with `error(Verse): SIGINT received` when I've deleted this line?
+
+1763239432
+grayhatter!~grayhatte@user/grayhatter
+oh, zombie stuck in the background... I hate that
+
+1763242960
+reykjalin!7e28cf3a41@user/reykjalin
+is it possible to only have a public member in a struct if a comptime expression returns true? What I'm trying to do is `comptime if (builtin.os.tag == .macos) pub const macos_specific_thing = 0xf00;`. That doesn't work though
+
+1763243031
+reykjalin!7e28cf3a41@user/reykjalin
+The alternative, I suppose, would be something like `pub const macs_specific_thing = comptime if (builtin.os.tag == .macos) 0xf00 else undefined;`, but it feels bad to leave an `undefined` member on there. I'd prefer if it just didn't exist.
+
+1763243289
+jack__d!~jack__d@pool-71-127-206-84.nwrknj.fios.verizon.net
+debate time: (1) `fn (io, alloc)`, (2) `fn (alloc, io)`?
+
+1763243308
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+reykjalin: you can make the member @compileError(...)
+
+1763243309
+reykjalin!7e28cf3a41@user/reykjalin
+imo: io first, then alloc
+
+1763243315
+grayhatter!~grayhatte@user/grayhatter
+jack__d: 2
+
+1763243321
+reykjalin!7e28cf3a41@user/reykjalin
+oooh nice Gliptic, I like that, thanks!
+
+1763243327
+jack__d!~jack__d@pool-71-127-206-84.nwrknj.fios.verizon.net
+reykjalin wdym
+
+1763243334
+grayhatter!~grayhatte@user/grayhatter
+I have (...., a, io) all over the place
+
+1763243347
+jack__d!~jack__d@pool-71-127-206-84.nwrknj.fios.verizon.net
+oh grayhatter args befor (a, io) is insane
+
+1763243356
+reykjalin!7e28cf3a41@user/reykjalin
+jack__d: I mean (1): fn (io, alloc)
+
+1763243390
+grayhatter!~grayhatte@user/grayhatter
+reykjalin: better to add padding if you can, but if you can't Struct = if (comptime) struct {} else struct {}
+
+1763243413
+grayhatter!~grayhatte@user/grayhatter
+or, struct { field: if (comptime) Type else void, };
+
+1763243429
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's a pub const, not a field
+
+1763243430
+reykjalin!7e28cf3a41@user/reykjalin
+Gliptic: actually I'm realizing that won't work. Can't return a compile error when building on non-macos systems
+
+1763243446
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+reykjalin: so you have code there that uses the member?
+
+1763243451
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how is that supposed to work
+
+1763243462
+reykjalin!7e28cf3a41@user/reykjalin
+hmmm actually yeah, you're right. I guess it won't be compiled in if it's never used? Nice
+
+1763243468
+reykjalin!7e28cf3a41@user/reykjalin
+ok yeah, should be fine
+
+1763243469
+grayhatter!~grayhatte@user/grayhatter
+reykjalin: pub const inside a struct that's never referenced is deleted
+
+1763243481
+grayhatter!~grayhatte@user/grayhatter
+there's no need to delete a macos pub const 
+
+1763243528
+grayhatter!~grayhatte@user/grayhatter
+Gliptic: is also right, @compileError() is better than undefined in that case
+
+1763243564
+grayhatter!~grayhatte@user/grayhatter
+jack__d: args before a, io is all over std lib
+
+1763243590
+reykjalin!7e28cf3a41@user/reykjalin
+yeah, I like the compile time error
+
+1763243597
+reykjalin!7e28cf3a41@user/reykjalin
+thank you all!
+
+1763243600
+jack__d!~jack__d@pool-71-127-206-84.nwrknj.fios.verizon.net
+grayhatter: interesting
+
+1763243650
+grayhatter!~grayhatte@user/grayhatter
+and fn (self: *Self, meaningful: usize, flavor: SomeEnum, a: Allocator, io: Io) orders args by significance, where things that matter more than the "calling convention" is read first
+
+1763243698
+grayhatter!~grayhatte@user/grayhatter
+otherwise you might expect to see fn (a: Allocator, io, Io, self: *Self, data: Data)
+
+1763243759
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the allocator is often first though, like in ArrayList methods
+
+1763243771
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+would be nice if it were standardized
+
+1763243797
+grayhatter!~grayhatte@user/grayhatter
+I like allocator first, because I'm much more likely to want to, and be able to delete Io, over the alloc
+
+1763243888
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I mean before the other args, not just before io
+
+1763243945
+jack__d!~jack__d@pool-71-127-206-84.nwrknj.fios.verizon.net
+I feel like with DI patterns I often read interfaces from right to left, and keep the repetitive DI in the first few args, but I appreciate the descending order of importance style, too.
+
