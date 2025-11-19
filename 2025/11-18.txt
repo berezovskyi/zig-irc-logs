@@ -1,0 +1,524 @@
+1763426855
+torque!~tachyon@user/torque
+logging does IO so it doesn't really seem all that insane for logging functions to take an Io parameter
+
+1763427399
+grayhatter!~grayhatte@user/grayhatter
+I don't want a non-deterministic logger
+
+1763427515
+torque!~tachyon@user/torque
+I sure hope Io isn't implicitly nondeterministic
+
+1763427529
+grayhatter!~grayhatte@user/grayhatter
+I also log unknown git commit header lines, I don't feel like it improves the code to pass an Io into my parsing code, just so I can ignore the log.debug call because I have .info selected currently
+
+1763427590
+grayhatter!~grayhatte@user/grayhatter
+torque: if execution order isn't guarenteed, that's non-deterministic
+
+1763427667
+torque!~tachyon@user/torque
+that means that anything that writes with io is completely fucked??? I don't get it, io has to be capable of being ordered so why would logging using io suddenly make it not that
+
+1763427815
+grayhatter!~grayhatte@user/grayhatter
+I'm imagining two async calls, one calls into log.err, which instead of blocking triggers the other thread to run, but that would block too, so the log message writes to stdout, and is flushed. but that exact same thing happens but this time, instead of blocking it writes and flushes directly
+
+1763427923
+grayhatter!~grayhatte@user/grayhatter
+the example I'm imagining is very contrived, and worst case, it would give control to owner/creator of the Io... and thinking about it from that frame, I do think it's less likely to actually be a problem
+
+1763428090
+grayhatter!~grayhatte@user/grayhatter
+I've been working with untrustworthy SWEs too long... I keep defaulting to "you can't trust people with powerful things"
+
+1763428133
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What do they end up doing with all that power?
+
+1763428191
+grayhatter!~grayhatte@user/grayhatter
+logging both server secrets, and private user data/secrets to unprotected logging sinks, usually
+
+1763428247
+torque!~tachyon@user/torque
+I mean I'm pretty sure current logging uses a lock to synchronize calls across threads, which a version using Io could easily do as well
+
+1763428248
+grayhatter!~grayhatte@user/grayhatter
+introducing 2fa bypass defects
+
+1763428256
+torque!~tachyon@user/torque
+that's on the logging implementation, not the Io implementatino
+
+1763428305
+grayhatter!~grayhatte@user/grayhatter
+torque: yeah, logging holding the stderr mutex is why I assumed it'd try to ctx switch... but you could still do that correctly
+
+1763428376
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Surely that would be solved by Zig's logger? If necessary, you could make people who want to build it add `-Dlog-debug-info` just in case.
+
+1763428433
+grayhatter!~grayhatte@user/grayhatter
+I think I was wrongly assuming it would become async, but that's not actually a reqirement even if it's just what everyone does
+
+1763428484
+grayhatter!~grayhatte@user/grayhatter
+in my defense... I'm still wating for the advil to work :D
+
+1763457132
+przmk!~przmk@user/przmk
+Any news on that zig book that came out recently? I'm still confused whether the author lied about AI or not...
+
+1763457459
+Affliction!affliction@idlerpg/player/affliction
+Read a few chapters, it reads weird to me, AI or not. I'd probably not recommend it, personally.
+
+1763467171
+przmk!~przmk@user/przmk
+Too bad... if it truly is AI, I wonder what the reasoning behind the deception for such a niche topic
+
+1763467545
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the more glaring problem is it's not really written with care, despite claiming the opposite
+
+1763467607
+squeek502!~squeek502@user/squeek502
+przmk, https://github.com/zigbook/zigbook/issues/25 offers some insight into the person behind it
+
+1763467677
+squeek502!~squeek502@user/squeek502
+(see the added label and the description of the label)
+
+1763467745
+squeek502!~squeek502@user/squeek502
+here's my take fwiw: https://gist.github.com/squeek502/c5269c03e8db71ac9d28d643d2680e8a
+
+1763467752
+przmk!~przmk@user/przmk
+lmao
+
+1763467835
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+id much rather invest my time into https://pedropark99.github.io/zig-book/
+
+1763467946
+Earnestly!~earnest@user/earnestly
+The future is going to be great
+
+1763468062
+Earnestly!~earnest@user/earnestly
+A kind of de facto dead internet because it will be impossible to believe otherwise
+
+1763468142
+JetpackJackson!739e7f3d14@user/JetpackJackson
+Wow im glad I never read the book then
+
+1763468288
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+id gloss over a lot of the criticism and offer to contribute if the author seemed like they care and want to make sth useful, but they instead seem to be fixated on this weird technical piece of writing that underneath doesn't even know who it's targeted towards
+
+1763468327
+Earnestly!~earnest@user/earnestly
+I wouldn't claim zigbook is "AI" personally. It's a bit of fresh air compared to the modern practice of whytheluckystiff style cartoon prose but still not nearly as lucid as technical victorian texts
+
+1763468453
+Earnestly!~earnest@user/earnestly
+tranzystorekk: Seems well placed to cater for people who are familiar with programming and logic but want to know how zig expresses the concepts while also justifying using zig to do it
+
+1763468579
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the way it starts off with random needlessly deep dives into things like _start, or decorates a short paragraph with huge, completely uncalled for block diagrams, makes me thing otherwise
+
+1763468580
+Earnestly!~earnest@user/earnestly
+Although I really dislike texts which use "we" and "our". It's usually caused by accidently reversing where the emphasis is placed in a sentence
+
+1763468614
+przmk!~przmk@user/przmk
+Earnestly Yeah, we're already at a point where everything looks suspicious and it's tiring
+
+1763468618
+Earnestly!~earnest@user/earnestly
+tranzystorekk: I like that it starts off with that, while highlighting how low-level programs interact with syscalls, which is precisely what it must do to justify zig
+
+1763468709
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+to me it muddles the whole teaching point, and makes me uncertain who would want to add it to the mental context tracking so early on
+
+1763468757
+Earnestly!~earnest@user/earnestly
+przmk: I agree and once its passed uncanny valley the "don't believe anything on the internet" will become actually real and I'm not sure what the consequences of that will look like
+
+1763468833
+Earnestly!~earnest@user/earnestly
+tranzystorekk: That's why I think this is aiming at people who are already quite familiar with programming in general, knowing managed languages like python or go with passing experience of C. It seems to be attempting to blow off the cobwebs of that earlier knowledge
+
+1763469010
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+that's to me a bit incompatible, sure, you can make use of assuming your readers are experienced with generic programming concepts, but flooding them with overly technical trivias or diagrams that take up half of the page makes me feel like...
+
+1763469063
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+like this is for a test or like im reading a boring documentation confluence written by a senior engineer insecure about why they work at the place
+
+1763469081
+Earnestly!~earnest@user/earnestly
+For low level languages, it's not really trivial. All of these details come to the surface
+
+1763469087
+Earnestly!~earnest@user/earnestly
+Or lower level anyway
+
+1763469127
+Earnestly!~earnest@user/earnestly
+I don't mind diagrams, some people can read EBNF while others prefer railway diagrams. Both are nice
+
+1763469195
+Earnestly!~earnest@user/earnestly
+But przmk is right, anyone even remotely using adult language or even attempting to write clearly is going to be immediately suspect, which is wild
+
+1763469216
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+sure, though i wouldnt want to treat all ziguanas as low-level wizards, some deep-dive topics are better suited in separate writing instead of in what seems like entry-level book
+
+1763469238
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+and especially the way and order they presented in here
+
+1763469297
+Earnestly!~earnest@user/earnestly
+Still it may be AI, that's kind of the point. Who knows anymore. Maybe a consequence of the *real* "don't believe anything" will force people to actually engage with verifying the information (which is why it's so tiring lol)
+
+1763469352
+przmk!~przmk@user/przmk
+There's now way on earth that most people will actually start to verify the information lol
+
+1763469384
+Earnestly!~earnest@user/earnestly
+But even the various places people accuse this person of AI usage don't make sense. "Why did you use a load of print statements?", but he uses print statements like this everywhere
+
+1763469471
+squeek502!~squeek502@user/squeek502
+Earnestly, if you want some more concrete examples that point to AI, this section talks about `std.mem.terminated` which does not exist and has never existed: https://www.zigbook.net/chapters/51__mem-and-meta-utilities#caveats-alternatives-edge-cases
+
+1763469534
+squeek502!~squeek502@user/squeek502
+this section says the diagram explains how `build.zig`/`std.Build` work but the diagram is showing bootstrapping the Zig compiler via CMake: https://www.zigbook.net/chapters/26__build-system-advanced-topics#_how_the_build_system_executes
+
+1763469607
+squeek502!~squeek502@user/squeek502
+later in that build system chapter it talks about "workspaces" which aren't a concept in the zig build system
+
+1763469618
+Earnestly!~earnest@user/earnestly
+squeek502: Yeah that is very strange, the kind of error that is both obvious but also requires a lot of effort to produce
+
+1763469640
+squeek502!~squeek502@user/squeek502
+it also focuses on a very bizarre "module-graph.txt" file that doesn't make sense
+
+1763469746
+Earnestly!~earnest@user/earnestly
+That .terminated is bugging me because I vaguely remember something like it
+
+1763469766
+Earnestly!~earnest@user/earnestly
+When zig was very new that is
+
+1763469777
+squeek502!~squeek502@user/squeek502
+there's `span` and `sliceTo`, i think maybe `spanZ` at one point?
+
+1763469827
+Earnestly!~earnest@user/earnestly
+I just remember the vague context of it being about "sentinel delimited strings", and how it differentiated itself from C by making the NUL termination customisable
+
+1763469910
+squeek502!~squeek502@user/squeek502
+do you just mean sentinel-terminated slices? or are you thinking of a standard library function?
+
+1763470032
+Earnestly!~earnest@user/earnestly
+It could be either now, I can't remember
+
+1763470040
+Earnestly!~earnest@user/earnestly
+It may have been syntax
+
+1763470102
+squeek502!~squeek502@user/squeek502
+sentinel termination is still very much a thing: https://ziglang.org/documentation/master/#Sentinel-Terminated-Arrays https://ziglang.org/documentation/master/#Sentinel-Terminated-Pointers https://ziglang.org/documentation/master/#Sentinel-Terminated-Slices
+
+1763470169
+bblack!~bblack@wikimedia/bblack-WMF
+backscrolling a bit but: logging is definitely I/O in the proper sense, and needs to be thought about that way, and thus should eventually get an std.Io param somehow (probably via something like std_options though, I'd imagine, rather than per-log-call? but I'm really not sure on that part)
+
+1763470224
+Earnestly!~earnest@user/earnestly
+That's probably what I'm thinking of
+
+1763470228
+bblack!~bblack@wikimedia/bblack-WMF
+people have a habit of not thinking of logging as I/O traditionally, but if you're really trying to make sure you're not blocking-on-I/O by doing all these fancy async things, and then your log("foo") function either writes to disk, or potentially even writes to a network socket, it definitely is I/O and should be part of the I/O coniderations of the flow / blocking of your code.
+
+1763470299
+bblack!~bblack@wikimedia/bblack-WMF
+(and if that makes you squirm because, oh no, logging in the midst of a tight piece of network code might be costly... well, it always was potentially, just sometimes people choose to ignore it)
+
+1763470313
+Earnestly!~earnest@user/earnestly
+squeek502: The graph is quite interesting. Perhaps a good metric is any kind of "obviously wrong" content that would have taken a few hours to create cannot be regarded as just a mistake/accident
+
+1763470365
+Earnestly!~earnest@user/earnestly
+bblack: Reminds me of the old trick of having gnu true return false by writing its --help output to /dev/full
+
+1763470391
+squeek502!~squeek502@user/squeek502
+Earnestly: yeah i don't see that as a mistake a human could make
+
+1763470465
+Earnestly!~earnest@user/earnestly
+(I say a few hours, the graph may have not taken that long, but the research and thought that goes into it as well)
+
+1763474587
+hadronized!~hadronize@2001:41d0:a:fe76::1
+bblack: Haskell is a good teacher on that logging thing
+
+1763474602
+hadronized!~hadronize@2001:41d0:a:fe76::1
+since logging requires IO, you at least needs MonadIO, or LoggerT, or something like that
+
+1763474620
+hadronized!~hadronize@2001:41d0:a:fe76::1
+some people might say it’s overkill though, but I haven’t made up my mind
+
+1763475514
+toms!~tom@pogostick.net
+Haskell also has "trace" that does not need IO: https://hackage.haskell.org/package/base-4.21.0.0/docs/Debug-Trace.html
+
+1763480890
+bblack!~bblack@wikimedia/bblack-WMF
+grayhatter: "because posix as it is now isn't long for the repo." ... do you have a ref on what the plan is there? are we ditching e.g. std.posix.recvmsg() and friends for std.Io interfaces completely?  Given there isn't a 1:1 mapping there, I'm not super-thrilled about that idea.
+
+1763480957
+bblack!~bblack@wikimedia/bblack-WMF
+don't get me wrong: most of the time for most things, the std.Io abstraction is better.  But there will be cases where you just want to call the OS interfaces directly.  There's always std.os for direct calls, but it would be annoying to not have the convenience of calling a common posix function that just more or less works the same across all the posixy targets at that point.
+
+1763481046
+bblack!~bblack@wikimedia/bblack-WMF
+I'd be littering code in a traditional *nixy project with either my own version of today's std.posix wrappers, or putting switch(native_os) clauses around all the calls or whatever
+
+1763481118
+bblack!~bblack@wikimedia/bblack-WMF
+std.Io, at least so far, is a very opinionated interface.  you just call netReceive(), and it decides which OS interfaces to use and how.  that's not going to work for every case, just all the common ones.
+
+1763481183
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I thought std.posix was here to stay.
+
+1763481215
+bblack!~bblack@wikimedia/bblack-WMF
+I don't know, I was referring to an offhand comment gh made in a PR: https://github.com/ziglang/zig/pull/25946#discussion_r2535455694
+
+1763481445
+bblack!~bblack@wikimedia/bblack-WMF
+while I'm relatedly-rambling, the current std.Io.Threaded.netReceive() has a comment: "recvmmsg is useless, here's why: [timeout bug](https://bugzilla.kernel.org/show_bug.cgi?id=75371)" [and another issue, too]
+
+1763481508
+bblack!~bblack@wikimedia/bblack-WMF
+I don't think the complaint in that linked bug entirely gets the picture.  the MSG_WAITFORONE flag being set or not changes things.
+
+1763481598
+bblack!~bblack@wikimedia/bblack-WMF
+MSG_WAITFORONE is basically an mmsg flag that says "if multiple messages are ready, return them immediately, otherwise block according to timeout behaviors until one arrives"
+
+1763481617
+bblack!~bblack@wikimedia/bblack-WMF
+roughly, anyways.  my memory of all these details needs refreshing
+
+1763481657
+bblack!~bblack@wikimedia/bblack-WMF
+(apparently I invented that flag 15 years ago, you'd think I'd remember the details better!) https://lwn.net/Articles/380692/
+
+1763481804
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Heh
+
+1763482137
+bblack!~bblack@wikimedia/bblack-WMF
+I don't that it necessarily makes recvmmsg() useful for netReceive() in the net of all things, though.  mostly because netReceive() probably doesn't want to assume/carry some socket-level timeout state via SO_RCVTIMEO or whatever
+
+1763482348
+bblack!~bblack@wikimedia/bblack-WMF
+I think the rational view is that SO_RCVTIMEO specifies the per-packet timeout, and recvmmsg timeout specifies an overall timeout for receiving a set of up to N messages (which may amount to a total timeout of the combination of the two durations).  and with WAITFORONE, it's not going to stall for timeouts waiting to fill more packets into the buffer it there's one or more ready to go.
+
+1763482436
+bblack!~bblack@wikimedia/bblack-WMF
+s/it there's/if there's/
+
+1763486342
+rvrb!~rvrb@156.146.51.230
+I don’t know that anyone is saying logging isn’t IO, just questioning how you approach it given the current goals of the std.io interface. One of its major designs is that it compiles away log statements you don’t use. If you log in a function that otherwise doesn’t need IO, you’re signaling that the function requires IO, even though in
+
+1763486342
+rvrb!~rvrb@156.146.51.230
+release it probably doesn’t
+
+1763486356
+rvrb!~rvrb@156.146.51.230
+std.log interface*
+
+1763486380
+rvrb!~rvrb@156.146.51.230
+assuming you do have to pass it to the logging functions
+
+1763486424
+rvrb!~rvrb@156.146.51.230
+so it’s a just a place with tradeoffs I’m curious about the direction of 
+
+1763486722
+grayhatter!~grayhatte@user/grayhatter
+bblack: I just updated my dns server to use https://ziglang.org/documentation/master/std/#std.Io.net.Socket.receive
+
+1763486739
+grayhatter!~grayhatte@user/grayhatter
+does that api not work for you?
+
+1763486922
+bblack!~bblack@wikimedia/bblack-WMF
+well, for starters, how does that work when you do want a timeout on that receive?
+
+1763486966
+bblack!~bblack@wikimedia/bblack-WMF
+you do an async sleep to wait on as well, then cancel the receive future?
+
+1763487009
+grayhatter!~grayhatte@user/grayhatter
+bblack: the context was ark said something along the lines that he wasn't happy with the posix api/namespace, and wanted to do something different. I've been operating under the assumption that, "something different", was Io... I also doubt that posix is actually going away, that would be only *slightly* less insane that os.linux going away. That said; IMO, posix should be deeper than it is. Posix is
+
+1763487011
+grayhatter!~grayhatte@user/grayhatter
+a common API that most OS try to provide. It's not even a good one, I don't want to wrap my linux calls with posix, I want my linux and bsd APIs to be able to share some implementation code, which could be called posix
+
+1763487032
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/std/#std.Io.net.Socket.receiveTimeout
+
+1763487064
+grayhatter!~grayhatte@user/grayhatter
+or, https://ziglang.org/documentation/master/std/#std.os.linux.socket
+
+1763487067
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I'm more or less with you on that (re: what std.posix should be).  I'd prefer less-opinionated about which errnos are invalid there, too
+
+1763487080
+grayhatter!~grayhatte@user/grayhatter
+posix isn't good, it was just first
+
+1763487125
+grayhatter!~grayhatte@user/grayhatter
+contrasted with everything is a file, which is "good"
+
+1763487155
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I guess it's harder for me to see it all in the Threaded impl
+
+1763487181
+bblack!~bblack@wikimedia/bblack-WMF
+Threaded is just going to end up doing a thread per concurrent network socket operation and block in poll() in each thread basically
+
+1763487205
+grayhatter!~grayhatte@user/grayhatter
+except that might be the worst way to describe the part of that statement that is the actual good part, which is (given simple APIs are better) everything that can be modeled by a simple read, write, seek, should be exposed using only that
+
+1763487226
+bblack!~bblack@wikimedia/bblack-WMF
+yes, I get that in theory
+
+1763487238
+grayhatter!~grayhatte@user/grayhatter
+or: do not add complexity lower in the stack
+
+1763487250
+grayhatter!~grayhatte@user/grayhatter
+bblack: that's basically what Io.reader/writer is
+
+1763487296
+bblack!~bblack@wikimedia/bblack-WMF
+but in practice, I'm at the very least going to care which Io impls I'm using where and how.  e.g. I might spin up a fixed N threads and want each to have their own thread-local std.Io.Evented instance (which might be backed by an IoUring, or Kqueue, or perhaps even a poll()-based on for posixy portability?)
+
+1763487312
+grayhatter!~grayhatte@user/grayhatter
+I agree with, and hold your sentiment too... the Io.async interface is... what's the opposite of ergonomic?
+
+1763487320
+bblack!~bblack@wikimedia/bblack-WMF
+yeah
+
+1763487344
+bblack!~bblack@wikimedia/bblack-WMF
+andI'm going to have to refactor my current stuff that looks like in-place eventloops or callback-based eventloops to be more async/futures style, but that can be done.
+
+1763487409
+grayhatter!~grayhatte@user/grayhatter
+I'm considering rewrtiting my whole DNS server, because I did, what sounds like exactly what you did. Which is write it designed for a posix world
+
+1763487419
+bblack!~bblack@wikimedia/bblack-WMF
+but I suspect there will always be edge cases where someone just needs to call the posix funcs and do things manually, and that's ok, too.  If nothing else, look at it from the POV of porting historical C software without breaking existing tests or user-relied behaviors or whatever.  Step 1 is more or less the language-level porting.  You're gonna port those recvmsg() C calls to std.posix.recvmsg().
+
+1763487444
+grayhatter!~grayhatte@user/grayhatter
+and io.async is very incompatable with that
+
+1763487450
+bblack!~bblack@wikimedia/bblack-WMF
+step 2 is start really ziggifying your zig code in terms of types and datastructures and layout, and then maybe step 3 is really do a deeper rewrite of important parts to std.Io
+
+1763487473
+bblack!~bblack@wikimedia/bblack-WMF
+(and stop using std.posix and other such crutches)
+
+1763487531
+grayhatter!~grayhatte@user/grayhatter
+posix "getting dropped" for Io will make it **much** harder to participate in the C ecosystem
+
+1763487540
+bblack!~bblack@wikimedia/bblack-WMF
+I don't have a cogent argument yet, and it's kind of hard to make one until more of std.Io impls are fleshed out.  But I think there will be edge cases where someone might legitimately say "I'm still not going to choose std.Io for this one special tightly-bound I/O thread.  I'm going to drop down to std.os.linux.IoUring, or even just down to normal std.posix calls, because *whatever*.
+
+1763487575
+bblack!~bblack@wikimedia/bblack-WMF
+like, I really needed this one special behavior with this special set of socket options set, and this special flag to sendmsg(), etc... and the std.Io abstraction just doesn't represent all possible use-cases.
+
+1763487615
+bblack!~bblack@wikimedia/bblack-WMF
+which I think is a fine outcome, so long as std.Io covers the bulk use-cases for most people most of the time, and there's still an escape hatch to ergonomically go a layer lower and be manual about it.
+
+1763487687
+grayhatter!~grayhatte@user/grayhatter
+> "I don't have a cogent argument yet" --- I was just thinking, I'd love to have a longer conversation about this with you... I was considering that, because I think we both see narrow slices of a significant design weakness of Io, in it's current stat. One that I don't feel I can articulate well enough to make suggestions that I want adopted... But still would love to provide some kind of, something.
+
+1763487712
+grayhatter!~grayhatte@user/grayhatter
+because I feel that the API can be **much** better than it is at this (early) moment, and want it to move in a more ergonomic direction
+
+1763487745
+grayhatter!~grayhatte@user/grayhatter
+I disagree with that
+
+1763487783
+grayhatter!~grayhatte@user/grayhatter
+zig want to have one obvious way to do things. If Io works most of the time, but there's still this huge slice where it's the wrong choice, there's no longer one obivous way
+
+1763487799
+grayhatter!~grayhatte@user/grayhatter
+and don't pick wrong, because you'll have to basicall start over and rewrite everything if you guess wrong
+
