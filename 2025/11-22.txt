@@ -1,0 +1,640 @@
+1763769771
+andrewrk!~andrewrk@mail.ziglang.org
+anyway I suggest to try this diff and the output will be helpful:
+
+1763769801
+andrewrk!~andrewrk@mail.ziglang.org
+https://clbin.com/vxrar
+
+1763769817
+andrewrk!~andrewrk@mail.ziglang.org
+unfortunately that does require a rebuild 
+
+1763769980
+grayhatter!~grayhatte@user/grayhatter
+andrewrk: is that patch from zig master?
+
+1763770169
+grayhatter!~grayhatte@user/grayhatter
+I'd be surprised if raylib_zig would be happy on 0.16.0-dev
+
+1763770195
+grayhatter!~grayhatte@user/grayhatter
+is there no way to add /usr/lib/x86_64-linux-gnu/ from the build.zig?
+
+1763770281
+grayhatter!~grayhatte@user/grayhatter
+I take that back, it seems perfectly happy :D
+
+1763770730
+Krajina!~Krajina@user/Krajina
+I'm looking in ~/zig-x86-linux-0.15.2/ which is where I downloaded Zig to, and I can't find where to apply the change... 
+
+1763770811
+grayhatter!~grayhatte@user/grayhatter
+Krajina: on that version, that line is 3947
+
+1763770915
+Krajina!~Krajina@user/Krajina
+in which file though?  My lib/std/Build.zig is only 2703 lines long
+
+1763770962
+grayhatter!~grayhatte@user/grayhatter
+did you download the source, or just the binary?
+
+1763770974
+andrewrk!~andrewrk@mail.ziglang.org
+unfortunately that patch requires a rebuild
+
+1763770997
+Krajina!~Krajina@user/Krajina
+Oh I need to twiddle the flag and then build it from source, that makes sense
+
+1763770998
+grayhatter!~grayhatte@user/grayhatter
+that line is in src/main.zig, so you'll have to rebuild the compiler itself
+
+1763771012
+andrewrk!~andrewrk@mail.ziglang.org
+but you could probably test the native paths detect function without rebuilding the compiler with some creativity
+
+1763771304
+Krajina!~Krajina@user/Krajina
+how do i rebuild the compiler then?  i've downloaded the source and made that change, but just running zig build in the top level gives a weird error about usize: christopher@Frankenstein:~/Downloads/zig-0.15.2$ zig build
+
+1763771304
+Krajina!~Krajina@user/Krajina
+build.zig:548:10: error: type 'usize' cannot represent integer value '6165571174'
+
+1763771345
+grayhatter!~grayhatte@user/grayhatter
+I wonder if target is set correctly
+
+1763771355
+grayhatter!~grayhatte@user/grayhatter
+I'm getting x32 vibes
+
+1763771655
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/16733
+
+1763771884
+grayhatter!~grayhatte@user/grayhatter
+Krajina: uname -a
+
+1763771898
+grayhatter!~grayhatte@user/grayhatter
+and have you tried `zig build -Dtarget=x86_64-linux-gnu` yet?
+
+1763772007
+Krajina!~Krajina@user/Krajina
+the target flag makes no difference, also uname -a gives this: Linux Frankenstein 5.15.0-161-generic #171-Ubuntu SMP Sat Oct 11 08:17:01 UTC 2025 x86_64 x86_64 x86_64 GNU/Linux
+
+1763772371
+andrewrk!~andrewrk@mail.ziglang.org
+I think it would diagnose the problem if you made a simple script that called std.zig.system.NativePaths.detect and then one by one try to openDir on the results, and display the result of openDir
+
+1763772389
+andrewrk!~andrewrk@mail.ziglang.org
+for this you would not need to rebuild the compiler, you could just `zig run foo.zig`
+
+1763772427
+andrewrk!~andrewrk@mail.ziglang.org
+and by the looks of that issue, it would help a lot of people who had similar issues
+
+1763775214
+Krajina!~Krajina@user/Krajina
+ok that was fun, here is the code and the output: https://pastebin.com/TC4h3ksb
+
+1763780429
+andrewrk!~andrewrk@mail.ziglang.org
+Krajina: nice, so it did open /usr/lib/x86_64-linux-gnu. that leaves the mystery of why it didn't show up in search paths remaining
+
+1763783289
+sunflr!~sunflr@user/sunflr
+guys how do i turn f32 into i32 at runtime? I'm just trying to add two variables together and so far haven't found a proper solution
+
+1763783392
+grayhatter!~grayhatte@user/grayhatter
+sunflr: the functions use the word from
+
+1763783407
+grayhatter!~grayhatte@user/grayhatter
+open https://ziglang.org/documentation/master/ ctrl + f `fromFloat`
+
+1763783412
+grayhatter!~grayhatte@user/grayhatter
+https://ziglang.org/documentation/master/#intFromFloat
+
+1763785872
+sunflr!~sunflr@user/sunflr
+grayhatter: it says connection time out
+
+1763785983
+grayhatter!~grayhatte@user/grayhatter
+sunflr: ahh, right, you can run `zig std` to get a local instant of the docs
+
+1763785990
+grayhatter!~grayhatte@user/grayhatter
+but until then
+
+1763786012
+grayhatter!~grayhatte@user/grayhatter
+literally `const the_int: u32 = @intFromFloat(the_float);`
+
+1763786178
+sunflr!~sunflr@user/sunflr
+can i do it like int + @intFromFloat(float)
+
+1763786208
+grayhatter!~grayhatte@user/grayhatter
+sunflr: maybe? you might need an extra @as(u32, @intFromFloat()) but I don't remember off the top of my head
+
+1763786230
+grayhatter!~grayhatte@user/grayhatter
+most of the @builtinFn need explicit types
+
+1763786262
+sunflr!~sunflr@user/sunflr
+grayhatter: yeah i tried with @as and it says "types must be comptime-known"
+
+1763786325
+grayhatter!~grayhatte@user/grayhatter
+right, @as(u32, thing) did you get it working? or are you stuck on that error?
+
+1763786435
+sunflr!~sunflr@user/sunflr
+i tried @as(i32, @intFromFloat(float)) but it doesn't work
+
+1763786454
+sunflr!~sunflr@user/sunflr
+without @intFromFloat doesn't work either
+
+1763786489
+grayhatter!~grayhatte@user/grayhatter
+you can't get the error "types must be comptime known" from that line
+
+1763786499
+grayhatter!~grayhatte@user/grayhatter
+you're missing something
+
+1763786596
+sunflr!~sunflr@user/sunflr
+hmm i'm trying to turn a float variable from a struct to an int
+
+1763786871
+sunflr!~sunflr@user/sunflr
+maybe problem is i don't know how to work with pointers muck
+
+1763786874
+sunflr!~sunflr@user/sunflr
+much*
+
+1763786975
+grayhatter!~grayhatte@user/grayhatter
+my first guess would be closer to you're not comfortable with reading and understanding compiler errors
+
+1763787023
+grayhatter!~grayhatte@user/grayhatter
+there are a few times where the compiler is very unhelpful, but most of the time, the errors, especially the underline, points directly to the thing that's wrong
+
+1763787070
+grayhatter!~grayhatte@user/grayhatter
+then you just have to figure out if your code is lying to the compiler about what you *want* it to be, or if the compiler is guessing wrong because there's a bug somewhere else
+
+1763787133
+grayhatter!~grayhatte@user/grayhatter
+takes a while to get used to figuring out which it is, but if you don't understand the error, the issue is you've missed some detail from what the code is trying to do
+
+1763787180
+sunflr!~sunflr@user/sunflr
+my code looks like if(self.a + self.b), self.a is i32 and self.b is f32
+
+1763787193
+sunflr!~sunflr@user/sunflr
+this is inside of a method of a struct
+
+1763787241
+grayhatter!~grayhatte@user/grayhatter
+are you still seeing the compiler error about types needing to be comptime known?
+
+1763787546
+sunflr!~sunflr@user/sunflr
+if i replace self.b with @as(i32, @intFromFloat(self.b)) there's an error and two notes: the error underlines @intFromFloat (error: unable to evaluate comptime expression), first note underlines and points at the dot in self.b (note: operation is runtime due to this operand), second note underlines everything under parentheses (note: types must be comptime-known) grayhatter 
+
+1763787588
+sunflr!~sunflr@user/sunflr
+s/under/in
+
+1763787745
+grayhatter!~grayhatte@user/grayhatter
+so, the compiler value in .b (self.b) is runtime, which is probably true, but it's complaining because the compiler requires types to be comptime. So why does the compiler care about types here? does the if statement change the type somehow? Or is there a different reason the compiler is confused about the code running in runtime vs comptime?
+
+1763787829
+grayhatter!~grayhatte@user/grayhatter
+const something: if (some_runtime_eval) type_a else type_b = undefined; isn't allowed because the compiler needs to know the type before it can compile. If it can't compile you can't have any runtime values
+
+1763787899
+grayhatter!~grayhatte@user/grayhatter
+why is the compiler trying to execute @intFromFloat() at comptime, when you want it at runtime?
+
+1763787956
+grayhatter!~grayhatte@user/grayhatter
+(if you ask more questions that give me extra details, or can show me the larger code block, I can maybe be more helpful)
+
+1763788188
+sunflr!~sunflr@user/sunflr
+well the struct definition is outside of the main() function
+
+1763788196
+sunflr!~sunflr@user/sunflr
+maybe that's why?
+
+1763788351
+grayhatter!~grayhatte@user/grayhatter
+is there a chance you wrote b = f32 instead of b: f32?
+
+1763789117
+sunflr!~sunflr@user/sunflr
+nope
+
+1763789189
+sunflr!~sunflr@user/sunflr
+are structs not supposed to be inside functions?
+
+1763789798
+grayhatter!~grayhatte@user/grayhatter
+they can be, but there are more rules when you create a struct inside of a function
+
+1763789834
+grayhatter!~grayhatte@user/grayhatter
+a struct is just a type, and the compire has to know everyhing about the type at compile time so it can reserve the memory space for it
+
+1763789860
+grayhatter!~grayhatte@user/grayhatter
+usually the correct way is to write a function, that returns a type 
+
+1763789889
+grayhatter!~grayhatte@user/grayhatter
+eg fn CustomType(comptime thing: Thing) type { return sturct { you custom struct here }; }
+
+1763789918
+grayhatter!~grayhatte@user/grayhatter
+that way it's easy for both you and the compiler to figure out what you have to know at comptime, and what's allowed to be runtime
+
+1763795524
+sunflr!~sunflr@user/sunflr
+grayhatter: wait i need an allocator to make the program do stuff at runtime right? So if i want that comptime error to be gone i need to allocate something so zig understands that @intFromFloat should be done at runtime
+
+1763795688
+sunflr!~sunflr@user/sunflr
+i think i need to allocate the struct on the heap right?
+
+1763795690
+Affliction!affliction@idlerpg/player/affliction
+You can do plenty of things at runtime without an allocator...
+
+1763795765
+Affliction!affliction@idlerpg/player/affliction
+What, exactly, is the code doing?
+
+1763796481
+sunflr!~sunflr@user/sunflr
+oh i fixed it
+
+1763796539
+sunflr!~sunflr@user/sunflr
+i think i just messed up parentheses or something
+
+1763796560
+sunflr!~sunflr@user/sunflr
+i used || instead of "or" in the if() block
+
+1763796567
+sunflr!~sunflr@user/sunflr
+or statement
+
+1763796672
+sunflr!~sunflr@user/sunflr
+what's the difference between || and or?
+
+1763796691
+sunflr!~sunflr@user/sunflr
+i'd open the doc if i didn't need a vpn
+
+1763796939
+Affliction!affliction@idlerpg/player/affliction
+|| merges error sets, | is a bitwise or between ints, "or" is a logical or between bools
+
+1763797006
+sunflr!~sunflr@user/sunflr
+ok i see, thank you :3
+
+1763797044
+sunflr!~sunflr@user/sunflr
+i think i was just really tired when i was trying to solve the previous error so i couldn't understand what was going on
+
+1763798173
+clevor!sid649024@id-649024.hampstead.irccloud.com
+One thing I would like to see in std.Io.Queue is a deinit that cancels all getters and putters.
+
+1763798657
+sunflr!~sunflr@user/sunflr
+for some reason zig wants me to put a @div* when i try to divide a value from a struct, like apple.size / 2, why's that?
+
+1763799327
+Affliction!affliction@idlerpg/player/affliction
+presumably apple.size is signed?
+
+1763799488
+sunflr!~sunflr@user/sunflr
+oh, yeah that's right, forgot to mention that x3
+
+1763799517
+Affliction!affliction@idlerpg/player/affliction
+Then, you'll need to use one of the @div*() functions, to define how negative numbers get handled
+
+1763799633
+sunflr!~sunflr@user/sunflr
+ok i see. It's specific to signed integers then
+
+1763800227
+sunflr!~sunflr@user/sunflr
+does zig have "inheritance"? I'm basically just following a game dev tutorial that's using cpp and i don't know much about it lol. I translated a class to a struct and it works just fine. In the video it uses inheritance just to copy the player and turn it into a CPU opponent
+
+1763800273
+sunflr!~sunflr@user/sunflr
+i think it's just easier to copy the struct then
+
+1763800279
+ifreund!2940d10f8b@user/ifreund
+no, inheritance not a language feature in Zig
+
+1763800286
+ifreund!2940d10f8b@user/ifreund
+s/not/is not/
+
+1763800306
+sunflr!~sunflr@user/sunflr
+is there a similar thing?
+
+1763800433
+Affliction!affliction@idlerpg/player/affliction
+in this case, where the inheritence tree is only 1 deep, I'd use a tagged union
+
+1763800484
+Affliction!affliction@idlerpg/player/affliction
+superclass in the top level, subclasses within the tagged union. @fieldParentPtr can be useful to access the common vars in the "superclass"
+
+1763800615
+ifreund!2940d10f8b@user/ifreund
+a tagged union is a good option if the number of "subclasses" is fixed/small
+
+1763800629
+ifreund!2940d10f8b@user/ifreund
+one can also use a vtable like std.mem.Allocator for example
+
+1763800701
+Affliction!affliction@idlerpg/player/affliction
+Could even do a bit of both; something like struct Actor { /* common variables */ controller: union { player: PlayerController, ai: AIController } };
+
+1763800711
+Affliction!affliction@idlerpg/player/affliction
+then AIController could itself, use a vtable for customizing behavior
+
+1763800727
+Affliction!affliction@idlerpg/player/affliction
+Though, naturally that would be heavier on indirection at runtime
+
+1763801022
+sunflr!~sunflr@user/sunflr
+what if i need to use methods though? Do i put those in the unions or something?
+
+1763801237
+Affliction!affliction@idlerpg/player/affliction
+pretty much
+
+1763801283
+Affliction!affliction@idlerpg/player/affliction
+each variant of the union will be the new state for each "subclass" and implement its own methods
+
+1763801299
+Affliction!affliction@idlerpg/player/affliction
+naturally the union itself will need to dispatch, the vtable method won't need that
+
+1763803112
+sunflr!~sunflr@user/sunflr
+so a tagged union needs structs right? So i need to make 2 identical structs for player and cpu, and then i can make methods for them using a switch?
+
+1763803130
+sunflr!~sunflr@user/sunflr
+idk much about this
+
+1763803343
+ifreund!2940d10f8b@user/ifreund
+sunflr: the idea is that you would have one struct that contains all data shared between player and cpu as well as one extra field that is a tagged union
+
+1763803367
+ifreund!2940d10f8b@user/ifreund
+that tagged union would have playen and cpu tags and store data that is not shared between the two
+
+1763803697
+Affliction!affliction@idlerpg/player/affliction
+right, and the methods on the union itself would include common logic, if any, and also dispatch to methods on each variant
+
+1763803732
+Affliction!affliction@idlerpg/player/affliction
+so the common code and data in the top level, unique data and behavior in each variant
+
+1763803920
+sunflr!~sunflr@user/sunflr
+so where do i put the draw() and update methods? draw() should be shared and update() shouldn't
+
+1763804150
+Affliction!affliction@idlerpg/player/affliction
+If the top level struct has everything needed to draw, then draw() should exist only there, without an implementation in the variants. If there's nothing in common in update(), then you'll have update() on all 3 structs, the common struct simply dispatching to each variant.
+
+1763804158
+sunflr!~sunflr@user/sunflr
+should union be in the struct or vice versa?
+
+1763804230
+Affliction!affliction@idlerpg/player/affliction
+that's pretty much what I expressed above
+
+1763804407
+sunflr!~sunflr@user/sunflr
+where does Player and AI Controllers come from? It says it should be declared somewhere in my code
+
+1763804426
+Affliction!affliction@idlerpg/player/affliction
+naturally
+
+1763804767
+sunflr!~sunflr@user/sunflr
+i'm just really confused…
+
+1763804822
+Affliction!affliction@idlerpg/player/affliction
+I mean, it's not as if they're in the standard lib, of course you write them.
+
+1763804830
+Affliction!affliction@idlerpg/player/affliction
+They contain the code and data unique to each variant
+
+1763804881
+sunflr!~sunflr@user/sunflr
+so i need to copy the two structs and the draw method except the update method?
+
+1763804931
+sunflr!~sunflr@user/sunflr
+and then do a function in a tagged union that defines how both player and cpu are updated?
+
+1763805108
+Affliction!affliction@idlerpg/player/affliction
+sorry, I'm utterly confused at what you're trying to do at this point. If what I suggested doesn't make sense, maybe use the vtable method.
+
+1763805376
+sunflr!~sunflr@user/sunflr
+lol ok
+
+1763805401
+sunflr!~sunflr@user/sunflr
+i guess my brain needs a break
+
+1763805666
+Affliction!affliction@idlerpg/player/affliction
+perhaps
+
+1763805687
+Affliction!affliction@idlerpg/player/affliction
+I'm pretty sure I've covered the pieces, it's just putting them together
+
+1763805759
+Affliction!affliction@idlerpg/player/affliction
+But yeah, if what I've said doesn't make sense, try some other method.
+
+1763805761
+sunflr!~sunflr@user/sunflr
+oh i didn't know structs needed to be connected to the union after the union was declared
+
+1763805799
+Affliction!affliction@idlerpg/player/affliction
+At any rate, you have an object, some common data and behavior, and some amount of separate groups of data and behavior
+
+1763805809
+Affliction!affliction@idlerpg/player/affliction
+there's many ways to do it, think about it, you'll probably figure something out
+
+1763805933
+sunflr!~sunflr@user/sunflr
+right now trying to figure out at least one way to do it
+
+1763806026
+Affliction!affliction@idlerpg/player/affliction
+I mean, at the most basic, group all the data from all the subclasses into one big struct, and in the methods: if (self.player) { /* player logic */ } else { /* ai logic */ }
+
+1763806032
+Affliction!affliction@idlerpg/player/affliction
+naturally that will scale very poorly, heh
+
+1763806218
+Affliction!affliction@idlerpg/player/affliction
+A data-only union, that would become switch (self.controller) { .ai => |ai_state| {/* do AI logic */}, .player => |player_state| => {/* do player logic */} }
+
+1763806272
+Affliction!affliction@idlerpg/player/affliction
+then, the 3rd step, would be, instead of having a block for the different code each does, you dispatch to a method on the *_state objects (which can, themselves, access the "superclass" data through @fieldParentPtr
+
+1763806773
+RolandSz!~user@user/RolandSz
+Hello guys
+
+1763806792
+RolandSz!~user@user/RolandSz
+I'm trying do develop some tooling for emacs for zig build
+
+1763806816
+RolandSz!~user@user/RolandSz
+do you have any idea, how can I get a machine readable representation of available build targets?
+
+1763806845
+Affliction!affliction@idlerpg/player/affliction
+RolandSz: 'zig targets'?
+
+1763806874
+RolandSz!~user@user/RolandSz
+the ones you get when issuing 'zig build --list-steps'
+
+1763806926
+Affliction!affliction@idlerpg/player/affliction
+ah
+
+1763806977
+Affliction!affliction@idlerpg/player/affliction
+Wild speculation; might be able to do something by interpreting the build graph generated by build.zig, but I don't know enough about that to provide sensible advice there.
+
+1763807096
+RolandSz!~user@user/RolandSz
+do you know any standard tool/command that can spit out that build graph?
+
+1763807720
+Affliction!affliction@idlerpg/player/affliction
+nope, someone else might, wait around
+
+1763822790
+grayhatter!~grayhatte@user/grayhatter
+should the debug allocator, mprotect free'd memory?
+
+1763823897
+andrewrk!~andrewrk@mail.ziglang.org
+grayhatter: no need to mprotect unmapped memory
+
+1763823978
+grayhatter!~grayhatte@user/grayhatter
+does it instantly unmap (rhetorical question, I have my editor open) and are you sure? another rhetorical question; because I've never seen a segv for free'd memory in my code... 
+
+1763823983
+grayhatter!~grayhatte@user/grayhatter
+thanks andrewrk :)
+
+1763824008
+andrewrk!~andrewrk@mail.ziglang.org
+it unmaps when it can but if there is anything still allocated on the page then it cannot unmap
+
+1763824027
+andrewrk!~andrewrk@mail.ziglang.org
+in such case mprotect cannot be used either since it also has page granularity
+
+1763824171
+grayhatter!~grayhatte@user/grayhatter
+if this "UAF check" is enabled in debug, then should/could debug alloc issue a new page for every alloc? I wonder in which cases it's even tenable to not reuse pages... I obviously need to give this some more thought too 
+
+1763824228
+andrewrk!~andrewrk@mail.ziglang.org
+that's std.deap.page_allocator
+
+1763824234
+andrewrk!~andrewrk@mail.ziglang.org
+*std.heap.page_allocator
+
+1763824308
+grayhatter!~grayhatte@user/grayhatter
+> The OpenBSD implementation of mprotect() does not require addr to be page-aligned, although other implementations may.
+
+1763824376
+grayhatter!~grayhatte@user/grayhatter
+ah, I was gonna suggest that openbsd supported subpage granularity, but it doesn't 
+
+1763825092
+grayhatter!~grayhatte@user/grayhatter
+will process.env eventually live with in Io?
+
+1763825135
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/ziglang/zig/issues/25962
+
+1763825141
+grayhatter!~grayhatte@user/grayhatter
+<3
+
