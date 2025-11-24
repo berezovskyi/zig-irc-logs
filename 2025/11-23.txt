@@ -1,0 +1,64 @@
+1763866678
+rvrb!~rvrb@156.146.51.230
+imagine function validateFoo takes *const Foo; and we call it with `validateFoo(&.{ .a = "foo", .b = bar })`. is there ever a world in which the compiler will know that `foo.a` is comptime known? I doubt it but I am curious to learn from any discussion about why
+
+1763866697
+rvrb!~rvrb@156.146.51.230
+mostly the language design point
+
+1763866721
+rvrb!~rvrb@156.146.51.230
+I am just imagining a lot of validation logic getting optimized out because the compiler knows stuff
+
+1763872367
+Affliction!affliction@idlerpg/player/affliction
+rvrb: AFAIK that might be partly why functions which only read structs are encouraged to pass Foo by value, unless you really do need a pointer; the compiler can then reason about this stuff (and if Foo is large, perhaps actually pass a pointer anyway. If you only use a couple of values of a large struct, maybe only those values actually get passed, etc.)
+
+1763917478
+grayhatter!~grayhatte@user/grayhatter
+rvrb: yes, the compiler knows (or can prove) that's comptime known
+
+1763917507
+grayhatter!~grayhatte@user/grayhatter
+&.{} is created at comptime
+
+1763923169
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+is there a CLI flag for using llvm?
+
+1763923186
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+I only want to use llvm for debugging with a debugger
+
+1763923203
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+so I don't want to edit build.zig  every time
+
+1763923797
+grayhatter!~grayhatte@user/grayhatter
+p00f: you can add a custom build flag
+
+1763923988
+grayhatter!~grayhatte@user/grayhatter
+const use_llvm = b.option(bool, "llvm", "llvm [disabled by default") orelse false;
+
+1763924010
+grayhatter!~grayhatte@user/grayhatter
+zig build -Dllvm=true
+
+1763934701
+rvrb!~rvrb@156.146.51.230
+grayhatter: based on my (limited) test I don't think that's true? either the whole thing is comptime or not, you can't `if (comptime arg.field)`
+
+1763934839
+grayhatter!~grayhatte@user/grayhatter
+rvrb: are you instantating the &.{} inside the calling paren?
+
+1763935042
+grayhatter!~grayhatte@user/grayhatter
+I'm probably wrong... on second thought, something like that used to be possible, but it "regressed" in 0.14 IIRC
+
+1763935168
+grayhatter!~grayhatte@user/grayhatter
+if (comptime null_or_ptr) |_| used to be valid if zig could resolve the parent type without the child type
+
