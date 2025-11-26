@@ -1,0 +1,136 @@
+1764029088
+blackbeard420!~blackbear@user/blackbeard420
+building zig from source using cmake works fine. however when i try to build it with zig i end up with `src/main.zig:3886:61: error: root source file struct 'fs.path' has no member named 'parsePath'` during the install zig step
+
+1764029095
+blackbeard420!~blackbear@user/blackbeard420
+probably missing something simple 
+
+1764029144
+grayhatter!~grayhatte@user/grayhatter
+blackbeard420: are you trying to build zig with a compiler version that's too old?
+
+1764029175
+blackbeard420!~blackbear@user/blackbeard420
+im using the stage3/bin/zig i got from the cmake build
+
+1764029601
+grayhatter!~grayhatte@user/grayhatter
+blackbeard420: run `zig env` and make sure .lib_dir is what you expect it to be?
+
+1764029661
+grayhatter!~grayhatte@user/grayhatter
+ditto for .version, because I don't trust cmake :D
+
+1764029690
+blackbeard420!~blackbear@user/blackbeard420
+looks correct, i moved stage3 to /home/blackbeard/zigbuild: .lib_dir = "/home/blackbeard/zigbuild/lib/zig",
+
+1764029764
+grayhatter!~grayhatte@user/grayhatter
+did you move stdlib there as well?
+
+1764029828
+blackbeard420!~blackbear@user/blackbeard420
+yup stdlib is there, and it builds small zig projects of mine
+
+1764030130
+grayhatter!~grayhatte@user/grayhatter
+does the fn parsePath exist within zigbuild/lib/std/fs/path.zig ?
+
+1764030254
+blackbeard420!~blackbear@user/blackbeard420
+just windowsParsePath, which is what the doc's show as well. so i must be running `zig build` wrong im thinking
+
+1764030342
+grayhatter!~grayhatte@user/grayhatter
+sounds more likely you've copied over the wrong stdlib
+
+1764031642
+blackbeard420!~blackbear@user/blackbeard420
+ahh yeah thats correct
+
+1764031674
+blackbeard420!~blackbear@user/blackbeard420
+seems PR 25993 added the line thats failing for me and that was just merged in a hour ago
+
+1764036934
+blackbeard420!~blackbear@user/blackbeard420
+grayhatter works by doing `zig build --zig-lib-dir lib` which also put the correct stdlib files in lib/zig, stage3 built by cmake was installing an older stdlib into stage3/lib for me
+
+1764037175
+grayhatter!~grayhatte@user/grayhatter
+remember how I said I don't trust cmake :D
+
+1764037187
+grayhatter!~grayhatte@user/grayhatter
+(I've been burned the exact same way before lol)
+
+1764099924
+rvrb!~rvrb@156.146.51.230
+is there a reliable way to check if you are on the main thread?
+
+1764099947
+grayhatter!~grayhatte@user/grayhatter
+rvrb: writing your code so that you don't need to "ask" that question
+
+1764099963
+rvrb!~rvrb@156.146.51.230
+I anticipated that answer
+
+1764100011
+grayhatter!~grayhatte@user/grayhatter
+lol, I do know of hacks to make that work, but they're the kinda hacks that will cause future-rvrb to hate past-rvrb
+
+1764100077
+rvrb!~rvrb@156.146.51.230
+here, my actually tested and working std.log.span() tracing implementation; https://github.com/tristanpemble/zig/commit/0e2eed32e928dbb9c0808f2ce18556154b3ca389
+
+1764100158
+rvrb!~rvrb@156.146.51.230
+one of the remaining issues I have with it is that the threadlocal executor_id, used for attaching spans to native/green threads depending on the Io implementation, defaults to `0` -- main thread. if the std.Io implementation doesn't update that, everything assumes it's on the main thread
+
+1764100231
+rvrb!~rvrb@156.146.51.230
+the issue I am working on https://github.com/ziglang/zig/issues/5987
+
+1764100369
+rvrb!~rvrb@156.146.51.230
+ok well I made some changes that broke it but it is conceptually working :P
+
+1764103191
+rvrb!~rvrb@156.146.51.230
+ok, demo: https://gist.github.com/tristanpemble/56b18cd584dfbe5a74cbcaed3ec7a738
+
+1764103879
+bblack!~bblack@wikimedia/bblack-WMF
+that's pretty neat!
+
+1764107235
+rvrb!~rvrb@156.146.51.230
+<3
+
+1764111561
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My thought was to `threadlocal var is_main_thread = false;` and then set it to true in the main function.
+
+1764112030
+rvrb!~rvrb@156.146.51.230
+clevor: that's what I'd do if it were application code but since this is a std contribution I can't realistically expect every user to do that
+
+1764112101
+rvrb!~rvrb@156.146.51.230
+in the end I inverted the semantics; `current_excutor` is .none by default. if your std.Io implementation supports span tracing, it will set the current executor as it handles work. your `traceFn` can do what it wants with the ID; if using Io that supports span tracing, .none is probably the main thread
+
+1764112127
+rvrb!~rvrb@156.146.51.230
+if you want to be sure, set `current_executor` in your main thread
+
+1764113135
+bblack!~bblack@wikimedia/bblack-WMF
+well, technically, if this is going in std anyways, you could add a new entry in std_options (to disable the default behavior JIC) and then hack reasonable default main() behavior into std/start.zig ...
+
+1764113763
+rvrb!~rvrb@156.146.51.230
+forgot about start. not sure it would be acceptable to place this there
+
