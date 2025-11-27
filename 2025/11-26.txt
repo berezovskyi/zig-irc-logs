@@ -1,0 +1,332 @@
+1764117932
+rvrb!~rvrb@156.146.51.230
+alright, I did it https://github.com/ziglang/zig/pull/26054
+
+1764119989
+andrewrk!~andrewrk@mail.ziglang.org
+nice writeup
+
+1764120963
+rvrb!~rvrb@156.146.51.230
+thanks! I am pretty in love with std.Io after doing this
+
+1764121388
+andrewrk!~andrewrk@mail.ziglang.org
+to answer one of your questions, the IoUring impl and KQueue impl are far from complete
+
+1764121429
+rvrb!~rvrb@156.146.51.230
+ok, that's what I suspected
+
+1764121584
+daurnimator!~daurnimat@vultr.daurnimator.com
+rvrb:why have span ids as monotonic? why not random?
+
+1764121641
+rvrb!~rvrb@156.146.51.230
+I will answer that question by asking you the same question.. why random? why not monotonic?
+
+1764121681
+rvrb!~rvrb@156.146.51.230
+I genuinely don't know but I suspect monotonic counter is faster than any RNG, there is a guaranteed uniqueness
+
+1764121702
+rvrb!~rvrb@156.146.51.230
+RNG requires IO
+
+1764121738
+daurnimator!~daurnimat@vultr.daurnimator.com
+1. because otherwise people might use them to assume order won't change and that seems like a foot gun. 2. because they're likely to end up in some sort of external tracing system which could be an information leak in terms of number of threads
+
+1764121762
+daurnimator!~daurnimat@vultr.daurnimator.com
+RNG should only require IO for initialisation, not for getting a new item
+
+1764121775
+rvrb!~rvrb@156.146.51.230
+this is not for distributed system tracing, but for in process tracing. if incorporating distributed systems, you would generally create an external ID for that request or whatever and use that
+
+1764121796
+rvrb!~rvrb@156.146.51.230
+which would be passed along as userdata
+
+1764121883
+rvrb!~rvrb@156.146.51.230
+for another example, tracy creates its own zone IDs -- the Zig ID would exist for correlating the two
+
+1764121901
+rvrb!~rvrb@156.146.51.230
+but it's a good conversation for the PR anyways
+
+1764122017
+rvrb!~rvrb@156.146.51.230
+you have a good point about giving people the wrong idea on what they can use them for
+
+1764157655
+ptrckd!180577b020@user/ptrckd
+I had the same reaction as daurnimator. The terminology used is very similar to opentelemetry as well which may confuse folk if they are expecting something similar.  
+
+1764172515
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if I have a const Foo = struct { a: i32, b: u8 }, I expect that @sizeOf(Foo) == 8, with 3 bytes of padding; if Zig has niche optimization for encoding tagged unions’ variants, @sizeOf(?Foo) should still be 8, but it’s actually 12; I thought that Zig was able to put the variant in the padding; did I miss something?
+
+1764173245
+bblack!~bblack@wikimedia/bblack-WMF
+I suspect that's a possible future optimization, at least in some optimization levels.
+
+1764173307
+bblack!~bblack@wikimedia/bblack-WMF
+the only case I know of where optionality doesn't cost extra storage is pointers (which is kind of a freebie anyways, it's just a special value in that case)
+
+1764174285
+hadronized!~hadronize@2001:41d0:a:fe76::1
+yeah yeah
+
+1764174292
+hadronized!~hadronize@2001:41d0:a:fe76::1
+zeroable / nonzeroable type
+
+1764174319
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I thought I had read somewhere that Zig does that kind of optimization (I’m actually currently designing my own language and deep down that kind of questioning :) )
+
+1764174346
+hadronized!~hadronize@2001:41d0:a:fe76::1
+this niche optimization plays really well with the arbitrarily sized integers of Zig!
+
+1764174376
+hadronized!~hadronize@2001:41d0:a:fe76::1
+if you have two variants, like u8 and u15, you still have one bit that you can use for the tag, which is enough
+
+1764174415
+hadronized!~hadronize@2001:41d0:a:fe76::1
+anyway, thanks for the reply :)
+
+1764175180
+bblack!~bblack@wikimedia/bblack-WMF
+hadronized: yeah I've run into these cases.  at least at present, not-solved.  thinking about it more-generally, though, it's possible it's not always universally-clear that using the padding bits is a net win for every use-case, either.
+
+1764175242
+bblack!~bblack@wikimedia/bblack-WMF
+(it's a win for storage, but I could imagine a scenario where the compiler clearing the hidden bits before the value is used in some standard-width operation has a cost someone cares about)
+
+1764175309
+bblack!~bblack@wikimedia/bblack-WMF
+in any case, I've just been using extern/packed stuff when I care that much about it.
+
+1764175337
+hadronized!~hadronize@2001:41d0:a:fe76::1
+that makes sense yeah
+
+1764175342
+hadronized!~hadronize@2001:41d0:a:fe76::1
+I also didn’t think about some niches
+
+1764175351
+hadronized!~hadronize@2001:41d0:a:fe76::1
+like bools 
+
+1764175361
+hadronized!~hadronize@2001:41d0:a:fe76::1
+setting a bool value to 2, 3… etc. to encode variant 
+
+1764175365
+hadronized!~hadronize@2001:41d0:a:fe76::1
+(Rust does it; not sure about Zig)
+
+1764176389
+grayhatter!~grayhatte@user/grayhatter
+daurnimator's point is very correct, being able to get reporting about exactly what different threads are doing would be something I'd explicitly be hunting for
+
+1764176459
+grayhatter!~grayhatte@user/grayhatter
+rvrb: ^ re monotonic vs random span id's
+
+1764182006
+rvrb!~rvrb@156.146.51.230
+how does a random span ID change that?
+
+1764182089
+grayhatter!~grayhatte@user/grayhatter
+getting a thread to crash/exit could be a sign that my payload worked, or didn't seeing in increasing thread_id (in this case, incrementing span id) might tell me if my exploit worked 
+
+1764182206
+rvrb!~rvrb@156.146.51.230
+I want to understand, but I'm not seeing why this debug profiling tool needs to be concerned about security at the application boundary. keep in mind I am coming at this thing from the angle of game performance profiling, so I am probably missing the perspective
+
+1764182231
+rvrb!~rvrb@156.146.51.230
+if you are sending it out to an external tool, why not randomize the span ID you report?
+
+1764182239
+grayhatter!~grayhatte@user/grayhatter
+it's a very niche concern, I'm not suggesting you should assign it significant value, but I absouletly use stuff like that when building exploits. Incrementing values are very useful, random values are annoying
+
+1764182366
+rvrb!~rvrb@156.146.51.230
+specifically: does `std.Options.SpanUserdata` with a `external_Id` that you randomize in `traceFn` address this concern?
+
+1764182371
+grayhatter!~grayhatte@user/grayhatter
+I would suggest you consider it, and then if you have a reason discard it, but IMHO it's worth mentioning. e.g. "Random IDs were considered, but monotonic was selected because [reason]"
+
+1764182413
+andrewrk!~andrewrk@mail.ziglang.org
+monotonic is the null hypothesis, no reason to consider something else without a problem statement
+
+1764182462
+andrewrk!~andrewrk@mail.ziglang.org
+code obfuscation is not a compelling problem statement
+
+1764182507
+rvrb!~rvrb@156.146.51.230
+fwiw, I am trying to consider it, but what andrew said basically; I haven't seen enough to believe that this is even a problem to consider yet
+
+1764182510
+grayhatter!~grayhatte@user/grayhatter
+problem statement: If another system, such as a logging system was compromised, knowing the span id discloses some information about the state of the program that could become useful when constructing an exploit targeting the system. 
+
+1764182566
+andrewrk!~andrewrk@mail.ziglang.org
+like I said I find that uncompelling
+
+1764182583
+grayhatter!~grayhatte@user/grayhatter
+I don't agree this should be described as code obfuscation
+
+1764182631
+grayhatter!~grayhatte@user/grayhatter
+if you're building a tracing system to help game development, I agree. It's very uncompelling
+
+1764182644
+rvrb!~rvrb@156.146.51.230
+are you worried about what leaves the process or are you worried about having it in process? if external, can you address the suggestion I had? if having it in process is the concern, well, I'm not sure I ever want to store any state in my software
+
+1764182699
+grayhatter!~grayhatte@user/grayhatter
+I'm considering the cases where this will be used by someone and exposed publicly on something like a webserver, which might disclose if you're able to cause a process crash. 
+
+1764182715
+grayhatter!~grayhatte@user/grayhatter
+I also believe we're well into the bikeshedding part of this conversation
+
+1764182722
+rvrb!~rvrb@156.146.51.230
+does customizing `std.Options.SpanUserdata` with a `external_id` that you randomize in `traceFn` address this concern?
+
+1764182763
+grayhatter!~grayhatte@user/grayhatter
+as far as I'm concerned, rvrb "won" the argument and I was sastifised once he said he's building this to enable tracing for things like game devel... my argument for randomness doesn't make sense in that context
+
+1764182781
+grayhatter!~grayhatte@user/grayhatter
+rvrb: sorry, got distracted, let me refresh my memory, and I'll answer :)
+
+1764182800
+rvrb!~rvrb@156.146.51.230
+grayhatter: I am not arguing, I am trying to contribute to std and the concern was brought up twice so I want to understand if the design already addresses the concern
+
+1764182819
+grayhatter!~grayhatte@user/grayhatter
+arguing, in the rhetoric sense, arguing like defending an idea, not aruging like disagreement
+
+1764182844
+rvrb!~rvrb@156.146.51.230
+cool. if you're still invested, try taking a look at the PR again and see if my suggestion doesn't address what you are concerned about
+
+1764182870
+rvrb!~rvrb@156.146.51.230
+if it does, I'll add a note to it
+
+1764182989
+rvrb!~rvrb@156.146.51.230
+I mean it's a very real tension that came up in the original issue -- mixing the requirements for in-process tracing with the requirements for distributed systems tracing. my goal was to enable the latter with the userdata
+
+1764183258
+grayhatter!~grayhatte@user/grayhatter
+yes, if I wanted to use this, and needed to obfuscate the thread data, I could probably use that
+
+1764183281
+grayhatter!~grayhatte@user/grayhatter
+I think 374: pub fn unlink has a bug
+
+1764183630
+grayhatter!~grayhatte@user/grayhatter
+also, does asSpan() work? I would have assumed that the call to Span(...) for that @fieldParentPointer would return a distinct type? A would also probably write it as `pub fn toSpan(any: *AnySpan, T: type) *T { ... }` 
+
+1764184084
+grayhatter!~grayhatte@user/grayhatter
+rvrb: At a higher level, I agree with andrew, monotonic from 0 is what AnySpan should do. 3 people saw it and thought, "this doesn't match the model I'd expect" so to save yourself some time of hearing it again and again, I'd probably add some docs, or a clear example how userdata can be used to fit your API into the exist one people might expect. I wouldn't spend time on obfuscating the state, in
+
+1764184086
+grayhatter!~grayhatte@user/grayhatter
+fact, I would explicitly avoid doing so. Because I've seen people apply the wrong obfuscation into debugging systems, which was a design descision that has "ruined" more than a few days of mine. There's no reason to ruin a very clean, easy to understand and work with debug/tracing system by trying to apply confedentiality rules. When those rules really belong at a completly different level
+
+1764184304
+andrewrk!~andrewrk@mail.ziglang.org
+code obfuscation is very explicitly not a goal of the zig project
+
+1764184627
+grayhatter!~grayhatte@user/grayhatter
+suddenly I have the urge to start The International Obfuscated Zig Code Contest :P
+
+1764184704
+torque!~tachyon@user/torque
+lol
+
+1764184756
+torque!~tachyon@user/torque
+truely the fact that C is a complete mess of a language is forgivable just because it allowed the creation of IOCCC which is truly an art form
+
+1764184809
+grayhatter!~grayhatte@user/grayhatter
+I was just lamenting the same thing, it's really sad that I can't create ascii art with zig code and have it still work
+
+1764187923
+rvrb!~rvrb@156.146.51.230
+grayhatter: to usually suggests taking ownership, as usually suggests casting the pointer. it does return a unique type; both `traceFn` and `asSpan` are specialized. accepting `T: type` is no better than just using `@ptrCast()`
+
+1764188097
+rvrb!~rvrb@156.146.51.230
+sorry, I forgot this was a @fieldParentPtr() method. I suppose T: type could work, but it's bikeshedding either way
+
+1764191280
+grayhatter!~grayhatte@user/grayhatter
+I suggested to___ because that's what Io.Duration uses, and you already pointed out it's as is used for casting and that's not what this is. I also don't agree this specific thing is bikeshedding, names mean things. The have context it's important not to step on. stdlib doesn't have a strong style guide, which would help here
+
+1764191319
+grayhatter!~grayhatte@user/grayhatter
+it's what Io.Duration (and Timestame, etc) uses (and I've been spending a lot of time with the past few days)
+
+1764193962
+grayhatter!~grayhatte@user/grayhatter
+rvrb: is std/log.zig:375 a bug, or should both of those asserts be == null?
+
+1764194411
+rvrb!~rvrb@156.146.51.230
+grayhatter: they should both be null; an executor should only unlink when the span has completed or suspended, leaving the current thread without a span
+
+1764194515
+rvrb!~rvrb@156.146.51.230
+the confusion is that in a new thread or fiber or whatever, there is no span on the stack. the execution is just linked to a span on another stack
+
+1764194765
+grayhatter!~grayhatte@user/grayhatter
+hmmm, I don't understand enough about how span should work then. Because enter exit are similar, but exit prints before it's detached, not after. will should current_span always be equal to null if [un]link is called?
+
+1764194778
+rvrb!~rvrb@156.146.51.230
+yeah I think I am gonna rename them to resume/suspend
+
+1764194832
+rvrb!~rvrb@156.146.51.230
+main execution thread is: begin -> [suspend -> resume] -> end, storing the current span in a threadlocal as it moves around threads
+
+1764194879
+rvrb!~rvrb@156.146.51.230
+child work/fibers/threads etc will link -> unlink that span. what that means is that any other execution doing begin -> suspend -> resume -> end is associated to it
+
+1764194971
+rvrb!~rvrb@156.146.51.230
+maybe it makes more sense to have link/unlink on ExecutorId -- it's more like, this executor is now doing stuff on this thread so all spans on the thread should be associated with the original span
+
