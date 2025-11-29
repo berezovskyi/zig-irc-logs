@@ -1,0 +1,164 @@
+1764288189
+grayhatter!~grayhatte@user/grayhatter
+in that cases I'd expect ReadError, or EndOfStream instead of @panic()
+
+1764288598
+blackbeard420!~blackbear@user/blackbeard420
+trying to get some tls experimentation going works with explicit but when providing no_verification like so: `var client: tls.Client = try .init(&reader.interface, &writer.interface, .{ .host = .{ .no_verification } });` i get > `error: type 'crypto.tls.Client.Options__union_27301' does not support array initialization syntax` for the .{ .no_verification }
+
+1764288866
+blackbeard420!~blackbear@user/blackbeard420
+looking at source for http.Client i see they use .explicit with the tls.Client which does work for me, but cant figure out how to initialized it with .no_verification yet
+
+1764290570
+sunflr!~sunflr@user/sunflr
+blackbeard420: i think you need to assign something to .no_verification too? Like put = after it
+
+1764290848
+sunflr!~sunflr@user/sunflr
+or probably use a type instead of .{
+
+1764301386
+blackbeard420!~blackbear@user/blackbeard420
+sunflr> thanks! i got it working with `.host = .{ no_verification = {} }`
+
+1764301877
+sunflr!~sunflr@user/sunflr
+cool :3
+
+1764303541
+torque!~tachyon@user/torque
+you can probably also do `.host = .no_verification`
+
+1764303612
+torque!~tachyon@user/torque
+union members that have type void can be treated as if they were enum members
+
+1764314384
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+nice on the move from github
+
+1764314454
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+all the people whinging on orange site (and the few on red site) about "insulting" language are nancies imho
+
+1764314485
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+are we as a society so fragile that the word "loser" or "monkey" is some abhorrent term to use
+
+1764316658
+torque!~tachyon@user/torque
+i'm pretty sure the insult was intended to be an insult. just a theory i've developed
+
+1764317576
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i've got a number of structs all representing a variant of the same conceptual data, how can i best achieve representing this in zig? A union where each field in that union is a different struct type?
+
+1764320150
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+getting a weird build error in ReleaseSafe on a project of mine.. there's no actual error I can see (or that's printed out) zig just complains that build step 2/5 failed
+
+1764320218
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+this is the commit: https://github.com/tsujp/zevem/commit/ebc33ab596abcc4235a676acae6a4b234715f8b4 and the build error is here if anyone knows why: https://github.com/tsujp/zevem/actions/runs/19735118655/job/56545046569
+
+1764320627
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Zig's build command fails with Segmentation fault: 11
+
+1764320678
+torque!~tachyon@user/torque
+you're triggering some kind of compiler bug but you'll probably have a hard time diagnosing it without a debug compiler
+
+1764320822
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+So it is a compiler bug and not my logic? It appears to only happen with the newly added SWAP logic in my commit, if I comment out that code the compiler works again
+
+1764320856
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Even if that SWAP code isn't used the compiler still errors which makes sense @ it being a compiler bug and not _my_ code causing a crash at test time
+
+1764320927
+torque!~tachyon@user/torque
+the compiler crashing is a compiler bug yeah. which isn't to say that you don't have some invalid syntax or something causing it
+
+1764320986
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+the same code compiles and tests pass in default release 
+
+1764321047
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+release fast also works
+
+1764323205
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+is cipharius (github) in this IRC? the guy who has the zig-tracy repo
+
+1764323320
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+or for anyone else who uses tracy, do you use that project?
+
+1764323339
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i'm still using FalsePattern's fork which (I think?) has a better API, namely ZoneContext is public
+
+1764324204
+Travelan!~travelan@user/travelan
+I made two PR's to cipharius' zig-tracy project this week. One to implement Mutex lock tracing and one to upgrade to Tracy 0.13
+
+1764324234
+Travelan!~travelan@user/travelan
+I did not yet receive any response from them though
+
+1764324291
+Travelan!~travelan@user/travelan
+I am actively using that project, though I now use my own fork (https://github.com/basdp/zig-tracy) because I need both 0.13 and Mutex tracing. 
+
+1764324653
+Travelan!~travelan@user/travelan
+I considered using the FalsePattern port, but I like cipharius' version better, because that one is much, much simpler and closer to the C API of Tracy. That makes keeping track of Tracy upgrades much easier. Also I don't like the boilerplate it's introducing. Less code usually means less bugs too.
+
+1764325161
+Travelan!~travelan@user/travelan
+The way FalsePattern is doing things is maybe a bit more 'the Zig way' of doing an API, which is cool, but libraries that wrap a C API in such a way tend to be quite laborsome to maintain. That means that it becomes more than just a quick wrapper you need for your project, it became a whole new side-project. I don't have time for that, and most
+
+1764325161
+Travelan!~travelan@user/travelan
+people don't. As the FalsePattern port did not have any activity for the last 8 months, I suspect their priorities are not with this wrapper (currently). Therefor, I chose a port that is much closer to the C API, and therefor less work to maintain and thus, for me at least, less of a liability.
+
+1764326769
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+The reason I need ZoneContext to be public is because I create zones from enum names, so I have a helper function to do that for me. I cannot do that if ZoneContext is private since there's no nice way to specify the return type of the function is ZoneContext (that I am aware of)
+
+1764326793
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+@TypeOf(tracy.initZone) compiled but then a slew of other errors popped up
+
+1764336001
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+Travelan: and comptime for zig-tracy no ops it out completely right? it looks that way to me but i just want to be sure 
+
+1764336350
+blackbeard420!~blackbear@user/blackbeard420
+torque> thanks! that works and is cleaner then .{ .no_verification = {} }
+
+1764336366
+Travelan!~travelan@user/travelan
+yeah, at least in the cipharius version it does. Not everywhere because of comptime, mostly because of dead code elimination (empty functions, early returns guards with constant values)
+
+1764342185
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+apparently someone consuming my library is having problems with tracy but i default to building without it so if there's all that dead code elimination etc i don't see how it could be breaking the build 
+
+1764342201
+tsujp!497e1f7b6a@sourcehut/user/tsujp
+i'm awaiting a commit from them to see first hand 
+
+1764360786
+rvrb!~rvrb@156.146.51.230
+much happier with my std.log.span PR now; no ids at all. leave it to implementation. literally just a `SourceLocation` being passed around
+
+1764360820
+rvrb!~rvrb@156.146.51.230
+spent a bunch of time yesterday thinking about different ways to tackle the monotonic u64 on 32-bit platforms thing and realized the easiest way to do it was to not d oit
+
