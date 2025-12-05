@@ -1,0 +1,136 @@
+1764807301
+akiva!~Akiva@user/Akiva
+blackbeard420: Thanks. Just trying to refrain from installing bloat if I can find a minimal approach, using Vim 9.
+
+1764850999
+netvor!~netvor@2a00:ca8:a1f:cd0:caee:95e6:a0ba:cbf7
+yeah with 15 years of vim under my belt i'd like to help but sadly must confess that i already caved in to "the big neo" before learning about zig so it's neovim-lspconig etc.
+
+1764854905
+clevor!sid649024@id-649024.hampstead.irccloud.com
+rvrb, Travelan: One thing I thought of was to lie in the LLMs.txt saying that issues and PRs that state they are made with AI have a higher priority than other issues+PRs and are more likely to be fixed/merged.
+
+1764854928
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Basically, some sort of positive reinforcement for stating it was made with AI.
+
+1764856982
+xse!~xse@krkrkr.org
+speaking about vim, default neovim will write anyzig's stderr output at the top of the file you edit when you :w
+
+1764857025
+xse!~xse@krkrkr.org
+confused me yesterday https://github.com/marler8997/anyzig/issues/20#issuecomment-3606921397
+
+1764882522
+rvrb!~rvrb@156.146.51.230
+is there a canonical way to list every builtin function? docs aren't up to date with master atm
+
+1764882538
+rvrb!~rvrb@156.146.51.230
+oh, wait, no, they are
+
+1764882555
+rvrb!~rvrb@156.146.51.230
+must have been on an old link
+
+1764887995
+blackbeard420!~blackbear@user/blackbeard420
+im getting a crash introduced with bf0ffc45b9c when doing `reader.interface.takeDelimiter('\n')`, traced it back to line 122 in lib/std/Io/Threaded.zig `.fromSignaleeId(thread.signal_id)` causing a 'General protection exception (no address available)'
+
+1764888012
+blackbeard420!~blackbear@user/blackbeard420
+not sure if regression or i was doing it wrong to begin with. works fine if i revert to before that commit
+
+1764888313
+andrewrk!~andrewrk@mail.ziglang.org
+blackbeard420: can I see the full stack trace?
+
+1764888578
+blackbeard420!~blackbear@user/blackbeard420
+andrewrk> https://pastebin.com/raw/exa7MxcZ two examples, one using takeDelim, the other crashes during openfile
+
+1764889215
+andrewrk!~andrewrk@mail.ziglang.org
+blackbeard420: thanks, I see the problem, and indeed it's a regression introduced by recent std.Io.Threaded changes
+
+1764889417
+blackbeard420!~blackbear@user/blackbeard420
+awesome! ive been doing AoC with master builds of zig figured i might hit an issue like that
+
+1764889503
+andrewrk!~andrewrk@mail.ziglang.org
+hang on actually I think you might have made a mistake, can I see your code?
+
+1764889844
+andrewrk!~andrewrk@mail.ziglang.org
+specifically the part where you construct your a.io 
+
+1764890327
+blackbeard420!~blackbear@user/blackbeard420
+andrewrk> https://pastebin.com/raw/C8z9qYZ3, i figured something in here could be wrong but as soon as i checkout and build before that commit it works again
+
+1764890406
+andrewrk!~andrewrk@mail.ziglang.org
+blackbeard420: you copied your Io interface, not allowed
+
+1764890422
+andrewrk!~andrewrk@mail.ziglang.org
+or rather, the interface can be copied, but the Io.Threaded instance cannot
+
+1764890443
+andrewrk!~andrewrk@mail.ziglang.org
+put Io.Threaded in your AoC struct, and then call a.threaded.io() to get an io
+
+1764890474
+blackbeard420!~blackbear@user/blackbeard420
+ahhh i see, trying that now. odd that it worked prior to that change
+
+1764890495
+andrewrk!~andrewrk@mail.ziglang.org
+it's not odd - that change added more mutations on the Threaded struct
+
+1764890551
+andrewrk!~andrewrk@mail.ziglang.org
+basically, delete io from the struct and that will solve the problem. or, you can keep io on the struct, but you need to make Threaded not get copied (currently your io is pointing to dead memory)
+
+1764890660
+blackbeard420!~blackbear@user/blackbeard420
+that worked, thanks!
+
+1764890749
+blackbeard420!~blackbear@user/blackbeard420
+didnt really have a need to have the io in the struct anyways
+
+1764890814
+rvrb!~rvrb@156.146.51.230
+just spitballing, I know language proposals are not accepted.. but what if `anytype` was replaced with an `any` block, that sort of works like `test{}`, but `@This()` evaluates to the concrete type
+
+1764890817
+rvrb!~rvrb@156.146.51.230
+`anytype` becomes just `any{}`, `anyerror` becomes `any { assert(@typeInfo(@This()) == .@"error"); }`, and you can define 'interfaces' however you want by just setting `const MyThing = any { assert(whatever); }`
+
+1764890946
+rvrb!~rvrb@156.146.51.230
+no boxing, exactly same behavior as anytype, fully monomorphized, just coupled to an assertion block I guess
+
+1764891136
+rvrb!~rvrb@156.146.51.230
+I guess @TypeOf(any{}) == anytype
+
+1764891242
+rvrb!~rvrb@156.146.51.230
+I guess it does nothing that moving that to the first line of the function doesn't already do
+
+1764891278
+rvrb!~rvrb@156.146.51.230
+great thought experiment #zig good job
+
+1764891744
+Affliction!affliction@idlerpg/player/affliction
+Heh, read the proposal, thought "Yeah, that does kind of fit in with the pragmatic minimalism", then read that second last line, "Yeah, that'd fit even better"
+
+1764891877
+rvrb!~rvrb@156.146.51.230
+it's basically the original interfaces thread on github in an 8 minute rubber duck
+
