@@ -1,0 +1,192 @@
+1764894607
+torque!~tachyon@user/torque
+the primary advantage of putting that sort of logic in the function signature instead of the body is that it is easier for tooling to understand it (e.g. for generating api documentation)
+
+1764905613
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+hi, can someone explain how to get a std.Io.Writer from a file?
+
+1764905647
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+so that i can use std.fmt.format on it
+
+1764905652
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+i basically want fprintf
+
+1764905668
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+and i'm starting with a filename
+
+1764905803
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+i
+
+1764905812
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+i'm using zig nightly
+
+1764906199
+blackbeard420!~blackbear@user/blackbeard420
+p00f> std.Io.Dir.cwd().openFile() is what i use, you can then call .writer on the return of that to get a Io.Writer
+
+1764906262
+blackbeard420!~blackbear@user/blackbeard420
+something like `var x = try Io.Dir.cwd().openFile(io, path/relative/to/cwd, .{});`
+
+1764906336
+rvrb!~rvrb@156.146.51.230
+then something vaguely like var buf: [128]u8 = undefined; const writer = file.writer(&buf); try writer.interface.print("format {d}", .{10}); try writer.end();
+
+1764907744
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+blackbeard420, rvrb: File doesn't have a writer() method anymore https://ziglang.org/documentation/master/std/#std.Io.File
+
+1764908441
+andrewrk!~andrewrk@mail.ziglang.org
+it does
+
+1764908463
+andrewrk!~andrewrk@mail.ziglang.org
+that's the new, partially implemented File API
+
+1764908471
+andrewrk!~andrewrk@mail.ziglang.org
+fs.File still has writer
+
+1764913665
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+andrewrk: fs.File.Writer doesn't have print
+
+1764913768
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+oh got it
+
+1764913913
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+thanks all
+
+1764928049
+Franciman!~Franciman@mx1.fracta.dev
+hi, thanks for moving to codeberg
+
+1764928058
+Franciman!~Franciman@mx1.fracta.dev
+github is cringeware
+
+1764928065
+Franciman!~Franciman@mx1.fracta.dev
+as all microsoft
+
+1764928087
+Franciman!~Franciman@mx1.fracta.dev
+apparently, in netherlands microsoft denied public office workers to use their products
+
+1764928095
+Franciman!~Franciman@mx1.fracta.dev
+after some political decisions from USA
+
+1764928110
+Franciman!~Franciman@mx1.fracta.dev
+this means a lot for us not in the USA. Thanks a lot
+
+1764953436
+netvor!~netvor@2a00:ca8:a1f:cd0:caee:95e6:a0ba:cbf7
+torque: is tooling limited to signature, though?   could (does?) tooling use something like ZIR to understand more about a function than its signature, based on any comptime within?
+
+1764953596
+netvor!~netvor@2a00:ca8:a1f:cd0:caee:95e6:a0ba:cbf7
+(feel free to ignore, i'm just thinking out loud, i don't really know much about how such tooling works now and it seems fine to me)
+
+1764953807
+dfrey!~dfrey@172.103.168.7
+Hi. I'm just getting started with zig and I am playing aroud with it in the context of Advent of Code. I am trying to structure my code such that there is a main "runner" application and each day has its own .zig file. So there is a main.zig at the top and then adjacent to that there is a "2025" directory with a "day_01.zig" file inside. So far, this works fine. I can do `@import("2025/day_01.zig")`
+
+1764953809
+dfrey!~dfrey@172.103.168.7
+from main.c. The problem I have is that I wrote a utility function that I believe will be useful accross many days and many years. I created "aoc_utils.zig" at the top-level directory. Now I have a problem that I cannot import this file from 2025/day_01.zig. When I try `@import("../../aoc_utils.zig")`, I am given "error: import of file outside module path". How do people typically solve this issue? I
+
+1764953811
+dfrey!~dfrey@172.103.168.7
+would rather not flatten all source files into one directory.
+
+1764956054
+andrewrk!~andrewrk@mail.ziglang.org
+dfrey: there are a few ways to solve the problem. one way would be making aoc_utils into a module
+
+1764956243
+dfrey!~dfrey@172.103.168.7
+andrewrk: I would do that by writing a custom build.zig right?
+
+1764957411
+andrewrk!~andrewrk@mail.ziglang.org
+you could do that, or you could figure out the CLI for doing it with build-exe
+
+1764957455
+andrewrk!~andrewrk@mail.ziglang.org
+dfrey: another strategy is to put your main file at the top level directory, and run that
+
+1764957487
+andrewrk!~andrewrk@mail.ziglang.org
+problem you're having is basically that "build-exe" subcommand is creating an adhoc module, inferring the top level directory to be the same as the main file
+
+1764961696
+wootehfoot!~wootehfoo@user/wootehfoot
+https://tigerbeetle.com/blog/2025-10-25-synadia-and-tigerbeetle-pledge-512k-to-the-zig-software-foundation/ wow congrats guys! (and gals)
+
+1764962786
+andrewrk!~andrewrk@mail.ziglang.org
+thanks!
+
+1764963033
+rockorager!~rockorage@2600:3c06::f03c:94ff:fea6:1f08
+is that a different pledge? I swear there was something similar recently
+
+1764963053
+andrewrk!~andrewrk@mail.ziglang.org
+it's news from october
+
+1764963180
+JackleBells!~platinum@user/JazzJackalope
+I love how this language leans really hard into the Zero Wing references
+
+1764963591
+JackleBells!~platinum@user/JazzJackalope
+Oh wait, this is not a Zig blog...
+
+1764963639
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+Hi I am trying to compile a Zig project, but I get this:
+
+1764963640
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+thread 100251 panic: unhandled error
+
+1764963640
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+error return context:
+
+1764963641
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+            else => return error.UnsupportedPlatform,
+
+1764963657
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+I only see the path to a cache. But I have no idea where this file really lives.
+
+1764963694
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+zig/p/v8-0.0.0-xddH67vcAwCuN2gBsAO8TBzEw523KMroIKGrdZwc-Q-y/build.zig
+
+1764963969
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+OK I see  try addDependencies(b, lightpanda_module, opts); in the stack trace
+
+1764963999
+mr_sm1th!~mr_sm1th@p200300c9af3185000c339cc970737b76.dip0.t-ipconnect.de
+Where can I find this module?
+
+1764964808
+andrewrk!~andrewrk@mail.ziglang.org
+mr_sm1th: I think it would help to share a link to a paste with a little more details
+
