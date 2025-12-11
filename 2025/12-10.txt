@@ -1,0 +1,200 @@
+1765326524
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: not yet but here's the accepted proposal for that: https://github.com/ziglang/zig/issues/20654
+
+1765326534
+andrewrk!~andrewrk@mail.ziglang.org
+if you want to comment on it I can move it over to codeberg
+
+1765328313
+LAC-Tech!~lewis@granite-phrase.bnr.la
+should I basically treat all the fuzz stuff as WIP? because if not, I have many questions like 'why is it starting a web server?' and 'why does the stack trace not reach my code?'
+
+1765328452
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: yes. I can answer the web server question tho
+
+1765328462
+andrewrk!~andrewrk@mail.ziglang.org
+there are two modes: finite mode and infinite mode
+
+1765328487
+andrewrk!~andrewrk@mail.ziglang.org
+finite mode is a good fit for CI systems where you want to limit how much computing resources are spent, and doesn't involve the web server by default
+
+1765328507
+andrewrk!~andrewrk@mail.ziglang.org
+infinite mode is good when you are working on creating fuzz tests. in this case it is very helpful to have a visualization of code coverage so you can see how well your fuzz tests are performing
+
+1765328528
+andrewrk!~andrewrk@mail.ziglang.org
+it's also handy when working on the fuzzer itself which was my original motivation for making it
+
+1765328641
+LAC-Tech!~lewis@granite-phrase.bnr.la
+noted. FWIW I only looked into it because the comments in zig init suggested I should :)
+
+1765374322
+bblack!~bblack@wikimedia/bblack-WMF
+ok I have a strange question re: std.Io and using Select + async + await, and I maybe don't know how to formulate it correctly, so bear with me...
+
+1765374386
+bblack!~bblack@wikimedia/bblack-WMF
+so picture I have a while() loop that's iterating a directory and getting all the entry.name ...
+
+1765374412
+bblack!~bblack@wikimedia/bblack-WMF
+and for each entry.name, I need to async.select(...), where entry.name will be one of the arguments to the async-executed function
+
+1765374449
+bblack!~bblack@wikimedia/bblack-WMF
+obviously, as the loop iterates, entry.name itself becomes stack-invalid potentially before the async function even executes, so I'm going to want to allocate a copy to pass to the async function
+
+1765374499
+bblack!~bblack@wikimedia/bblack-WMF
+naively, I can allocate a copy and pass that into the async's args, and I can have the async function defer its deallocation on the inside.
+
+1765374571
+bblack!~bblack@wikimedia/bblack-WMF
+but in the case that the async'd function gets canceled (because another select peer spawned by the same loop eturned an error before it had a chance to complete)...
+
+1765374613
+bblack!~bblack@wikimedia/bblack-WMF
+what's the clean pattern for deallocating that allocated temporary copy of entry.name for all the canceled ones that never got a chance to free the copy?
+
+1765374645
+bblack!~bblack@wikimedia/bblack-WMF
+sorry, earlier I meant to say "select.async(...)", not "async.select(...)"
+
+1765374771
+bblack!~bblack@wikimedia/bblack-WMF
+or do I just need to use an arena for this kind of purpose and clean up the arena after everything's done/canceled maybe?
+
+1765374876
+bblack!~bblack@wikimedia/bblack-WMF
+ok maybe that's a decent teddy bear answer, ignore me :)
+
+1765378725
+bblack!~bblack@wikimedia/bblack-WMF
+I'm really impressed, now that I've wrapped my head around it a bit and really used it, by how well std.Io.Threaded + Io.Select + Io.Queue work together and how slick the result it
+
+1765378728
+bblack!~bblack@wikimedia/bblack-WMF
+*is
+
+1765378979
+bblack!~bblack@wikimedia/bblack-WMF
+even though the code can't predict how many async jobs will be spawned as it iterates a directory, the Select union queue stuff allows me to queue.putOne() a .{ .expected = usize } after the loop is done iterating, and then my separate io.concurrent consumer of the select queue results can lazily figure out when it's "done" even as stuff arries out of order.
+
+1765386025
+bblack!~bblack@wikimedia/bblack-WMF
+re: std.Io and "sync primitives" (e.g. mutex/futex) - is anyone looking yet about non-traditional things like RCU/EBR?  Generally they don't need deep integration, but if std.Io can make fibers/threads, there may be some interplay here with e.g. rcu.read_locked() scope and such.
+
+1765386111
+bblack!~bblack@wikimedia/bblack-WMF
+or the fact that generally RCU writers block when synchronizing (on a mutex and/or spinning a bit checking atomics)
+
+1765387256
+bblack!~bblack@wikimedia/bblack-WMF
+thinking on the above a little: I think the hard part of the interaction between something like RCU and fibers/threads, is either the scope of read_locked() needs to be uncancellable, or better yet, cancellation could be aware of reader registration/locking and re-set those states on async cancellation.
+
+1765387300
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what does EBR stand for?
+
+1765387333
+bblack!~bblack@wikimedia/bblack-WMF
+epoch-based reclamation, which is ~similar in nature to qsbr (quiescent-state-based reclamation) variants of userspace-rcu
+
+1765387390
+bblack!~bblack@wikimedia/bblack-WMF
+I don't think we'd want to run down all the many variants of these kinds of schemes and add specific vtable primitives for each of them, it's just too much surface area and there's too many ways to customize implementations.
+
+1765387426
+bblack!~bblack@wikimedia/bblack-WMF
+but, maybe, there could be something a little more-abstracted in the std.Io interface, with vtable support, that allows implementing these kinds of things from outside.
+
+1765387443
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah
+
+1765387539
+bblack!~bblack@wikimedia/bblack-WMF
+maybe something along the lines of hooks that can tell std.Io.(Threaded|Evented) "this fiber/thread/whatever is now in a special state, and if you cancel it, you need to call this callback to clean things up"
+
+1765387597
+bblack!~bblack@wikimedia/bblack-WMF
+that e.g. rcu.register() and rcu.read_locked() could use, so that cancellation unwinds their special state (without which, the next synchronizing writer might hang forever waiting on a dead "registered" reader)
+
+1765387961
+rvrb!~rvrb@156.146.51.229
+how do I silence a std.log scope when tests run?
+
+1765388242
+bblack!~bblack@wikimedia/bblack-WMF
+[the above basically amounts to a library-level "canceldefer" mechanism for fns running under io.async/concurrent/etc]
+
+1765388803
+bblack!~bblack@wikimedia/bblack-WMF
+rvrb: I don't think a mechanism exists yet.  there is a pub var std.testing.log_level though.  But also, in general scopes aren't suppressed even in non-testing builds unless you're using a custom logfn that pays attention to them.  And you could supply one that does so if builtin.is_test
+
+1765388940
+bblack!~bblack@wikimedia/bblack-WMF
+pub fn mylogfn(...) { if (scope == .foo and builtin.is_test) return; std.log.defaultLog(...); }
+
+1765388973
+rvrb!~rvrb@156.146.51.229
+I have a custom log function that does it but it doesn't seem to be used in my tests. if it should be, I think something else is going on
+
+1765389149
+bblack!~bblack@wikimedia/bblack-WMF
+rvrb: ah yeah, you're right.  because the test_runner supplies its own std_options with its own fixed logFn
+
+1765389303
+bblack!~bblack@wikimedia/bblack-WMF
+oh wait, does cancellation already unwind defer? it must or I'd have other issues I think
+
+1765389305
+rvrb!~rvrb@156.146.51.229
+I have found https://codeberg.org/ziglang/zig/src/commit/2da956b84a1f26ea9b52e2314e8393cffba95df2/lib/std/testing.zig#L35 and https://github.com/ziglang/zig/issues/5738
+
+1765389506
+bblack!~bblack@wikimedia/bblack-WMF
+I need to dig in more into the semantics of async cancellation I guess and figure this out.  because surely it works for basic defer-based cleanup inside functions called via io.async().  and surely somehow that means avoiding the implicit race of a truly-async cancellation between e.g. "const foo = alloc.alloc(u8, 1); defer alloc.free(foo)"?
+
+1765389537
+bblack!~bblack@wikimedia/bblack-WMF
+in which case, rcu (and similar) use-cases can just rely on normal defer like allocations would
+
+1765389614
+bblack!~bblack@wikimedia/bblack-WMF
+I can't imagine how though, unless cancellation of an already-running thread/fiber really only happens at certain synchronization points where they're executing functions that take std.Io params?
+
+1765389657
+bblack!~bblack@wikimedia/bblack-WMF
+I gotta read more and figure this out
+
+1765389845
+bblack!~bblack@wikimedia/bblack-WMF
+yes, looking at threaded, cancellation of a running Thing is not randomly-asynchronous, it clearly uses well-defined points and signal-based mechanisms, etc.  Neat!
+
+1765390012
+bblack!~bblack@wikimedia/bblack-WMF
+hmmm yeah it all makes sense.  when you call an Io function, it may throw error.Canceled back at your fn, which then processes local defer/errdefer as normal even though you're inside async
+
+1765390027
+bblack!~bblack@wikimedia/bblack-WMF
+very clever design
+
+1765390073
+bblack!~bblack@wikimedia/bblack-WMF
+so, yeah, std.Io doesn't need anything new or special to support an RCU-like abstraction that exists outside of it, I don't think.
+
+1765398598
+aren!~Aren@nix1.peacevolution.org
+:
+
+1765398618
+aren!~Aren@nix1.peacevolution.org
+oops
+
