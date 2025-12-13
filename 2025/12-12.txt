@@ -1,0 +1,192 @@
+1765517827
+torque!~tachyon@user/torque
+since the return type is already `FormatType`, you don't have to repeat yourself, you can just do `return .integer;` etc
+
+1765537156
+snowflr!~sunflr@user/sunflr
+guys how can i make it so that i can assign to a struct's member from a struct's method?
+
+1765537300
+snowflr!~sunflr@user/sunflr
+https://zigbin.io/28743a copied this from my code
+
+1765537324
+dryfish!~john@user/dryfish
+snowflr: fn assign(self: *Self) void { self.member = 1234; }
+
+1765537334
+dryfish!~john@user/dryfish
+the * being the important bit.
+
+1765537380
+snowflr!~sunflr@user/sunflr
+ohhhhhhhhh ok
+
+1765537396
+snowflr!~sunflr@user/sunflr
+should i make self a pointer every time?
+
+1765537451
+dryfish!~john@user/dryfish
+snowflr: probably only if you intend to change a member value.
+
+1765537498
+snowflr!~sunflr@user/sunflr
+alright
+
+1765537520
+snowflr!~sunflr@user/sunflr
+interesting
+
+1765537707
+dryfish!~john@user/dryfish
+snowflr: i think, with your code, i would have put the screen height limit in an init() method - that probablyu wouldn't work if you expect the screen size to change.
+
+1765537909
+snowflr!~sunflr@user/sunflr
+i'm using this struct in 2 other structs soo idk
+
+1765538273
+dryfish!~john@user/dryfish
+snowflr: or limit() returns a new Paddle struct with updated y values.
+
+1765563503
+mimivalsi!~mimivalsi@user/MimiValsi
+Is there any ressource I could read or watch how allocators are passed down to structs and sub structs?
+
+1765563630
+mimivalsi!~mimivalsi@user/MimiValsi
+Atm the moment I have a a struct that points to two other structs and each one allocates. On main(),I create a `DebugAllocator()` and then pass to the first struct. The 2 others, is Zig creating a new copie for each one or is the same one all the time?
+
+1765563653
+mimivalsi!~mimivalsi@user/MimiValsi
+Sry if it's confusing what I'm trying to say ^^'
+
+1765563740
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+zig isn't doing anything automatically
+
+1765563909
+mimivalsi!~mimivalsi@user/MimiValsi
+That part I know that It's me who must control what allocates and when to free
+
+1765567130
+kenrap!~kenrap@user/kenrap
+Is there a way I can catch a @compileError in a unit test, so that I can verify that it fails properly and make the test pass?
+
+1765567447
+andrewrk!~andrewrk@mail.ziglang.org
+kenrap: not yet
+
+1765567472
+kenrap!~kenrap@user/kenrap
+Looking forward to it.
+
+1765567942
+bblack!~bblack@wikimedia/bblack-WMF
+mimivalsi: unless there's a compelling reason, it seems for most tastes for general-case stuff, it's better not to be storing allocators in structs.  allocators should generally just be fn arguments.  e.g. you instantiate an allocator in main(), pass it explicitly as an argument down to every function main calls that needs to do an allocation, and they do the same for calls below them, etc...
+
+1765567962
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Does this apply to arenas?
+
+1765567994
+bblack!~bblack@wikimedia/bblack-WMF
+it always depends on the context for what you're doing, for all of these kinds of things.
+
+1765568000
+andrewrk!~andrewrk@mail.ziglang.org
+kenrap: here's your tracking issue: https://github.com/ziglang/zig/issues/513 - does the "subscribe" button still work even though the repo is in read-only mode?
+
+1765568058
+kenrap!~kenrap@user/kenrap
+andrewrk: the subscribe button seems to still work
+
+1765568099
+bblack!~bblack@wikimedia/bblack-WMF
+for my project, for a lot of general-purpose stuff in the main thread, I have one allocator instantiated in the body of main that gets passed down the callchains to wherever needs it, but then there are several exceptions to that.  there are places where I create an arena sub-allocator and pass that around for a while.  there are places I store an allocator in structs, because I'm having to deal with 
+
+1765568105
+bblack!~bblack@wikimedia/bblack-WMF
+callbacks to Zig from C libraries, and they need the allocator when they get their "self" pointer back from some opaque userdata in the C callback invocation.
+
+1765568126
+bblack!~bblack@wikimedia/bblack-WMF
+there are also places where I spawn explicitly-managed long-lived threads, and they instantiate their own allocator in the thread start fn just for thread-local use.
+
+1765568333
+bblack!~bblack@wikimedia/bblack-WMF
+but I think, as I seem to see it around Zig-land, that the ideal is to pass allocators down callchains as args (vs storing them in structs all over the place for re-use), unless you can make a cogent/compelling argument to yourself that you need to do something different for a reason
+
+1765568349
+kenrap!~kenrap@user/kenrap
+andrewrk: I got a codeberg account as well, so I can subscribe to issues there as well.
+
+1765568425
+andrewrk!~andrewrk@mail.ziglang.org
+kenrap: we're doing "copy on write" for github->codeberg issues :)
+
+1765568543
+kenrap!~kenrap@user/kenrap
+andrewrk: sounds good!
+
+1765568599
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: whether to store an Allocator, Io, or Writer on a struct is generally decided by whether it would be redundant, and whether many instances of the struct are allocated on the heap
+
+1765568633
+andrewrk!~andrewrk@mail.ziglang.org
+for example, main reason to remove Allocator from ArrayList is that it's often redundant because you already have the Allocator stored elsewhere
+
+1765568643
+bblack!~bblack@wikimedia/bblack-WMF
+that seems like a good rule of thumb, thanks!
+
+1765568658
+bblack!~bblack@wikimedia/bblack-WMF
+but also I like the explicitness of the fn arg, all other things being equal
+
+1765568665
+andrewrk!~andrewrk@mail.ziglang.org
+it's a good default
+
+1765568676
+andrewrk!~andrewrk@mail.ziglang.org
+putting it as a field is typically for convenience
+
+1765568726
+bblack!~bblack@wikimedia/bblack-WMF
+a quick grep scan to check my memory, there was one other case I've stored in structs: a couple of recdescent parsers, for the parser struct itself.  they don't get a ton of instantiations on the heap, and it avoided having it as an arg in tons of tiny functions in that parser.
+
+1765568727
+andrewrk!~andrewrk@mail.ziglang.org
+one of these days we'll have really nice refactoring tools for adding and removing parameters across entire call stacks
+
+1765568992
+bblack!~bblack@wikimedia/bblack-WMF
+sounds like a nice future :)
+
+1765571701
+LAC-Tech!~lewis@granite-phrase.bnr.la
+anyone have a static doc generator for zig they can recommend?
+
+1765571718
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(want to get the std library documentation)
+
+1765579411
+smlavine!~smlavine@sourcehut/user/smlavine
+Hello -- may someone please explain to me the difference in application between fs.Dir.Walker and fs.Dir.Iterator ?
+
+1765579542
+smlavine!~smlavine@sourcehut/user/smlavine
+They seem to do basically the same thing, except that iterate()/Iterator isn't explicitly documented
+
+1765580393
+andrewrk!~andrewrk@mail.ziglang.org
+smlavine: former is recursive
+
+1765580945
+smlavine!~smlavine@sourcehut/user/smlavine
+Thanks
+
