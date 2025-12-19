@@ -1,0 +1,84 @@
+1766019009
+torque!~tachyon@user/torque
+reference your function in a function that is marked export
+
+1766019319
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+so far trying to use it in main ends up inlining it, and forcing no inline ends up in compiler aggresively optimizing it out, e.g. if i make function that sums a slice of ints, passing a known slice simply creates a function that returns the hardcoded precalculated sum
+
+1766020054
+torque!~tachyon@user/torque
+well, that's what it means to not have a stable abi
+
+1766020082
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+eh, i guess
+
+1766020134
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+id just like to see any kind of start-to-finish function with slices in zig, doesn't have to be exportable
+
+1766020621
+torque!~tachyon@user/torque
+not an expert at reading assembly but this appears to have generated quite a bit for the function https://zig.godbolt.org/z/qMs1v8o86
+
+1766052226
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+with releasefast it boils down to num * num
+
+1766060928
+bblack!~bblack@wikimedia/bblack-WMF
+std.Io-fs branch is looking pretty nice after the latest push.  I'm able to trivially port my code forward from master to it successfully, wasn't the case yesterday.
+
+1766061032
+bblack!~bblack@wikimedia/bblack-WMF
+the new abstractions around stdio/terminals are nice, .setPermissions abstractions are nice, etc...
+
+1766061170
+bblack!~bblack@wikimedia/bblack-WMF
+one oddball thing where I'm still doing something that looks a little hacky: my daemon code binds a unix socket to listen on (at a filesystem path).  AFAIK it's "normal" to unlink the path before binding it (otherwise binding the socket to the path will fail), and it's ~normal to set permissions of the file bind() creates by doing an fchmod on the socket descriptor ahead of time.
+
+1766061229
+bblack!~bblack@wikimedia/bblack-WMF
+so those parts, I have to hack around a bit, e.g. instantiating a fake Io.File{ .handle = socket_fd } to use .setPermissions on, and still using std.posix for the socket()->bind()->listen() sequence that the setPermissions + unlink happens in the middle of
+
+1766061463
+bblack!~bblack@wikimedia/bblack-WMF
+I'm not 100% sure what the "right" portable abstraction will be for that.  Maybe something along the lines of adding an "unlink: bool" and a "permissions: ?File.Permissions" to Io.net.UnixAddress.ListenOptions ?
+
+1766061742
+bblack!~bblack@wikimedia/bblack-WMF
+the sequence of my code is basically: socket(); setPermissions(socket_fd); unlink(path); bind(sock, path); listen();
+
+1766061806
+bblack!~bblack@wikimedia/bblack-WMF
+(at a different outer scope, there's a lockfile that uses advisory locking to coordinate which instance of the code has the right to "own" the listening socket path, and thus the right to unlink+rebind it, but that's a whole separate issue at a different layer)
+
+1766062257
+bblack!~bblack@wikimedia/bblack-WMF
+I'll see if I can push up a relatively-trivial codeberg PR later as an example of what I mean there with the perms+unlink stuff.
+
+1766063727
+bblack!~bblack@wikimedia/bblack-WMF
+well, I probably don't have time to try to do it well in the next several days anyways [holidays!].  I made a diff of what I was thinking (but only for the Threaded + Posix case) if anyone wants to run with it, totally untested: https://zigbin.io/e584d9
+
+1766063890
+bblack!~bblack@wikimedia/bblack-WMF
+you could make the design argument that unlink() can be done at some outer scope by the calling code, which is fair, and remove that half of it, perhaps.  there's no hard requirement that the socket_fd gets created before you unlink, it's just how I sequenced the failure possibilities in my old code.
+
+1766063911
+bblack!~bblack@wikimedia/bblack-WMF
+but the permissions part, that has to be done in the middle of that sequence if you want to do it at all.
+
+1766064089
+bblack!~bblack@wikimedia/bblack-WMF
+(but I'd also make the argument that unix listening sockets on filesystem paths ~universally should unlink-before-bind in reliable code.  Maybe even the default for that boolean should be true.  Manpage examples tend to show the opposite, where an application unlinks the socket when it's done with it, so that it's not present on subsequent invocations, but then you still have to handle the case that the 
+
+1766064095
+bblack!~bblack@wikimedia/bblack-WMF
+previous invocation crashed without deleting it, hence the need to control this with a separate advisory lockfile that auto-unlocks on process death, and unlink-before-bind)
+
+1766064957
+bblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/61b815 <- slight update with more notes and correctly handling FileNotFound during unlink.
+
