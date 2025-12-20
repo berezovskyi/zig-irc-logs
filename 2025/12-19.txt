@@ -1,0 +1,352 @@
+1766115634
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: I'll take a look at the unix socket use case, thanks. one concern would be how to design the abstraction to also work on Windows (which supports unix sockets now)
+
+1766115647
+andrewrk!~andrewrk@mail.ziglang.org
+ah you mentioned that just below :)
+
+1766115668
+andrewrk!~andrewrk@mail.ziglang.org
+I agree that baking an unlink into the API might be a nice strategy
+
+1766115709
+andrewrk!~andrewrk@mail.ziglang.org
+counter example to unlinking before bind: if you want to support more than 1 client
+
+1766115737
+andrewrk!~andrewrk@mail.ziglang.org
+also the client might not have the permissions to unlink the file 
+
+1766115764
+andrewrk!~andrewrk@mail.ziglang.org
+for instance, consider the x11 or wayland unix socket
+
+1766115831
+ifreund!2940d10f8b@user/ifreund
+this is about the server creating the socket no?
+
+1766115851
+ifreund!2940d10f8b@user/ifreund
+wayland servers definitely unlink before creating their socket
+
+1766115887
+ifreund!2940d10f8b@user/ifreund
+clients don't create a socket
+
+1766115998
+ifreund!2940d10f8b@user/ifreund
+to be more precise, clients don't call bind(), they call connect()
+
+1766117867
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: if you unlink the file, how can the client connect?
+
+1766121185
+andrewrk!~andrewrk@mail.ziglang.org
+I'm sure I'm missing something obvious
+
+1766126456
+snowflr!~sunflr@user/sunflr
+i'm having a hard time understanding how to read a file in Zig. How should i do it? I want to be able to process a file in chunks so i think i need to remember the position from which to read the file but idk how to. Also i haven't done this in any other programming language sooo i don't know the basics either
+
+1766126504
+torque!~tachyon@user/torque
+if the file is small enough, the simplest approach is to read it entirely into memory
+
+1766126518
+torque!~tachyon@user/torque
+then you can random access the data as much as you want trivially
+
+1766126586
+torque!~tachyon@user/torque
+on modern systems, even a doing this with a file in the hundreds of megabytes in size will probably still end up with less memory usage than a single browser tab
+
+1766126695
+snowflr!~sunflr@user/sunflr
+so i'd get a file into a []u8 and then read parts of it that i need, torque?
+
+1766126705
+torque!~tachyon@user/torque
+yeah
+
+1766126710
+andrewrk!~andrewrk@mail.ziglang.org
+snowflr: after opening the file, var file_reader = file.reader();
+
+1766126722
+andrewrk!~andrewrk@mail.ziglang.org
+const reader = &file_reader.interface;
+
+1766126750
+andrewrk!~andrewrk@mail.ziglang.org
+then you have all the functions here at your service: https://ziglang.org/documentation/master/std/#std.Io.Reader
+
+1766126790
+andrewrk!~andrewrk@mail.ziglang.org
+you mentioned chunks. how big of chunks do you want to use?
+
+1766126840
+andrewrk!~andrewrk@mail.ziglang.org
+here's an example: var chunk: [999]u8 = undefined; var file_reader = file.reader(&chunk);
+
+1766128399
+snowflr!~sunflr@user/sunflr
+andrewrk: i decided to make a separate small project for this. So, i just want to understand what file.reader(&chunk) actually does, and what functions should i use with reader? I see some like .toss() .peek() and .take() and the last one returns a u8 array… Should i have a buffer for .take() then?
+
+1766128788
+andrewrk!~andrewrk@mail.ziglang.org
+toss, peek, take, are all designed to operate on the buffer you passed to reader()
+
+1766129021
+snowflr!~sunflr@user/sunflr
+hmm so i want to use .fill() to fill the buffer passed to reader() and then use other functions to advance in that buffer?
+
+1766129093
+snowflr!~sunflr@user/sunflr
+i'm just looking at functions in the completion for the reader constant…
+
+1766129174
+andrewrk!~andrewrk@mail.ziglang.org
+snowflr: what's the first thing you're wanting to read from the stream?
+
+1766129460
+snowflr!~sunflr@user/sunflr
+the first thing i wanna do is compare the first 8 bytes of the file to check if it has the correct header. After that i need to read the next 4 bytes into a buffer, and then read another 4 bytes into another buffer
+
+1766129493
+andrewrk!~andrewrk@mail.ziglang.org
+mem.eql(u8, try reader.take(8), "deadbeef")
+
+1766129523
+snowflr!~sunflr@user/sunflr
+i'm just writing a png parsing program basically, but i'm only getting certain chunks from it without deconding anything
+
+1766129550
+snowflr!~sunflr@user/sunflr
+andrewrk: ohhh i see, that looks nice
+
+1766129583
+andrewrk!~andrewrk@mail.ziglang.org
+you can use take as long as the amount you're taking is statically known to be smaller than your buffer size
+
+1766129611
+andrewrk!~andrewrk@mail.ziglang.org
+so for 8 bytes, 4 bytes, 4 bytes, it's good. for an amount determined by the file itself, that would be bad
+
+1766129808
+snowflr!~sunflr@user/sunflr
+ok i see. So the first 8 bytes is the header, next four bytes is the length of a chunk, and next 4 bytes is the type of the chunk. After i read those, i need to check the type of the chunk, and if it's the correct type i need to have a buffer as big as chunk length to read into that buffer
+
+1766129875
+snowflr!~sunflr@user/sunflr
+sooo .take should be enough for that right?
+
+1766130220
+andrewrk!~andrewrk@mail.ziglang.org
+length of the chunk is provided by the file (untrusted) so you should not use take for that
+
+1766130453
+andrewrk!~andrewrk@mail.ziglang.org
+you could perhaps use Reader.readSliceAll, Reader.readAlloc, or Reader.discardAll instead
+
+1766130500
+andrewrk!~andrewrk@mail.ziglang.org
+or you could do if (chunk_length > reader.buffer.len) return error.Invalid; followed by take
+
+1766130527
+andrewrk!~andrewrk@mail.ziglang.org
+does that make sense?
+
+1766130726
+snowflr!~sunflr@user/sunflr
+i think i get it, thank you so much :3 I'll try using functions and that if statement separately
+
+1766130787
+andrewrk!~andrewrk@mail.ziglang.org
+please be sure to read carefully the doc comments for all the Io.Reader functions you call
+
+1766130798
+andrewrk!~andrewrk@mail.ziglang.org
+I tried to be meticulous with them
+
+1766130882
+snowflr!~sunflr@user/sunflr
+of course!
+
+1766130925
+snowflr!~sunflr@user/sunflr
+i'll take a break for now though
+
+1766131059
+andrewrk!~andrewrk@mail.ziglang.org
+have a good night!
+
+1766141078
+snowflr!~sunflr@user/sunflr
+i'm backkk. What does Reader.discard() do? It doesn't seem to be documented
+
+1766148094
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Reader.discard skips bytes from the reader.
+
+1766148427
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: I think https://codeberg.org/ziglang/zig/issues/30225 could be a solution to https://github.com/ziglang/zig/issues/22822
+
+1766148842
+ifreund!2940d10f8b@user/ifreund
+andrewrk: oh I understand what you're missing now: the unlink() happens before the bind() not after
+
+1766148868
+ifreund!2940d10f8b@user/ifreund
+otherwise binding a unix socket can fail if the path already exists
+
+1766148953
+ifreund!2940d10f8b@user/ifreund
+the unlink() is targeting a stale socket at the same path from a previous run of the program for example
+
+1766152418
+snowflr!~sunflr@user/sunflr
+clevor: ok that makes sense. I wandor why there's also functions in Reader with the All suffix, like discardAll. What does "All" mean in that?
+
+1766152434
+snowflr!~sunflr@user/sunflr
+x3 "wandor"
+
+1766152443
+snowflr!~sunflr@user/sunflr
+i meant wonder
+
+1766153192
+clevor!sid649024@id-649024.hampstead.irccloud.com
+That means *all* of the bytes have to be sent. `stream`, `readVec`, `readSlice`, etc. may not read/stream all bytes in one go.
+
+1766153299
+snowflr!~sunflr@user/sunflr
+discardAll only reads until the buffer fills up or an EOF is encountered though
+
+1766153623
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Huh, std.Io.Reader.writableVector* returns an error union despite the function bodies containing no error paths.
+
+1766156010
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: yeah what ifreund said.  the client's POV is always to just connect to a socket path, which either exists and is listening, or not.  The server (listen/accept multiple new conns from clients) side's initial startup is what gets complicated.  You create the AF_UNIX socket fd, you fchmod() perms on that socket fd, then you unlink the path to get rid of any previous server instance's socket-file, then 
+
+1766156016
+bblack!~bblack@wikimedia/bblack-WMF
+call bind(sock, path) (which would fail if the socket file already existed, and which will create it with the perms from fchmod).
+
+1766156057
+bblack!~bblack@wikimedia/bblack-WMF
+and generally, the server does some kind of advisory locking around that, to lock against concurrent instances of itself.
+
+1766156091
+bblack!~bblack@wikimedia/bblack-WMF
+(so you don't have two servers starting up trying to listen on the same socket path, racing each other in the unavoidable race window between unlink+bind)
+
+1766156213
+bblack!~bblack@wikimedia/bblack-WMF
+the other thing that irks everyone about this, is that there's no posix bindat() for AF_UNIX sockets, basically.  The unix socket opens as an absolute path.  Because otherwise it would seem really smart to open the directory first, then do your advisory lockfile + socket unlink->bind on that open directory handle for more safety around this mechanism, but you can bind() the AF_UNIX socket path relative to a 
+
+1766156219
+bblack!~bblack@wikimedia/bblack-WMF
+dir handle :P
+
+1766156268
+bblack!~bblack@wikimedia/bblack-WMF
+and thus the traditional 108-byte length limit becomes an arbitrary limit on how deep your fs pathnames can be for these cases.
+
+1766156413
+ifreund!2940d10f8b@user/ifreund
+(wayland does the lockfile thing as well, see e.g. wayland-1.lock in $XDG_RUNTIME_DIR)
+
+1766156472
+ifreund!2940d10f8b@user/ifreund
+it's classic posix, there's a dance that can be done to make everything work reliably, but it is not immediately clear how
+
+1766156489
+bblack!~bblack@wikimedia/bblack-WMF
+:)
+
+1766156609
+bblack!~bblack@wikimedia/bblack-WMF
+for my particular case, maybe because I like pain, I throw in the extra feature-wrinkle that my daemon knows how to take control of a live listening unix socket handle from a previous instance that it's in the process of smoothly replacing, so that clients never know anything happened in the middle
+
+1766156701
+bblack!~bblack@wikimedia/bblack-WMF
+(they talk to each other over a connection on that same socket, and the old instance passes the listening socket via SCM_RIGHTS back over that connection, to the new instance.
+
+1766156704
+bblack!~bblack@wikimedia/bblack-WMF
+)
+
+1766157178
+bblack!~bblack@wikimedia/bblack-WMF
+there's also "abstract" AF_UNIX sockets on Linux, which traditionally are textually represented as e.g. "@foo" to users (but I don't know if that's super-standard), and the sockaddr path for them has a nul byte where the @ is in that, so you zero out the sockaddr path storage and then write "\x00foo".  These don't touch the filesystem, just an abstract namespace, which gets rid of a lot of these weird 
+
+1766157184
+bblack!~bblack@wikimedia/bblack-WMF
+concerns around pathname lengths, unlinking, etc...
+
+1766157212
+bblack!~bblack@wikimedia/bblack-WMF
+but AFAIK that's a Linux-only thing, not BSDs, at least last I heard.
+
+1766164711
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund, bblack: oh ok now I understand, it's simply removing a possibly stale file that was there from an earlier run to make room to put the new file
+
+1766172975
+kenrap!~kenrap@user/kenrap
+So, when writing with std.Io.Writer.Discarding, it doesn't trigger any syscalls, right?
+
+1766173084
+andrewrk!~andrewrk@mail.ziglang.org
+kenrap: have a look at the source, it's only 53 lines
+
+1766173108
+kenrap!~kenrap@user/kenrap
+Will do.
+
+1766173199
+andrewrk!~andrewrk@mail.ziglang.org
+if you call sendFile it might call stat() on the file being read in order to correctly report the length that was discarded
+
+1766173545
+netvor!~netvor@2a00:ca8:a1f:cd0:4ab:7efb:7d6f:e50
+lol, i just did this as an exercise: copied the Discarding struct to new file, removed sendFile().  just going by LSP "undefined" warnings, all the code needs to import is ... well nothing, all it refers is `@This().end` and Error enum
+
+1766173652
+netvor!~netvor@2a00:ca8:a1f:cd0:4ab:7efb:7d6f:e50
+ie., Zig being Zig it's easy to prove the code does basically nothing
+
+1766173698
+netvor!~netvor@2a00:ca8:a1f:cd0:4ab:7efb:7d6f:e50
+(ofc i mean "nothing" outside the given struct etc)
+
+1766173885
+kenrap!~kenrap@user/kenrap
+I won't be doing any file io, so that that won't be a problem. :)
+
+1766173933
+kenrap!~kenrap@user/kenrap
+Reading the source helped me connect the dots with the std.Io.Writer vtable too.
+
+1766173964
+kenrap!~kenrap@user/kenrap
+I think I'll be only using the drain part of Discarding.
+
+1766174188
+kenrap!~kenrap@user/kenrap
+ACTION will be implementing his own version of std.fmt.count
+
+1766174912
+netvor!~netvor@2a00:ca8:a1f:cd0:4ab:7efb:7d6f:e50
+ACTION wishes good luck
+
+1766175326
+kenrap!~kenrap@user/kenrap
+netvor: Thanks. Still a challenging road ahead of me. I already got the slice tokenizing of my format strings done. Right now, I need to figure out how to parse and expand the tokens that have the python format expressions and then feed everything to my own count() to get the right sized buffer for outputting. :)
+
