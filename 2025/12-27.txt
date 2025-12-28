@@ -1,0 +1,300 @@
+1766799716
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+how is --system supposed to be used? I have code which looks like
+
+1766799760
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+const use_system_foo = b.systemIntegrationOption("foo", .{});
+
+1766799873
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+const foo: ?*std.Build.Dependency = if (use_system_foo) b.dependency("foo", .{});
+
+1766799891
+andrewrk!~andrewrk@mail.ziglang.org
+  --system [pkgdir]            Disable package fetching; enable all integrations
+
+1766799950
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+if (use_system_foo) exe.root_module.linkSystemLibrary("foo", .{}) else exe.root_module.linkLibrary(foo.?.artifact("foo"));
+
+1766799989
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+but it still seems to want the dependency downloaded if i use --system
+
+1766799992
+andrewrk!~andrewrk@mail.ziglang.org
+if you're using system foo then you probably don't have a corresponding std.Build.Dependency
+
+1766800028
+andrewrk!~andrewrk@mail.ziglang.org
+are you perhaps looking for the -fsys / -fno-sys options rather than --system?
+
+1766800065
+andrewrk!~andrewrk@mail.ziglang.org
+there are two concepts here: fetching and individual system integration options
+
+1766800177
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+nono i got -fsys working. what i assumed was that --system would enable me to pre-download stuff which isn't packaged in the distro+ensure all integrations are on
+
+1766800307
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+as in, i could download the dependencies which are not in my distro to pkgdir/hash, then run zig build --system pkgdir
+
+1766800411
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+this was my guess based on what i read from `zig build -h`
+
+1766800434
+andrewrk!~andrewrk@mail.ziglang.org
+p00f: you can pre-download with or without --system
+
+1766800480
+andrewrk!~andrewrk@mail.ziglang.org
+but it looks like you understand --system correctly, that is indeed its intended use case
+
+1766800531
+andrewrk!~andrewrk@mail.ziglang.org
+if you expect the -fsys=foo option to prevent a dependency from being needed, then you need to make it a lazy dependency and avoid calling b.dependency() when the corresponding system integration is enabled
+
+1766800669
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+i skimmed https://ziglang.org/documentation/0.15.2/std/#std.Build.lazyDependency and i thought it implied that lazyDependency does not work that way
+
+1766800695
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+> 
+
+1766800695
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+When this function is called, it means that the current build does, in fact, require this dependency.
+
+1766801209
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+andrewrk: i also tried lazyDependency
+
+1766801217
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+var foo: ?*std.Build.Dependency = null; if (use_system_foo) foo = b.lazyDependency("foo", .{});
+
+1766801229
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+and disconnected my wifi
+
+1766801280
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+it still wanted to download
+
+1766801293
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+> build.zig.zon:14:20: error: unable to connect to server: TemporaryNameServerFailure
+
+1766801609
+andrewrk!~andrewrk@mail.ziglang.org
+p00f: when you pass --system it disables fetching altogether, no need to turn off your wifi
+
+1766801735
+andrewrk!~andrewrk@mail.ziglang.org
+you need to make it so that if use_system_foo is true, you don't call b.lazyDependency on whatever dependency you want -fsys=foo to avoid
+
+1766802328
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+andrewrk: is this not the way to do it: https://paste.sr.ht/~p00f/c6ad2a3c915e62da4772db2f2f021def9d7dcb8e
+
+1766804263
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+oh i also have to add .lazy = true in build.zig.zon
+
+1766804267
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+thank you!
+
+1766805542
+andrewrk!~andrewrk@mail.ziglang.org
+p00f: nice, got it working now?
+
+1766807037
+mountaingoat!~mountaing@user/mountaingoat
+so i have a std.fs.File.Writer. i'm trying to rewind it and write some bytes at the beginning of the file. right now i'm doing Writer.seekTo(0), but when i proceed to write via my io interface, the bytes still end up at the end of the file. how do i rewind and write?
+
+1766807074
+mountaingoat!~mountaing@user/mountaingoat
+nvm, i was missing a flush before the seek
+
+1766807140
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: that doesn't explain the problem because I'm looking at the implementation of seekTo and it calls flush first thing
+
+1766807198
+andrewrk!~andrewrk@mail.ziglang.org
+that was fixed recently however
+
+1766807517
+mountaingoat!~mountaing@user/mountaingoat
+i'm on 0.15.2
+
+1766807673
+andrewrk!~andrewrk@mail.ziglang.org
+the fix (b1189ab038ad1885f961562bf188f0bd3da12153) is not in the 0.15.x branch
+
+1766807704
+andrewrk!~andrewrk@mail.ziglang.org
+so maybe put a comment next to your workaround that it is not needed after updating to the next version :)
+
+1766808309
+mountaingoat!~mountaing@user/mountaingoat
+andrewrk: sounds good, thanks
+
+1766809179
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+andrewrk: i think so, it looks like i have to be careful not to .? the return value of lazyDependency even in the not-using-system code path?
+
+1766809328
+andrewrk!~andrewrk@mail.ziglang.org
+"if this function returns null it means that the only purpose of completing the configure phase is to find out all the other lazy dependencies that are also required"
+
+1766809350
+andrewrk!~andrewrk@mail.ziglang.org
+so you can simply do orelse process.exit(0) if you want, or you can try to discover all the lazy dependencies in one run of your build.zig to save time
+
+1766809470
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+i see, thanks! - works now
+
+1766809608
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+if there is a system library at a nonstandard path and the package doesn't come with a .pc file, is this the recommended way to link to it?
+
+1766809610
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+mod.addLibraryPath(.{ .cwd_relative = "/abs/path/to/dir" });
+
+1766809610
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+mod.addObjectFile(.{ .cwd_relative = "/abs/path/to/dir/foo.so" });
+
+1766809679
+andrewrk!~andrewrk@mail.ziglang.org
+instead, I think the user should pass "--search-prefix /abs/path/to/dir" and the build.zig logic can omit those two lines
+
+1766814470
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+andrewrk: hmm I think that still might not work because foo.so doesn't start with lib-
+
+1766814478
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+but good to know thanks
+
+1766821986
+kenrap!~kenrap@user/kenrap
+How do I coerce an implicit const pointer to mutable one when assigning?
+
+1766822607
+kenrap!~kenrap@user/kenrap
+Nvm, I rubberducked it: https://ziglang.org/documentation/0.15.2/#constCast
+
+1766855710
+lemons!~doggie@user/doggie-:49517
+it seems i have reached an unreachable in the std panic handler.. uhhh?
+
+1766855784
+lemons!~doggie@user/doggie-:49517
+line 5715 in posix.zig, funnily enough above it theres a comment reading "[...] but using the phdr is good enough (Is it?)."
+
+1766855798
+lemons!~doggie@user/doggie-:49517
+guess it wasnt
+
+1766860195
+clevor!sid649024@id-649024.hampstead.irccloud.com
+May I please gain PR access in Zig? I'm migrating my eZ80 CBE PR as it's awaiting a review.
+
+1766863521
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: can you be more specific? github is read-only. you can freely open PRs on codeberg
+
+1766864070
+kenrap!~kenrap@user/kenrap
+So, when I'm iterating through an array using a for-loop and trying to assign pointers of each item based on a condition to another array, why would all of the pointers in that array be pointing to the same address instead of each item's?
+
+1766864148
+rvrb!~rvrb@156.146.51.229
+What is #zig’s preferred no frills roll-it-yourself approach to command line argument parsing
+
+1766864215
+andrewrk!~andrewrk@mail.ziglang.org
+rvrb: for()
+
+1766864282
+hemisputnik!~hemisputn@user/hemisputnik
+rvrb: for, switch, and a state machine
+
+1766864538
+kenrap!~kenrap@user/kenrap
+I would just use std.process.args() then do a `_ = args.skip();` then whatever I want with the iterator afterwords.
+
+1766864697
+kenrap!~kenrap@user/kenrap
+Anyway, it seems that a workaround to my problem is to take pointers of the items I want by indexing for them.
+
+1766866315
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: Ah, it looks like I have to "fork" the repo.
+
+1766866398
+rvrb!~rvrb@156.146.51.229
+no labeled switch love for this?
+
+1766866420
+rvrb!~rvrb@156.146.51.229
+I guess I said no frills
+
+1766866619
+andrewrk!~andrewrk@mail.ziglang.org
+you might be interested in std.mem.cutPrefix
+
+1766870802
+rvrb!~rvrb@156.146.51.229
+ah, yes, that's what I was missing
+
+1766870914
+hemisputnik!~hemisputn@user/hemisputnik
+why is the target specified in Module and not in Compile? it makes no sense to have different targets for each module
+
+1766871403
+ifreund!2940d10f8b@user/ifreund
+hemisputnik: https://github.com/ziglang/zig/issues/22285
+
+1766871421
+hemisputnik!~hemisputn@user/hemisputnik
+oh, thanks
+
+1766872986
+rvrb!~rvrb@156.146.51.229
+wow I just unlocked a feature I didn't know about in `zig fmt` by accident; when you have a slice split into multiple lines, and every line has the same number of elements, they get vertically aligned. I was very confused at first
+
+1766873030
+rvrb!~rvrb@156.146.51.229
+no, I still can't figure out the heuristic
+
+1766873064
+rvrb!~rvrb@156.146.51.229
+ah, if the first line has multiple elements, and the entire list has modulo N == 0 elements, then it aligns them
+
+1766873074
+rvrb!~rvrb@156.146.51.229
+that was fun
+
+1766873109
+rvrb!~rvrb@156.146.51.229
+scratch that it's simpler; first list dictates the entire thing regardless of how many there are
+
+1766873115
+rvrb!~rvrb@156.146.51.229
+first line*
+
+1766873162
+ifreund!2940d10f8b@user/ifreund
+you can make it do fun things by using multi-codepoint characters by the way
+
