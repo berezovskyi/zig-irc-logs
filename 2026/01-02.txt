@@ -1,0 +1,428 @@
+1767313567
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+looks like the ziggit.dev cert just expired
+
+1767313575
+LAC-Tech!~lewis@granite-phrase.bnr.la
+do comptinme type parameters cause code bloat if you only ever use it with one concrete type in a given parameter? Like is the compiler smart enough?
+
+1767314180
+andrewrk!~andrewrk@mail.ziglang.org
+LAC-Tech: if it didn't work that way, ArrayList wouldn't work
+
+1767314199
+andrewrk!~andrewrk@mail.ziglang.org
+(no; yes)
+
+1767319742
+LAC-Tech!~lewis@granite-phrase.bnr.la
+god damn IoUring is a rabbithole. at least the Zig one is easy to read :)
+
+1767329252
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+how to walk directory structure and follow symlinks?  Dir.walk() seems to skip them
+
+1767329652
+andrewrk!~andrewrk@mail.ziglang.org
+are you sure? following symlinks is generally the default
+
+1767329903
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+well in 0.15.2 it looks like it:  https://codeberg.org/ziglang/zig/src/branch/0.15.x/lib/std/fs/Dir.zig#L715  
+
+1767329923
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+AFAIK Kind can be .sym_link to dir
+
+1767331164
+andrewrk!~andrewrk@mail.ziglang.org
+netvor: aha I see
+
+1767331209
+andrewrk!~andrewrk@mail.ziglang.org
+I wonder what I do in my music player
+
+1767331315
+andrewrk!~andrewrk@mail.ziglang.org
+looks like I don't use walk, and I handle .directory and .sym_link together
+
+1767331462
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+here's a repro: https://bpa.st/4FGA   `zig run walk.zig -- some/path` should behave like `find -L some/path` but behaves like `find some/path`
+
+1767331520
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+should this be filed as bug, andrewrk?  or will this all be rewritten in 0.16 anyway?  
+
+1767331956
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+looks like in 0.16 it's rewritten but still only checks .directory:  https://codeberg.org/ziglang/zig/src/branch/master/lib/std/Io/Dir.zig#L364
+
+1767332188
+andrewrk!~andrewrk@mail.ziglang.org
+feel free to file an issue and share your thoughts on the matter
+
+1767333781
+netvor!~netvor@2a00:ca8:a1f:cd0:6f7d:688e:7c25:9436
+thanks, done: https://codeberg.org/ziglang/zig/issues/30654
+
+1767335627
+jakelazaroff!~jakelazar@66.108.106.210
+heads up to the mods, the first discord link on https://ziglang.org/community/ seems to be expired
+
+1767338107
+akiva!~Akiva@user/Akiva
+Every time I try to print the `entry.value_ptr.*` returned from `const entry = try map.getOrPutValue(word, 0);` I keep getting a segmentation fault. It must be so simple yet I am completely missing it.
+
+1767339024
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+akiva: what is the lifetime of the memory that holds the map values?
+
+1767339081
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+i'd say it's out of scope by the time you're getting the entry out, ie. the pointer is not valid
+
+1767339301
+akiva!~Akiva@user/Akiva
+I am iterating a reader (line-delimited from a text file) and iterating over a tokenizeAny. The code works just fine when the key is not yet found, it only seems to happen when trying to umutate the value.
+
+1767339303
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+btw i'd consider using Unmanaged variant of the map, since the managed variant is going to be deprecated eventually, and generally with unmanaged variant, memory errors like this are easier to spot
+
+1767339307
+akiva!~Akiva@user/Akiva
+netvor: ^
+
+1767339329
+akiva!~Akiva@user/Akiva
+Oh, I should try reading up on that.
+
+1767339458
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+since getOrPutValue does not accept allocator, i'm assuming you're using the managed version, which stores the allocator as part of the map
+
+1767339504
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+the main point is the allocator--or to be more precise, the backing memory--must be valid at every point when using the map
+
+1767339570
+akiva!~Akiva@user/Akiva
+OK, I am guessing that must be it. I am trying to create a dictionary of each word present with a value of the occurance of that word. Once it hits a word that is already present, it faults.
+
+1767339609
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+if you share the code i could have a look at it
+
+1767339992
+akiva!~Akiva@user/Akiva
+(Please be gentle. lol https://termbin.com/wyp0)
+
+1767339997
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+btw, in simple programs the easiest way is just to allocate a "huge" buffer in main(), create FixedBufferAllocator() over it and then keep passing around the fba's .allocator() throughout the rest of the program
+
+1767340005
+akiva!~Akiva@user/Akiva
+netvor: ^ Sorry
+
+1767340099
+akiva!~Akiva@user/Akiva
+Clearly, I have spent far too much of my time with GC languages.
+
+1767340184
+akiva!~Akiva@user/Akiva
+netvor: I should explain that altered code... Essentially, the commented-out parts are where my logic was but you can see by running that, the seg fault occurs when entry.found_existing == true
+
+1767340258
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+the code seems fine...  i was expecting something more complex  :)  still looking
+
+1767340326
+akiva!~Akiva@user/Akiva
+netvor: The lack of complexity is what has me so despirited.
+
+1767340432
+andrewrk!~andrewrk@mail.ziglang.org
+akiva: `var reader` should be `const reader`
+
+1767340474
+akiva!~Akiva@user/Akiva
+andrewrk: Thanks for catching that. I've updated that one.
+
+1767340479
+andrewrk!~andrewrk@mail.ziglang.org
+that's not your issue tho
+
+1767340492
+akiva!~Akiva@user/Akiva
+No, sadly it is not.
+
+1767340536
+andrewrk!~andrewrk@mail.ziglang.org
+your issue is that you put `lower` in your map, then immediately free it
+
+1767340569
+andrewrk!~andrewrk@mail.ziglang.org
+StringHashMap does not copy keys and values; it stores references
+
+1767340597
+andrewrk!~andrewrk@mail.ziglang.org
+or rather, it *does* copy keys and values, shallowly. so it won't duplicate your []const keys and []const values
+
+1767340610
+andrewrk!~andrewrk@mail.ziglang.org
+it won't duplicate the string data that the keys and values point to
+
+1767340756
+andrewrk!~andrewrk@mail.ziglang.org
+you need to come up with a strategy for making your keys live as long as your map
+
+1767340815
+akiva!~Akiva@user/Akiva
+andrewrk: Thank you. That does seem to be it. Now I just need to figure out the options available to me for alternatives.
+
+1767340910
+akiva!~Akiva@user/Akiva
+It's definitely proving a simply but good exercise in trying to break out from my usual mindset on approach.
+
+1767340987
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+what your options are for the strategy is going to depend heavily on use case.   for most things i've done, simply allocating a "huge" slab of memory in main() and having it live forever is good enough
+
+1767341131
+akiva!~Akiva@user/Akiva
+netvor: Ha ha. The way that was described sent a shiver up my spine but for all I know, that is the only option. Again, I am new to this and I want to start by making something work and slowly squeeze more out of it, both in terms of efficiency but also command args, reading from piped input, etc.
+
+1767341169
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+ofc it depends on whether you want to process a really big file (and quit), or run forever as a "server" or GUI and keep processing many files independently
+
+1767341215
+akiva!~Akiva@user/Akiva
+netvor: Right. I was thinking more of a run-off. Read a file or accept piped data and at the end, print the results.
+
+1767341292
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+usually i just do `var mem_buffer: [1024 * 1024]u8 = undefined; var fba: std.heap.FixedBufferAllocator = .init(&mem_buffer);` and then use fba.allocator() everywhere, until i run out of memory, then just bump the buffer size
+
+1767341375
+akiva!~Akiva@user/Akiva
+netvor: Ha ha. I love it.
+
+1767341382
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+(btw that puts the buffer on the stack, which has OS-imposed limit, so you might want to get the mem_buffer from heap if you want to have a really big (tens of MiB) buffer)
+
+1767341877
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+i'd usually go with just the "long-lived huge slab" approach, since it makes it easy to not stand in your way.   then as you develop the app and flesh out the architecture, you can go back and find opportunities how to re-use parts of th memory.
+
+1767342131
+akiva!~Akiva@user/Akiva
+netvor: Yeah, that makes sense. Thanks! That suggestion helped. It's working and now I can tweak and improve it. Thanks for your help, too, andrewrk 
+
+1767342235
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+you can always use the main FBA to create smaller slabs and more localized FBA's that you will just throw away.  eg. you'd have a processFile(allocator, name) and within that function you could chop let's say few MiB by allocator.alloc(u8, 1024 * 1024).  then use that slice to create internal FBA, and use that for things that should remain internal to the function
+
+1767342324
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+..and just defer ...free it.  no need to have complex free strategies everywhere
+
+1767342486
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+np, i'm rambling :D  i'm still new to non-gc languages (i only know Zig) and it's still fun for me to think about .. esp. given how scary it seemed before
+
+1767342606
+akiva!~Akiva@user/Akiva
+netvor: I completely get that. Thanks! 
+
+1767351890
+snowflr!~sunflr@user/sunflr
+is there a testing writer i can use with a function that needs a writer? I'm trying to make tests for my program currently. Should i just copy part of the function to the testing block instead?
+
+1767359607
+mimivalsi!~mimivalsi@user/MimiValsi
+U can create test blocks inside the same source file. and run zig build test if u have a build.zig set
+
+1767365899
+cow_2001!~username@user/cow-2001/x-5712099
+davros1: hi :>
+
+1767366543
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+snowflr: you can create a sufficiently sized buffer, wrap it using std.Io.writer.fixed() and pass that to your tested function
+
+1767367335
+netvor!~netvor@2a00:ca8:a1f:cd0:7b9d:b70e:f012:5012
+after the test you can access the slice of written data by .buffered() on the writer, and then use eg. std.testing.expectEqualStrings
+
+1767376720
+davros1!~davros2@209.35.94.47
+cow_2001, sorry was away , hi
+
+1767376918
+cow_2001!~username@user/cow-2001/x-5712099
+davros1: are you porting your engine to zig?  new engine?
+
+1767376973
+davros1!~davros2@209.35.94.47
+No . I just observe here. I do like the idea of zig, I'd probably enjoy it. There is a chance I might use C-FFI for gameplay code because of rusts slow compiles. C (and by extension zig) would be a contender .. but I haven't touched zig yet.
+
+1767381294
+sivecano_!~Sivecano@user/Sivecano
+my wm is actually getting close to usable.
+
+1767381295
+sivecano_!~Sivecano@user/Sivecano
+I'll add it to the wiki once it is :D
+
+1767381525
+Franciman!~Franciman@mx1.fracta.dev
+sivecano_: link=?
+
+1767381960
+Sivecano28!~Sivecano@user/Sivecano
+oops, posted this in the wrong irc channel
+
+1767381965
+Sivecano28!~Sivecano@user/Sivecano
+but it's written in zig
+
+1767382057
+Sivecano28!~Sivecano@user/Sivecano
+so why not (it's a river wm) https://codeberg.org/sivecano/rhine
+
+1767382061
+Sivecano28!~Sivecano@user/Sivecano
+it's very alpha
+
+1767388098
+andrewrk!~andrewrk@mail.ziglang.org
+netvor: ArenAllocator is better suited for this use case, I think
+
+1767388244
+andrewrk!~andrewrk@mail.ziglang.org
+akiva: a good first step would be to ask the question: do you plan to remove from the map? or does it only grow?
+
+1767388270
+andrewrk!~andrewrk@mail.ziglang.org
+if it only grows, then an ArenaAllocator that you create along with the Map, and deinitialize at the same time as the Map, is a good strategy
+
+1767388309
+andrewrk!~andrewrk@mail.ziglang.org
+if items are added and removed continuously as part of the steady state of the application, then you need a more advanced allocation strategy (assuming you want to keep the application's memory usage stable)
+
+1767394151
+akiva!~Akiva@user/Akiva
+andrewrk: The map will only grow until all words in the read stream have completed (assentially, accumulating word count). I appreciate the input. I will try that approach once I get some time and share results.
+
+1767395004
+akiva!~Akiva@user/Akiva
+andrewrk: Switching to the arena allocator for map allocator, what would you recommend I pass for `const lower = try std.ascii.allocLowerString(womp_womp, line);`?
+
+1767395105
+torque!~tachyon@user/torque
+is this for case-insensitive key comparison?
+
+1767395474
+andrewrk!~andrewrk@mail.ziglang.org
+akiva: since you control read_buffer, you can modify `line`. that means you can do in-place ascii lowering rather than allocating
+
+1767395480
+andrewrk!~andrewrk@mail.ziglang.org
+but, you don't actually need to even do that
+
+1767395491
+akiva!~Akiva@user/Akiva
+o.o
+
+1767395495
+akiva!~Akiva@user/Akiva
+Nice.
+
+1767395497
+andrewrk!~andrewrk@mail.ziglang.org
+your iterator does not depend on the result of the lowering. so, do your iteration first
+
+1767395541
+andrewrk!~andrewrk@mail.ziglang.org
+then, combine your ascii lowering with your copying into the arena by passing your arena to ascii.allocLowerString when inserting into the map
+
+1767395600
+andrewrk!~andrewrk@mail.ziglang.org
+this is nice and simple. if you want to get more advanced, you can avoid some extra processing by overriding the hash map context as torque hinted at
+
+1767395625
+akiva!~Akiva@user/Akiva
+torque: Yes, case-insensitive.
+
+1767395661
+andrewrk!~andrewrk@mail.ziglang.org
+btw you can delete " == true"
+
+1767395672
+andrewrk!~andrewrk@mail.ziglang.org
+that's already implicitly what if statements do :)
+
+1767395688
+akiva!~Akiva@user/Akiva
+andrewrk: Yeah, I had that previously but pasted in from a quick copy and paste from a `test` in the offical source.
+
+1767395690
+akiva!~Akiva@user/Akiva
+lol
+
+1767395692
+akiva!~Akiva@user/Akiva
+Good catch.
+
+1767395788
+akiva!~Akiva@user/Akiva
+andrewrk: Re: that comment about the iterator not depending on `lower`, it does, though. It iterates over the lowercase line.
+
+1767396027
+andrewrk!~andrewrk@mail.ziglang.org
+akiva: I'm saying that none of your delimiters will be affected by the lower transformation
+
+1767396064
+andrewrk!~andrewrk@mail.ziglang.org
+that means whether you do the lower transformation before or after tokenizing is equivalent
+
+1767396656
+akiva!~Akiva@user/Akiva
+andrewrk: If I understand you correctly, you mean more like https://termbin.com/3xbc ?
+
+1767397152
+andrewrk!~andrewrk@mail.ziglang.org
+to reduce indentation, I recommend if (line.len == 0) continue; // Ignore empty lines.
+
+1767397189
+andrewrk!~andrewrk@mail.ziglang.org
+and yep, that looks good
+
+1767397209
+andrewrk!~andrewrk@mail.ziglang.org
+that fixed your problem right?
+
+1767397227
+akiva!~Akiva@user/Akiva
+andrewrk: Cheers, much appreciated. I have a list to slowly improve the script and add functionality as a learning lesson. Still pretty uncertain about the memory management side of all this but I am looking forward to it all.
+
+1767397248
+akiva!~Akiva@user/Akiva
+andrewrk: Yes, that works. Next up is sorting the hash to print highest occurrence first.
+
+1767397494
+andrewrk!~andrewrk@mail.ziglang.org
+well, if you're unsure, just use that arena for everything and you can't go wrong
+
+1767397511
+andrewrk!~andrewrk@mail.ziglang.org
+you can later decide if you want to introduce more complex memory management
+
+1767398360
+akiva!~Akiva@user/Akiva
+andrewrk: Thanks. I will keep that approach in mind.
+
