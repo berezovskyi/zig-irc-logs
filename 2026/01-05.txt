@@ -1,0 +1,156 @@
+1767604159
+mimivalsi!~mimivalsi@user/MimiValsi
+I need to work with 'std.ArrayListUnmanaged' and was thinking of add it to a struct. Was thinking something like `Foo{ arrList = *std.ArrayListUnmanaged, ... }`. Is is better to create a pointer and use it in differents function one at the time, or just pass a copie of it? In each function I was thinking of either start it with `arr = .initCapacity` or use `arr.clearRetainingCapacity()`.
+
+1767604326
+mimivalsi!~mimivalsi@user/MimiValsi
+That saying each function will have it's own string concat.. hmmm
+
+1767608391
+Affliction!affliction@idlerpg/player/affliction
+mimivalsi: if Foo is the only thing that needs to own the ArrayListUnmanaged, best to not have it as a pointer there.
+
+1767608427
+Affliction!affliction@idlerpg/player/affliction
+When passing it around, if it needs to be mutated, I'd generally pass by pointer to those functions. Otherwise, passing by value, AFAIK, gives the compiler a bit of extra freedom around optimization
+
+1767608485
+Affliction!affliction@idlerpg/player/affliction
+Naturally, if many different objects need to know about that instance of ArrayListUnmanaged, then yeah, you'll need a shared pointer to it.
+
+1767609579
+doclic!~doclic@user/doclic
+Affliction: if you need to mutate the list you'd need to use a pointer, no? function arguments are const, so if you don't use a pointer the list would be const in the function
+
+1767609587
+Affliction!affliction@idlerpg/player/affliction
+yes
+
+1767609685
+Affliction!affliction@idlerpg/player/affliction
+So to rephrase, if you need to mutate it, pass by pointer. If you need to give something else an immutable reference to the same arraylist, pass (and store) a constant pointer. Otherwise, pass by value
+
+1767609790
+Affliction!affliction@idlerpg/player/affliction
+and, if Foo can be considered to own its instance of the ArrayList, store it inline. If it's referring to an ArrayList stored elsewhere, naturally that'd have to be a pointer, constness depending on if your object needs to mutate it.
+
+1767612918
+mimivalsi!~mimivalsi@user/MimiValsi
+oh ok I see. Right. Yh I already have Foo as a pointer where I pass it around. So I guess that as ArrayListUnmanaged is an instance of Foo, and each function will have it's own "string" concat, I'll pass by value
+
+1767612931
+mimivalsi!~mimivalsi@user/MimiValsi
+Affliction: Thx for the clarifications
+
+1767613113
+doclic!~doclic@user/doclic
+mimivalsi: btw in zig 0.15 std.ArrayList was changed to default to std.ArrayListUnmanaged, so you can just use std.ArrayList now https://ziglang.org/download/0.15.1/release-notes.html#ArrayList-make-unmanaged-the-default
+
+1767613959
+mimivalsi!~mimivalsi@user/MimiValsi
+Ah didn't know that. Has I read the std page, it's doesn't indicate. Thx for the sigh
+
+1767613986
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I noticed an inconsistency that zig fmt turns `data[0..i-1]` into `data[0 .. i - 1]`, but `data[0..i-|1]` into `data[0..i -| 1]`
+
+1767615311
+mimivalsi!~mimivalsi@user/MimiValsi
+So yeah, ArrayList is tricky. If I don't call clearAndFree or clearRetainingCapacity, it will mess with my string. haha
+
+1767617288
+slowstatic!~slowstati@user/slowstatic
+clevor: it never occurred to me that `data[0..i-|1]` is something you can do. thanks for expanding my mind 
+
+1767642751
+bblack!~bblack@wikimedia/bblack-WMF
+with the new std.Io process API stuff:
+
+1767642752
+bblack!~bblack@wikimedia/bblack-WMF
+/// It is illegal to call this function in a fork() child.
+
+1767642753
+bblack!~bblack@wikimedia/bblack-WMF
+pub fn replace(io: Io, options: ReplaceOptions) ReplaceError {
+
+1767642827
+bblack!~bblack@wikimedia/bblack-WMF
+^ is this intended to mean "illegal to call this function in a concurrent fork() child" (which, I think that use-case is covered by processSpawn() anyways)
+
+1767642887
+bblack!~bblack@wikimedia/bblack-WMF
+or more like "illegal to ever call this function after ever calling fork, even if we're the only one left standing" (as might be the case if, say, this process did some daemonization forks long ago and the original parents long-since exited, leaving just one process now)
+
+1767642971
+bblack!~bblack@wikimedia/bblack-WMF
+relatedly, if we're trying to eliminate all the posix.foo(), is there a need for some std.Io interface for daemonization on posixy targets? (I'm not even sure what it would look like elsewhere, if there's any real equivalent)
+
+1767643168
+bblack!~bblack@wikimedia/bblack-WMF
+"daemonization" here meaning something like "fork; setsid; ignore HUP; fork;", but with all the safety bits, and having some way for the original parent to eventually exit with status zero iff the final child reaches some later application-defined "OK" state successfully.
+
+1767643271
+bblack!~bblack@wikimedia/bblack-WMF
+the really basic fork/setsid/fork is easy enough to see.  but I know some (including my code) want to check/do a fair amount of post-daemonization init before deciding if the original parent should exit zero or fail.  Supporting that would get complicated, maybe.
+
+1767643342
+bblack!~bblack@wikimedia/bblack-WMF
+It might also be acceptable to just say that daemonization is out of scope, and some external tool (e.g. freebsd daemon(1) or systemd unit files on most Linux, etc) should handle daemonization of an otherwise normal foreground execution of daemon-like code.
+
+1767643391
+bblack!~bblack@wikimedia/bblack-WMF
+an API that would support the late error reporting might look something like:
+
+1767643436
+bblack!~bblack@wikimedia/bblack-WMF
+io.startDaemonization(); // does fork->setsid->fork, leaves us in final child, but the two earlier PIDs are still holding and waiting....
+
+1767643474
+bblack!~bblack@wikimedia/bblack-WMF
+errdefer io.endDaemonization(42); // causes the original parent to exit with status 42 if something goes wrong here...
+
+1767643498
+bblack!~bblack@wikimedia/bblack-WMF
+<do some late stage applayer init stuff that may fail> 
+
+1767643517
+bblack!~bblack@wikimedia/bblack-WMF
+io.endDaemonization(0); // we got far enough, call it a success and have the original parent process exit 0
+
+1767643739
+bblack!~bblack@wikimedia/bblack-WMF
+err I guess that's daemon(8) for the command on freebsd, either way: https://man.freebsd.org/cgi/man.cgi?daemon(8)
+
+1767643795
+bblack!~bblack@wikimedia/bblack-WMF
+and generally the middle pid can exit immediately and be waited by the original parent immediately.  it's mostly about the original parent stalling on some pipe-reported status from the final child process that keeps going.
+
+1767644268
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+is this a typo
+
+1767644269
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+https://ziglang.org/documentation/master/std/#std.Io.Dir.realPath
+
+1767644276
+p00f!ad2b9023b7@2a03:6000:1812:100::d93
+there's no sub_path argument
+
+1767646029
+bblack!~bblack@wikimedia/bblack-WMF
+come to think of it, relatedly I worry about the design issues around leaving Sigaction out of the std.Io interface wrt to processSpawn
+
+1767646048
+bblack!~bblack@wikimedia/bblack-WMF
+I mean, I think it can be handled ok by application code, I'm just not sure yet
+
+1767646083
+bblack!~bblack@wikimedia/bblack-WMF
+(e.g. if you've defined Sigaction handlers, maybe you do your own Sigaction-based signal blocking around calling processSpawn() to avoid races in the post-fork section)
+
+1767646505
+bblack!~bblack@wikimedia/bblack-WMF
+ACTION curses himself by touching every possible edge case in these things :P
+
