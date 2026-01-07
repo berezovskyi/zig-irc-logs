@@ -1,0 +1,196 @@
+1767665151
+cow_2001!~username@user/cow-2001/x-5712099
+i'm going through ziglings and got here.  this http://0x0.st/s/XVVYDhc1i0m3-6dPvIp71Q/PoYD.c doesn't work
+
+1767665175
+cow_2001!~username@user/cow-2001/x-5712099
+how do i catch a WhateverError!void?
+
+1767668624
+Affliction!affliction@idlerpg/player/affliction
+cow_2001: use either 'try' or 'catch'
+
+1767668632
+Affliction!affliction@idlerpg/player/affliction
+'try' propagates, 'catch' handles
+
+1767668681
+Affliction!affliction@idlerpg/player/affliction
+https://ziglang.org/documentation/master/#catch
+
+1767668721
+Affliction!affliction@idlerpg/player/affliction
+both deal with Error values, it's not like eg, exceptions
+
+1767668754
+cow_2001!~username@user/cow-2001/x-5712099
+ya, figured it out eventually.  sorry
+
+1767668775
+cow_2001!~username@user/cow-2001/x-5712099
+i should have went to the reference ~;~
+
+1767668797
+cow_2001!~username@user/cow-2001/x-5712099
+Affliction: thank you
+
+1767668802
+Affliction!affliction@idlerpg/player/affliction
+No worries
+
+1767687211
+Zorgatone!~Zorgatone@user/Zorgatone
+Hey folks, can't wait for Zig Io.async, my understanding is that most of the heavy-lifting is done right? Can we expect for a 0.16.0 release in 2026?
+
+1767687895
+Affliction!affliction@idlerpg/player/affliction
+Zorgatone: "right about now is when we would usually start the release process, but since master branch is unstable due to being in the middle of async I/O resurrection, I think it would be appropriate to postpone the release. I'm going to chat with the team about this in our next meeting" - Andrew, ~2d ago
+
+1767687937
+Affliction!affliction@idlerpg/player/affliction
+so, probably not too long
+
+1767687963
+Zorgatone!~Zorgatone@user/Zorgatone
+Affliction: oh cool, thanks for the update
+
+1767702608
+bblack!~bblack@wikimedia/bblack-WMF
+exciting times, I see Io.IoUring starting to catch up in a branch! :)
+
+1767707225
+baltevl!~baltevl@user/baltevl
+Hey everybody,
+
+1767707226
+baltevl!~baltevl@user/baltevl
+I'm playing around a bit with writing an OS in zig. Namely it's a reimplementation of [xv6-riscv](https://github.com/mit-pdos/xv6-riscv) a teaching OS based on K&C's Unix v6. I've been enjoying it a lot. Especially accessing memory mapped registers just feels a lot more clean (I'm using packed structs :) ). Well enough fanboying...
+
+1767707226
+baltevl!~baltevl@user/baltevl
+Next for me is to implement the riscv Platform Level Interrupt Controller (PLIC) (see https://github.com/riscv/riscv-plic-spec). This is where using packed structs for memory mapped registers breaks down. My preferred implementation would look something like this:
+
+1767707227
+baltevl!~baltevl@user/baltevl
+```zig
+
+1767707227
+baltevl!~baltevl@user/baltevl
+const NUM_CONTEXTS = 15872;
+
+1767707228
+baltevl!~baltevl@user/baltevl
+const NUM_SRCS = 1024;
+
+1767707228
+baltevl!~baltevl@user/baltevl
+const PLIC = packed struct {
+
+1767707229
+baltevl!~baltevl@user/baltevl
+    /// offset: 0x0
+
+1767707229
+baltevl!~baltevl@user/baltevl
+    /// size: 0x1000
+
+1767707230
+baltevl!~baltevl@user/baltevl
+    /// Notice: priorities[0] is reserved
+
+1767707230
+baltevl!~baltevl@user/baltevl
+    priorities: [NUM_SRCS]u32,
+
+1767707231
+baltevl!~baltevl@user/baltevl
+    /// offset: 0x1000
+
+1767707231
+baltevl!~baltevl@user/baltevl
+    /// size: 0x80
+
+1767707232
+baltevl!~baltevl@user/baltevl
+    /// Notice: pending[0] is hardwired to false
+
+1767707232
+baltevl!~baltevl@user/baltevl
+    pending: [NUM_SRCS]bool,
+
+1767707233
+baltevl!~baltevl@user/baltevl
+    /// padding
+
+1767707233
+baltevl!~baltevl@user/baltevl
+    /// size: 0x2000 - @offsetOf(@This(), "pending") - @sizeOf(@This().pending)
+
+1767707234
+baltevl!~baltevl@user/baltevl
+    _: [0xc00]u8 = undefined,
+
+1767707245
+baltevl!~baltevl@user/baltevl
+...
+
+1767707245
+baltevl!~baltevl@user/baltevl
+enable_0_0: bool,
+
+1767707246
+baltevl!~baltevl@user/baltevl
+enable_0_1: bool,
+
+1767707246
+baltevl!~baltevl@user/baltevl
+...
+
+1767707247
+baltevl!~baltevl@user/baltevl
+enable_1_0: bool,
+
+1767707247
+baltevl!~baltevl@user/baltevl
+enable_1_1: bool,
+
+1767707248
+baltevl!~baltevl@user/baltevl
+};
+
+1767707248
+baltevl!~baltevl@user/baltevl
+```
+
+1767707249
+baltevl!~baltevl@user/baltevl
+This would lead to (15872 * 1024) * 2 + 2 * 1024 = 32507904 loc vs 4 loc (without comments or padding)! I'm only really using 2 sources and num of harts (riscv lango for cpu threads, configurable at comptime at the moment) contexts but it still just feels like bad design. Futhermore i could either hard code the number of contexts used which at the
+
+1767707249
+baltevl!~baltevl@user/baltevl
+moment is configurable or use comptime, which in my opinion makes the code a lot more complicated and unreadable then necessary
+
+1767707250
+baltevl!~baltevl@user/baltevl
+(btw another issues is that the size of PLIC is 0x4000000 which is greater than the compiler allows at the moment. But this could probably be just a small patch...)
+
+1767707250
+baltevl!~baltevl@user/baltevl
+Is there anything obvious I'm missing?
+
+1767716117
+subnut!~subnut@user/subnut
+hmm it seems `zig translate-c` doesn't honor --cache-dir and --global-cache-dir
+
+1767716169
+subnut!~subnut@user/subnut
+can someone check to see if it happens on their end too? or is it just a *me* problem?
+
+1767716270
+subnut!~subnut@user/subnut
+oh wait there's a new 0.16.0-dev release.. hmm lemme update and check again brb
+
+1767718038
+cow_2001!~username@user/cow-2001/x-5712099
+one of the ziglings is about a hermit.  i feel seen
+
