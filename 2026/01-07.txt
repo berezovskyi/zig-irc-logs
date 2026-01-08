@@ -1,0 +1,236 @@
+1767744662
+smlavine!~smlavine@sourcehut/user/smlavine
+Was -fllvm removed in 0.15.2? I see it is mentioned in the 0.15.1 release notes but `zig build -fllvm` fails.
+
+1767748178
+ifreund!2940d10f8b@user/ifreund
+smlavine: -fllvm is an option for the lower level zig build-exe for example
+
+1767748736
+smlavine!~smlavine@sourcehut/user/smlavine
+I see
+
+1767748757
+smlavine!~smlavine@sourcehut/user/smlavine
+So only .build_llvm = true for build.zig projects
+
+1767748769
+smlavine!~smlavine@sourcehut/user/smlavine
+s/build/use/
+
+1767752810
+smlavine!~smlavine@sourcehut/user/smlavine
+Has anyone else run into a bug where trying to compile a zig-sqlite db.exec call fails to compile ("command terminated unexpectedly") when compiling debug mode on x86_64 backend, but not compiling with llvm backend?
+
+1767753364
+smlavine!~smlavine@sourcehut/user/smlavine
+Nm, looks like is known with an issue in zig-sqlite and on gh
+
+1767816289
+goodtab!~admin@user/goodtab
+after exercise 61, ziglings gets... hard :sob:
+
+1767817085
+geenvoud!~geenvoud@user/geenvoud
+you mean the coercions exercise is where it gets difficult?
+
+1767817481
+goodtab!~admin@user/goodtab
+62 on, I'm staring at 65 right now, "The fix for this is very subtle" -- yeah no kidding!
+
+1767817738
+geenvoud!~geenvoud@user/geenvoud
+yeah, that's a subtle... case
+
+1767817759
+goodtab!~admin@user/goodtab
+think I just got past the part that stumped me... might've cheated a tiny bit though
+
+1767817761
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is it capital N?
+
+1767817768
+goodtab!~admin@user/goodtab
+I can't say
+
+1767817779
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh lol
+
+1767817784
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I bet it is, just glancing at it
+
+1767817863
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+neat lil excercise though
+
+1767817882
+goodtab!~admin@user/goodtab
+yeah it is, I'm having fun
+
+1767818395
+andrewrk!~andrewrk@mail.ziglang.org
+missed the last few days of chats here because I was scrolled up a little
+
+1767818396
+andrewrk!~andrewrk@mail.ziglang.org
+lol
+
+1767818508
+goodtab!~admin@user/goodtab
+classic lol
+
+1767824123
+smlavine!~smlavine@sourcehut/user/smlavine
+Is there a way to create an allocator from a writer? I'm writing a client for an API, and the http Client needs a response writer, so I've made an Writer.Allocating. But I also want to cache requests in an SQLite DB, and to pull data from that with db.oneAlloc I need an allocator. It would be convenient for the ownership semantics of my helper function if my Writer.Allocating can "own" the data whether I get my response from either cache or fetch
+
+1767824157
+smlavine!~smlavine@sourcehut/user/smlavine
+I figure I can allocate then write to the writer, but then that'd be an extra free to have to do
+
+1767826321
+deepend!~deepend@deepend.dev
+the download page shows master at 0.16.0-dev.1912 but the json version shows it as 0.16.0-dev.2040. is that normal?
+
+1767827698
+ifreund!2940d10f8b@user/ifreund
+smlavine: it sounds like your SQL library should provide an API that accepts a writer rather than an allocator
+
+1767827824
+ifreund!2940d10f8b@user/ifreund
+deepend: not really, but it's known/expected until some automation from the old setup is migrated to codeberg
+
+1767828409
+bblack!~bblack@wikimedia/bblack-WMF
+hate-letter-to-std.os is going to be brutal for anyone's edge cases not yet covered by std.Io :P
+
+1767828441
+bblack!~bblack@wikimedia/bblack-WMF
+ACTION starts copying std.posix error wrapper stuff to his own little applayer lib
+
+1767828533
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: that's why I didn't delete anything that didn't have API coverage by std.Io!
+
+1767828782
+bblack!~bblack@wikimedia/bblack-WMF
+there are uses for fork() outside of basic "fork()->exec() a child".  sometimes you just need to explicitly run through a fork->exit-parent to reparent the current process to pid1 properly.
+
+1767828853
+bblack!~bblack@wikimedia/bblack-WMF
+(and sometimes with a setsid() for proper "daemonization", but sometimes not (under systemd))
+
+1767828856
+andrewrk!~andrewrk@mail.ziglang.org
+in such case, one should call std.posix.system.fork directly
+
+1767828895
+andrewrk!~andrewrk@mail.ziglang.org
+that's an extremely low level use case and it calls for using the lowest level APIs
+
+1767829004
+bblack!~bblack@wikimedia/bblack-WMF
+yes, that's a valid POV, considering especially that it's very *nix-specific
+
+1767829177
+bblack!~bblack@wikimedia/bblack-WMF
+but anyone that just wants to use fork() ergonomically in the Zig world, is now going to basically copy-paste or reinvent the snippet of fork-wrapper inside of Io.Threaded.spawnPosix() that looks a lot like the deleted std.posix.fork().  it is what it is.
+
+1767829223
+bblack!~bblack@wikimedia/bblack-WMF
+fork is a trivial case anyways, hopefully not many others arise, but I have a habit of stubbing my toes on every edge case ever
+
+1767829232
+andrewrk!~andrewrk@mail.ziglang.org
+people disagreed with how to handle those error codes, so even this tiny amoun of abstraction was already leaking
+
+1767829258
+andrewrk!~andrewrk@mail.ziglang.org
+I disagree, fork is not trivial. it should be avoided at almost any cost
+
+1767829269
+andrewrk!~andrewrk@mail.ziglang.org
+very bad API should never have been created
+
+1767829291
+bblack!~bblack@wikimedia/bblack-WMF
+by trivial, I mean, handling its errnos in the normal way
+
+1767829298
+bblack!~bblack@wikimedia/bblack-WMF
+the wrapper is trivial
+
+1767829354
+andrewrk!~andrewrk@mail.ziglang.org
+I see
+
+1767829356
+bblack!~bblack@wikimedia/bblack-WMF
+well yes, there's a whole lot of terrible related things in posix-y land.  For that matter, in hindsight, probably O_CLOEXEC should've been the default behavior for most fds returned from calls that create them
+
+1767829445
+bblack!~bblack@wikimedia/bblack-WMF
+it's all a minefield, especially when mixing threads, processes, signal handlers, etc
+
+1767829677
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: while you're here: is it planned to dump std.Thread for only doing threads via Io.Threaded?  I'm thinking about cases where I currently explicitly-manage long-lived threads, and might want to pin them to specific CPUs and such with os-specific bits.
+
+1767829692
+bblack!~bblack@wikimedia/bblack-WMF
+or will std.Thread stick around for that kind of thing?
+
+1767829763
+andrewrk!~andrewrk@mail.ziglang.org
+generally, all the APIs in std.Thread will continue to exist, but they might be moved under std.Io.Threaded namespace (statically)
+
+1767829782
+bblack!~bblack@wikimedia/bblack-WMF
+ok
+
+1767829799
+andrewrk!~andrewrk@mail.ziglang.org
+if you continue to use std.Thread, I expect future code upgrades to be easy breezy
+
+1767829894
+bblack!~bblack@wikimedia/bblack-WMF
+the big hurdle I have left right now is migrating my last big use of a legacy eventloop to std.Io.Evented, but I'm waiting for at least Io.IoUring to gain all the network vtable entries first.
+
+1767829931
+bblack!~bblack@wikimedia/bblack-WMF
+I see it's moving a bit lately!
+
+1767830025
+andrewrk!~andrewrk@mail.ziglang.org
+yep jacobly just got the compiler working with it 
+
+1767830033
+andrewrk!~andrewrk@mail.ziglang.org
+still some issues remaining tho
+
+1767830133
+bblack!~bblack@wikimedia/bblack-WMF
+I have to say, prior to all this era of async std.Io going on in Zig, I was always very skeptical that I would ever like an async/await-shaped interface, and always preferred just stick with callback-based eventloop "abstractions".
+
+1767830150
+bblack!~bblack@wikimedia/bblack-WMF
+but the more core I move to std.Io, the more I like it
+
+1767830158
+bblack!~bblack@wikimedia/bblack-WMF
+"more code" :)
+
+1767830168
+bblack!~bblack@wikimedia/bblack-WMF
+it really is cleaner this way
+
+1767830202
+goodtab!~admin@user/goodtab
+but is it cleaner than JavaScript? /s
+
+1767830246
+bblack!~bblack@wikimedia/bblack-WMF
+I especially appreciate all the good design that went into how cancelation works, and Io.{Select, Group, Queue}, etc...
+
