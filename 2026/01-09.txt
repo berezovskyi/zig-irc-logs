@@ -1,0 +1,308 @@
+1767917326
+clevor!sid649024@id-649024.hampstead.irccloud.com
+nix-update decided not to update the hashes and git revs of 4 packages, so I decided to just screw it and do a full rebuild of my system :p
+
+1767917820
+fluffywambler!~fluffy@kisslinux/kiedtl
+Hi, newbie here (both in OpenBSD and Zig) trying to build the compiler on OpenBSD. I'm getting a "Unable to find a target for this triple (no targets are registered)" when building zig3, any pointers on what I'm missing?
+
+1767917866
+fluffywambler!~fluffy@kisslinux/kiedtl
+For context, the cmake command I'm using is: http://0x0.st/PH0W.txt
+
+1767918007
+andrewrk!~andrewrk@mail.ziglang.org
+fluffywambler: there were several people collaborating on that recently, but they weren't on IRC, they were in zulip: https://zsf.zulipchat.com/#narrow/channel/454360-compiler/topic/openbsd/with/566815079
+
+1767918157
+fluffywambler!~fluffy@kisslinux/kiedtl
+Oh, nice. I saw the CI added and though the compiler could already be built...
+
+1767918171
+fluffywambler!~fluffy@kisslinux/kiedtl
+I guess this is a regression? 0.14 + 0.15 build fine.
+
+1767918186
+fluffywambler!~fluffy@kisslinux/kiedtl
+(... at least, the ports do.)
+
+1767918286
+fluffywambler!~fluffy@kisslinux/kiedtl
+haha, I see alexrp was also struggling with the LLVM oom error. Around the same time I was banging my head on that as well.
+
+1767918337
+andrewrk!~andrewrk@mail.ziglang.org
+fluffywambler: it looks like openbsd CI job succeeded on master branch: https://codeberg.org/ziglang/zig/actions/runs/714/jobs/17/attempt/1
+
+1767918373
+fluffywambler!~fluffy@kisslinux/kiedtl
+Thanks, I did reference that but I'll look more closely!
+
+1767918376
+andrewrk!~andrewrk@mail.ziglang.org
+you can see the commands the CI is using to build at ci/x86_64-openbsd-release.sh
+
+1767918416
+andrewrk!~andrewrk@mail.ziglang.org
+this is not using system LLVM though
+
+1767918449
+fluffywambler!~fluffy@kisslinux/kiedtl
+mm, okay, must be related to that then. I'll have to build LLVM then. Sigh
+
+1767918497
+andrewrk!~andrewrk@mail.ziglang.org
+based on that error message it sounds like maybe your system LLVM doesn't have any CPU architectures enabled?
+
+1767918520
+andrewrk!~andrewrk@mail.ziglang.org
+hard to tell. given that it works when we build from source ourselves, it seems likely a problem with the system llvm package
+
+1767918558
+fluffywambler!~fluffy@kisslinux/kiedtl
+That makes sense. I'll try again and report back. Looking at the ports, it does have some kind of ONLY_FOR_ARCHS that restricts LLVM targets but I'm not sure how that works.
+
+1767918581
+andrewrk!~andrewrk@mail.ziglang.org
+generally with zig we want all the targets to be enabled :(
+
+1767918621
+fluffywambler!~fluffy@kisslinux/kiedtl
+aw. okay. pain and suffering
+
+1767920416
+Sivecano!~Sivecano@user/Sivecano
+finally I discovered @Vector. Just replaced my entire home-cooked 2d vector implementation for better syntax and maybe even better performance
+
+1767921345
+andrewrk!~andrewrk@mail.ziglang.org
+nice. although you're using it horizontally, while it's better used vertically
+
+1767921417
+andrewrk!~andrewrk@mail.ziglang.org
+i.e. instead of @Vector having x,y in it, you want to be using @Vector to process 16 x's at once, followed by 16 y's
+
+1767921666
+Sivecano!~Sivecano@user/Sivecano
+now this may be true. but I'm just happy not having to provide an implementation for every basic math operation.
+
+1767921666
+Sivecano!~Sivecano@user/Sivecano
+I know this is a bit of an abuse of the programming language, but it's not like I was processing many vectors anyway.
+
+1767921667
+Sivecano!~Sivecano@user/Sivecano
+I mean, I do but not really in a way where I could benefit from more SIMD.
+
+1767921725
+Sivecano!~Sivecano@user/Sivecano
+I see why zig doesn't do operator overloading, but it's also nice sometimes to be able to use operators...
+
+1767921776
+Sivecano!~Sivecano@user/Sivecano
+the only thing I find annoying with operators is that type resolution isn't that fun.
+
+1767921776
+Sivecano!~Sivecano@user/Sivecano
+I often find myself using way more `@as` than I'd like
+
+1767922741
+clevor!sid649024@id-649024.hampstead.irccloud.com
+There is an accepted proposal for matrices though https://github.com/ziglang/zig/issues/4960#issuecomment-3564104511
+
+1767923014
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I think Zig's matrix implementation should steal from 68k and TI-Nspire Basic and use `.*` as the element-wise product.
+
+1767923180
+rvrb!~rvrb@156.146.51.229
+oh, I didn't know that was accepted, that is nice
+
+1767923185
+fluffywambler!~fluffy@kisslinux/kiedtl
+So 'a .* b'? With the space after `a` significant?
+
+1767923229
+fluffywambler!~fluffy@kisslinux/kiedtl
+reads like dot product though
+
+1767923360
+clevor!sid649024@id-649024.hampstead.irccloud.com
+AFAIK dot products are to do with vectors.
+
+1767923701
+fluffywambler!~fluffy@kisslinux/kiedtl
+fair. thought it might be confusing though
+
+1767923917
+Affliction!affliction@idlerpg/player/affliction
+zig's done well keeping its syntax unambiguous, I'd be much more in favor of keeping it that way, as satisfying as .* meaning dot product would be.
+
+1767928994
+clevor!sid649024@id-649024.hampstead.irccloud.com
+My other idea was prohibiting * on matrices and introducing "cross and "dot" as operators like "and" or as builtins.
+
+1767942358
+mountaingoat!~mountaing@user/mountaingoat
+when do i know if i need an @alignCast on a @fieldParentPtr? it seems to depend on the architecture
+
+1767942479
+andrewrk!~andrewrk@mail.ziglang.org
+when you get a compile error 🤷
+
+1767942490
+mountaingoat!~mountaing@user/mountaingoat
+haha
+
+1767942499
+Affliction!affliction@idlerpg/player/affliction
+pretty much, different archs have a different alignment requirements
+
+1767942510
+mountaingoat!~mountaing@user/mountaingoat
+is it safe to always pair @alignCast(@fieldParentPtr(...))
+
+1767942535
+andrewrk!~andrewrk@mail.ziglang.org
+yeah
+
+1767942565
+mountaingoat!~mountaing@user/mountaingoat
+cool, thanks
+
+1767942566
+Affliction!affliction@idlerpg/player/affliction
+or at least, you'll crash at runtime
+
+1767942569
+andrewrk!~andrewrk@mail.ziglang.org
+maybe I'll make the argument to make it implicit again. when I brought it up to mlugg he was pretty strongly in favor of status quo
+
+1767942593
+andrewrk!~andrewrk@mail.ziglang.org
+I mean it's always going to be aligned if your pointer is, in fact, the field that you think it is
+
+1767942636
+andrewrk!~andrewrk@mail.ziglang.org
+I guess technically you could be taking the address of a field through an unaligned pointer 🤔
+
+1767942638
+Affliction!affliction@idlerpg/player/affliction
+so there's no cases where the parent might have a tighter alignment requirement than one of its fields?
+
+1767942664
+andrewrk!~andrewrk@mail.ziglang.org
+that's correct, the base alignment is max() of all the field alignments
+
+1767942760
+andrewrk!~andrewrk@mail.ziglang.org
+err, the way you worded it is not accurate, but what I think you meant is, there's no way to accidentally get the alignment wrong unless you're e.g. messing with align(1) pointers
+
+1767942771
+Affliction!affliction@idlerpg/player/affliction
+bad phrasing, I mean, other way around. Eg, struct { x: i32, i: i16 }; i might theoretically be aligned on 2 bytes, but the parent would require 4?
+
+1767942807
+Affliction!affliction@idlerpg/player/affliction
+oh but then, yeah, you know where i is within Parent
+
+1767942864
+Affliction!affliction@idlerpg/player/affliction
+so even if i is unaligned within Parent, the Parent will be eg, 4 bytes before i
+
+1767942874
+Affliction!affliction@idlerpg/player/affliction
+thanks for rubber ducking :D
+
+1767942884
+andrewrk!~andrewrk@mail.ziglang.org
+np :)
+
+1767942947
+Affliction!affliction@idlerpg/player/affliction
+But yeah, @fieldParentPtr should probably still inherit the alignment of the pointer passed to it
+
+1767943011
+Affliction!affliction@idlerpg/player/affliction
+I guess, that's why it requires the @alignCast, Except if the pointer is naturally aligned, so will the parent, so I guess @alignCast returning a "pre-aligned" pointer would make sense
+
+1767943014
+Affliction!affliction@idlerpg/player/affliction
+garbage in, garbage out
+
+1767967733
+mathk!~mathk@user/mathk
+Hey all I am currently in the process of writting a encode  for thumb codegen. I have mimic what is being done in AArch64. From what I see I am far from finish but I would like to validate what I have done so far.  I would like a way to print AIR to understand how it is shape. I did try --verbose-air but nothing is output. Help would be apreciate?
+
+1767967885
+mathk!~mathk@user/mathk
+For example I run this command '~/zig/build § ./stage4/bin/zig build-obj --verbose-air  ../src/codegen.zig' but no logs is output.
+
+1767993763
+andrewrk!~andrewrk@mail.ziglang.org
+mathk: did you export anything from codegen.zig?
+
+1767993782
+andrewrk!~andrewrk@mail.ziglang.org
+if you don't export anything, then zig doesn't do anything
+
+1767995562
+mathk!~mathk@user/mathk
+ah! ah! ok I was taking a random file for testing... btw, I am build a encoding / decoding backend for thumb-2. I am currently working on the 32bits instruction: https://codeberg.org/mathk/zig/src/branch/codegen-thumb/src/codegen/thumb/encoding.zig would that helps?
+
+1767995839
+andrewrk!~andrewrk@mail.ziglang.org
+I'm happy to help if you have any specific questions
+
+1767996240
+mathk!~mathk@user/mathk
+I wanted to build the thumb2 codegen. So I started by the encoding table following what have been done for AArch64. Until now I am not sure what would be the best path have a working backend. I guess I would have to build a Mir but that seems a huge amount of work.
+
+1767996280
+lemons!~doggie@user/doggie-:49517
+are there any tools for verifying if my by-hand translation of a c api header is correct?
+
+1767996346
+mathk!~mathk@user/mathk
+That would be  nice if I could start with a small Mir that can only generate simple code not using the full AIR instruction...
+
+1767996532
+mathk!~mathk@user/mathk
+Now I can see the AIR :) Is there any documentation on the instruction format?
+
+1767997184
+ifreund!2940d10f8b@user/ifreund
+mathk: well, there are doc comments in Air.zig...
+
+1767998573
+andrewrk!~andrewrk@mail.ziglang.org
+lemons: not yet, here is the plan: https://github.com/ziglang/zig/issues/20654
+
+1767998607
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund had some interest in implementing that at some point
+
+1767998658
+ifreund!2940d10f8b@user/ifreund
+Indeed, I'm still suffering due to lack of this tooling
+
+1767998911
+ifreund!2940d10f8b@user/ifreund
+I'm pretty busy with river right now and giving a talk at FOSDEM at the end of the month
+
+1767998951
+ifreund!2940d10f8b@user/ifreund
+river's new incarnation is nearing feature completion though, so maybe soon?
+
+1767998991
+andrewrk!~andrewrk@mail.ziglang.org
+feel free to make the judgement call with respect to the open questions in that issue (binary vs text vs using specially annotated .h files)
+
+1767999062
+ifreund!2940d10f8b@user/ifreund
+ack :)
+
+1767999133
+lemons!~doggie@user/doggie-:49517
+andrewrk: <3
+
