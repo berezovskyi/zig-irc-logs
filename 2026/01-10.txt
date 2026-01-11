@@ -1,0 +1,208 @@
+1768011833
+Exa!exa@irc.moe
+Hello, what is the equivalent to snprintf in zig 0.15+?  On 0.14 I used `std.fmt.allocPrintZ(std.heap.page_allocator, ...)` but the allocation is probably wrong (should I use `c_allocator` as I link to libc?) and this function was removed in any case.  If you could link to a section of the doc it would be nice too.  Thanks!
+
+1768011943
+Exa!exa@irc.moe
+to add some precision, the buffer I create is passed to a C function (from GTK 4)
+
+1768011955
+Affliction!affliction@idlerpg/player/affliction
+If you already have a buffer, .bufPrintZ()
+
+1768011971
+Affliction!affliction@idlerpg/player/affliction
+https://ziglang.org/documentation/0.15.2/std/#std.fmt.bufPrintZ
+
+1768011971
+Exa!exa@irc.moe
+I'm really new to zig, so you'll have to add some more info
+
+1768012050
+Exa!exa@irc.moe
+is there a function that can format once to get the size, allocate memory then format it to the allocated memory?
+
+1768012070
+Exa!exa@irc.moe
+I guess this was how allocPrintZ worked
+
+1768012075
+Affliction!affliction@idlerpg/player/affliction
+pretty much
+
+1768012100
+Affliction!affliction@idlerpg/player/affliction
+oh yeah, if you need to allocate and the C code needs to free it, AllocPrint with the C allocator would do that
+
+1768012151
+Affliction!affliction@idlerpg/player/affliction
+I guess allocPrintZ is gone, allocPrint with the null terminator in the format string will be an approximation
+
+1768012789
+Exa!exa@irc.moe
+ok I used allocPrint and added `++ "\x00"` which is what allocPrintZ was doing
+
+1768012808
+Exa!exa@irc.moe
+it may not be the best solution but I just wanted to make a new build
+
+1768012880
+andrewrk!~andrewrk@mail.ziglang.org
+it's allocPrintSentinel
+
+1768013020
+Exa!exa@irc.moe
+wanted to link to the removed code on codeberg but apparently forgejo can't do that :/
+
+1768013380
+Affliction!affliction@idlerpg/player/affliction
+andrewrk: ah, is bufPrintZ expected to be generalized too?
+
+1768013409
+Affliction!affliction@idlerpg/player/affliction
+ah, already has in master 
+
+1768027486
+netvor!~netvor@2a00:ca8:a1f:cd0:9dd0:20fc:3071:3bdf
+i can't seem to make out this segfault at line 81:  https://bpa.st/XD6A  looks like the self.queue_al.append corrupts thie basename  (i'm using this with DebugAllocator)
+
+1768027499
+netvor!~netvor@2a00:ca8:a1f:cd0:9dd0:20fc:3071:3bdf
+(0.15.2)
+
+1768027692
+netvor!~netvor@2a00:ca8:a1f:cd0:9dd0:20fc:3071:3bdf
+the basename comes from fs.Dir.iterate().next() where it's constructed in what to me seems like black magic:  https://codeberg.org/ziglang/zig/src/commit/eef8deb918210a9d9d0732ef523b20e2cb963f01/lib/std/fs/Dir.zig#L399
+
+1768027811
+netvor!~netvor@2a00:ca8:a1f:cd0:9dd0:20fc:3071:3bdf
+i understand that Dir.Entry becomes invalid after .next() but this one should be still valid.  only thing i did in the meantime was take *different* Dir's .iterate() somewhere 
+
+1768028147
+netvor!~netvor@2a00:ca8:a1f:cd0:9dd0:20fc:3071:3bdf
+btw here's the main(): https://bpa.st/EEGA
+
+1768048883
+mathk!~mathk@user/mathk
+I am correct to say that AIR legalizations is the mean for the backend to tell whether more complex operation can be generatade (SIMD for example) so that AIR not decompose them into simpler instruction?
+
+1768048909
+mathk!~mathk@user/mathk
+*do not
+
+1768052909
+cow_2001!~username@user/cow-2001/x-5712099
+i am doing crafting interpreters and i am trying to convert the c code to ziglang and i am having some problem appending OpCodes to the ArrayList http://0x0.st/s/7wwmlnvlJ2al6TDMDlCZIQ/PXZk.txt
+
+1768052932
+cow_2001!~username@user/cow-2001/x-5712099
+getting this error: src/chunk.zig:17:22: error: expected type '*array_list.Aligned(chunk.OpCode,null)', found '*const array_list.Aligned(chunk.OpCode,null)'
+
+1768053520
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+cow_2001: your array list is declared with 'const'?
+
+1768053590
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ah, you linked code, 'self: Chunk' self here is const, you need 'self: *Chunk'
+
+1768053671
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+parameters are always read-only
+
+1768053827
+cow_2001!~username@user/cow-2001/x-5712099
+woops!
+
+1768053845
+cow_2001!~username@user/cow-2001/x-5712099
+now i have another compilation error... oh well
+
+1768053872
+cow_2001!~username@user/cow-2001/x-5712099
+for some reason i get a division by zero in allocation
+
+1768053895
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because your enum is 0 sized
+
+1768053900
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it only has one value
+
+1768053929
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(I'm guessing anyway)
+
+1768053938
+cow_2001!~username@user/cow-2001/x-5712099
+oh man
+
+1768054692
+cow_2001!~username@user/cow-2001/x-5712099
+okay, now i have pub const OpCode = enum {OP_HERE_TO_BUFF_THE_TYPE_SIZE_OF_THE_ENUM, OP_RETURN,};
+
+1768054725
+cow_2001!~username@user/cow-2001/x-5712099
+and i keep forgetting to put my string formatting inside a tuple ~;~
+
+1768054739
+cow_2001!~username@user/cow-2001/x-5712099
+formatting arguments, that is
+
+1768054756
+cow_2001!~username@user/cow-2001/x-5712099
+Gliptic: thanks!  now it works!
+
+1768054761
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+np
+
+1768063768
+cot!~kiedtl@kisslinux/kiedtl
+hey, uh, where can I find the scripts used to build LLVM in the CI? Particularly for OpenBSD.
+
+1768063800
+cot!~kiedtl@kisslinux/kiedtl
+I've now built my own LLVM on OpenBSD but am clearly missing something, as the Zig compiler now crashes while building stage3 (with a pinsyscalls violation)
+
+1768063816
+cot!~kiedtl@kisslinux/kiedtl
+Didn't happen with system LLVM. Not sure what I'm doing wrong.
+
+1768064236
+ifreund!2940d10f8b@user/ifreund
+cot: I believe zig-bootstrap is used for that as well
+
+1768064237
+ifreund!2940d10f8b@user/ifreund
+https://codeberg.org/ziglang/zig-bootstrap
+
+1768064287
+ifreund!2940d10f8b@user/ifreund
+there do seem to be some OpenBSD related patches
+
+1768064467
+cot!~kiedtl@kisslinux/kiedtl
+Very nice, I don't know why I ignored zig-bootstrap before. Some of the cmake flags for LLVM should be mentioned in the readme I feel. Thank you!
+
+1768078091
+andrewrk!~andrewrk@mail.ziglang.org
+cot: which ones?
+
+1768079552
+cow_2001!~username@user/cow-2001/x-5712099
+is var stdout_buffer: [1024]u8 = undefined; at the top of each printing function good or bad?
+
+1768079747
+andrewrk!~andrewrk@mail.ziglang.org
+what do you mean "printing function"?
+
+1768089221
+cow_2001!~username@user/cow-2001/x-5712099
+andrewrk: a functions that writes to stdout
+
+1768089291
+cow_2001!~username@user/cow-2001/x-5712099
+s/ions/ion/
+
