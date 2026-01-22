@@ -1,0 +1,136 @@
+1768959837
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: do you have an opinion on if zig langref should be packaged by distros? https://gitlab.archlinux.org/archlinux/packaging/packages/zig/-/issues/2#note_399391
+
+1768959913
+andrewrk!~andrewrk@mail.ziglang.org
+sure why not? it's a single self contained html file. how hard could that be to package?
+
+1768959977
+andrewrk!~andrewrk@mail.ziglang.org
+langref *is* part of the standard install target
+
+1768960112
+andrewrk!~andrewrk@mail.ziglang.org
+if you run `zig build` then it populates `zig-out/doc/langref.html`
+
+1768960169
+daurnimator!~daurnimat@vultr.daurnimator.com
+andrewrk: we run `cmake --install build` which apparently doesn't?
+
+1768960278
+clevor!sid649024@id-649024.hampstead.irccloud.com
+IMO the langref should not be built by default if the Zig compiler used does not include LLVM.
+
+1768962367
+torque!~tachyon@user/torque
+the use of llvm doesn't change the language, though?
+
+1768966582
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It was global assembly, if I had to guess, because I don't remember.
+
+1768967147
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Oh, it's that it can't build glibc.
+
+1768992216
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Also, __divti3 is not defined on wasm32-wasi.
+
+1769003125
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+how to safely test with unit files?  i have a wrapper struct that creates std.testing.tmpDir(.{}), creates my test files, chdirs there and chdirs bacj, but i'm getting `panic: unable to make tmp dir for testing: unable to make and open .zig-cache dir`
+
+1769003147
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+*unit test with files
+
+1769003186
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+i suppose it's because this is racy and tests want to run in parallel, right?
+
+1769004949
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+this is a complete guess but maybe that could be part of your test build step?
+
+1769007930
+slowstatic_!~slowstati@user/slowstatic
+I'm back at it again this morning feeling out zig's build system for organizing our build steps at work. I've been experimenting with the add functions in std.Build.Step.Run, I still can't figure out how to cache an arbitrary number of files in a directory. Run.addDirectoryArg doesn't detect changes to file entries, addFileInput & addFileArg errors
+
+1769007931
+slowstatic_!~slowstati@user/slowstatic
+when passing directories. I tried adding an executable that writes the dir entries to an outputFileArg, but the step is cached and doesn't execute again when changing files in that input dir. I feel like I'm missing something obvious and donkin up what should be simple
+
+1769008247
+ifreund!2940d10f8b@user/ifreund
+slowstatic_: pretty sure one needs to call addFileInput() for each file in the directory currently
+
+1769008289
+slowstatic_!~slowstati@user/slowstatic
+dang
+
+1769008298
+slowstatic_!~slowstati@user/slowstatic
+well thanks for the sanity check
+
+1769010577
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+i want to spawn a lots of configurations of few small files and have my test go through them, build step does not seem like right tool
+
+1769010705
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+technically i don't need to chdir, i do it mostly because with std.testing.TmpDir i don't have full path to the created file, which i could pass to my code
+
+1769010724
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+that would be actually better, inherently less racey
+
+1769011501
+slowstatic_49!~slowstati@user/slowstatic
+I believe I got it working, a bit hacky but functional. A run executable prints each dir entry name & its content hash to an outputFileArg. I set Run.has_side_effects = true, so it hashes the dir entries every time. Because the outputFileArg is cached, the dependent steps using Run.addFileInput only execute when the dir entries have been modified.
+
+1769011501
+slowstatic_49!~slowstati@user/slowstatic
+Good enough!
+
+1769015685
+ifreund!2940d10f8b@user/ifreund
+clever workaround :)
+
+1769020287
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+i ended up creating my own std.testing.TmpDir alternative which allocates & exposes full_paths of the created files (which is a fixed set of files accepted by .setup())  https://bpa.st/WKKA
+
+1769020361
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+(hardcoded path because i couldn't be bothered)
+
+1769020479
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+those undefineds do make me wonder if there's a better (more "zigalicious") way of constructing structs with fields that depend on each other
+
+1769020556
+netvor!~netvor@2a00:ca8:a1f:cd0:1172:a26b:a03b:edf2
+the other thing i sometimes do is just make the dependent fields lazy using optional, which is not ideal either
+
+1769025350
+carlos_!~machina@user/carlos-:56913
+hi
+
+1769025364
+carlos_!~machina@user/carlos-:56913
+how everyone doing?
+
+1769035337
+rvrb!~rvrb@156.146.51.230
+are there known issues with the fuzz tester on master?
+
+1769035378
+rvrb!~rvrb@156.146.51.230
+sorry, I should have searched first: https://codeberg.org/ziglang/zig/issues/30797
+
+1769037699
+andrewrk!~andrewrk@mail.ziglang.org
+yeah fuzzer is wip and not the current focus
+
