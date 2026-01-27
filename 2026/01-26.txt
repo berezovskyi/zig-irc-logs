@@ -1,0 +1,192 @@
+1769394763
+cow_2001!~username@user/cow-2001/x-5712099
+when a function has a []u8 argument, it's a by reference call, right?  a slice is a pointer and a length, no?
+
+1769394778
+cow_2001!~username@user/cow-2001/x-5712099
+no need to have a *[]u8
+
+1769395102
+Affliction!affliction@idlerpg/player/affliction
+unless your function might want to point the slice somewhere else, pretty much
+
+1769395129
+Affliction!affliction@idlerpg/player/affliction
+but, even then, best to just return a new slice
+
+1769395582
+ElliotLurie!~elliot@user/ElliotLurie
+Hello, is there a way to limit the  SPIR-V capabilities declared when compiling zig shaders with zig.build?
+
+1769395630
+ElliotLurie!~elliot@user/ElliotLurie
+I get validation errors saying that int8 and int16 are declared when creating vulkan shader modules and I would prefer not to require too many device features
+
+1769395851
+cow_2001!~username@user/cow-2001/x-5712099
+Affliction: using "old_slice[0..old_slice.len]"?
+
+1769395992
+Affliction!affliction@idlerpg/player/affliction
+cow_2001: I mean, instead of modifying old_slice (either .ptr or .len) through a *[]T pointer, accept and return a []T
+
+1769396454
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Could a Reader or Writer satisfy your use case?
+
+1769456455
+cow_2001!~username@user/cow-2001/x-5712099
+if i have a string with no sentinel, how do i add a sentinel zero byte and convert it to one with a sentinel?
+
+1769456540
+cow_2001!~username@user/cow-2001/x-5712099
+like [3]u8{ 'm', 'o', 'o' }, but i want it to be [3:0]u8{ 'm', 'o', 'o', '\0' } (is that how you write it?)
+
+1769456568
+cow_2001!~username@user/cow-2001/x-5712099
+probably not
+
+1769457434
+cohors!~cohors@user/cohors
+there is std.mem.concatWithSentinal. the zero in your example would just be 0.
+
+1769457478
+cohors!~cohors@user/cohors
+there's another function, I just cant remember what it is
+
+1769458820
+mathk!~mathk@user/mathk
+Hey there is something I am not understanding about Air. It look to be in SSA form but there is no phi instruction. Also store seems to override assignment somehow.
+
+1769463218
+rockorager!~rockorage@smtp.spunky.lol
+signatures that take an allocator by convenction have the allocator as the first arg, i assume the pattern should be kept for io as well, but what about functions that take both allocator AND io?
+
+1769463506
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I do io second in that case.
+
+1769464401
+rockorager!~rockorage@smtp.spunky.lol
+what about functions that accept a type T? do you put that before or after that allocator + io?
+
+1769464780
+clevor!sid649024@id-649024.hampstead.irccloud.com
+T, allocator, io, reader, writer, other params, …, diags, options struct
+
+1769465300
+cow_2001!~username@user/cow-2001/x-5712099
+after using std.io.Reader.takeSentinel, how do i deallocate the string it returns?
+
+1769465317
+rockorager!~rockorage@smtp.spunky.lol
+clevor: nice, yeah that seems to match what i've seen
+
+1769465333
+rockorager!~rockorage@smtp.spunky.lol
+(Making a strict linter, wanted to enforce at least some of those)
+
+1769465382
+clevor!sid649024@id-649024.hampstead.irccloud.com
+cow_2001: The string is in the reader's buffer.
+
+1769465711
+cow_2001!~username@user/cow-2001/x-5712099
+oh boy.
+
+1769466067
+andrewrk!~andrewrk@mail.ziglang.org
+mathk: an alternative to phi is returning values from blocks
+
+1769466684
+cow_2001!~username@user/cow-2001/x-5712099
+OOH!  now i get why std.heap.DebugAllocator(.{}){} looks so strange.  it returns a type of struct, so you {} and get an instance of it(?)
+
+1769467209
+clevor!sid649024@id-649024.hampstead.irccloud.com
+andrewrk: please review https://codeberg.org/ziglang/zig/pulls/30622 again
+
+1769467503
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+how do you properly document methods provided by fieldParentPtr-style mixins?
+
+1769467538
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+they're hidden as struct fields, so by default they are hard to discover in docs
+
+1769467746
+andrewrk!~andrewrk@mail.ziglang.org
+cow_2001: var debug_allocator: std.heap.DebugAllocator(.{}) = .init; // this is more idiomatic
+
+1769467874
+rockorager!~rockorage@smtp.spunky.lol
+My linter would have flagged the less idiomatic one. I'm quite happy with it
+
+1769467960
+rockorager!~rockorage@smtp.spunky.lol
+I added some awesome rules around usage of @This() this weekend
+
+1769468101
+andrewrk!~andrewrk@mail.ziglang.org
+cool
+
+1769468380
+cow_2001!~username@user/cow-2001/x-5712099
+i don't see .init in https://ziglang.org/documentation/master/
+
+1769468454
+cow_2001!~username@user/cow-2001/x-5712099
+oh, i see it in the source - pub const init: Self = .{};
+
+1769469811
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+On a scale of 'not at all' to 'very', how jank is this use of @field: https://paste.gentoo.zip/VbATOkDI
+
+1769469862
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I guess, this is probably only hardcoded for right now and I know the keysyms are equivalent to `i + '0'` so there's actually zero reason for me to even do any of that... but other than *that*
+
+1769470729
+cow_2001!~username@user/cow-2001/x-5712099
+so there's allocRemaining / appendRemaining, which read stuff into an allocated memory, but they don't take a sentinel and/or delimiter.  there's streamDelimiter which does take a delimiter, but will read into an already allocated buffer.  how do i combine them into allocating up to the delimiter, but no more?  then there's the question of reuse on further reading
+
+1769470757
+cow_2001!~username@user/cow-2001/x-5712099
+reuse of the allocated memory, that is
+
+1769470794
+cow_2001!~username@user/cow-2001/x-5712099
+i could just write to the allocated bit if i just need to read line by line, discarding the previous line
+
+1769470948
+andrewrk!~andrewrk@mail.ziglang.org
+you can stream into a Writer.Allocating (which can be converted to/from an ArrayList)
+
+1769470963
+andrewrk!~andrewrk@mail.ziglang.org
+seems like a helper for that would be reasonable thing to add as well
+
+1769471420
+cow_2001!~username@user/cow-2001/x-5712099
+thank you
+
+1769471595
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I did `zig init` in version 0.15.2, changed the "zig" module to be called "lib" const mod = b.addModule("lib", ... `, then main.zig still compiles even though it does @import("zig")
+
+1769471639
+LAC-Tech!~lewis@granite-phrase.bnr.la
+@import("lib") fails, ok so clearly I do not understand the concept of a module having a name.
+
+1769471701
+LAC-Tech!~lewis@granite-phrase.bnr.la
+oh there it is in imports. ok, so wtf is the first "name" parameter for in `addModule`?
+
+1769471857
+andrewrk!~andrewrk@mail.ziglang.org
+that's the exposed name to dependers
+
+1769471879
+andrewrk!~andrewrk@mail.ziglang.org
+check the doc comments and also the doc comments for the mentioned function createModule
+
