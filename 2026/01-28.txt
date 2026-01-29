@@ -1,0 +1,240 @@
+1769589696
+torque!~tachyon@user/torque
+<netvor> assuming function is declaration, i can't find anything that gives me details about a declaration
+
+1769589727
+torque!~tachyon@user/torque
+since this may be useful to know, you can access the declaration directly on the struct using `@field(Struct, decl.name)`
+
+1769589768
+torque!~tachyon@user/torque
+and thus it follows that you can get typeinfo from that a la `@typeInfo(@TypeOf(@field(Struct, decl.name)))`
+
+1769589797
+torque!~tachyon@user/torque
+but Andrew's suggestion is indeed better than implementing your own type checking on top of the compiler's type checking
+
+1769589909
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+oh i didn't know that, thanks
+
+1769624831
+cow_2001!~username@user/cow-2001/x-5712099
+there's a guy on youtube doing a review of zig features called Coding With Tom
+
+1769624853
+cow_2001!~username@user/cow-2001/x-5712099
+it's year old stuff and zig moves very fast
+
+1769627023
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Is there a better way to do something like `const foo = try gpa.create(Foo); foo.* = .{};`
+
+1769628818
+slowstatic_!~slowstati@user/slowstatic
+bwbuhse `const foo = try Foo.init(gpa);` ?
+
+1769630705
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+slowstatic_: well, I'm doing this in `Foo.create()` basically :P https://codeberg.org/bwbuhse/beansprout/src/commit/52e55977d7b5b9b036a3007d3821aa8a52e5b87c/src/Config.zig#L44-L47
+
+1769630752
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I'm not actually sure if I need to allocate... hmmm 
+
+1769632912
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+ho come i can return fn based on runtime value, eg.:  `if (rh.tagIs("CLIP")) return @import("subcommands/clip.zig").main;` .... (rh.tagIs is runtime, parsed args)
+
+1769632946
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+but i tried to build a type around that main function + some other things and i can't return it like that:      if (rh.tagIs("CLIP")) return Subcommand("clip", @import("subcommands/clip.zig").main);
+
+1769633045
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+here's a fuller version:  https://bpa.st/77OHK   then later i call `const Sc = selectSubcommand(rh); const sc = Sc{}; sc.dump();`
+
+1769633082
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+and get `error: unable to resolve comptime value`
+
+1769633750
+cow_2001!~username@user/cow-2001/x-5712099
+i cImported something and zls now shows me all the stuff defined in it!
+
+1769634480
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+ok so union(enum) works and is even better (less insane :D)  https://bpa.st/72DVO
+
+1769638285
+LAC-Tech!~lewis@granite-phrase.bnr.la
+playing around with zon. is this a better choice for huge data dumps over json (assuming this is all zig), or is it more meant for tiny config files?
+
+1769638305
+LAC-Tech!~lewis@granite-phrase.bnr.la
+(trying it anyway will see if computer catches on fire)
+
+1769639638
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+i vaguely remember i tried exactly that about 6-8 months ago but i forgot how it went for json vs zon, except that .. quite horribly for both :)
+
+1769639676
+andrewrk!~andrewrk@mail.ziglang.org
+key advantages are: 1. you can @import zon files, and 2. it supports comments, trailing commas, and integers
+
+1769639678
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+(my computer did not catch on fire, though, so maybe i should not complain :D)
+
+1769639727
+Sivecano15!~Sivecano@user/Sivecano
+what's the prefered way to print error messages in zig?
+
+1769639760
+Sivecano15!~Sivecano@user/Sivecano
+should I just have a huge error enum, store some error info or pass a writer interface?
+
+1769639949
+LAC-Tech!~lewis@granite-phrase.bnr.la
+netvor: I mean at the end of the day multi gb json files suck, right? all I am trying if if multi gb zon dumps suck less, because as andrewrk points out you can just @import them which is very ergonomic
+
+1769640127
+andrewrk!~andrewrk@mail.ziglang.org
+Sivecano15: what kind of error messages?
+
+1769640191
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+well i was using it for runtime stuff, and ended up creating own binary format (which was not all that hard).  it was not gb though, mroe like few dozen MB's of small items, few million of them.
+
+1769640216
+andrewrk!~andrewrk@mail.ziglang.org
+if it's a large amount of data and the goal is to reduce size, binary format is the way to do that
+
+1769640249
+andrewrk!~andrewrk@mail.ziglang.org
+I'd recommend zon when you have data that both humans and machines need to produce/consume
+
+1769640257
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+ofc the binary format vastly outperformed anything i tried, in not just size
+
+1769640265
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah I get that. the multigb zon would be a kind of "intermediate format" after parsing a huge amount of json, which would be done like once a month. not a final product, the end result is a flat struct I can bitcast
+
+1769640281
+LAC-Tech!~lewis@granite-phrase.bnr.la
+anyway I imagine I am pioneering here, will report back :)
+
+1769640286
+andrewrk!~andrewrk@mail.ziglang.org
+happy hacking
+
+1769640357
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+i even thought about using sqlite, which might be better if i wanted other things to interact with the intermediate format.  (which in my case was not really likely)
+
+1769640407
+LAC-Tech!~lewis@granite-phrase.bnr.la
+netvor: I tried an LSM based K/V store as the intermediate format thing but my gosh are databases slow for bulk data inserts. like this thing would have been much faster than SQLIte, but my goodness it was painful
+
+1769640408
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+TIL we have 2 zig/sqlite libs, both called "zqlite" :D
+
+1769640458
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+netvor: I've found two "zig-kdl"s plus two "kdl-zig"s
+
+1769640479
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+lol and i don't een know what kdl is :D
+
+1769640492
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+s/ee/eve/
+
+1769640493
+LAC-Tech!~lewis@granite-phrase.bnr.la
+isn't it the database of the K programming langauge?
+
+1769640500
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://kdl.dev/ this one
+
+1769640524
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+you mean all of thse zig / kdl things are that kdl thing?
+
+1769640529
+JailBird!jailbird@user/jailbird
+So, I have 2 macOS machines where 'zig build' fails in linking. I'm not seeing anything obviously wrong. Tested using 0.15.2 and 0.16-dev. Any ideas? https://pastebin.com/xCSQLr2y
+
+1769640548
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+netvor: lmao yes all 4 that I found are separate parsers for that document language
+
+1769640565
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+but I think only 2 are reasonably up-to-date, the other two were like 2 and 4 years since last commit
+
+1769640645
+Sivecano15!~Sivecano@user/Sivecano
+andrewrk: something like parsing errors for command line arg parsing
+
+1769640817
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+not sure if preferred, but in the same case what i did was just std.log.err and then std.process.exit .. since there's nothing to do anyway if CLI can't even parse args
+
+1769640829
+andrewrk!~andrewrk@mail.ziglang.org
+for CLI parsing I recommend to import std.process.fatal and then call that function when a parse error occurs
+
+1769640845
+andrewrk!~andrewrk@mail.ziglang.org
+netvor: that's exactly what std.process.fatal does :)
+
+1769640870
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+wow, i was just looking at docs, because i genuinely heard it for the first time :D
+
+1769640903
+andrewrk!~andrewrk@mail.ziglang.org
+netvor: re: zqlite - and now you understand why `fingerprint` exists!
+
+1769640907
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+(oh it exits with 1, hwell, i'm tooo opinionated for that, sir... :D)
+
+1769640944
+andrewrk!~andrewrk@mail.ziglang.org
+well, two lines of code seems like a reasonable price to pay to have a different opinion than std :)
+
+1769640965
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+i've paid far, far larger price for it already :D
+
+1769640991
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+I have a bunch of places where I log.err+exit... but I return 1 anyways so I guess I may as well go find all of them :P
+
+1769641160
+Earnestly!~earnest@user/earnestly
+LAC-Tech: (kdb+)
+
+1769641286
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+Sivecano15: in general if you want to give the lib user options you can also do both.  eg. here i provide 2 versions of every method, one with the wrapped value, and one that exits:  https://git.sr.ht/~netvor/zig-bareini/tree/main/item/src/Ini.zig#L1520
+
+1769641318
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Earnestly: chtma (computing has too many acronyms) :D
+
+1769641365
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+ie. lineRes() vs.  lineFailfast()  (although after today i might want to rename it to lineFatal() :D)
+
+1769641451
+netvor!~netvor@2a00:ca8:a1f:cd0:2176:fe83:9e12:6e87
+the beauty of the failfast version is that its return value is exactly `[]const u8` (or the right type in case of parsed variant)
+
