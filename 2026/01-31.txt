@@ -1,0 +1,216 @@
+1769819940
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+maskd: thanks for asking that cause I just used that plus @unionInit :) 
+
+1769820456
+cow_2001!~username@user/cow-2001/x-5712099
+i'm just mucking about and i just learned you could do something like const a: u1 = 1;
+
+1769820505
+cow_2001!~username@user/cow-2001/x-5712099
+now, if i have const almost_a_byte: [8]u1 = [1]u1{1} ** 8; i could maybe cast it into a u8
+
+1769820527
+cow_2001!~username@user/cow-2001/x-5712099
+but how?
+
+1769820536
+cow_2001!~username@user/cow-2001/x-5712099
+(and vice versa)
+
+1769834856
+torque!~tachyon@user/torque
+@bitCast
+
+1769834880
+torque!~tachyon@user/torque
+https://ziglang.org/documentation/master/#bitCast
+
+1769834980
+torque!~tachyon@user/torque
+not entirely sure this works with array of u1 though because I think those actually get padded
+
+1769835000
+torque!~tachyon@user/torque
+if you want to represent the bits of a byte individually, `packed struct(u8)` is probably more up your alley
+
+1769840869
+andrewrk!~andrewrk@mail.ziglang.org
+poll poll poll poll
+
+1769840927
+torque!~tachyon@user/torque
+as a belated follow up, @Vector(8, u1) should be able to bitCast into u8, however
+
+1769842153
+andrewrk!~andrewrk@mail.ziglang.org
+torque: I agree
+
+1769842168
+andrewrk!~andrewrk@mail.ziglang.org
+I believe that's planned, to whatever extent it doesn't already work
+
+1769852888
+LAC-Tech!~lewis@granite-phrase.bnr.la
+I have a great deal of difficulty getting tests to run in zig. if I have the standard zig init setup with main.zig and root.zig, and I import a file with tests into root.zig, those tests just won't run. I tried sprinkiling some refAllDeclsRecusrive everywhere, no luck. I must be missing something
+
+1769854107
+LAC-Tech!~lewis@granite-phrase.bnr.la
+nvm, turns out there wasn't anything I wasn't understanding, zig just can't find tests
+
+1769856634
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+LAC-Tech, did you sprinkle it into a test {} block? refAll is not really recommended and will be removed. You should import or reference your sub-modules in a test {} block
+
+1769875974
+torque!~tachyon@user/torque
+or in a comptime block if you don't want an empty test function
+
+1769889949
+LAC-Tech!~lewis@granite-phrase.bnr.la
+Gliptic: right you need to import twice; once for code and once for tests
+
+1769896046
+torque!~tachyon@user/torque
+you don't need to import twice, you can just do `_ = imported_thing` 
+
+1769896316
+andrewrk!~andrewrk@mail.ziglang.org
+consider: 1. you don't necessarily want all files to be imported and all functions type checked. some files might only be intended under certain build flags
+
+1769896359
+andrewrk!~andrewrk@mail.ziglang.org
+2. any generic functions (e.g. they have a comptime parameter, or return a type) won't be tested/checked without a test instantiating them
+
+1769896417
+LAC-Tech!~lewis@granite-phrase.bnr.la
+torque: conceptually it feels to me like a second import, since I expect the actual import to also import the tests
+
+1769896426
+LAC-Tech!~lewis@granite-phrase.bnr.la
+*expected
+
+1769896479
+torque!~tachyon@user/torque
+they are if they are referenced by any tests in the main file. this is just how the lazy compilation works in general
+
+1769896553
+torque!~tachyon@user/torque
+just like during normal (program) compilation, stuff not referenced by `main` isn't analyzed, when building tests, stuff not referenced by tests isn't analyzed
+
+1769896564
+torque!~tachyon@user/torque
+that's a bit of a generalization but mostly true
+
+1769896567
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah fair enough if you like it. it's too opaque and confusing for me. I suspect a lot of my old zig projects were just full of tests that never ran lmao
+
+1769896586
+andrewrk!~andrewrk@mail.ziglang.org
+you should always write your test to fail first, watch it fail, then make it pass
+
+1769896588
+torque!~tachyon@user/torque
+i personally think the test runner output is really subpar for this
+
+1769896603
+torque!~tachyon@user/torque
+having it be silent on success is a really poor design imo
+
+1769896666
+andrewrk!~andrewrk@mail.ziglang.org
+there's room to change it if you can come up with a principled design on what exactly it should output
+
+1769896709
+andrewrk!~andrewrk@mail.ziglang.org
+oh that reminds me one of the things I want to do is integrate test runner with test coverage and the web ui. so you could visualize the test coverage 
+
+1769896716
+torque!~tachyon@user/torque
+noted
+
+1769896730
+andrewrk!~andrewrk@mail.ziglang.org
+almost all the pieces are there already, just need to wire them together
+
+1769897047
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah I spent about 30 minutes trying to get a failing test to appear before I realised you needed to manually thread them through
+
+1769897758
+andrewrk!~andrewrk@mail.ziglang.org
+I think that if you thought about it more, you would change your mind about how you want it to work
+
+1769897803
+andrewrk!~andrewrk@mail.ziglang.org
+also fun fact, it used to work that way. a lot of the time when users don't like how things are they don't realize that I've tried it both ways already
+
+1769897972
+LAC-Tech!~lewis@granite-phrase.bnr.la
+yeah it did used to work that way. probably why I was so confused. also tbh I don't want to think a whole bunch, and I don't think most programmers do.
+
+1769898447
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think you should have language design opinions if you are unwilling to think
+
+1769898483
+andrewrk!~andrewrk@mail.ziglang.org
+or, let me put it more positively: let me know if you change your mind about being willing to think, and then I'll start paying attention to your language design opinions again
+
+1769898899
+LAC-Tech!~lewis@granite-phrase.bnr.la
+quite frankly I don't expect anyone to pay attention to my language design opinions. I was expressing my complete bewilderment at how something in zig worked. if that's not productive I will stop doing so.
+
+1769899519
+andrewrk!~andrewrk@mail.ziglang.org
+it's fine to complain here if you're willing to work constructively towards making things better. otherwise please take it elsewher
+
+1769900617
+LAC-Tech!~lewis@granite-phrase.bnr.la
+what does working constructively to make things better look like?
+
+1769900794
+andrewrk!~andrewrk@mail.ziglang.org
+1. working to understand deeply the problems and use cases at hand, 2. identifying use cases that are not handled well and making clear problem statement, 3. making specific, concrete proposals to improvement upon status quo
+
+1769900812
+andrewrk!~andrewrk@mail.ziglang.org
+you've done a little bit of 2, you're missing 1 and n3
+
+1769900818
+andrewrk!~andrewrk@mail.ziglang.org
+you've done a little bit of 2, you're missing 1 and 3
+
+1769901475
+LAC-Tech!~lewis@granite-phrase.bnr.la
+would 1, 2 and 3 belong in a codeberg issue?
+
+1769901665
+andrewrk!~andrewrk@mail.ziglang.org
+absolutely
+
+1769902076
+Earnestly!~earnest@user/earnestly
+LAC-Tech: This rang a bell, you might be able to take some notes from the prior discussions/ideas: https://0x0.st/Pq6k.txt
+
+1769903706
+cow_2001!~username@user/cow-2001/x-5712099
+turns out the @sizeOf of a [8]u1 is not 1 :< oh well
+
+1769903781
+andrewrk!~andrewrk@mail.ziglang.org
+cow_2001: perhaps you are looking for packed struct (u8) {} 
+
+1769903802
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/documentation/0.15.2/#packed-struct
+
+1769903838
+cow_2001!~username@user/cow-2001/x-5712099
+thank you
+
+1769903858
+cow_2001!~username@user/cow-2001/x-5712099
+i need to stop mucking about with obscure stuff and just do what i want to do
+
