@@ -1,0 +1,160 @@
+1769904354
+Affliction!affliction@idlerpg/player/affliction
+Speaking of understanding problems and use cases, no arrays within packed structs, that has been slightly annoying, but like many other constraints, I assume there's a good reason behind that?
+
+1769904395
+andrewrk!~andrewrk@mail.ziglang.org
+Affliction: there is... I don't have a link to the discussion handy and I don't recall the details at the moment. it would be good to compile a document of all this design rationale somewhere
+
+1769904472
+Affliction!affliction@idlerpg/player/affliction
+Only thing I can think of is, there's no way to get a pointer to something which isn't byte aligned, if one were to try iterating by reference.
+
+1769904567
+Affliction!affliction@idlerpg/player/affliction
+At least, without a bit-pointer, which, I'd imagine would be too much work considering the niche use cases for it.
+
+1769904956
+Affliction!affliction@idlerpg/player/affliction
+At any rate, my use case would largely summarize to "slightly more aesthetically pleasing structs for certain hardware registers", at least for this project. Not much actual looping involved here.
+
+1769905562
+Affliction!affliction@idlerpg/player/affliction
+On an unrelated note; going to write a small web API, would prefer somewhat stable zig (is 0.16 expected within the next month or two?), does anyone have any library recommendations? Happy with a boring old event loop, though I am willing to try the new async stuff in 0.16.
+
+1769905637
+Affliction!affliction@idlerpg/player/affliction
+std.net.http paired with an appropriate Io might even suffice in 0.16 when it comes down to it.
+
+1769905649
+Affliction!affliction@idlerpg/player/affliction
+er, std.http*
+
+1769907385
+cow_2001!~username@user/cow-2001/x-5712099
+a methd fails to compile with unable to resolve comptime value, but the comptime value SEEMS to be known.  it's a string literal  http://0x0.st/s/ojuNNm-dnpXrOami8wxH3g/PqUZ.txt
+
+1769907437
+cow_2001!~username@user/cow-2001/x-5712099
+method
+
+1769907573
+Affliction!affliction@idlerpg/player/affliction
+the fmt arg itself may not be known at comptime
+
+1769907585
+Affliction!affliction@idlerpg/player/affliction
+fmt: []const u8
+
+1769907696
+cow_2001!~username@user/cow-2001/x-5712099
+hmm hmm hmm.  but the value of the literal string is stored somewhere fixed, so the pointer will always be pointing there, no?
+
+1769907720
+cow_2001!~username@user/cow-2001/x-5712099
+oh
+
+1769907786
+cow_2001!~username@user/cow-2001/x-5712099
+no, no "oh".  i still don't get it
+
+1769907862
+Affliction!affliction@idlerpg/player/affliction
+this function accepts any []const u8, you could call it with one created at runtime
+
+1769907864
+cow_2001!~username@user/cow-2001/x-5712099
+if the limitation is that fmt must be comptime, then i cannot use it with anything but a comptime input argument for fmt, which is what i did
+
+1769907903
+cow_2001!~username@user/cow-2001/x-5712099
+if i set the type to comptime []const u8, the compiler tells me it is redundant
+
+1769907971
+Affliction!affliction@idlerpg/player/affliction
+try 'comptime fmt: ..."
+
+1769908044
+Affliction!affliction@idlerpg/player/affliction
+back in 15ish
+
+1769908753
+cow_2001!~username@user/cow-2001/x-5712099
+oh i'm a dingus.  thank you!
+
+1769908912
+Affliction!affliction@idlerpg/player/affliction
+pretty much, "comptime []const u8" requires that the []const u8 type be comptime known. Which it probably is :)
+
+1769909709
+cow_2001!~username@user/cow-2001/x-5712099
+ooh ~;~
+
+1769965636
+cow_2001!~username@user/cow-2001/x-5712099
+i keep writing std.meme.Allocator.....
+
+1769965651
+cow_2001!~username@user/cow-2001/x-5712099
+it's just a standard meme
+
+1769968594
+cow_2001!~username@user/cow-2001/x-5712099
+i want to write a function, fn doOp(), whose input is a pointer to one of the binary operations std.math.add, .sub, etcetera, and its two operands, but i cannot get the type right.  when i provide .add to my doOp, the compiler says .add has the type "fn (comptime type, anytype, anytype) anytype" but when i put that as the type, the compiler complains about the anytype type
+
+1769968969
+matthias1!~matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+cow_2001: the type of the arguments have to known at comptime
+
+1769969001
+matthias1!~matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+so I imagine you can't all an anytype function through a function pointer
+
+1769969021
+matthias1!~matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+since the point of the function pointer is that you decide what function you're calling at runtime
+
+1769969038
+matthias1!~matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+but you have to know the types at comptime
+
+1769969134
+matthias1!~matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+Normally an anytype function gets the argument type from the call site (but if you don't know the call site at comptime that's not going to work)
+
+1769969433
+cow_2001!~username@user/cow-2001/x-5712099
+oh oh, so when you have fn moo(T: type, a: T) void it'll be moo(type, anytype)
+
+1769969438
+cow_2001!~username@user/cow-2001/x-5712099
+err
+
+1769969443
+cow_2001!~username@user/cow-2001/x-5712099
+moo(type, anytype) void
+
+1769969557
+cow_2001!~username@user/cow-2001/x-5712099
+matthias1: okay, got it!  thank you!
+
+1769969666
+matthias1!~matthias1@pool-108-18-149-143.washdc.fios.verizon.net
+If you're new to Zig and don't have a particular need for function pointers I would recommend implementing doOp with an enum of possible operations and a switch statement, it's more Zig-like
+
+1769969676
+cow_2001!~username@user/cow-2001/x-5712099
+ah
+
+1769969704
+cow_2001!~username@user/cow-2001/x-5712099
+i'm used to scheme :|
+
+1769969804
+cow_2001!~username@user/cow-2001/x-5712099
+but i'm really reading crafting interpreters and he used a C macro where the input is one of the binary operators
+
+1769974767
+andrewrk!~andrewrk@mail.ziglang.org
+cow_2001: in zig that's an inline function with a comptime op: enum{...} parameter
+
