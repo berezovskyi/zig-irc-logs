@@ -1,0 +1,140 @@
+1770254038
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so I'm trying to compile zig 0.14.1 using clang 19.1.7 (e.g. the latest 19.x per the docs) but I'm getting a segmentation fault. I was able to repro the seg fault https://bpa.st/LK2A compiling with clang++-19 llvm_repro.cpp -o llvm_repro $(/usr/lib/llvm/19/bin/llvm-config --cppflags --ldflags --libs analysis core support), so this seems like an llvm bug. I'm tryna decide if it's worth filing an llvm bug 
+
+1770254045
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+though, this compiler seems pretty old.
+
+1770254063
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+is there any reason not to compile with a newer clang?
+
+1770254884
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: the readme of zig 0.14.1 says the minimum compiler version
+
+1770254932
+andrewrk!~andrewrk@mail.ziglang.org
+oh, I am mistaken. that information is missing
+
+1770254979
+andrewrk!~andrewrk@mail.ziglang.org
+I think you should just use the default C/C++ toolchain on your system
+
+1770255946
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+k I'll try that. the ebuild specifically pulls in clang 19, I think b/c the readme lists clang 19.x
+
+1770255959
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+but I'll try with the default (currently clang 21) and see how it goes
+
+1770256268
+andrewrk!~andrewrk@mail.ziglang.org
+ezzieyguywuf: due to the way C++ works it must be the same toolchain that the llvm libraries were built with
+
+1770256399
+Avinash!~Avi@user/avinash
+andrewrk Just a quick question, I want to build a compiler for my own programming language in C language (using LLVM) .. could you please share a tutorial/book(s) to fulfill my goal?
+
+1770256480
+andrewrk!~andrewrk@mail.ziglang.org
+Avinash: https://llvm.org/docs/LangRef.html 
+
+1770256482
+andrewrk!~andrewrk@mail.ziglang.org
+have fun
+
+1770256510
+Avinash!~Avi@user/avinash
+thanks man, appreciate your help. Take care! :)
+
+1770256850
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+andrewrk: that shouldn't be a problem, I think the ebuild ensures that the toolchain lines up with the llvm libraries
+
+1770257792
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+https://codeberg.org/ziglang/zig/src/tag/0.14.1/cmake/Findllvm.cmake#L43 this makes it look like it should be fine using llvm > 19, but I think https://codeberg.org/ziglang/zig/src/tag/0.14.1/cmake/Findllvm.cmake#L19-L25 is finding the existing llvm 19 on my system and not using the llvm 20
+
+1770257855
+andrewrk!~andrewrk@mail.ziglang.org
+are you talking about llvm libraries, or which compiler toolchain you are using to build from source?
+
+1770257876
+andrewrk!~andrewrk@mail.ziglang.org
+each version of zig requires being linked against exactly one specific version of LLVM
+
+1770257895
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/download/0.14.0/release-notes.html#LLVM-19
+
+1770257915
+andrewrk!~andrewrk@mail.ziglang.org
+btw you know you can just download old releases right?
+
+1770257924
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I guess I misunderstood "I think you should just use the default C/C++ toolchain on your system"
+
+1770257942
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+yea I know, I just wanted to install it using my system's package manager lol
+
+1770257998
+andrewrk!~andrewrk@mail.ziglang.org
+if you want to use system package manager then your system package manager needs llvm 19 and you have to use the default system package manager C++ toolchain to build
+
+1770258021
+andrewrk!~andrewrk@mail.ziglang.org
+that's just how it works in c++ land
+
+1770258037
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I see. maybe the libraries weren't build with that version, I'll check.
+
+1770258565
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh nah I know for sure the llvm 19 libs were built with clang 20, which is my system default, I just rebuilt it. I think I just found a bug in llvm that's all
+
+1770304411
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+turns out it's probably a real bug in llvm 19, I patched it to add a nullptr check and now everything is fine
+
+1770306772
+Sivecano92!~Sivecano@user/Sivecano
+how would I wait on one of several file descriptors in 0.16/master ?
+
+1770306772
+Sivecano92!~Sivecano@user/Sivecano
+do I still just poll, or would I rather use Io.concurrent ?
+
+1770318765
+andrewrk!~andrewrk@mail.ziglang.org
+Sivecano: you can use high level task-based API with async/concurrent or you can use low level Batch API
+
+1770318989
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I can't wait for restricted function pointers to come to Zig so the programs that use std.Io use less disk space.
+
+1770319461
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: you're talking about -OReleaseSmall binary size?
+
+1770319607
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I mean all release modes, but I use ReleaseSafe.
+
+1770322549
+andrewrk!~andrewrk@mail.ziglang.org
+was was your before/after?
+
+1770327899
+cow_2001!~username@user/cow-2001/x-5712099
+i want to trace this recursive parser to get how it works.  do you know how to do it without manually std.debug.print()ing?
+
+1770328012
+cow_2001!~username@user/cow-2001/x-5712099
+gdb tracepoints?
+
