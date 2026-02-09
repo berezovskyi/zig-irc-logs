@@ -1,0 +1,140 @@
+1770423105
+cow_2001!~username@user/cow-2001/x-5712099
+someone should get zig into this repository https://github.com/bdrung/startup-time
+
+1770431491
+rockorager!~rockorage@smtp.spunky.lol
+andrewrk: not sure if you knew, but I recently added support for the new time algo to zeit (https://www.benjoffe.com/fast-date-64), and when benchmarked against the rust impl I'm ~2x faster. I think zeit is the fastest time library out there right now
+
+1770431807
+andrewrk!~andrewrk@mail.ziglang.org
+cool!
+
+1770431831
+andrewrk!~andrewrk@mail.ziglang.org
+rockorager: motivation for the PR I just sent is updating awebo to bleeding edge zig
+
+1770431841
+andrewrk!~andrewrk@mail.ziglang.org
+plus I was test piloting the new --fork flag
+
+1770431848
+andrewrk!~andrewrk@mail.ziglang.org
+it's really nice!
+
+1770431863
+rockorager!~rockorage@smtp.spunky.lol
+I figured that was the case. What's the --fork flag do?
+
+1770431883
+rockorager!~rockorage@smtp.spunky.lol
+Also how did you make that function call never fail? it's a syscall, no?
+
+1770432041
+andrewrk!~andrewrk@mail.ziglang.org
+1: https://codeberg.org/ziglang/zig/pulls/31086 
+
+1770432053
+andrewrk!~andrewrk@mail.ziglang.org
+2: https://codeberg.org/ziglang/zig/pulls/31138
+
+1770432058
+andrewrk!~andrewrk@mail.ziglang.org
+oops I got the numbers backwards
+
+1770432112
+andrewrk!~andrewrk@mail.ziglang.org
+in short summary, it lets you easily temporarily override any dependency from your entire tree, and because you can check clock resolution and errors ahead of time, then assume it works after that point
+
+1770432197
+rockorager!~rockorage@smtp.spunky.lol
+oh nice
+
+1770454295
+mountaingoat!~mountaing@user/mountaingoat
+what's the future proof way of including a C header in a zig project? given #20630
+
+1770478302
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Why is AutoHashMap still managed with a separate Unmanaged variety but lists default to unmanaged?
+
+1770493948
+andrewrk!~andrewrk@mail.ziglang.org
+bwbuhse: one step at a time
+
+1770493991
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: use this package: https://codeberg.org/ziglang/translate-c
+
+1770494007
+andrewrk!~andrewrk@mail.ziglang.org
+it already has some more nice options beyond what @cImport offers
+
+1770494023
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+andrewrk: fair enough, I just wasn’t sure if there was a specific reason or if it just hadn’t been done yet :)  
+
+1770494713
+andrewrk!~andrewrk@mail.ziglang.org
+bwbuhse: yeah it'll happen soon enough
+
+1770496327
+ZenOfZig!~omer@user/ZenOfZig
+Hi everyone!
+
+1770499244
+mountaingoat!~mountaing@user/mountaingoat
+is there a workaround for translating header files with bitfields? basically any alternative to dropping an opaque {}?
+
+1770499495
+andrewrk!~andrewrk@mail.ziglang.org
+mountaingoat: I don't know what is the state of translate-c, but I don't see any reason why bitfields can't be translated
+
+1770499517
+andrewrk!~andrewrk@mail.ziglang.org
+it's not a *simple* problem, but it is perfectly solvable
+
+1770501380
+mountaingoat!~mountaing@user/mountaingoat
+andrewrk: my immediate problem is that the type (basically union { a: u8, b: opaque {}, }) is being used as a value in the C API, but i can't create the type in Zig (even if i'm just using .a) because it has the opaque {} in there. i haven't found a preprocessor trick yet to cancel out the offending bitfields
+
+1770501872
+andrewrk!~andrewrk@mail.ziglang.org
+I see, it basically sabotages the parent type
+
+1770501892
+andrewrk!~andrewrk@mail.ziglang.org
+is there an issue open for this already?
+
+1770501916
+andrewrk!~andrewrk@mail.ziglang.org
+looks like it: https://codeberg.org/ziglang/translate-c/issues/179
+
+1770502157
+mountaingoat!~mountaing@user/mountaingoat
+it seems to come up a bunch in forums under "error: opaque types have unknown size and therefore cannot be directly embedded in union" as well
+
+1770502531
+andrewrk!~andrewrk@mail.ziglang.org
+hopefully someone will have the motivation to tackle this issue
+
+1770502543
+andrewrk!~andrewrk@mail.ziglang.org
+won't be me tho
+
+1770503643
+torque!~tachyon@user/torque
+presumably the workaround in the short term would be to manually translate the type
+
+1770503658
+torque!~tachyon@user/torque
+probably you would use a packed struct to represent bitfields I guess
+
+1770503676
+torque!~tachyon@user/torque
+though c bitfield layout rules are bonkers
+
+1770503799
+torque!~tachyon@user/torque
+though if you don't need to use that type at all, you don't actually have to populate the fields
+
