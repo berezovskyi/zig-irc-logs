@@ -1,0 +1,208 @@
+1770647958
+audio!~audio@user/audio
+Notzigggy
+
+1770662556
+cow_2001!~username@user/cow-2001/x-5712099
+i made a meme about programming languages that have exceptions instead of error values :( https://kaka.farm/pub/memes/why-cant-i-catch-all-these-exceptions.sng
+
+1770662561
+cow_2001!~username@user/cow-2001/x-5712099
+sorry
+
+1770662598
+cow_2001!~username@user/cow-2001/x-5712099
+i made a meme about programming languages that have exceptions instead of error values :( https://kaka.farm/pub/memes/why-cant-i-catch-all-these-exceptions.png
+
+1770662722
+clevor!sid649024@id-649024.hampstead.irccloud.com
+We have apps raising more red flags than exceptions.
+
+1770662873
+cow_2001!~username@user/cow-2001/x-5712099
+clevor: red flags?
+
+1770662878
+cow_2001!~username@user/cow-2001/x-5712099
+i do not understand
+
+1770662947
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://en.wiktionary.org/wiki/red_flag#Noun
+
+1770662973
+cow_2001!~username@user/cow-2001/x-5712099
+no, not that
+
+1770662990
+cow_2001!~username@user/cow-2001/x-5712099
+what do you mean by that?  just suspicion of being malware?
+
+1770663017
+cow_2001!~username@user/cow-2001/x-5712099
+my link is suspect of that?
+
+1770663126
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Mostly malicious intent
+
+1770663167
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Even in popular software, such as Windows.
+
+1770673555
+cow_2001!~username@user/cow-2001/x-5712099
+clevor: xz :(
+
+1770676404
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+is it frowned upon to @panic on error.OutOfMemory?  or is it worth trying to do something useful in terms of reporting some kind of detail?
+
+1770676571
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+in my api i'm catching all error conditions into a `const ParseResult = union(enum) {ini: Ini, error_detail: ErrorDetail}`, where ErrorDetail has .format() which can give useful error message
+
+1770676666
+clevor!sid649024@id-649024.hampstead.irccloud.com
+If it's a library, panicking on OOM isn't a good idea.
+
+1770676698
+bblack!~bblack@wikimedia/bblack-WMF
+but then you have to have some reasonable failure mode in response, too.  Like, turning the OOM into a failure return value of some kind to the caller of the library's API
+
+1770676714
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+i kind of got that from other code, i've noticed eg. zig parser still passes OutOfMemory out, even though for other things it gives details
+
+1770676731
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+here's example of my api https://bpa.st/QADA
+
+1770676777
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+now i'm kinda bugged by that last remaining error value.  if i could sweep that into the ErrorDetail i could save my user from `try`
+
+1770676783
+bblack!~bblack@wikimedia/bblack-WMF
+oh sorry, when you said "library" I assumed something like a shlib with a C ABI
+
+1770676862
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+another way to sweep it under the carpet would be @panic(oom) so i wonder which is best:  panic, integrate into my ErrorDetail or just leave as it is
+
+1770676935
+bblack!~bblack@wikimedia/bblack-WMF
+well if you leave it as-is, you're basically leaving it up to the caller to decide how serious it is and what to do (possibly panic or let it bubble out until the whole program stops execution, possibly "handle" it somehow at a higher level)
+
+1770676959
+bblack!~bblack@wikimedia/bblack-WMF
+panic seems like the worst of the three choices, then the caller gets no options
+
+1770677015
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+as it is i'm also kinda forcing them to write more complex code: switch(try parseBytes()) ... instead of switch(parseBytes) -- in each of these switches they will already be switching .ini vs .error_detail
+
+1770677089
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+that seems to point towards integrating it into ErrorDetail but i wonder why other places don't seem to do it and either always pass error.OutOfMemory out, or @panic
+
+1770677095
+bblack!~bblack@wikimedia/bblack-WMF
+I guess an important question: in case of an OOM, is the rest of the "state" they're using from your thing going to remain in a reasonable state and be retryable?
+
+1770677136
+bblack!~bblack@wikimedia/bblack-WMF
+maybe the caller could decide, for example, to deallocate some excess "cache" memory at their own level and try again, assuming when you return your OOM-like condition, retrying is feasible at the level of your "library"
+
+1770677157
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+good question
+
+1770677193
+bblack!~bblack@wikimedia/bblack-WMF
+whether you return the OOM-like condition as the natural Zig error or some kind of wrapped up ErrorDetail is I think a matter of taste/design probably.
+
+1770677247
+bblack!~bblack@wikimedia/bblack-WMF
+but for an ErrorDetail approach to make sense, it will have to include something they can switch on to differentiate that it was OOM and make some rational attempt at freeing/retrying anyways.  They may as well just switch on the original error.OutOfMemory.
+
+1770677290
+bblack!~bblack@wikimedia/bblack-WMF
+otherwise you're just leaving them with some kind of programmatically-opaque error string to show the user, but ultimately a failure that the caller can't do much with but fail outwardly as well
+
+1770677359
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+ah, i see  at this point everything i have in error_detail (that's union as well where they can drill to details) is related to the data itself being broken (or files missing etc.), ie. there's no viable retry strategy
+
+1770677369
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+so oom would be exception to that
+
+1770677453
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+on a second thought, ErrorDetail does contain enough details (it's union of syntax errors, file load errors, etc.).  so i could just add .oom there and keep things simple.  they can special-treat it if they want
+
+1770677463
+bblack!~bblack@wikimedia/bblack-WMF
+right
+
+1770677496
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+thanks for help ;)
+
+1770677519
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+( i mean :) .. ;) is probably creeepy :D)
+
+1770677529
+bblack!~bblack@wikimedia/bblack-WMF
+most programs in my experience, lack any ability to handle a true oom and ultimately somebody somewhere in the callchain just panics, effectively
+
+1770677544
+bblack!~bblack@wikimedia/bblack-WMF
+but it's nice not to make the decision for the caller in something library-like
+
+1770677577
+bblack!~bblack@wikimedia/bblack-WMF
+it's rare I've seen useful (vs pointlessly-over-defensive) code that actually cleans up some optional memory it was wasting in response to an OOM and retries an operation
+
+1770677609
+bblack!~bblack@wikimedia/bblack-WMF
+(but it does happen sometimes!)
+
+1770677647
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+in my cli i will just switch with 2 prongs: `.ini => ..., .error_detail => |ed| some_log.print("{f}", .{ed}),` which is pretty much the expected usage that covers 99% cases
+
+1770677649
+bblack!~bblack@wikimedia/bblack-WMF
+the only real defense is to go all TigerBeetle-style and predict and pre-allocate all memory needs up-front with explicitly-configured limitations.
+
+1770677667
+bblack!~bblack@wikimedia/bblack-WMF
+but that's not practical for most simpler things
+
+1770677680
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+yeah that's the next long evening :D
+
+1770677747
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+probably a stretch in this lib, though... it's just an ini config file reader intended mostly for cli thingies, 
+
+1770678134
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+ok i guess there is one reason to treat oom specially which i did not realize earlier:  some of the types in the ErrorDetail need (small) allocation on init, so technically i could get oom while crreating ErrorDetail for other reaons.  ...  but it's going to be an exceedingly rare case
+
+1770680769
+bblack!~bblack@wikimedia/bblack-WMF
+netvor: maybe ErrorDetail needs a sub-union with an ErrorDetailError to capture the oom that happened when allocating the ErrorDetail :)
+
+1770681320
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+btw here's what i ended up (the link will die as i merge the dev branch to main soon)  :  https://git.sr.ht/~netvor/zig-bareini/tree/dev/item/src/Ini.zig#L248
+
+1770681346
+netvor!~netvor@2a00:ca8:a1f:cd0:e42c:3823:53a5:8c17
+eg. in parseFilesetOptions below it shows how i can cast the wide net without losing too much readability
+
