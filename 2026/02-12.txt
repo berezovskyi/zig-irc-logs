@@ -1,0 +1,260 @@
+1770865357
+cow_2001!~username@user/cow-2001/x-5712099
+this is suomi to me :| https://ziggit.dev/t/struct-inheritance-and-alignment/10733
+
+1770865402
+cow_2001!~username@user/cow-2001/x-5712099
+what's the deal with all these alignments?
+
+1770865424
+cow_2001!~username@user/cow-2001/x-5712099
+and builtin operations that deal with them
+
+1770865642
+torque!~tachyon@user/torque
+as with everything else, it's the damn CPU's fault
+
+1770865708
+cow_2001!~username@user/cow-2001/x-5712099
+so how do i make this alignment trick where i can cast between struct types that share the fields?
+
+1770865719
+cow_2001!~username@user/cow-2001/x-5712099
+it's like a tagged union, but not quite
+
+1770865780
+cow_2001!~username@user/cow-2001/x-5712099
+const Obj = struct{type: ObjType }; const ObjString = struct{type: ObjType, string: [:0]u8}
+
+1770865814
+torque!~tachyon@user/torque
+you can't cast between `Obj` and `ObjString` if that's what you're asking
+
+1770865815
+cow_2001!~username@user/cow-2001/x-5712099
+torque: what do i read to make this alignment thing make sense?
+
+1770865826
+cow_2001!~username@user/cow-2001/x-5712099
+torque: dingit
+
+1770865827
+torque!~tachyon@user/torque
+I don't see what this has to do with alignment
+
+1770865834
+cow_2001!~username@user/cow-2001/x-5712099
+oh
+
+1770865854
+cow_2001!~username@user/cow-2001/x-5712099
+maybe it doesn't.  i'm an ignoramus
+
+1770865877
+cow_2001!~username@user/cow-2001/x-5712099
+i saw various builtins used in the code examples and i'm mixing things up
+
+1770865897
+torque!~tachyon@user/torque
+if those were `extern struct`s you could cast between them but I don't really see the advantage
+
+1770865953
+cow_2001!~username@user/cow-2001/x-5712099
+the trick in the book, Crafting Interpreters, is that you do that and can have a sort of generic code for objects, i guess?
+
+1770865979
+cow_2001!~username@user/cow-2001/x-5712099
+there are generic parts and specific parts for specific types like ObjString
+
+1770866026
+torque!~tachyon@user/torque
+casting structs around based on their first field is fairly common in C but there are plenty of ways to design around it
+
+1770866036
+cow_2001!~username@user/cow-2001/x-5712099
+what's the zig way?
+
+1770866048
+cow_2001!~username@user/cow-2001/x-5712099
+or ways
+
+1770866219
+torque!~tachyon@user/torque
+I haven't read the book so I can't speak with confidence to the exact situation it is presenting, but in general, composition over "inheritance", using a tagged union with methods to provide a unified API over several disparate types, going full vtable sicko mode
+
+1770866273
+cow_2001!~username@user/cow-2001/x-5712099
+O_O
+
+1770866281
+cow_2001!~username@user/cow-2001/x-5712099
+i saw vtable somewhere in zig
+
+1770866345
+torque!~tachyon@user/torque
+it's used quite heavily in certain parts of the stdlib. std.mem.Allocator is a vtable interface. as is std.Io.Writer in 0.15 and the entirety of std.Io will be in 0.16
+
+1770866435
+cow_2001!~username@user/cow-2001/x-5712099
+huhm https://en.wikipedia.org/wiki/Virtual_method_table
+
+1770866579
+torque!~tachyon@user/torque
+yes, well, unfortunately anything that tries to explain a concept using C++ is horribly misguided
+
+1770866590
+torque!~tachyon@user/torque
+that wikipedia page should unfortunately probably be taken out back and shot
+
+1770866597
+cow_2001!~username@user/cow-2001/x-5712099
+rip
+
+1770866652
+cow_2001!~username@user/cow-2001/x-5712099
+any other ways?
+
+1770866681
+torque!~tachyon@user/torque
+I think actually reading e.g. https://codeberg.org/ziglang/zig/src/branch/master/lib/std/mem/Allocator.zig#L22 is a good way to get a grip on the concept
+
+1770866827
+torque!~tachyon@user/torque
+basically a vtable is a set of function pointers that each have a specific signature, and they operate on an opaque pointer. This allows any object to implement the vtable (as long as it can satisfy the function signature requirements)
+
+1770866880
+torque!~tachyon@user/torque
+because a pointer is always a known size, this allows creating what is effectively a common interface that can have many different implementations
+
+1770866958
+torque!~tachyon@user/torque
+hence why it is used for Allocator for example, because there are many different allocator implementations (PageAllocator, DebugAllocator, FixedBufferAllocator, SmpAllocator, etc), but these only have to be able to fulfil the API contract defined by the vtable, and then the downstream code doesn't need to know what kind of allocator it is actually working with
+
+1770866983
+torque!~tachyon@user/torque
+because it knows how to use the allocator interface
+
+1770867433
+cow_2001!~username@user/cow-2001/x-5712099
+i see
+
+1770867594
+cow_2001!~username@user/cow-2001/x-5712099
+i'm too tired to think about it now.  i'm going to sleep
+
+1770867617
+cow_2001!~username@user/cow-2001/x-5712099
+torque: looking at specific allocators i see how they return an Allocator with a ptr and vtable
+
+1770867631
+torque!~tachyon@user/torque
+yep
+
+1770867632
+cow_2001!~username@user/cow-2001/x-5712099
+need to somehow store and use different kinds of data though
+
+1770867683
+cow_2001!~username@user/cow-2001/x-5712099
+one for string, another for... i suppose some other type of variable size data type
+
+1770867700
+cow_2001!~username@user/cow-2001/x-5712099
+ok, good night
+
+1770867703
+torque!~tachyon@user/torque
+peace
+
+1770884315
+dutchie!~dutchie@user/dutchie
+cow_2001: I've done some of Crafting Interpreters in Zig, you can look at https://git.sr.ht/~jshholland/zlox/tree/main/item/src/Obj.zig if you want
+
+1770884330
+dutchie!~dutchie@user/dutchie
+got up to the GC chapter
+
+1770884462
+dutchie!~dutchie@user/dutchie
+didn't use any vtables, just the @fieldParentPtr pattern
+
+1770884488
+dutchie!~dutchie@user/dutchie
+which is basically equivalent to how the book does it in C
+
+1770900482
+cowboy8625!~user@23.92.1.129
+Have yall read "Writing a C compiler"?  Its pretty awesome!
+
+1770914253
+cow_2001!~username@user/cow-2001/x-5712099
+dutchie: that looks so much better than how i did it, which is just throwing a bunch of stuff haphazardly because i didn't know how to properly translate the code into ziglang https://codeberg.org/kakafarm/solomon/src/branch/master/src/object.zig
+
+1770914542
+cow_2001!~username@user/cow-2001/x-5712099
+"Given a pointer to a struct or union field, returns a pointer to the struct or union containing that field. The return type (pointer to the parent struct or union in question) is the inferred result type."
+
+1770914559
+cow_2001!~username@user/cow-2001/x-5712099
+i think it should be "given a pointer to a struct field or a union field"
+
+1770914606
+cow_2001!~username@user/cow-2001/x-5712099
+in https://ziglang.org/documentation/master/#fieldParentPtr
+
+1770914846
+dutchie!~dutchie@user/dutchie
+(struct or union) field is the intended parsing I think
+
+1770915138
+cow_2001!~username@user/cow-2001/x-5712099
+but it's a bit clearer
+
+1770915571
+cow_2001!~username@user/cow-2001/x-5712099
+https://codeberg.org/ziglang/zig/pulls/31191
+
+1770916184
+Earnestly!~earnest@user/earnestly
+(to the field of a struct or union)
+
+1770917075
+cow_2001!~username@user/cow-2001/x-5712099
+Earnestly: ohm!
+
+1770917159
+cow_2001!~username@user/cow-2001/x-5712099
+i'll change that to your version
+
+1770917211
+cow_2001!~username@user/cow-2001/x-5712099
+Earnestly: we are doing algebra :D
+
+1770917221
+cow_2001!~username@user/cow-2001/x-5712099
+distributive property :D
+
+1770917386
+cow_2001!~username@user/cow-2001/x-5712099
+wait, i'll clone and fixup
+
+1770917693
+cow_2001!~username@user/cow-2001/x-5712099
+i don't know how those two other commits got into the pile
+
+1770917698
+cow_2001!~username@user/cow-2001/x-5712099
+https://codeberg.org/ziglang/zig/pulls/31191/commits
+
+1770917711
+cow_2001!~username@user/cow-2001/x-5712099
+oh no, they got into the rebase
+
+1770917732
+cow_2001!~username@user/cow-2001/x-5712099
+let me fix that
+
+1770917868
+cow_2001!~username@user/cow-2001/x-5712099
+Earnestly: there we go! :D https://codeberg.org/ziglang/zig/pulls/31191/commits/b65f2ec95c876ad1e8edbcfeb12022433f84e323
+
