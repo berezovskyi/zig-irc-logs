@@ -1,0 +1,228 @@
+1772158626
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Inline switch branches are so nice 
+
+1772173192
+andrewrk!~andrewrk@mail.ziglang.org
+yeah
+
+1772213978
+emneo!8c21cc4b68@user/emneo
+hello everyone, i'm having quite a weird problem right now. the current master branch version of the compiler does not want to build anything when the build command is issued through ssh without an interactive terminal, and gets stuck on an flock. i have a dump of the syscalls if need be, but right now i have no idea what could be causing it :/
+
+1772214028
+emneo!8c21cc4b68@user/emneo
+i also cannot reproduce locally on my machine (running on nixos), it only happens on sourcehut's build service for me (i don't have another way to test rn)
+
+1772214074
+emneo!8c21cc4b68@user/emneo
+that happens on both their nixos and archlinux runners, so I honestly don't know where the problem could come from :/
+
+1772214180
+emneo!8c21cc4b68@user/emneo
+what happens from what i'm seeing is: opens a file -> flock the file (fails) -> close the file -> flocks the same fd (this hangs)
+
+1772214606
+emneo!8c21cc4b68@user/emneo
+ok my bad that was because there was a hanging compiler in the background, but now it's hanging on futex...
+
+1772214829
+emneo!8c21cc4b68@user/emneo
+also that futex call looks very wrong, that address space does not look like it should work...
+
+1772215027
+emneo!8c21cc4b68@user/emneo
+and valgrind is having one of the moments of all time with it
+
+1772215184
+lemons!~doggie@user/doggie-:49517
+emneo: your nick color looks the same as andrew's and that intimidated me
+
+1772215199
+konkitoman!~konkitoma@user/konkitoman
+How many people there are here?
+
+1772215228
+lemons!~doggie@user/doggie-:49517
+a few..? different question if you're gonna catch any of them
+
+1772215242
+lemons!~doggie@user/doggie-:49517
+konkitoman: what do you need, though?
+
+1772215251
+lemons!~doggie@user/doggie-:49517
+i assume you're asking for a reason
+
+1772215303
+konkitoman!~konkitoma@user/konkitoman
+I have an idea in mind, for some years now! in relation with the packed structs, I want to know if is an valid idea!
+
+1772215396
+konkitoman!~konkitoma@user/konkitoman
+packed structs, can be used to store formats that are written to disk or network, right?
+
+1772215412
+lemons!~doggie@user/doggie-:49517
+is a struct
+
+1772215447
+konkitoman!~konkitoma@user/konkitoman
+yes, but is deterministic, right? is the same on all platforms
+
+1772215479
+lemons!~doggie@user/doggie-:49517
+let's say sure
+
+1772215492
+konkitoman!~konkitoma@user/konkitoman
+is not?
+
+1772215524
+lemons!~doggie@user/doggie-:49517
+konkitoman: i think they are, im just not certain
+
+1772215540
+lemons!~doggie@user/doggie-:49517
+anyways continue?
+
+1772215564
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what do you mean deterministic
+
+1772215591
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the endianess can still differ between platforms, for instance
+
+1772215612
+lemons!~doggie@user/doggie-:49517
+ngl i read that as "expressed in the same way on all platforms"
+
+1772215616
+konkitoman!~konkitoma@user/konkitoman
+Gliptic: the bytes are layed out the same.
+
+1772215627
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the offset of each field is deterministic I guess, as long as the types are the same on all platforms
+
+1772215630
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+no, they are not
+
+1772215687
+lemons!~doggie@user/doggie-:49517
+is the end goal here "we'll iterate through bits and output them exactly to network/disk"?
+
+1772215692
+konkitoman!~konkitoma@user/konkitoman
+they are not layed out the same if you only use, fixed types like u32?
+
+1772215702
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+endianess can differ
+
+1772215745
+lemons!~doggie@user/doggie-:49517
+Gliptic: i had an issue where i needed to use extern struct while compiling for windows, and packed struct when for linux, otherwise neither would work
+
+1772215773
+lemons!~doggie@user/doggie-:49517
+jury's out on if thats related to the topic 
+
+1772215773
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+work as in compile?
+
+1772215795
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+or at runtime
+
+1772215798
+lemons!~doggie@user/doggie-:49517
+Gliptic: segfault
+
+1772215802
+konkitoman!~konkitoma@user/konkitoman
+then, is not possible for zig to enforce the endianess?
+
+1772215809
+lemons!~doggie@user/doggie-:49517
+hold on, let me nab the comment
+
+1772215838
+lemons!~doggie@user/doggie-:49517
+/ FIXME zig bug 10852, x86-windows needs packed or segfaults,
+
+1772215840
+lemons!~doggie@user/doggie-:49517
+/ and x86-linux needs extern or breaks argument passing
+
+1772215859
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what did you have in that struct
+
+1772215889
+emneo!8c21cc4b68@user/emneo
+i tried building with -j1, it goes further, spawns all the required tests butnthen hangs again...
+
+1772215894
+lemons!~doggie@user/doggie-:49517
+nothing fancy im afraid, just a bunch of u8 and u32
+
+1772215923
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that sounds strange
+
+1772215994
+lemons!~doggie@user/doggie-:49517
+Gliptic: determined with cloudef that its some bug with x86 codegen, unfortunately im not smart enough to give you any deets above that
+
+1772216104
+lemons!~doggie@user/doggie-:49517
+https://github.com/ziglang/zig/issues/10852#issuecomment-3450345957
+
+1772216231
+konkitoman!~konkitoma@user/konkitoman
+I was thinking if we have an struct, to be able to have something like this `struct {len: u32, data: [len]u8}` so the data slice length is stored in a specified field.
+
+1772216265
+lemons!~doggie@user/doggie-:49517
+konkitoman: why?
+
+1772216331
+konkitoman!~konkitoma@user/konkitoman
+To be able to have packed structs for formats like, WAV, or any other binary format.
+
+1772216440
+lemons!~doggie@user/doggie-:49517
+you could do c-style array pointers, but im also not sure why you couldnt just write the len first when writing to the file
+
+1772216562
+konkitoman!~konkitoma@user/konkitoman
+But why we should not be able to read/write directly a struct, without needing to read/write multiple parts?
+
+1772216915
+konkitoman!~konkitoma@user/konkitoman
+I got this idea because of Rust, unsized types. in Rust str and [u8] they are unsized, and if you make an struct like: `struct { idk: u32, data: [u8] }` is an unsized struct, meaning that it cannot be created, but you can allocate it, and depending on how much you allocate the data will be how much you allocate it and substracting the other fields.
+
+1772226943
+beastd!~kvirc@p5b0c7f56.dip0.t-ipconnect.de
+somehow i personally never use such things as packed structs. sub optimal for the normal in memory use cases and when writing anything but byte based data, endianess might byte you one day or another.
+
+1772228837
+lemons!~doggie@user/doggie-:49517
+i need them for abi pains, and i use them for bitflags
+
+1772235285
+Sivecano!~Sivecano@user/Sivecano
+fd sealing in 0.15 is literally the first time the zig standard library has disappointed me (I know it's fixed in master) 
+
+1772236106
+lemons!~doggie@user/doggie-:49517
+Sivecano: ?
+
+1772236189
+Sivecano!~Sivecano@user/Sivecano
+maybe I'm doing it wrong, but std.os.linux seems to be missing the constants to pass to fcntl for filedescriptor sealing. 
+
