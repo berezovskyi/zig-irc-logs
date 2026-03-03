@@ -1,0 +1,156 @@
+1772479925
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+can someone help me understand why this is detected as invalid free?   https://git.sr.ht/~netvor/zig-povel/tree/dev/item/src/txt/StringList.zig#L161     i'll post test output shortly
+
+1772479951
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+here: https://bpa.st/KDRA
+
+1772480085
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+in short, i have this string table where i have .toOwnedStrings(gpa) to return copy of all strings as `[]const []const u8` .. in tests i can't free this result with std.testing.allocator, although the same has been used to allocate it
+
+1772480199
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+it's 0.15.2
+
+1772489322
+clevor!sid649024@id-649024.hampstead.irccloud.com
+netvor: Here's a hint: inspect toOwnedStrings line-by-line.
+
+1772489754
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+sorry i already did and could not find it.  i tried again and i'm still not seeing the bug
+
+1772490260
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+clevor: if you are sure where the bug is please tell me at least line no.  i really can't see it and i'm going crazy
+
+1772490640
+clevor!sid649024@id-649024.hampstead.irccloud.com
+In toOwnedStrings, each string is not its own allocation, causing the freeStrings loop to crash.
+
+1772490733
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+not sure what it means, can't i free only part of a slice?  i always thought it's valid (and i think i've even done it in places)
+
+1772490803
+clevor!sid649024@id-649024.hampstead.irccloud.com
+IDK if it's illegal to free the first part of a slice, but it's definitely illegal to free a part of the slice that isn't.
+
+1772490853
+andrewrk!~andrewrk@mail.ziglang.org
+netvor: the Allocator API requires tracking byte size and alignment of allocations, and provides fallible functions for changing the size
+
+1772490868
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+i think what i've done in the past is overallocate and then free the end
+
+1772490918
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+weird, i've been coding in zig for past year and somehow this information has avoided me :D
+
+1772491062
+clevor!sid649024@id-649024.hampstead.irccloud.com
+It sounds like the testing allocator doesn't verify the size of the allocation when freeing.
+
+1772491077
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+anyway, so do i understand correctly that the solution is:  in toOwnedStrings()  just allocate every chunk of the underlying bytes with separate call to .alloc() or .dupe()?
+
+1772491107
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+(it does feel like a waste if i already know the length..)
+
+1772491141
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+or .. don't return []const []const u8 but something that one can free at once
+
+1772491207
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+i kinda don't like neither of the options
+
+1772491209
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Try using an array list with .initCapacity(self.strings_al.len). Then, you can errdefer for (list.items) |i| gpa.free(i).
+
+1772491380
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+you mean return ArrayList([]const u8) from the toOwnedStrings?
+
+1772491460
+clevor!sid649024@id-649024.hampstead.irccloud.com
+I'm editing the code you shared to fix it.
+
+1772491590
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+btw the typical use case for me with this StringList is to build command lines that then get passed to process.Child() or wrapper.  that's why i want to return []const []const u8  (and sometimes also return it and then continue adding)
+
+1772491699
+clevor!sid649024@id-649024.hampstead.irccloud.com
+https://usercontent.irccloud-cdn.com/file/yfO5L6km/b.zig
+
+1772491960
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+thanks, works (after fixing some typos)
+
+1772492016
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Also, sh.commands.decltest.findExecPath fails on NixOS because "true" is located at /run/current-system/sw/bin/true.
+
+1772492057
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+ah there's probably going to be more failures like that.  i never ran any of this anywhere else than debian or fedora
+
+1772492082
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+(also findExecPath() probably should not exist)
+
+1772492176
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+re: toOwnedStrings()  is there a reason why you used ArrayList?  i didn't try yet but it seems like my older approach with .alloc() should work as well .. provided i stiill .dupe() the bytes in chunks 
+
+1772492244
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+i tend to avoid arraylist if i can do stuff with just .alloc but it's just a hunch
+
+1772492368
+clevor!sid649024@id-649024.hampstead.irccloud.com
+.alloc() would work too, but appending strings one at a time and freeing the allocated strings on error makes an array list to use in this situation.
+
+1772492387
+clevor!sid649024@id-649024.hampstead.irccloud.com
+more ergonomic to use*
+
+1772492453
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+ah i seee.  i realized that my way i would not be able to just `errdefer `for |strings|` because i would not know which item got allocated
+
+1772492551
+clevor!sid649024@id-649024.hampstead.irccloud.com
+With your way, you would have to manage a separate counter, and at that point, it's just an array list from first principles.
+
+1772492563
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+i still feel a bit uneasy about the repeated .dupe's but i guess if the contract is what it is, then i gotta get used to it :)
+
+1772492563
+clevor!sid649024@id-649024.hampstead.irccloud.com
+counter/index
+
+1772492585
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+yeah once i find myself doing that i'd reach for arraylist
+
+1772492752
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+this requirement to keep .alloc/.free paired feels like bit of a footgun, but it is what i've signed for with v0.x :)
+
+1772492852
+netvor!~netvor@2a00:ca8:a1f:cd0:fcea:a79c:173e:f828
+at any rate, thanks for guidance .. and the fix :)  i learned something today
+
+1772492891
+clevor!sid649024@id-649024.hampstead.irccloud.com
+np
+
