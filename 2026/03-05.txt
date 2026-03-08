@@ -1,0 +1,96 @@
+1772700353
+Ristovski!~Ristovski@user/Ristovski
+Any clue how I could debug https://codeberg.org/ziglang/zig/issues/30780? Surprised no one else ran into this so far (unless its some cursed ultra-edge-case)
+
+1772702069
+ifreund!2940d10f8b@user/ifreund
+Ristovski: incremental compilation is not production ready yet, it is expected that there are bugs
+
+1772702617
+mountaingoat!~mountaing@user/mountaingoat
+is there an easy way to add a prefix to the artifact install path in zig-out? e.g. zig-out/foo/bin
+
+1772702652
+mountaingoat!~mountaing@user/mountaingoat
+i think i've spent over an hour trying to figure out how to add to an install path
+
+1772702880
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: the intended usage is that you pass --prefix on the `zig build` command line
+
+1772702884
+ifreund!2940d10f8b@user/ifreund
+zig-out is the prefix
+
+1772702978
+timide!~timide@user/timide
+hello, I'm currently discovering Zig and like it very much. Small question about array parameter, how do I know they're passed by ref or copied?
+
+1772702997
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: i understand, but in this case i might be building multiple variants and i want to organize them within --prefix so they don't overwrite each other
+
+1772703006
+timide!~timide@user/timide
+specifically, I'm wondering if this could leave the secret key in memory if a copy occurs: https://ziglang.org/documentation/0.15.2/std/#std.crypto.25519.x25519.X25519.scalarmult
+
+1772703022
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: perhaps you are looking for Build.Step.InstallArtifact.Options then
+
+1772703094
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: for quite some time, yes, haha
+
+1772703128
+ifreund!2940d10f8b@user/ifreund
+timide: if you need to guarantee no copy, you should use a pointer
+
+1772703182
+ifreund!2940d10f8b@user/ifreund
+so yes, that standard library code should probably use a pointer if as you say it's significant from a security standpoint whether a copy occurs or not
+
+1772703222
+mountaingoat!~mountaing@user/mountaingoat
+ifreund: if i want to override a dest_dir in InstallArtifact.Options, i have to provide an InstallDir. but to create an InstallDir, i need to fully specify a source_dir, install_dir, install_subdir, and i don't know the difference between any of those or what the defaults should be
+
+1772703225
+timide!~timide@user/timide
+Or a slice and check size right ?
+
+1772703272
+ifreund!2940d10f8b@user/ifreund
+timide: a pointer to array would be the idiomatic type here: `*const [secret_length]u8` since the size check is done by the compiler at compile time
+
+1772703303
+ifreund!2940d10f8b@user/ifreund
+though you are correct that slices are a type of pointer and never copy
+
+1772703319
+timide!~timide@user/timide
+got it thank you very much, would that be an acceptable contribution from someone new to the community?
+
+1772703340
+timide!~timide@user/timide
+or the breaking change wouldn't be allowed?
+
+1772703377
+ifreund!2940d10f8b@user/ifreund
+timide: I think you should definitely open a PR for discussion, I don't understand the security implications well enough to say whether the braking change makes sense or not
+
+1772703400
+ifreund!2940d10f8b@user/ifreund
+you should ping @jedisct1, they would know :)
+
+1772703626
+timide!~timide@user/timide
+thank you :)
+
+1772703646
+ifreund!2940d10f8b@user/ifreund
+mountaingoat: I don't know off the top of my head either, to find out I would look for example usages in the zig repo
+
+1772703674
+ifreund!2940d10f8b@user/ifreund
+a patch adding docs for those options would be welcome I'm sure
+
