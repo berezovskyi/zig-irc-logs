@@ -1,0 +1,360 @@
+1773223583
+timide!~timide@user/timide
+hi, spent some time debugging and found out that sentinel-terminated arrays declared with undefined do not have their sentinel value properly set, is it expected?
+
+1773223706
+lemons!~lemons@user/doggie-:49517
+timide: probably
+
+1773223768
+lemons!~lemons@user/doggie-:49517
+i dont think even regular slices set as undefined are valid
+
+1773223837
+timide!~timide@user/timide
+there are examples in the doc like "var some_integers: [100]i32 = undefined;"
+
+1773223878
+lemons!~lemons@user/doggie-:49517
+wait youre doing both fixed size AND sentinel?
+
+1773223939
+timide!~timide@user/timide
+yes
+
+1773223940
+lemons!~lemons@user/doggie-:49517
+fixed size (what you posted) is valid, i was talking about slices
+
+1773224006
+timide!~timide@user/timide
+i was talking about fixed size :) "sentinel-terminated arrays", in my understanding arrays = fixed size and slice = struct of pointer + size
+
+1773224028
+Affliction!affliction@idlerpg/player/affliction
+'undefined' is exactly what it says on the tin: "I don't have a value for this yet, don't waste time zeroing (or otherwise initializing) memory"
+
+1773224059
+Affliction!affliction@idlerpg/player/affliction
+if you want, eg, the first index to be set to the sentinel, that'll be up to you to set
+
+1773224087
+timide!~timide@user/timide
+actually the programmer defined the sentinel value, or is it just in the type for type checking?
+
+1773224184
+Affliction!affliction@idlerpg/player/affliction
+can you rephrase that one? not quite sure what you're asking there
+
+1773224205
+Affliction!affliction@idlerpg/player/affliction
+the programmer defines it in the type, but is also responsible for putting it somewhere in the array if the array should be terminated early
+
+1773224295
+Affliction!affliction@idlerpg/player/affliction
+but yeah, if you don't care about zero-initing the rest of the array but want effectively an "empty" array: var some_itegers: [100:0]i32 = undefined; some_integers[0] = 0;
+
+1773224301
+timide!~timide@user/timide
+sorry: when i write "const bytes: [8:0xff]u8 = undefined;" does it actually make sense? Is the sentinel-terminated value actually useful?
+
+1773224347
+Affliction!affliction@idlerpg/player/affliction
+sure, just understand the memory within that array could be anything
+
+1773224348
+lemons!~lemons@user/doggie-:49517
+idk about specifically sentinel term'd fixed sizes but i know that casting a non-sentinel to one doesnt magically add a sentinel (and even panics on debug/rsafe), just asserts one is present
+
+1773224359
+Affliction!affliction@idlerpg/player/affliction
+er, const undefined, that doesn't really make sense
+
+1773224383
+lemons!~lemons@user/doggie-:49517
+s/one/a sentinel slice
+
+1773224391
+timide!~timide@user/timide
+Yeah, const undef was just in my "playground" to see the actual values :p
+
+1773224429
+timide!~timide@user/timide
+isn't the sentinel value "magically" set in this example? https://ziglang.org/documentation/master/#toc-Sentinel-Terminated-Arrays
+
+1773224473
+lemons!~lemons@user/doggie-:49517
+timide: i dunno!
+
+1773224498
+Affliction!affliction@idlerpg/player/affliction
+timide: not seeing much "magic" there?
+
+1773224520
+timide!~timide@user/timide
+it seems to me it is set implicitly
+
+1773224520
+Affliction!affliction@idlerpg/player/affliction
+in the 2nd test, 'array' would only have 1 valid entry, before the terminator
+
+1773224535
+Affliction!affliction@idlerpg/player/affliction
+in the first one, there is no sentinel
+
+1773224541
+Affliction!affliction@idlerpg/player/affliction
+er, wait
+
+1773224556
+timide!~timide@user/timide
+what? try expectEqual(0, array[4]);
+
+1773224557
+Affliction!affliction@idlerpg/player/affliction
+good question, actually, might have to playground that one out
+
+1773224558
+lemons!~lemons@user/doggie-:49517
+i do wonder of the behaviour of [4:0]u8 =.{4,3,2,1} though
+
+1773224573
+timide!~timide@user/timide
+it must be set according to the test
+
+1773224574
+Affliction!affliction@idlerpg/player/affliction
+lemons: that'd be a full array
+
+1773224607
+Affliction!affliction@idlerpg/player/affliction
+yeah, my brain wanted to interpret that as 4:0
+
+1773224618
+Affliction!affliction@idlerpg/player/affliction
+but it must be [5:0] with an implicit 0
+
+1773224631
+timide!~timide@user/timide
+what do you mean?
+
+1773224651
+lemons!~lemons@user/doggie-:49517
+Affliction: yeah, so it probably wont compile since no place to put the sentinel?
+
+1773224651
+timide!~timide@user/timide
+>  The syntax [N:x]T describes an array which has ***a sentinel element of value x at the index corresponding to the length N***. 
+
+1773224652
+Affliction!affliction@idlerpg/player/affliction
+back in a se 
+
+1773224691
+lemons!~lemons@user/doggie-:49517
+im not actually sure what the behaviour should be here
+
+1773224766
+lemons!~lemons@user/doggie-:49517
+..can you access [4] of a [4:0]u8?
+
+1773224767
+Affliction!affliction@idlerpg/player/affliction
+lemons: I've always interpreted that as behaving the same as [4]u8 = .{4,3,2,1}; at runtime, but timide's reply has me doubting that now
+
+1773224893
+timide!~timide@user/timide
+lemons: yes you can
+
+1773224899
+Affliction!affliction@idlerpg/player/affliction
+yup, looks like they really do have 5 elements
+
+1773224902
+Affliction!affliction@idlerpg/player/affliction
+hence, the question about undefined
+
+1773224907
+Affliction!affliction@idlerpg/player/affliction
+now it all makes sense
+
+1773224925
+Affliction!affliction@idlerpg/player/affliction
+to godbolt.org!
+
+1773224974
+sunflr!~sunflr@user/sunflr
+hmm i'm still cofused about this. If i have a [4] array does it have 4 indexes or does the 0 count as the 5th one?
+
+1773225001
+timide!~timide@user/timide
+here's an example https://gist.github.com/corps-fini/48ea6f86c612765765261c8d850c848d
+
+1773225008
+Affliction!affliction@idlerpg/player/affliction
+sunflr: that has no sentinel, but now I'm doubting reality
+
+1773225014
+sunflr!~sunflr@user/sunflr
+x3
+
+1773225020
+Affliction!affliction@idlerpg/player/affliction
+Judas Priest's song All Fear The Sentinel has never felt so real
+
+1773225075
+sunflr!~sunflr@user/sunflr
+sentinel occupies one index so i think a sentinel terminated array of 4 would only have 4 values then
+
+1773225102
+sunflr!~sunflr@user/sunflr
+so i think normal arrays occupy one index for the array info as well?
+
+1773225130
+lemons!~lemons@user/doggie-:49517
+so [4:0] has 5 elements and the last one is inferred.. i guess this makes sense
+
+1773225140
+Affliction!affliction@idlerpg/player/affliction
+sunflr: fixed arrays' size are known at comptime
+
+1773225174
+sunflr!~sunflr@user/sunflr
+so comptime array of 4 would get 5 values?
+
+1773225199
+timide!~timide@user/timide
+sunflr: a STA of 4 has 4 values + 1 at the index corresponding to the length of the array, so you could say it has 5 values in memory. Sorry to point again to the doc: ***a sentinel element of value x at the index corresponding to the length N***
+
+1773225237
+sunflr!~sunflr@user/sunflr
+guh
+
+1773225247
+sunflr!~sunflr@user/sunflr
+what's STA?
+
+1773225255
+lemons!~lemons@user/doggie-:49517
+sentinel termd array
+
+1773225256
+timide!~timide@user/timide
+sentinel-terminated array sorry...
+
+1773225267
+sunflr!~sunflr@user/sunflr
+oh right x3 Sorry i'm slow
+
+1773225272
+lemons!~lemons@user/doggie-:49517
+my phone typing so good
+
+1773225294
+timide!~timide@user/timide
+i'll open a ticket on the repo today, i think it deserves a clarification with the "undefined" and maybe a small comment in the doc :)
+
+1773225317
+sunflr!~sunflr@user/sunflr
+are we allowed to send links to repos here? I guess so right?
+
+1773225334
+timide!~timide@user/timide
+you mean the gist i posted?
+
+1773225379
+sunflr!~sunflr@user/sunflr
+i wanted to share something as well x3
+
+1773225390
+Affliction!affliction@idlerpg/player/affliction
+timide: yeah, I'm curious now. Here I always assumed [4:0]u8 was 4 bytes and ensuring there was a terminator for eg, C compat, was up to the user.
+
+1773225433
+sunflr!~sunflr@user/sunflr
+eh nevermind i guess
+
+1773225447
+lemons!~lemons@user/doggie-:49517
+im still not sure of an usecase for fixed size sentinels tbh
+
+1773225498
+Affliction!affliction@idlerpg/player/affliction
+lemons: variable length string in a fixed amount of memory in an env where every byte counts?
+
+1773225510
+sunflr!~sunflr@user/sunflr
+STA is faster, or so i've heard
+
+1773225785
+lemons!~lemons@user/doggie-:49517
+Affliction: eh, true
+
+1773225840
+timide!~timide@user/timide
+for my use case, i found it handy to use a STA in a HKDF code: "key2 = KDF(temp_key, key1 || 0x01)". Here i use a STA for key1
+
+1773226243
+ifreund!2940d10f8b@user/ifreund
+Affliction: [4:0]u8 is 5 bytes
+
+1773226278
+ifreund!2940d10f8b@user/ifreund
+sentinel terminated arrays are rarely useful as mutable value types in my experience
+
+1773226297
+ifreund!2940d10f8b@user/ifreund
+they mostly exist to be able to describle e.g. the type of string literals precisely
+
+1773226339
+ifreund!2940d10f8b@user/ifreund
+generaly when interoperating with C code which uses fixed-sized arrays with a terminating sentinel, the C code does not require the sentinel to be at the end of the arry
+
+1773226383
+ifreund!2940d10f8b@user/ifreund
+in which case, it is not correct to represent that as a sentinel terminated array type in Zig
+
+1773229594
+bblack!~bblack@wikimedia/bblack-WMF
+AIUI, STAs in Zig also don't require the sentinel to be "at the end", just like the C stuff they're compatible with
+
+1773229649
+ifreund!2940d10f8b@user/ifreund
+bblack: they do actually require the sentinel to be at the end
+
+1773229665
+ifreund!2940d10f8b@user/ifreund
+though you may have a sentinel in the middle as well if you like
+
+1773229774
+bblack!~bblack@wikimedia/bblack-WMF
+I guess it's semantics.  The sentinel value can exist anywhere, and that will work in the expected way for C compat, and you can std.mem.sliceTo() on the Zig side to find it the way C would look at things?
+
+1773229841
+ifreund!2940d10f8b@user/ifreund
+indeed, this is why I added sliceTo()
+
+1773229856
+ifreund!2940d10f8b@user/ifreund
+though at the same time, I stopped using sentinel terminated arrays for C interop
+
+1773229888
+bblack!~bblack@wikimedia/bblack-WMF
+I had a ton of slices and a few arrays as :0 in my code when it was all half-ported from C and still inter-operating with libc and various other C libs.
+
+1773229911
+bblack!~bblack@wikimedia/bblack-WMF
+eventually by the time I finished porting the code to pure, libc-less Zig, all my uses of :0 naturally fell away, which was a great feeling :)
+
+1773230143
+ifreund!2940d10f8b@user/ifreund
+I guess zig only really has safety checks for sentinels when using the foo[0..len :0] syntax
+
+1773230174
+ifreund!2940d10f8b@user/ifreund
+which does assert that the specified sentinel exists at the end of the foo slice/arary
+
+1773230199
+ifreund!2940d10f8b@user/ifreund
+or rather, at foo[len]
+
