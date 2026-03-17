@@ -1,0 +1,80 @@
+1773628397
+rvrb!~rvrb@156.146.51.230
+when you have to write a wrapper type for A, and the A is the only field of your B type, what do you name that field? inner? wrapped? child? value? I hate these names, is there a better option?
+
+1773637267
+andrewrk!~andrewrk@mail.ziglang.org
+x
+
+1773652102
+cow_2001!~username@user/cow-2001/x-5712099
+i may or may not have uninitialised stuff going on.  it leads to some invalid frees.  other than grepping "undefined", how do i find where i didn't properly allocate those variables?
+
+1773652843
+Affliction!affliction@idlerpg/player/affliction
+what a coincidence, I too, fixed an invalid free today, cow_2001: do you, per chance, happen to be using allocAligned?
+
+1773652851
+Affliction!affliction@idlerpg/player/affliction
+If so, how are you passing in the alignment?
+
+1773653406
+cow_2001!~username@user/cow-2001/x-5712099
+no, it's in some ArrayList
+
+1773653443
+Affliction!affliction@idlerpg/player/affliction
+ok, I'd look for the various ways it can be freed
+
+1773653507
+Affliction!affliction@idlerpg/player/affliction
+unless you're initing it with undefined then trying to use it, but I'd expect that to crash on first use instead of free (unless, naturally the first use is a free)
+
+1773653561
+Affliction!affliction@idlerpg/player/affliction
+and also, if you're passing .items around, ensure nothing tries to free t
+
+1773653818
+cow_2001!~username@user/cow-2001/x-5712099
+hmm... let's see what's what
+
+1773655020
+timide!~timide@user/timide
+hi, in Blake2s.final (https://ziglang.org/documentation/master/std/#std.crypto.blake2.Blake2s.final), the output is assigned with "out.* = @as(*[digest_length]u8, @ptrCast(&d.h)).*". My understanding is that it will implicitly copy all values of the array but why isn't it using memcpy?
+
+1773655068
+timide!~timide@user/timide
+performances maybe?
+
+1773656281
+cow_2001!~username@user/cow-2001/x-5712099
+okay, it's a list array append that's acting up.  maybe something above it is undefined
+
+1773656543
+Affliction!affliction@idlerpg/player/affliction
+IMO it's best to keep things undefined as short as possible, ideally with all fields defined before the function that initializes returns. Certainly has its uses, but initing an arraylist to .empty pretty much just involves storing a pointer and 2 usizes. And specifically for arraylist, you're probably not building them by the million in a hot loop.
+
+1773663673
+cow_2001!~username@user/cow-2001/x-5712099
+turns out i had two entries in two struct types and there should only be one entry in one of those structs types, and i initialised only one of them and tried writing to the other one.  i deleted one of the definitions and now things are working
+
+1773664263
+cow_2001!~username@user/cow-2001/x-5712099
+i am so out of it that i missed that thing ~;~
+
+1773669058
+bblack!~bblack@wikimedia/bblack-WMF
+I'm seeing some strange bug related to defining simple constant byte arrays with len >= 32 I think, on latest master branch, something that merged over the weekend.  I'm bisecting a bit now to see if I can narrow it down, but wondering if anyone else has seen anything weird yet?
+
+1773669457
+bblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/1fff4d
+
+1773669614
+bblack!~bblack@wikimedia/bblack-WMF
+could just be that I need to wipe my compiler build dir and restart from a fresh cmake or something.  trying wiping the zig cache first.
+
+1773670362
+bblack!~bblack@wikimedia/bblack-WMF
+[this is a known issue, found a discussion on Zulip]
+
