@@ -1,0 +1,124 @@
+1774077900
+ifreund!2940d10f8b@user/ifreund
+andrewrk: RE absob sentinel idiom, sounds like I should revive https://github.com/ziglang/zig/pull/23023
+
+1774077929
+ifreund!2940d10f8b@user/ifreund
+(it adds a std.mem.absorbSentinel() function for that)
+
+1774115246
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+If I'm only using a writer in one function, can I just defer writer.flush()? 
+
+1774121456
+andrewrk!~andrewrk@mail.ziglang.org
+bwbuhse: that typically prevents you from handling failure properly
+
+1774121682
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+yeah, I saw you can’t have try in a defer. I’m mostly just using it in this case to save some state between program runs where it’s nbd if it fails, but I just did it with try at the end anyways
+
+1774134097
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Is ArrayList.clearRetainingCapacity() what I'd use if I'm trying to re-use an ArrayList between iterations of a loop without re-allocating every time (unless it actually grows)? 
+
+1774134416
+andrewrk!~andrewrk@mail.ziglang.org
+bwbuhse: before I answer that question, can you tell me what is missing from this page in order for that answer to be clear? https://ziglang.org/documentation/master/std/#std.array_list.Aligned.clearRetainingCapacity
+
+1774134558
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+andrewrk: I read the doc comment (for 0.15.2 so slightly different) and I'm *pretty* sure that's what it's for, but I think I'm just confusing myself about what "Invalidating all element pointers" means. 
+
+1774134585
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Oh, and I think I confused myself with capacity vs items.len, now that I'm looking at std.array_list.Aligned, too
+
+1774134669
+andrewrk!~andrewrk@mail.ziglang.org
+"invalidates element pointers" means if you had a pointer to an element, that pointer is now invalid after calling this function
+
+1774134746
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+got it, that makes sense
+
+1774136052
+brioche!~brioche@user/brioche
+Hi, does anyone knows how to protect the Mmio registers from being overwritten by the stack/heap allocator on embedded systems? It's possible to interact with them by accessing the address directly, but how to be sure that the stack or the heap will bot overwrite them?
+
+1774136176
+Affliction!affliction@idlerpg/player/affliction
+your heap allocator should only know about actual RAM (excepting some amount of memory, where your stack would be)
+
+1774136225
+Affliction!affliction@idlerpg/player/affliction
+generally RAM is some distance away from MMIO, but even if they're contiguous, if you accidentally trash the MMIO region, you're probably accidentally trashing RAM too
+
+1774136289
+Affliction!affliction@idlerpg/player/affliction
+On a similar note, I vaguely recall talk about a function which estimates stack usage for a function (with no possible recursion), does this exist?
+
+1774136351
+Affliction!affliction@idlerpg/player/affliction
+would be useful to know how large the stack would be on embedded systems
+
+1774136413
+brioche!~brioche@user/brioche
+Isn't Mmio inside RAM? Maybe that's a silly question, but I'm kinda new to embedded low level. So I guess I have to forbid some specific ranges to my allocator?
+
+1774136482
+Affliction!affliction@idlerpg/player/affliction
+Nah, MMIO uses the memory bus, but generally those bus accesses trigger behavior within hardware
+
+1774136513
+Affliction!affliction@idlerpg/player/affliction
+Generally, your linker would expose symbols describing where RAM starts and ends, you'll take some of that for the stack, hand the rest to your heap allocator
+
+1774136532
+brioche!~brioche@user/brioche
+And for the stack, yeah, I remember having seen a GH issue talking about predictible stack size. Idk if this is a problem really, because maybe the stack is too far away from Mmio
+
+1774136561
+brioche!~brioche@user/brioche
+Oh ok, it's all in the linker then
+
+1774136696
+Affliction!affliction@idlerpg/player/affliction
+what I currently do (my main zig embedded project at this point is a GBA homebrew), pick a size that's probably overkill, store a known value at the very end of the stack's memory (you'll need to know if your CPU grows the stack towards higher or lower addresses), and compare it in the main loop and interrupt handler. If it's changed, the stack has potentially reached the heap, corruption may have
+
+1774136696
+Affliction!affliction@idlerpg/player/affliction
+happened, all bets are off, @panic
+
+1774136751
+Affliction!affliction@idlerpg/player/affliction
+But yeah, in the GBA there's 2 RAMs (fast internal, slow external), both of those are pretty far away from the MMIO registers in the address space
+
+1774136778
+Affliction!affliction@idlerpg/player/affliction
+(oh, yeah, there's VRAM too I suppose, heh)
+
+1774136989
+brioche!~brioche@user/brioche
+Ok thanks! Embedded systems seem pretty hard, but interesting (like, having to search a 251-pages pdf for a single register address)
+
+1774137007
+brioche!~brioche@user/brioche
+Btw wdym by "GBA homebrew" ?
+
+1774137022
+Affliction!affliction@idlerpg/player/affliction
+gameboy advance, handheld console
+
+1774137059
+Affliction!affliction@idlerpg/player/affliction
+done some C on other ARM microcontrollers, the overall concepts are similar
+
+1774137100
+Affliction!affliction@idlerpg/player/affliction
+But yeah, I guess, the concepts are simple, figuring out the runes to get the linker to do what you need, if you don't have a prewritten linker script - gets Interesting.
+
+1774137102
+brioche!~brioche@user/brioche
+Oh yeah, I just didn't understand "homebrew" (Internet-learned English of course, though it was a package manager lol)
+
