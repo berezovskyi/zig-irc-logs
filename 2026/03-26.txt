@@ -1,0 +1,312 @@
+1774484631
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+the way this is cut off, is it a problem with the renderer, or is the documentation just not formatted correctly? https://imgur.com/a/t7QmhEX
+
+1774509220
+lemons!~lemons@user/doggie-:49517
+hello, whats the state of zig on termux? trying to compile a project and getting build runner crashes
+
+1774509307
+lemons!~lemons@user/doggie-:49517
+https://bpa.st/2EYA
+
+1774535203
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I don't see how the terminal emulator would have any impact on the ability to compile something in zig
+
+1774535230
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh, they left.
+
+1774535522
+sunflr!~sunflr@user/sunflr
+maybe their kernel is too old?
+
+1774535822
+ifreund!2940d10f8b@user/ifreund
+termux is not normal linux
+
+1774535856
+sunflr!~sunflr@user/sunflr
+well it uses android's kernel
+
+1774539958
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I don't quite grok the distinction between io.async and io.concurrent
+
+1774540184
+sunflr!~sunflr@user/sunflr
+grok?
+
+1774540360
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: io.async() is basically: it's ok for this to run concurrently for performance, but it can also just execute serially and that's fine too (maybe all the CPUs are too busy for more concurrency)
+
+1774540383
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: io.concurrent() is more like: this *must* run concurrently or my program will not operate correctly.
+
+1774540458
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+sunflr: https://en.wikipedia.org/wiki/Grok basically "understand". It's from a Heinlen novel before it was co-opted by a certain white South African
+
+1774540627
+bblack!~bblack@wikimedia/bblack-WMF
+obvious concurrent use-cases might be a a network server that expects to be able to handle more than one client concurrently
+
+1774540668
+bblack!~bblack@wikimedia/bblack-WMF
+it would be incorrect if you used async(), and async() did all its work serially, and thus as long as one client was connected, no other clients could be serviced
+
+1774540706
+sunflr!~sunflr@user/sunflr
+bwbuhse: ohh i see. I thought it was an actual word when they said it but i thought of that llm first x3
+
+1774541184
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hah my use-case precisely
+
+1774541668
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so I think I want concurrent twice: once to spawn my server and the loop that accepts connections, and then a second time to handle each connection
+
+1774541694
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh, but rly my server could run on the main thread unless I'm embedding it in another app...
+
+1774541700
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol my brain is all mixed up
+
+1774541772
+bblack!~bblack@wikimedia/bblack-WMF
+yes, unless you have other things to do in the server, outside of servicing connections
+
+1774541774
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah but `try self.connection_group.concurrent(io, handleConnectionTask, .{ io, stream });` will error-out if there's no threads left rightkj/
+
+1774541820
+bblack!~bblack@wikimedia/bblack-WMF
+you can imagine something like: main() { io.concurrent(runServerMaintenancePeriodicTasks()); io.concurrent(acceptClientConnections); io.concurrent(... other things ... ); }
+
+1774541861
+bblack!~bblack@wikimedia/bblack-WMF
+and then acceptClientConnections might be shaped like: while (acceptNewTcpConn) |tcp| { io.concurrent(handle_client(tcp)) }
+
+1774542058
+slowstatic_87!~slowstati@user/slowstatic
+can a single vcpu without smp do any concurrent operations or is it unavailable on that system
+
+1774542081
+bblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: that depends on the I/O implementation and the parameters of it and the system.  The default behavior of Io.Threaded() is that async() will execute up to N things concurrently, and then serialize any further async calls beyond that limit.  Whereas io.concurrent() is unbounded and can spawn as many threads as it wants, within system limits.
+
+1774542120
+bblack!~bblack@wikimedia/bblack-WMF
+[where N is the machine cpu count - 1]
+
+1774542131
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+bblack: yes that's what I was imagining thanks for confirming
+
+1774542159
+bblack!~bblack@wikimedia/bblack-WMF
+you can control that stuff via parameters to Io.Threaded.  You could make async unlimited like concurrent if you wanted (probably a terrible idea), or you could artificially cap concurrent() to some limit, too
+
+1774542241
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ACTION nods
+
+1774542243
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lots of knobs
+
+1774542245
+bblack!~bblack@wikimedia/bblack-WMF
+slowstatic_87: if the underlying operating system supports threads, there's no fundamental reason you can't run many threads with just one cpu core
+
+1774542246
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lots of power
+
+1774542300
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+I'm gonna try to do io_uring stuff with like, vectorized writes (maybe vectorized reads) just for fun 🤣
+
+1774542383
+bblack!~bblack@wikimedia/bblack-WMF
+slowstatic_87: but also, "cpus" and "threads" in general are lower-level concepts than what the std.Io interfaces express.  For instance, there's a [WIP] Io.Evented which exposes the same io.async() and io.concurrent() primtives, but does not rely on threading.  It builds on io_uring or kqueue or similar, and in that world there's in practice less distinction between io.async() and io.concurrent()
+
+1774542469
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm
+
+1774542484
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+so maybe I want io.Evented instead of raw io_uring stuff?
+
+1774542509
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+also since it's WIP I'm happy to contribute, I've been itching to find a nice something to contribute to zig
+
+1774542542
+bblack!~bblack@wikimedia/bblack-WMF
+so Io.Evented resolves to a platform-specific implementation, e.g. Io.Uring on Linux, Io.Kqueue on FreeBSD, etc...
+
+1774542584
+bblack!~bblack@wikimedia/bblack-WMF
+but so far, those are behind Io.Threaded on implementation stuff, particularly networking bits are missing
+
+1774542587
+slowstatic_87!~slowstati@user/slowstatic
+bblack: good point, thanks. I was overthinking it and simultaneously misunderstanding symmetrical multiprocessing. Makes a single core with two threads can perform concurrency. Which led me to wonder if an evented io could do concurrency on a single core single thread, which sounds like it can
+
+1774542601
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+networking bits is what I'm interested in 😅
+
+1774542630
+bblack!~bblack@wikimedia/bblack-WMF
+it all depends how hardcore/scalable your solution needs to be at the application layer
+
+1774542682
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+it doesn't, I'm just doing this for fun.
+
+1774542691
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh you were talking to slowstatic_87 
+
+1774542701
+slowstatic_87!~slowstati@user/slowstatic
+tbf I'm also here for fun :)
+
+1774542701
+bblack!~bblack@wikimedia/bblack-WMF
+the most-scalable solution for something like a high-performance HTTP proxy or something, will probably be to "manually" spawn ~1 thread-per-cpu using std.Thread.spawn(), and run Io.Evented inside of each.
+
+1774542756
+bblack!~bblack@wikimedia/bblack-WMF
+[and deal with all the things that implies, like data sharing between the calls in those threads, etc...]
+
+1774542816
+bblack!~bblack@wikimedia/bblack-WMF
+without a fully-fleshed Io.Evented to play with yet, I haven't even started to figure out what that looks like
+
+1774542845
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. if you needed a mutex to work across two Io.Evented concurrent tasks, that are in separate Evented instances in separate threads
+
+1774542884
+bblack!~bblack@wikimedia/bblack-WMF
+maybe the model there will not be to use std.Thread.spawn(), but to uses Io.Threaded->io.concurrent() to launch the threads that have Io.Evented instances inside them?
+
+1774542906
+bblack!~bblack@wikimedia/bblack-WMF
+and then uses the Threaded's mutex implementation
+
+1774543010
+slowstatic_87!~slowstati@user/slowstatic
+Io.MixedBag
+
+1774543058
+bblack!~bblack@wikimedia/bblack-WMF
+~thread-per-cpu, with each thread running some kind of uring/kqueue/epoll/whatever, is the general model for scalable high-performance things in any case.  The tricky is figuring out how we map that to std.Io.  I haven't even caught up to what's going on with Io.Operation yet, and how that may change all these considerations.
+
+1774543130
+bblack!~bblack@wikimedia/bblack-WMF
+for now I'm just using Io.Threaded and trying to keep my code agnostic to these concerns, and then I'll look at all the above things again once Io.Evented supports robust networking primitives, etc
+
+1774543253
+slowstatic_87!~slowstati@user/slowstatic
+has it been determined if fleshing out io.Evented is in scope for the 0.16 tag
+
+1774543394
+slowstatic_87!~slowstati@user/slowstatic
+I've been clinging to 0.15.2 because master is scary, but I've got a WIP project I'm moving slowly on because I have a feeling the io migration is gonna suck
+
+1774543466
+bblack!~bblack@wikimedia/bblack-WMF
+I don't know.  I think having Io.Evented "working" is on the 0.16 radar, but I don't know if networking is part of that, or if all of Uring/Kqueue/Dispatch implementations are in scope either
+
+1774543480
+bblack!~bblack@wikimedia/bblack-WMF
+I thought there was an issue tracking Evented completion, but I'm failing to dig it up
+
+1774545764
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ ~thread-per-cpu, with each thread running some kind of uring/kqueue/epoll/whatever <- this is what I'm after
+
+1774545821
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+slowstatic_87: lol meanwhile I've been running on master and I'm actively trying to remove dependencies that break too often in master 🤣
+
+1774546288
+bblack!~bblack@wikimedia/bblack-WMF
+yeah I've been running on master all through the 0.16 cycle.  It has been an exciting adventure :)
+
+1774546335
+bblack!~bblack@wikimedia/bblack-WMF
+but I have the luxury that I'm working on an "alpha" branch of my code, and that I'm ok with the breakage.
+
+1774546436
+bblack!~bblack@wikimedia/bblack-WMF
+nailing down the network bits isn't *really* done even for Io.Threaded.  Basic TCP things work, but once you step outside of there, there's some TODOs left.  Especially for non-IP (e.g. AF_PACKET and AF_UNIX).
+
+1774546493
+bblack!~bblack@wikimedia/bblack-WMF
+I have a hacky mess of sometimes dropping back to synchronous std.posix (or my own copies of deleted std.posix.foo()) for the bits that don't work yet
+
+1774546576
+bblack!~bblack@wikimedia/bblack-WMF
+and my core "high performance" networking bits: they're still std.Thread threads, and use poll() manually inside, until all these other related std.Io things are sorted.
+
+1774546643
+bblack!~bblack@wikimedia/bblack-WMF
+but that's a tiny part of the codebase, just dealing with the raw network I/O for clients.  the rest is all running ~correctly on std.Io[.Threaded]
+
+1774547767
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+even if it's not done though there's enough primitives in std that I could just roll my own
+
+1774549043
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+woah, pub fn main(init: std.process.Init, args: Args) is cool af
+
+1774549425
+slowstatic_87!~slowstati@user/slowstatic
+aka juicy main <3
+
+1774550554
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+yummy 
+
+1774550557
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+is it like a gusher
+
+1774552158
+mattnite!~mattnite@172.103.236.18.cable.tpia.cipherkey.com
+testing out my new irc client
+
+1774552163
+coleman!~coleman@static.87.86.161.5.clients.your-server.de
+hi
+
+1774552174
+mattnite!~mattnite@172.103.236.18.cable.tpia.cipherkey.com
+sweet I'm in, how's everyone doing?
+
+1774552487
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+lol yea juicy main. its v juicy
+
+1774552939
+slowstatic_87!~slowstati@user/slowstatic
+mattnite: doin well
+
+1774564480
+mattnite!~mattnite@172.103.236.18
+Anyone here planning on coming to the next SYCL?
+
