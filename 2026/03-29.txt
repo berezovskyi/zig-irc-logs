@@ -1,0 +1,164 @@
+1774746541
+supucat!~supucat@user/supucat
+I'm new to zig as of today, basically. So pardon my ignorance. But am I expected to set up every module I write in the build.zig file? Isn't there some kind of automatic import resolution at build time?
+
+1774746818
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+@import works with relative paths to nearby files e.g. @import("mymod.zig") from main.zig, the only imports you should have to set up in build.zig are typically fetched dependencies
+
+1774749153
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+supucat: welcome to the team!
+
+1774750407
+supucat!~supucat@user/supucat
+Ah, I think I'm missing the .zig extension. That's probably why it's looking for defined module names.
+
+1774750411
+supucat!~supucat@user/supucat
+Thank you
+
+1774750697
+supucat!~supucat@user/supucat
+Yeah, that was the problem.
+
+1774750757
+supucat!~supucat@user/supucat
+While we're talking about build.zig stuff, what about tests? Can tests within the import path be automatically detected as well?  Like, let's say main.zig imports a.zig and a.zig has tests.  Do I have to add the module to the test config?
+
+1774751409
+Affliction!affliction@idlerpg/player/affliction
+supucat: you can have a test call https://ziglang.org/documentation/0.15.2/std/#std.testing.refAllDecls
+
+1774752190
+supucat!~supucat@user/supucat
+If I'm understanding that correctly, I could use refAllDecls in a test inside my main.zig that references what it imports and so on and that will get all the tests in my code?  That's interesting.
+
+1774752217
+Affliction!affliction@idlerpg/player/affliction
+pretty much, you'd generally call refAllDecls(@This())
+
+1774752241
+Affliction!affliction@idlerpg/player/affliction
+and that'll reference all the tests in everything imported by the current module
+
+1774752287
+supucat!~supucat@user/supucat
+Nice!  Thanks for that tip
+
+1774752321
+Affliction!affliction@idlerpg/player/affliction
+there's also refAllDeclsRecursive
+
+1774754178
+supucat!~supucat@user/supucat
+Affliction: Looks like that's been removed from newer versions of Zig
+
+1774754200
+xales!~xales@user/xales
+you only need to do anything with that as an escape hatch if you don't otherwise reference something
+
+1774754275
+xales!~xales@user/xales
+e.g. if you have `const thing = @import("thing.zig");` but then you don't use `thing` in any code that's reachable from a test in the entrypoint, Zig just won't bother compiling that file at all and consequently won't see / run any tests
+
+1774754322
+xales!~xales@user/xales
+(iirc that's kind of surprising / straying into dangerous to assume tests ran zone, so I do think it's planned to be improved at some point)
+
+1774754407
+supucat!~supucat@user/supucat
+xales: My project isn't displaying that behavior.  If I don't have a test with std.testing.refAllDecls(@This()); in my main.zig, tests in other modules that are being imported and used don't seem to be run. I have a purposely failing test to check that atm
+
+1774754439
+xales!~xales@user/xales
+are you using the module from a *test* or just from code elsewhere in the file?
+
+1774754452
+supucat!~supucat@user/supucat
+Ah, just from code elsewhere in the file.
+
+1774754482
+xales!~xales@user/xales
+(refAllDecls expands to essentially `_ = thing` for all `pub thing` in the file)
+
+1774754499
+supucat!~supucat@user/supucat
+I see.  In that case, this is what I need for now.
+
+1774754626
+xales!~xales@user/xales
+the "if you really want to know how this works in the compiler" bit is that Zig has a list of things that are exported (via @export), and it resolves those things recursively and that's what it compiles; the root export is usually the main function for an executable, which is exported "for you" by start.zig in the standard library (lib/std/start.zig)
+
+1774754657
+xales!~xales@user/xales
+in the case of tests, the compiler essentially treats your code as a library that's provided to the test runner, which is at lib/compiler/test_runner.zig
+
+1774754680
+xales!~xales@user/xales
+(unlike a lot of languages/runtimes, these are all fairly approachable and not using too much esoterica; Zig is pretty big on the no-magic thing)
+
+1774754691
+clevor!sid649024@id-649024.hampstead.irccloud.com
+This is off-topic, but I'm surprised to see a typing indicator.
+
+1774754721
+xales!~xales@user/xales
+yeah, ircv3 has been adding support for a bunch of funky stuff like that and libera's ircd turned on support for a few of them recently
+
+1774754739
+xales!~xales@user/xales
+most still-being-updated clients have options to send and receive "started/stopped typing" meta-messages
+
+1774754747
+clevor!sid649024@id-649024.hampstead.irccloud.com
+EFnet is stuck in the past :/
+
+1774754767
+xales!~xales@user/xales
+hah, yeah I wouldn't be surprised if it never opted for any of them
+
+1774755391
+chinmay!558230f1f2@user/chinmay
+is it known that UpdateSourceFiles doesn't update the hash?
+
+1774755398
+chinmay!558230f1f2@user/chinmay
+i don't see an issue
+
+1774803392
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+"there's also refAllDeclsRecursive" <- this went away recently. but also I usually just do an import of all my files in a test block at the bottom of my main, https://github.com/ezzieyguywuf/zcad/blob/fe0334de51e1f4daf625ac0e964aba2375c1cc5a/src/main.zig#L89-L97
+
+1774810317
+supucat!~supucat@user/supucat
+I've got code that's reading environment variables using std.process.getEnvVarOwned.  I want to write a test for my function, but I'm not sure how to set environment variables within tests.  Anybody got suggestions?
+
+1774810468
+supucat!~supucat@user/supucat
+To be clear, I'm not just testing getEnvVarOwned.  I'm testing the actual code.  But it relies on getting values that way.
+
+1774810774
+supucat!~supucat@user/supucat
+Yikes.  Looks like getEnvVarOwned doesn't exist anymore
+
+1774811288
+supucat!~supucat@user/supucat
+How do I get environment variables?  I'm looking at std.process.Environ.createMap but maybe I'm barking up the wrong tree.
+
+1774811329
+lemons!~doggie@user/doggie-:49517
+env
+
+1774811340
+lemons!~doggie@user/doggie-:49517
+..i cant read the channel name.
+
+1774811448
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+https://www.epa.gov/data
+
+1774811750
+supucat!~supucat@user/supucat
+Ah, looks like it's init.environ_map
+
