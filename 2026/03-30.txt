@@ -1,0 +1,192 @@
+1774838001
+supucat!~supucat@user/supucat
+I just had a strange thing happen. I got my program to compile but it would segfault when I called flush on a writer.  If I change it to call flush on a pointer to a writer, it works fine. Can anyone help explain why?
+
+1774838431
+supucat!~supucat@user/supucat
+AI says it's because if I reference writer.interface directly, it makes a copy.
+
+1774838606
+supucat!~supucat@user/supucat
+In other words:
+
+1774838606
+supucat!~supucat@user/supucat
+const writer = stdout.interface;
+
+1774838606
+supucat!~supucat@user/supucat
+try writer.flush();
+
+1774838606
+supucat!~supucat@user/supucat
+That compiles but it segfaults. Making writer a pointer to stdout.interface works as desired.
+
+1774838618
+supucat!~supucat@user/supucat
+I guess I'm just surprised the compiler doesn't catch that.
+
+1774839324
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+supucat: I think I saw this documented somewhere recently, let me see if I can find it. but yea quite the footgun
+
+1774839670
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+hm, https://williamw520.github.io/2025/09/23/back-to-basic-reading-file-in-zig.html looks familiar but it explicitly suggests _not_ keeping a pointer to the interface and instead just `reader.interface.Foo`ing each time
+
+1774840015
+supucat!~supucat@user/supucat
+The hello world that `zig init` produces uses a pointer to the interface.
+
+1774840036
+supucat!~supucat@user/supucat
+Let me see if it segfaults when I change that.
+
+1774840256
+supucat!~supucat@user/supucat
+I can't seem to make it do it again.  Now it's properly catching the issue.
+
+1774840259
+supucat!~supucat@user/supucat
+I SEENT IT
+
+1774840300
+supucat!~supucat@user/supucat
+error: expected type '*Io.Writer', found '*const Io.Writer'
+
+1774840556
+supucat!~supucat@user/supucat
+I can't replicate it.
+
+1774840749
+Affliction!affliction@idlerpg/player/affliction
+yeah, you'll always want to use Writers and Readers through the pointer given to you
+
+1774840781
+Affliction!affliction@idlerpg/player/affliction
+since their methods then use @fieldParentPtr to access the data for the implementation
+
+1774840812
+Affliction!affliction@idlerpg/player/affliction
+so, anything that involves a Writer or Reader that isn't a pointer is a potential footgun
+
+1774840841
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+ah yea I think it was the generated code that documented it
+
+1774840882
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+if I `zig fetch --save=foo https://foo.tar.gz` to save a c library, how do I set up my build.zig to compile it and stuff? I want to wrap this library in my zig project
+
+1774840988
+supucat!~supucat@user/supucat
+Affliction: Thank you!
+
+1774841018
+Affliction!affliction@idlerpg/player/affliction
+it's a footgun I myself have suffered
+
+1774841061
+supucat!~supucat@user/supucat
+Good news is that I was able to start writing a CGI application in Zig this afternoon and I've got a working prototype this evening. It only uses the standard library. I'd call that a win on my second day of writing Zig.
+
+1774841066
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+you yourself have....ben afflicted?!
+
+1774841097
+supucat!~supucat@user/supucat
+It's basically just the Hello World of cgi-bin, but it works.
+
+1774841170
+supucat!~supucat@user/supucat
+I also have it using Sqlite from C.  Not bad for two days in the language.
+
+1774841175
+Affliction!affliction@idlerpg/player/affliction
+nice, I'm waiting for 0.16 to stabilize before I do something similar, there
+
+1774841185
+Affliction!affliction@idlerpg/player/affliction
+except naturally using a web server
+
+1774841294
+torque!~tachyon@user/torque
+there are a lot of examples for wrapping c libraries in the zig build system https://github.com/allyourcodebase and some https://codeberg.org/allyourcodebase, ezzieyguywuf
+
+1774841333
+Affliction!affliction@idlerpg/player/affliction
+the most elegant I've done is put the C libraries in-tree and @cImport, though I understand all that's changing to build.zig in 0.16
+
+1774841362
+torque!~tachyon@user/torque
+that only works for creating bindings to the header, which isn't the same thing as building the library
+
+1774841411
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: ahhh yea I had just come across allyourcodebase, thanks for the link
+
+1774841436
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+Affliction: "all that's changing to build.zig" wdym?
+
+1774841442
+Affliction!affliction@idlerpg/player/affliction
+no idea, haven't done any 0.16
+
+1774841445
+Affliction!affliction@idlerpg/player/affliction
+just heard rumors
+
+1774841456
+torque!~tachyon@user/torque
+@cImport is removed and translate-c is now done by the build system
+
+1774841457
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+Affliction: but what did you mean by "all that"
+
+1774841461
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+oh
+
+1774841487
+supucat!~supucat@user/supucat
+I also just have a vendor directory with sqlite's c and h files and I'm using @cImport. However, I do have to add some flags in build.zig so it adds the include path and c std lib. How will it be changing in 0.16?
+
+1774841495
+torque!~tachyon@user/torque
+since @cImport was just creating basically a .zig file on the fly, moving this to the build system makes a lot of sense
+
+1774841496
+ezzieyguywuf!~Unknown@user/ezzieyguywuf
+torque: creating bindings isn't the same as building the library <- doesn't the library need to get built for my zig bindings to work?
+
+1774841517
+torque!~tachyon@user/torque
+yes in general
+
+1774841551
+torque!~tachyon@user/torque
+you don't necessarily need to use translate-c, however, since you can hand-write bindings
+
+1774841587
+torque!~tachyon@user/torque
+and handrolled bindings can be better than autogenerated ones because you can use more context (pointers not being allowed to be null, etc) than the c source provides on its own
+
+1774841604
+torque!~tachyon@user/torque
+for big projects that's probably a bit of an exercise in masochism though
+
+1774841674
+supucat!~supucat@user/supucat
+Are there any links you can point me to that explain how c imports will change?
+
+1774841888
+torque!~tachyon@user/torque
+https://codeberg.org/ziglang/zig/pulls/31451
+
+1774842142
+supucat!~supucat@user/supucat
+Thank you. I'll check that out and try it myself.
+
