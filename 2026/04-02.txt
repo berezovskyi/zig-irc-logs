@@ -1,0 +1,160 @@
+1775096558
+supucat!~supucat@user/supucat
+I'm trying really hard to understand the dangling pointers thing that ifreund mentioned.  It's what's tripping me up, I think.
+
+1775097849
+torque!~tachyon@user/torque
+you can't allocate at comptime, but you can concatenate slices
+
+1775097882
+torque!~tachyon@user/torque
+well, there was some proof of concept comptime allocator at some point, but I don't know if it fully worked
+
+1775097992
+torque!~tachyon@user/torque
+there's not much to understand about dangling pointers in comptime: a function run at comptime can safely return references (pointers/slices) to data that at runtime would be on the stack. However, all comptime data that is referenced by the final program just ends up baked into .rodata or similar in the binary
+
+1775098019
+torque!~tachyon@user/torque
+so pointers to it will always be valid for the entire lifetime of the program
+
+1775140922
+ifreund!2940d10f8b@user/ifreund
+oh no, there's no reIndexAdapted() function in ArrayHashMap :/
+
+1775144513
+supucat!~supucat@user/supucat
+Thanks, torque.  I think I get it now.  Now the problem isn't zig.  The problem is that graph traversal is *fun*
+
+1775145397
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+In high school I did CS competitions and my favorite part was shortest-path problems across a maze/graph :) but that was in Java so I didn't have to care about memory lol
+
+1775145444
+supucat!~supucat@user/supucat
+I have a love/hate relationship with graphs.  I love them, I hate traversing them.
+
+1775150051
+rvrb!~rvrb@156.146.51.230
+mattnite: bought tickets 😎 thanks for sharing the link
+
+1775151180
+rvrb!~rvrb@156.146.51.230
+supucat: it blew my mind when I learned about what ifreund is talking about, but to give you an idea of what they meant, you can write a comptime array list like this: https://zigbin.io/8e58e8
+
+1775151216
+rvrb!~rvrb@156.146.51.230
+disclaimer that implementation was not my own, but from mlugg when I was messing with this: https://github.com/ziglang/zig/pull/25198#issuecomment-3280313828
+
+1775151285
+rvrb!~rvrb@156.146.51.230
+I too was messing with graphs when I did that, I was interested in the idea of a comptime scheduling graph that could create a totally inlined task scheduler
+
+1775151370
+rvrb!~rvrb@156.146.51.230
+the PR was because andrewrk was thinking we could actually have a comptime std.mem.Allocator implementation, which would be pretty tight as you can imagine.. just use any std collection at comptime. but we ran into some issues
+
+1775151521
+slowstatic_!~slowstati@user/slowstatic
+that is so cool. this should be in the lang ref under comptime
+
+1775151582
+rvrb!~rvrb@156.146.51.230
+yeah it seems like a relatively unknown thing; I should write the blog post I was envisioning at the time. someone pointed out that comptime is prettttty dang slow once you start scaling up with stuff like this
+
+1775151603
+rvrb!~rvrb@156.146.51.230
+I think it can dramatically impact build times
+
+1775151766
+rvrb!~rvrb@156.146.51.230
+the TLDR is that comptime slices are garbage collected, and you concat them to grow them
+
+1775156936
+supucat!~supucat@user/supucat
+rvb: Thanks for that link.  That's similar to what I'm doing.  I'm actually going to step back and implement my stuff to run at runtime and then return to comptime when I've got the algos down pat.
+
+1775156957
+supucat!~supucat@user/supucat
+Like I said, zig and comptime aren't blocking me anymore. My own familiarity with graph algos is now the blocker.
+
+1775156990
+supucat!~supucat@user/supucat
+But learning about concat-ing slices at comptime is a cool superpower that I'm glad to have in my toolbelt.
+
+1775157035
+supucat!~supucat@user/supucat
+My particular use case is a URL router that I intend to have compiled into a CGI binary. That way, the only time spent at runtime is traversing the graph, not building it.
+
+1775157073
+librecat!uid714233@id-714233.helmsley.irccloud.com
+try std.Io.File.stdout().writeStreamingAll(init.io, "Hello, World!\n");
+
+1775157115
+librecat!uid714233@id-714233.helmsley.irccloud.com
+wont people make fun of this?
+
+1775157126
+librecat!uid714233@id-714233.helmsley.irccloud.com
+i get the reasons but wow this is a long hello world
+
+1775157158
+librecat!uid714233@id-714233.helmsley.irccloud.com
+using try in the main function that returns a !void means it will print a stacktrace if the line fails
+
+1775157178
+supucat!~supucat@user/supucat
+librecat: I mean, you can use std.debug.print if you want it shorter, I guess
+
+1775157179
+librecat!uid714233@id-714233.helmsley.irccloud.com
+ig stdout() takes a struct with information filled related to stdout
+
+1775157192
+librecat!uid714233@id-714233.helmsley.irccloud.com
+streaming means it blocks the main thread?
+
+1775157201
+librecat!uid714233@id-714233.helmsley.irccloud.com
+and idk why init.io is a thing now
+
+1775157207
+librecat!uid714233@id-714233.helmsley.irccloud.com
+i havent been following zig 0.16 alot
+
+1775157249
+supucat!~supucat@user/supucat
+I actually don't mind init.io.  It means there's not as much global state around side effects.
+
+1775157258
+supucat!~supucat@user/supucat
+It also makes dependency injection easier.
+
+1775157321
+supucat!~supucat@user/supucat
+If I function needs to do IO, it needs to accept an IO handle.  init.io is the IO handle given to your main function.
+
+1775157384
+supucat!~supucat@user/supucat
+Or I should say, your main _process_
+
+1775157831
+rvrb!~rvrb@156.146.51.230
+librecat: I mean.. in C this is the difference between a printf hello world and vfprintf. no beginner tutorials are telling you to use vfprintf. every language has some abstraction for print, the difference is how many layers you have access to
+
+1775157920
+rvrb!~rvrb@156.146.51.230
+besides, anyone who is judging a language by its hello world is not a serious person
+
+1775157945
+slowstatic_!~slowstati@user/slowstatic
+yeah you should be judging languages by their fizzbuzz
+
+1775158294
+supucat!~supucat@user/supucat
+My next everest is tagged unions 🫠
+
+1775162111
+supucat!~supucat@user/supucat
+Hey, they're not too bad.
+
