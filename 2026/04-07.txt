@@ -1,0 +1,212 @@
+1775579809
+andrewrk!~andrewrk@mail.ziglang.org
+good morning, all
+
+1775579835
+andrewrk!~andrewrk@mail.ziglang.org
+I started working on the 0.16.0 release notes
+
+1775580026
+brongulus!~user@user/brongulus
+Nice, only 84 more to go! :D
+
+1775580085
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+brongulus when zig 0.100.0 drops: O_O
+
+1775580086
+Amun-Ra!~amun-ra@retro.rocks
+and then: zig 0.100.0 released! ;)
+
+1775580099
+Amun-Ra!~amun-ra@retro.rocks
+Gliptic: ;)
+
+1775580105
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+jinx etc.
+
+1775580110
+Amun-Ra!~amun-ra@retro.rocks
+hehe
+
+1775580807
+chmod222!~chmod222@user/chmod222
+Zig 2: Electric Boogaloo
+
+1775580849
+chmod222!~chmod222@user/chmod222
+Featuring class based OOP, stackless async and checked exceptions
+
+1775581084
+bblack!~bblack@wikimedia/bblack-WMF
+Zig 3: solves the halting problem before your juiced main() even begins to execute! :)
+
+1775581210
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: mostly what I wish had made the cut for 0.16 was Io.Uring having the network vtable stuff done.  But 0.16 has already been a huge amount of change, I get there has to be a release cut with things left unfinished just to move the needle forward.
+
+1775581298
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: originally I didn't think there would even be an iouring impl in 0.16
+
+1775581428
+bblack!~bblack@wikimedia/bblack-WMF
+:)
+
+1775581630
+bblack!~bblack@wikimedia/bblack-WMF
+for a high performance network socket server, where the typical old-school C model is something ~like: spin up num_cpus pthreads, and within each one, run some poll/epoll/kqueue/iouring sort of eventloop to handle lots of socket traffic, and do various kinds of x-thread synchronization where necessary around x-thread shared data (some locks and/or userspace-rcu etc).... 
+
+1775581649
+bblack!~bblack@wikimedia/bblack-WMF
+I'm still trying to wrap my head around how this looks when built entirely out of std.Io parts.
+
+1775581724
+andrewrk!~andrewrk@mail.ziglang.org
+basically just replace thread spawning with io.concurrent
+
+1775581729
+bblack!~bblack@wikimedia/bblack-WMF
+it sounds like it might be std.Thread.spawn() or Io.Threaded at the outer scope -> Io.Uring inside each one, but then the x-thread sync stuff might want to be the Io.Threaded variant...
+
+1775581747
+bblack!~bblack@wikimedia/bblack-WMF
+I worry about the sync primtives and how they work with both Threaded + Evented in play
+
+1775581754
+andrewrk!~andrewrk@mail.ziglang.org
+using std.Thread.spawn directly risks CPU oversubscription
+
+1775581774
+andrewrk!~andrewrk@mail.ziglang.org
+why would you have both in play?
+
+1775581823
+bblack!~bblack@wikimedia/bblack-WMF
+well I don't care which way I spawn threads.  io.concurrent() to spin up the num_cpus of i/o worker threads, then Io.Evented running inside each one, is fine too.
+
+1775581852
+bblack!~bblack@wikimedia/bblack-WMF
+well Io.Threaded concurrent, should have said
+
+1775581950
+bblack!~bblack@wikimedia/bblack-WMF
+e.g. pseudo-terrible-code: main() { io = Io.Threaded; for (num_cpus) io.concurrent(worker_thread); } worker_thread { io = Io.Evented; ... }
+
+1775582597
+andrewrk!~andrewrk@mail.ziglang.org
+why not use Evented for the whole thing
+
+1775582627
+bblack!~bblack@wikimedia/bblack-WMF
+because then I'm stuck on one cpu core for all the client load
+
+1775582711
+bblack!~bblack@wikimedia/bblack-WMF
+in the extreme case, you even pin the worker threads to specific CPU cores, and set up other OS-level magic to steer NIC rxqueues towards copies of the listening sockets, etc.  But without even going there, generally the high-scaling model is ~thread-per-cpu-core + something Evented-like inside each thread.
+
+1775582887
+bblack!~bblack@wikimedia/bblack-WMF
+I don't even mind in this case paying the small extra cost that by having Evented + Threaded running in the same binary, the vtable stuff can't be optimized away.
+
+1775582956
+bblack!~bblack@wikimedia/bblack-WMF
+I just worry about the other potentially sharp edges of Evented-Inside-Threaded, like compatible sync primtives (and I have yet to even look at... the cases where Evented may spawn a thread, or the new-to-me batch/operation stuff where threaded may do a small poll loop, but I assume I can avoid those cases)
+
+1775583593
+bblack!~bblack@wikimedia/bblack-WMF
+in any case, for now, I have all this working, if sub-optimally, on 0.16.  the bulk of the server's code is running under Io.Threaded and using some light .async()/.concurrent() for various things.  The ~thread-per-core heavy-network-facing bits are launched and managed independently with std.Thread.spawn(), and the only sync primitive they really need is userspace-rcu, and I rolled together an 
+
+1775583599
+bblack!~bblack@wikimedia/bblack-WMF
+imperfectly-optimized RCU impl in Zig already that they're using fine to see data changes x-thread.
+
+1775583688
+bblack!~bblack@wikimedia/bblack-WMF
+that all works great, but those i/o worker threads are currently just hand-rolled posix.system stuff for the network and polling bits, ideally they'd be using Io.Evented on the inside.
+
+1775585770
+supucat!~supucat@user/supucat
+I'm excited for 0.16
+
+1775585806
+supucat!~supucat@user/supucat
+I don't know if I'm going to pin to 0.16 after it drops or continue tracking with nightly.
+
+1775586814
+realguy!~realguy@user/realguy
+Yeah me2 0.16 with all the async stuff is really promising. I'll pin 0.16 for a while.
+
+1775586816
+bblack!~bblack@wikimedia/bblack-WMF
+I think I'm going to pin on it for a a little while this time.  It will be nice to go back to working from a stable release for a bit, at least until something really shiny lands :)
+
+1775587797
+meidam!~meidam@user/meidam
+I'm at 0.15.2
+
+1775587823
+meidam!~meidam@user/meidam
+So I guess you'd recommend me to go to 0.16 as soon as it releases? 
+
+1775587872
+meidam!~meidam@user/meidam
+if not now
+
+1775588159
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: Evented is multi-threaded
+
+1775588228
+realguy!~realguy@user/realguy
+In my projects yes if possible. I'm using microzig in two projects, so I'm dependend until they catch up. Coming from plagued async stuff in other languages I'm excited see how the implementation plays out :) Watched the videos and andrewrk talks and it sounds very cool.
+
+1775589307
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: ok.  I'll stare at Io.Uring and see if I can figure out what that means in my context before I pick this thread (hah) back up.
+
+1775589514
+bblack!~bblack@wikimedia/bblack-WMF
+[my probably-bad assumption, not having used it yet because my needs are networky, was that Evented had userspace fibers for context-switching around I/O calls, but it was all happening in one thread with a central io_uring dispatching the low level io]
+
+1775590490
+bblack!~bblack@wikimedia/bblack-WMF
+ok... digging in a bit, I can see the above is definitely not the case.  It looks more like: async==concurrent, concurrent spawns a new fiber, fibers are auto-scheduled to a threadpool (which has a configurable limit, default #cpus-1), and each thread has a local uring for multiplexing the io needs of its multiple fibers?  Does that sound close to correct?
+
+1775590506
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1775590530
+andrewrk!~andrewrk@mail.ziglang.org
+i think there is work stealing too
+
+1775590698
+bblack!~bblack@wikimedia/bblack-WMF
+fascinating. it's going to take me a little bit to absorb that into my mental model of threads+events and how this plays out for high-traffic stuff.  It seems like a really fancy design though, so I need to dig in deeper and remap everything in my brain around.
+
+1775590713
+realguy!~realguy@user/realguy
+Do I understand this correctly that the multi-threading is baked into io_uring? So if Evented is bundled with io_uring we get multi-threading async (in this case async=concurrent) for free?
+
+1775590791
+bblack!~bblack@wikimedia/bblack-WMF
+my main immediate future-concern, is that for some models of high performance concurrent network stuff, there might need to be some kind of Evented configuration option where it's possible to be more explicit about the scheduling of fibers to threads.
+
+1775590850
+bblack!~bblack@wikimedia/bblack-WMF
+this subset of concurrent fibers all go together in thread #1, these others all go together in thread #2, etc.
+
+1775590867
+bblack!~bblack@wikimedia/bblack-WMF
+but I have to read and think a lot more before I know what I'm saying or asking there
+
+1775590927
+realguy!~realguy@user/realguy
+bblack: homework incomeing... I've todo the same.
+
+1775591267
+bblack!~bblack@wikimedia/bblack-WMF
+10 steps out somewhere in my brain, this also makes me think we may eventually want Zig's std.Thread to do some rseq setup stuff like glibc pthreading does lately, because there will be some fancy ways to optimize both Evented itself and smp_allocator and similar to do per-cpu stuff in place of threadlocal, maybe...
+
