@@ -1,0 +1,108 @@
+1775659173
+andrewrk!~andrewrk@mail.ziglang.org
+does anyone have any insight about this error condition? https://codeberg.org/ziglang/zig/issues/31787
+
+1775659198
+andrewrk!~andrewrk@mail.ziglang.org
+even after the last comment there I still don't understand why the receive function can return this error
+
+1775659978
+bblack!~bblack@wikimedia/bblack-WMF
+andrewrk: I don't know the vagaries of the windows network stack, but I would guess reading between the lines of that report, that what's really happening is something along the lines of:
+
+1775660029
+bblack!~bblack@wikimedia/bblack-WMF
+1. The reporter's bind()ing server application starts communicating with a UDP peer (sockets on both sides are working/listening for traffic), sending some traffic back and forth...
+
+1775660066
+bblack!~bblack@wikimedia/bblack-WMF
+2. At some random unexpected point, the peer closes their side.  Because it's UDP, there's no FIN or anything - this condition is silent to us so far.
+
+1775660122
+bblack!~bblack@wikimedia/bblack-WMF
+3. Then our side tries to do another send.  Because it's UDP (connectionless/unreliable) and there's room in the outbound socket buffer, the OS reports immediate success when the outbound packet lands in a buffer, for it to send off in the background at its leisure
+
+1775660168
+bblack!~bblack@wikimedia/bblack-WMF
+4. When the OS gets around to sending it, the remote side's port isn't open, and sends back an ICMP Port Unreachable packet to us.  The OS receives this and sets an error flag on our socket that sent the triggering packet.
+
+1775660194
+bblack!~bblack@wikimedia/bblack-WMF
+5. Then our side tries another receive() call and it returns the above already-pending error that the OS saved in some socket state
+
+1775660913
+bblack!~bblack@wikimedia/bblack-WMF
+(on Linux, documentation suggests equivalent behavior is possible, returning ECONNREFUSED for this condition)
+
+1775661176
+bblack!~bblack@wikimedia/bblack-WMF
+(but personally, I've never seen my own UDP listener stuff on Linux run up any error counters related to the above.  maybe it's just luck of the system tunables / firewall / loadbalancer / etc in front of it, that the ICMP-induced errors never reach my recvmsg calls)
+
+1775661861
+bblack!~bblack@wikimedia/bblack-WMF
+maybe it matters [to why I don't see similar in my DNS stuff on Linux] whether you're being more of a packet-at-a-time kind of UDP server (recvmsg() with address buffer -> sendmsg() with address that was set for you by earlier recvmsg()), whereas in this reported case, it's quite likely they're doing something different, where the sending and receiving calls have source and destination addresses for the 
+
+1775661867
+bblack!~bblack@wikimedia/bblack-WMF
+virtual (application layer) "connection" being talked on.
+
+1775667068
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: thank you that helps
+
+1775667140
+andrewrk!~andrewrk@mail.ziglang.org
+I think I'll add ConnectionRefused to the error set and explain that it can be a delayed error from sending
+
+1775670547
+andrewrk!~andrewrk@mail.ziglang.org
+actually ConnectionRefused doesn't make sense since it's connectionless so PortUnreachable it is
+
+1775672903
+rvrb!~rvrb@156.146.51.228
+hello hello if you are in/near Portland, we the Zig people of Portland are meeting up again on May 9th: https://zig.day/usa/portland/3/
+
+1775679921
+mmzero!~sol@200.8.27.165
+Bit of a strange question but does Zig supports GBA?
+
+1775679999
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+game boy advance?
+
+1775680017
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/wendigojaeger/ZigGBA
+
+1775680020
+mmzero!~sol@200.8.27.165
+Yeah, Gameboy Advance
+
+1775680052
+andrewrk!~andrewrk@mail.ziglang.org
+I see a few other projects as well
+
+1775680112
+andrewrk!~andrewrk@mail.ziglang.org
+bottom line is that the CPU is ARM7TDMI which, indeed, is supported by zig
+
+1775680192
+mmzero!~sol@200.8.27.165
+andrewrk: Thanks! I was worried it wasn't well supported because according to https://jonot.me/posts/zig-gba/, the inline ASM portion was still incomplete (they link to this issue https://github.com/ziglang/zig/issues/215)
+
+1775680196
+mmzero!~sol@200.8.27.165
+But since the move to Codeberg, now I'm not sure if that was already solved
+
+1775680277
+andrewrk!~andrewrk@mail.ziglang.org
+well, there are still inline assembly improvements planned, but you can use the existing inline assembly syntax which works fine
+
+1775680417
+mmzero!~sol@200.8.27.165
+Oh, okay then. Will check, once again, thanks! 
+
+1775681318
+andrewrk!~andrewrk@mail.ziglang.org
+happy hacking
+
