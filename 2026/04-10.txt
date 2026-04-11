@@ -1,0 +1,84 @@
+1775830028
+gschwind!~gschwind@user/gschwind
+Hello, I have a huge array pub const x = [_]struct{...}{ ..data.. }; (~100000 entry)
+
+1775830061
+gschwind!~gschwind@user/gschwind
+And I get the backward branches quota exceed
+
+1775830090
+gschwind!~gschwind@user/gschwind
+How do I setup the quota for that array ?
+
+1775830157
+gschwind!~gschwind@user/gschwind
+The array is also used in a for loop to initialize a HashMap, does zig will try to inline this for loop ?
+
+1775830307
+gschwind!~gschwind@user/gschwind
+by the way I'm not sure if the error is raise because of the loop or the array definition itself
+
+1775830491
+ifreund!2940d10f8b@user/ifreund
+gschwind: it sounds like your for loop is running at comptime, try raising the eval branch quota before the loop
+
+1775830570
+gschwind!~gschwind@user/gschwind
+ifreund, I'll try it, Can I prevent comptime for the loop ?
+
+1775830713
+ifreund!2940d10f8b@user/ifreund
+gschwind: I'm just guessing here, you need to share code for concrete answers... but yes one has control over whether code runs at comptime or runtime in Zig
+
+1775830849
+gschwind!~gschwind@user/gschwind
+ifreund, I will try to come with sample code
+
+1775832027
+gschwind!~gschwind@user/gschwind
+ok my first atempt was not complex enough, but I have the following that trigger the bug
+
+1775832029
+gschwind!~gschwind@user/gschwind
+https://www.pastebin.fr/019d77d5-edb1-7248-aa04-1096b9d2e7c6
+
+1775832062
+gschwind!~gschwind@user/gschwind
+the error message is in the pastebin
+
+1775832124
+gschwind!~gschwind@user/gschwind
+seems linked to the use of a helper function, without the function the compilation is successfull
+
+1775832148
+gschwind!~gschwind@user/gschwind
+not the bug the error message *
+
+1775832492
+gschwind!~gschwind@user/gschwind
+it seems that putin the @setEvalBranchQuota into the function revolve the error
+
+1775832571
+gschwind!~gschwind@user/gschwind
+I think I got the meaning of @setEvalBranchQuota :)
+
+1775832624
+ifreund!2940d10f8b@user/ifreund
+gschwind: this is actually kindof an edge case, since comptime function calls count towards the "branch quota" despite not being semantically a branch
+
+1775832639
+ifreund!2940d10f8b@user/ifreund
+this is necessary to ensure recursion is bounded at comptime for example
+
+1775832677
+ifreund!2940d10f8b@user/ifreund
+note that the initial values for global variables (e.g. table in your example) are always evaluated at comptime
+
+1775832722
+gschwind!~gschwind@user/gschwind
+Thank for the explanation :)
+
+1775832783
+ifreund!2940d10f8b@user/ifreund
+no problem, this is an interesting edge case :)
+
