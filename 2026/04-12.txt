@@ -1,0 +1,180 @@
+1775960542
+torque!~tachyon@user/torque
+that's even less useful imo
+
+1775960562
+torque!~tachyon@user/torque
+but I'm strongly anti-linter in the first place
+
+1775960680
+torque!~tachyon@user/torque
+frnakly if I had to write zig in an environment where i had to use a linter, i would probably like the language a lot less
+
+1775960739
+torque!~tachyon@user/torque
+I strongly disagree with a number of the lint rules your tool defines
+
+1775960889
+torque!~tachyon@user/torque
+it's like C++ at work, sometimes you have to use `reinterpret_cast`, but the linter bitches about it. then you have to add ugly lintignore line comments and if you're polite additional line noise to explain why your lintignore cruft is required
+
+1775960905
+torque!~tachyon@user/torque
+it's like coding by walking through tripwires repeatedly. it completely sucks
+
+1775963330
+rockorager!~rockorage@mail.spunky.lol
+which rules?
+
+1775963433
+rockorager!~rockorage@mail.spunky.lol
+that linter was mostly made to constrain llms, its probably not very helpful for “by hand” coding
+
+1775963573
+rockorager!~rockorage@mail.spunky.lol
+the public function uses private type / private error set are broadly useful i think
+
+1775965181
+supucat!~supucat@user/supucat
+I'm using zls with vscode and it automatically runs zig fmt on save. Usually that's preferable. But some lines, even with commas, it always condenses down to a single line.
+
+1775966362
+torque!~tachyon@user/torque
+well, ultimately, I don't have any respect for a tool that is designed for the purpose of wrangling a garbage machine
+
+1776017353
+chinmay!558230f1f2@user/chinmay
+for CI i do this: https://builds.sr.ht/~chinmay/job/1731432/manifest
+
+1776017388
+chinmay!558230f1f2@user/chinmay
+how do i know which community mirrors have the latest build for this to not happen - https://builds.sr.ht/~chinmay/job/1731429
+
+1776017566
+chinmay!558230f1f2@user/chinmay
+shuf(1) chose the same mirror 3 times in a row which is also something
+
+1776017794
+torque!~tachyon@user/torque
+there aren't that many mirrors, so it's not terribly surprising. one solution would be falling back to downloading from ziglang.org if the mirror download fails
+
+1776018033
+chinmay!558230f1f2@user/chinmay
+torque: > not terribly surprising
+
+1776018035
+chinmay!558230f1f2@user/chinmay
+|> echo "print((1/$(wc -l < community-mirrors.txt)) ** 3)" | python -
+
+1776018035
+chinmay!558230f1f2@user/chinmay
+0.0003644314868804664
+
+1776018054
+torque!~tachyon@user/torque
+3 / 10000 is not astronomical odds
+
+1776018085
+torque!~tachyon@user/torque
+though maybe htere's some pathological problem with how shuf's rng is seeded or something idk
+
+1776018150
+torque!~tachyon@user/torque
+looking at mlugg's official action, it tries all mirrors before falling back
+
+1776018460
+andrewrk!~andrewrk@mail.ziglang.org
+ I mean that's fundamentally the wrong algorithm right? You don't want 3 independent selections, you want to shuffle the list and the iterate in order
+
+1776018548
+chinmay!558230f1f2@user/chinmay
+yeah but this seemed easier to implement - if there's no way of knowing other than actually trying to then I'll do that
+
+1776029890
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Silly question; I've got a working stage3/bin/zig binary, and can use it to build the zig compiler to zig-out; the resulting zig-out binary gives some errors when attempting to use it to build itself, includinig complaining about missing LLVM support and such; are there flags that the CMake build process uses by default that I should be turning on for full coverage? Looks like the binary builds, but 
+
+1776029891
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+tests fail
+
+1776031222
+ifreund!2940d10f8b@user/ifreund
+noam: probably -Denable-llvm -Dconfig_h=build/config.h
+
+1776031237
+ifreund!2940d10f8b@user/ifreund
+(assuming your cmake build dir is ./build)
+
+1776031276
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ifreund: on the stage3 => zig-out build, initially, yeah?
+
+1776031284
+ifreund!2940d10f8b@user/ifreund
+yeah, exactly
+
+1776031288
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+i.e. stage3/zig/build -Denable-llvm => should produce a zig-out zig that - okay
+
+1776031302
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Just trying to make sure I have a reasonable reproducable setup before I get back to patching the compiler :)
+
+1776031321
+ifreund!2940d10f8b@user/ifreund
+for development work -Dno-lib is also highly recommended
+
+1776031343
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Does llvm enablement require a custom LLVM build?
+
+1776031377
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+I'm able to build stage3 with llvm support just fine, but it claims to be unable to find llvm libraries --- and is trying to link dozens that don't exist --- when I try to build another output with it
+
+1776031386
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+So I'm assuming it's a config mistake
+
+1776031433
+ifreund!2940d10f8b@user/ifreund
+noam: the point of the -Dconfig_h=build/config.h thing is to tell the zig bulid system about the exact llvm paths used by the cmake build process
+
+1776031466
+ifreund!2940d10f8b@user/ifreund
+so if you managed to build a stage3 zig that links llvm using cmake, using it to build a stage4 that also links llvm should work
+
+1776031469
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+And there's no easy way to get that file post-bootstrap? e.g. iif I have a zig provided by my distro, and want to use that for the next compilation, and never did a manual CMake one, I have to do a cmake run to get it?
+
+1776031533
+ifreund!2940d10f8b@user/ifreund
+I think cmake is the only supported way to figure out how to link llvm yeah :/
+
+1776031548
+ifreund!2940d10f8b@user/ifreund
+but eventually we will stop linking llvm and everyone will be happier
+
+1776031553
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+...I can probably just do no-llvm for now anyways tbh
+
+1776031604
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ah, the failing tests were in the library anyways so no-lib resolves my issue entirely regardless :)
+
+1776031682
+ifreund!2940d10f8b@user/ifreund
+:)
+
+1776031866
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ifreund: thanks :)
+
+1776032048
+ifreund!2940d10f8b@user/ifreund
+no problem, goodnight!
+
