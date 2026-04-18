@@ -1,0 +1,184 @@
+1776386705
+ScTpA!~T@p200300dbdf003200cfef8b6ef0172870.dip0.t-ipconnect.de
+I've still had https://ziglang.org/zsf/ open from yesterday. I've had a look at the sponsors and while blacksmith.sh seems nice (if only I had a use for some CI/CD service :D ), I'm not seeing any connection to Zig. Are they using it on the backend and just aren't talking about it on their website? I haven't found any post announcing their sponsorship, either (via Google).
+
+1776386743
+ScTpA!~T@p200300dbdf003200cfef8b6ef0172870.dip0.t-ipconnect.de
+I'm just idly curious, no worries, Blacksmith seems like a nice sponsor to have. They are mentioned in the 2025 financial report, but no background there, either.
+
+1776388648
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ScTpA: I wonder if it's just a mutual "fuck github" feeling :P
+
+1776389159
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+ah, they definitely use zig.
+
+1776389704
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+honestly if I was still in the NYC area I'd apply to work at blacksmith in a heartbeat, my exact kinda project (their application form mentions experience with zig as a plus)
+
+1776391444
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+...looks like the ez80 PR broke compiler build a bit?
+
+1776391519
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+Ah wait, no, using the installed stdlib, ignore me :)
+
+1776392090
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+...interesting, even just looking at output for the ez80-freestanding target, there's a _lot_ of unnecessary code generated
+
+1776400891
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+CBE with freestanding needs work IMO
+
+1776400905
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+CBE pulls in stdarg etc even when it's not needed...
+
+1776419344
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I tried to update to zig 0.15.2, but this function doesn't seems to return: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/zig015/item/src/clientslist.zig#L596
+
+1776419375
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+maybe something goes wrong at continue? https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/zig015/item/src/clientslist.zig#L639
+
+1776419396
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Didn't program for a while, it's hard to get back into it
+
+1776420157
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok fixed I think
+
+1776420170
+Sivecano!~Sivecano@user/Sivecano
+use takeDelimiter  instead of takeDelimiterExclusive? 
+
+1776420217
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+yep
+
+1776436025
+ksynwa!~ksynwa@49.36.209.51
+I am trying to understand the zon files. Taking this as an example: https://raw.githubusercontent.com/allyourcodebase/wayland/refs/heads/master/build.zig.zon
+
+1776436025
+ksynwa!~ksynwa@49.36.209.51
+What kind of struct or data type does the "dependencies" field resolve to? To my uneducated eye it looks like a struct with fields named "wayland" and so on. But clearly the field names are not hardcoded into a struct. So is it something like a hashmap?
+
+1776436130
+blblack!~bblack@wikimedia/bblack-WMF
+re: the ziggit.dev threads that are all up in arms about 0.16.0 std.Io, if you take away some of the hostility there... what it boils down to is that until std.Io covers enough use-cases for almost-everyone, there will be a middle ground that feels that pain.  I mean, I'm in that boat too, but I get we're in a transitional phase and there's more to come on the std.Io front.
+
+1776436236
+blblack!~bblack@wikimedia/bblack-WMF
+there will probably always be edge cases where some corner-case high-performance need means that you drop down to std.posix.system.foo() and/or even std.os.linux.foo() and/or direct use of e.g. std.os.linux.IoUring, std.posix.system.kqueue, etc
+
+1776436266
+blblack!~bblack@wikimedia/bblack-WMF
+and you lose sane access to std.Io facilities in the process, and maybe have to make your own abstraction layers around some of the other parts
+
+1776436302
+blblack!~bblack@wikimedia/bblack-WMF
+just have to close the gaps so that going that way is exceedingly rare and clearly warranted
+
+1776436525
+blblack!~bblack@wikimedia/bblack-WMF
+the low-hanging fruit on these gaps are ~obvious: finishing the move of networky bits to Operations and the implementation of them all in Evented.  Some nits around the non-TCP cases.  The ability to do things like nonblocking sendmsg via Operations (not sure if this is planned, since it doesn't exist yet).
+
+1776436554
+blblack!~bblack@wikimedia/bblack-WMF
+(by nonblocking, I mean MSG_DONTWAIT)
+
+1776436622
+blblack!~bblack@wikimedia/bblack-WMF
+and maybe eventually, in Evented cases where it's possible, the ability to have finer-grained explicit control over [fiber:thread] and/or [thread:cpu] mappings.
+
+1776436713
+blblack!~bblack@wikimedia/bblack-WMF
+possibly the thread:cpu bit for Io.Threaded as well (or maybe that's better thought of as task:cpu?)
+
+1776437129
+blblack!~bblack@wikimedia/bblack-WMF
+but I remember feeling jolted by the std.posix.{io-ish-calls}/std.Thread.{sync-primitives}->std.Io changes as they happened, and taking a bit to wrap my head around it being ok.  Everyone that's making the sudden jump from 0.15->0.16 and seeing it all for the first time, it's a lot to take mentally absorb and get past :)
+
+1776437228
+blblack!~bblack@wikimedia/bblack-WMF
+there's probably also going to be a community-filled gap, as a 3rd party package, that basically-copies the old std.posix and std.Thread facilities and tries to clean them up as best it can for those staying completely outside of std.Io.  That's fine too, IMHO.
+
+1776444431
+andrewrk!~andrewrk@mail.ziglang.org
+blblack: agreed, I'm keen to identify and address those use cases
+
+1776447830
+deepend!~deepend@deepend.dev
+does anyone have suggestions on how to handle reading from stdin platform independent? I am running into \r\n issues cause windows
+
+1776448816
+andrewrk!~andrewrk@mail.ziglang.org
+deepend: perhaps mem.tokenize?
+
+1776449312
+deepend!~deepend@deepend.dev
+i'm not sure how to use that in the context of a stdin Reader
+
+1776449323
+deepend!~deepend@deepend.dev
+right now I am using takeDelimiterExclusive
+
+1776449335
+deepend!~deepend@deepend.dev
+but i've basically hardcoded this to windows which is not what I want
+
+1776449616
+deepend!~deepend@deepend.dev
+if (is_windows) use line[0.. line.len-1] as a workaround seems kinda odd but not sure of a cleaner way
+
+1776450126
+tsmanner!~tsmanner@pool-100-40-195-20.pghkny.fios.verizon.net
+Any idea why a `zig build --watch -fincremental tests` on 0.16.0 would be missing source locations in the stack traces?  I'm running Alpine in WSL using the Linux x86_64 precompiled zig from the release page.  Manually calling std.debug.dumpCurrentStackTrace(.{}) prints: Unwind error at address `./.zig-cache/o/06e8404f49bd31d4619ca509c91b2801/test:0x2f764b` (unwind info unavailable), stopping trace early
+
+1776450181
+andrewrk!~andrewrk@mail.ziglang.org
+tsmanner: yes the new elf linker doesn't support debug info yet, that's a current limitation of -fincremental 
+
+1776450411
+tsmanner!~tsmanner@pool-100-40-195-20.pghkny.fios.verizon.net
+Oh duh I remember seeing that, but failed searching for it in the release notes again today.  Thanks!
+
+1776450466
+tsmanner!~tsmanner@pool-100-40-195-20.pghkny.fios.verizon.net
+-fincremental has been super nice so far, I just have to clean up my memory management so I can get back to using it
+
+1776453732
+swebb91!~swebb@user/swebb91
+quick q, sorta pedantic: StaticStringMap says it's good for small sets of strings. what is "small" in this case, i'm assuming like <100?
+
+1776455246
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+swebb91: my not super technical answer would be "until you start noticing performance problems"
+
+1776455491
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+It really depends on how you use it
+
+1776455550
+noam!81879d1ffa@2a03:6000:1812:100::dfc
+e.g. if you're mapping from string S to two pieces of information, and you do a map from S to a struct, vs if you have two string maps; there's all sorts of ways that the code around it impacts performance and suitability too :)
+
+1776462821
+deepend!~deepend@deepend.dev
+on https://ziglang.org/download/0.16.0/release-notes.html#ThreadPool-Removed for the migration example I think `g.wait(io);` should be `try g.await(io);` ?
+
+1776462830
+deepend!~deepend@deepend.dev
+otherwise > error: no field or member function named 'wait' in 'Io.Group'
+
+1776463232
+andrewrk!~andrewrk@mail.ziglang.org
+deepend: fixed thank you
+
