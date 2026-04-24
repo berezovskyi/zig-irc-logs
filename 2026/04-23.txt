@@ -1,0 +1,540 @@
+1776922505
+potential!~potential@user/potential
+silly question. is there a standard solution for a more exact .dest_dir override when cross-compiling for multiple targets that have the same .zigTriple string?
+
+1776924870
+potential!~potential@user/potential
+a simple wrapper that calls .zigTriple then appends .cpu_model in the .explicit case works just fine
+
+1776927625
+chinmay!558230f1f2@user/chinmay
+andrewrk: will the fix to https://codeberg.org/ziglang/zig/issues/31964 be backported
+
+1776944091
+gschwind!~gschwind@user/gschwind
+hello, how can I convert signed to unsigned reinterpreting the bits and ignoring the value range ?
+
+1776944158
+gschwind!~gschwind@user/gschwind
+I actual do not care how the sign is encoded :)
+
+1776944161
+blblack!~bblack@wikimedia/bblack-WMF
+gschwind: https://ziglang.org/documentation/master/#bitCast
+
+1776944226
+gschwind!~gschwind@user/gschwind
+blblack, thanks (I was stuck with @truncate)
+
+1776944254
+Affliction!affliction@idlerpg/player/affliction
+incidentally, signed integers are 2s complement on all targets; https://ziglang.org/documentation/0.16.0/#Runtime-Integer-Values
+
+1776944264
+Affliction!affliction@idlerpg/player/affliction
+even if you find yourself running on an oddball target
+
+1776944284
+Affliction!affliction@idlerpg/player/affliction
+floats are also always IEEE-754 - https://ziglang.org/documentation/0.16.0/#toc-Floats
+
+1776944293
+Affliction!affliction@idlerpg/player/affliction
+happy bit hacking
+
+1776944464
+gschwind!~gschwind@user/gschwind
+Affliction, Thanks :) In my current case it's for rand seed initialisation, but the in some other case will eventually need it too
+
+1776944506
+Affliction!affliction@idlerpg/player/affliction
+I know I take a dependency on the latter for reading/writing floats, bitcasting f32/64 to i32/64, since Reader/Writer don't (or, didn't) have methods for floats
+
+1776944732
+blblack!~bblack@wikimedia/bblack-WMF
+lately as I've been bikeshedding on code style issues, I think I've started hating self and Self more and more
+
+1776944810
+blblack!~bblack@wikimedia/bblack-WMF
+the first kind of it I decided I didn't like, was superfluous use of "const Self = @This();" in structs that had fixed names, esp file root structs.  "const Foo = struct { ...; const Self = @This(); ... }"
+
+1776944850
+blblack!~bblack@wikimedia/bblack-WMF
+if there are many functions in that struct taking Self arguments, as is common, it's a lot clearer as you're scrolling the file to just use the Foo name.  Self is almost sabotaging yourself pointlessly.
+
+1776944922
+Affliction!affliction@idlerpg/player/affliction
+heh, right now I'm poking at a struct that has an unused "const Self = @This(); " and every method takes *(const) T
+
+1776944925
+slowstatic!~slowstati@user/slowstatic
+blblack: agreed, almost all self-referential types should be what the thing is. I don't think I've seen many instances where self: Self is better than self: ActualType, aside from some comptime types in std lib
+
+1776944964
+blblack!~bblack@wikimedia/bblack-WMF
+(but "const Self = @This();" *does* still make sense, when the context is a comptime-specializing struct-generating function.
+
+1776944967
+blblack!~bblack@wikimedia/bblack-WMF
+)
+
+1776944970
+blblack!~bblack@wikimedia/bblack-WMF
+maybe
+
+1776945012
+gschwind!~gschwind@user/gschwind
+On my side I use @This() without any extrat binding
+
+1776945012
+blblack!~bblack@wikimedia/bblack-WMF
+e.g. pub fn Node(comptime RecSize: RecordBytes) type { return enum(u32) { const Self = @This(); ... } }
+
+1776945098
+blblack!~bblack@wikimedia/bblack-WMF
+but after eradicating most of the superfluous "const Self = @This()" from my code, now I'm starting to think even "self" as an argument name is not great either
+
+1776945127
+blblack!~bblack@wikimedia/bblack-WMF
+fn doThing(self: *Node, ...); -> fn doThing(node: *Node);
+
+1776945167
+blblack!~bblack@wikimedia/bblack-WMF
+self is so "normal" in the programming world for various reasons, but it's not actually a great name in general
+
+1776945230
+blblack!~bblack@wikimedia/bblack-WMF
+so I'm starting to come around to the idea that maybe in my personal style, I should ban "self" and "Self" and replace them all with names that give better local context to the reader.
+
+1776945299
+blblack!~bblack@wikimedia/bblack-WMF
+the only case I haven't really "solved" yet, is the use of "const Self = @This()" in those comptime-specialized cases.  Because often the natural word you'd want to use is the name of the generating fn.
+
+1776945410
+ifreund!2940d10f8b@user/ifreund
+blblack: I consider this realization about "self" a normal step on the path of learning Zig :)
+
+1776945415
+blblack!~bblack@wikimedia/bblack-WMF
+I guess I could adopt some random convention for those, maybe something like "pub fn Node(comptime RecSize: RecordBytes) type { return struct { const NodeT = @This(); ... } }
+
+1776945468
+ifreund!2940d10f8b@user/ifreund
+My current compromise is to use `const Self = @This()` in comptime generated namespaces, but never use `self`
+
+1776945492
+ifreund!2940d10f8b@user/ifreund
+that is, write `fn foo(deque: *Self) void` instead
+
+1776945510
+ifreund!2940d10f8b@user/ifreund
+and obviously never use Self for concrete types
+
+1776945513
+blblack!~bblack@wikimedia/bblack-WMF
+yeah I guess Self in those contexts isn't so bad, when you're avoiding "self" as well
+
+1776945533
+ifreund!2940d10f8b@user/ifreund
+and how often do you really need generics anyways?
+
+1776945568
+ifreund!2940d10f8b@user/ifreund
+(the answer is less and less as your taste in programming matures)
+
+1776945662
+blblack!~bblack@wikimedia/bblack-WMF
+on a project with 22K lines of Zig, my mechanical patch to remove the superfluous non-generic "const Self = @This();" removed 49 such cases, leaving just 4 that were actually for generics
+
+1776945756
+blblack!~bblack@wikimedia/bblack-WMF
+but yeah, now I'm gonna start another mega-noop-patch to eradicate "self: " args and give them better names :)
+
+1776945777
+gschwind!~gschwind@user/gschwind
+using self let the reader know that the current function belong the same namespace as the Self type belong, using non generic name does not give that insight
+
+1776945938
+ifreund!2940d10f8b@user/ifreund
+not using self makes code more readable and more reusable
+
+1776945984
+slowstatic_!~slowstati@user/slowstatic
+ifreund: `(deque: *Self)` is eye opening
+
+1776946002
+slowstatic_!~slowstati@user/slowstatic
+"I did not know you could do that" - my brain
+
+1776946061
+blblack!~bblack@wikimedia/bblack-WMF
+const Node = struct { ....; fn doThing(node: *Node, ...) { ...; node.x +=1; ...; } ...; } // when you have several such structs with several complex fns in one file, avoiding both self and Self makes it much easier to read when you're reading with random access patterns.
+
+1776946112
+blblack!~bblack@wikimedia/bblack-WMF
+you're jumping around searching with / in vim or whatever, or looking at grepped outputs, etc.  self/Self are just confusion.  which self in this file am I looking at now?
+
+1776946164
+ifreund!2940d10f8b@user/ifreund
+not to mention the pain that is copy-pasting some code from one context to another where the meaning of "self" changes
+
+1776946199
+ifreund!2940d10f8b@user/ifreund
+this anti-self stance is a consensus among experienced Zig programmers, just like "unmanaged" containers being better
+
+1776946209
+blblack!~bblack@wikimedia/bblack-WMF
+yes, like when you realize your "method" in Tree.Node should really have more-naturally been a "method" of Tree itself and move it.
+
+1776946231
+ifreund!2940d10f8b@user/ifreund
+though you'll still see plenty of "self" usage in the wild
+
+1776946556
+blblack!~bblack@wikimedia/bblack-WMF
+645 instances of "(self: " in my code.  I should just rename the project "Self", since that's clearly the topic of the code :P
+
+1776946630
+gschwind!~gschwind@user/gschwind
+blblack, how much "try" or "catch" ;)
+
+1776946673
+blblack!~bblack@wikimedia/bblack-WMF
+1339 try, 203 catch
+
+1776946684
+blblack!~bblack@wikimedia/bblack-WMF
+that's kind of an interesting ratio to think about :)
+
+1776946691
+ifreund!2940d10f8b@user/ifreund
+and how many curly braces? :P
+
+1776946759
+blblack!~bblack@wikimedia/bblack-WMF
+try:catch ratio: 6.6:1
+
+1776946825
+gschwind!~gschwind@user/gschwind
+I think this is espected because try can be nested and does not resolve anything, while catch actually "resolve" an error union :)
+
+1776946912
+gschwind!~gschwind@user/gschwind
+if the catch does not resolve to another error, because try is another kind of catch :D
+
+1776948362
+slowstatic_!~slowstati@user/slowstatic
+to contribute a posix system function to the stdlib does it need to be implement for all platforms or would just linux & macos be fine?
+
+1776948383
+slowstatic_!~slowstati@user/slowstatic
+s/implement/implemented
+
+1776949628
+blblack!~bblack@wikimedia/bblack-WMF
+slowstatic: (assuming by "system function", you mean something that's typically a syscall on Linux): prior to 0.16, generally such a thing would have pieces in several places.  e.g. you would add std.os.linux.foo() for the linux syscall, and std.c.foo() for those linking libc (which includes macos).  The one in std.c would have platform conditionals to deal with portability, and you could leave some OSes 
+
+1776949634
+blblack!~bblack@wikimedia/bblack-WMF
+unimplemented I guess.  It's thorny due to all the portability being aimed for.
+
+1776949681
+blblack!~bblack@wikimedia/bblack-WMF
+and then you'd define std.posix.foo(), if that makes sense, in terms of "posix.system.foo()", which resolves to either std.c or std.linux as appropriate.
+
+1776949713
+blblack!~bblack@wikimedia/bblack-WMF
+but during the 0.16 cycle, a lot of std.posix was wiped out, and most (all?) of the remainder is on the chopping block, to be replaced by std.Io bits if possible.
+
+1776949764
+blblack!~bblack@wikimedia/bblack-WMF
+so, if it makes sense, it might be better to skip messing with std.posix at all, and propose interfaces and code for std.Io + std.Io.Threaded to handle whatever it is
+
+1776949809
+blblack!~bblack@wikimedia/bblack-WMF
+(or if it's sufficiently rare and low-level, do neither, and leave it to the rare callers to use std.posix.system.foo() (and/or std.c and/or std.linux) directly.
+
+1776949813
+blblack!~bblack@wikimedia/bblack-WMF
+)
+
+1776949900
+gschwind!~gschwind@user/gschwind
+is -fincremental expected to work with linking external C library ?
+
+1776949930
+blblack!~bblack@wikimedia/bblack-WMF
+std.c.darwin also exists to help with some of the mac-ish bits that don't belong directly in std.c
+
+1776950178
+blblack!~bblack@wikimedia/bblack-WMF
+slowstatic_: but also, if this is "posix_openpt" and friends from the discussion the other day... I don't think that's really a syscall-level thing.  libcs implement that stuff in userland code over basic calls like open()/ioctl()/etc in practice, I think.
+
+1776950222
+blblack!~bblack@wikimedia/bblack-WMF
+so it might be better to provide a higher-level abstraction that uses std.Io for the file-level parts and knows the ioctl and special device path details that may vary per-OS
+
+1776953769
+slowstatic_!~slowstati@user/slowstatic
+blblack: yeah it is about openpt lol
+
+1776953864
+slowstatic_!~slowstati@user/slowstatic
+I wasn't sure if open() with the openpt flags would work the same. Thanks for clarifying
+
+1776956589
+blblack!~bblack@wikimedia/bblack-WMF
+slowstatic: yeah the ioctl() bits are messy and unique, but otherwise, e.g. if I look as musl's implementation of posix_openpt, it's basically just:
+
+1776956614
+blblack!~bblack@wikimedia/bblack-WMF
+a wrapper over open("/dev/ptmx")
+
+1776956669
+blblack!~bblack@wikimedia/bblack-WMF
+I think if you stared at the musl implementation of the "posix" calls you're using for this, you could simplify down to something really basic in terms of open/ioctl/etc
+
+1776956679
+blblack!~bblack@wikimedia/bblack-WMF
+but then you gotta figure the same out elsewhere, too
+
+1776958651
+ifreund!2940d10f8b@user/ifreund
+ah, -fincremental is so nice
+
+1776958674
+ifreund!2940d10f8b@user/ifreund
+I don't get to use it on river yet since river's linking is apparently too complex
+
+1776958702
+ifreund!2940d10f8b@user/ifreund
+it makes working on the zig compiler itself so much better though :)
+
+1776959332
+AmandaC!~m-yt727s@cloud.camnet.site
+Is there an std.Io.Writer that I can use in tests to confirm some kind of serialization worked right? I've got a custom jsonStringify I want to confirm is being encoded right
+
+1776959355
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+std.Io.Writer.Allocating?
+
+1776959449
+AmandaC!~m-yt727s@cloud.camnet.site
+I'm currently doing a fixed buffer, but I'm not sure how to confirm the contents of the buffer. My nieve approch is causing the uninitalised yelling part of t he buffer to throw off the std.testing.expectEqualStrings
+
+1776959476
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+.buffered() method returns all buffered data
+
+1776959494
+AmandaC!~m-yt727s@cloud.camnet.site
+Ah, that seems to have done it
+
+1776959531
+AmandaC!~m-yt727s@cloud.camnet.site
+I was comparint off the buffer I'm passing into the .fixed creation method
+
+1776960743
+andrewrk!~andrewrk@mail.ziglang.org
+chinmay: no, 0.17.0 will be released soon instead
+
+1776960914
+slowstatic_83!~slowstati@user/slowstatic
+hooray bigger number
+
+1776965108
+chinmay!558230f1f2@user/chinmay
+andrewrk: what happened
+
+1776965154
+andrewrk!~andrewrk@mail.ziglang.org
+chinmay: in what sense?
+
+1776965192
+chinmay!558230f1f2@user/chinmay
+did something motivate the rapid bump
+
+1776965235
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/download/0.16.0/release-notes.html#Roadmap
+
+1776965254
+chinmay!558230f1f2@user/chinmay
+ah
+
+1776965329
+chinmay!558230f1f2@user/chinmay
+i will try and see if i can do something about https://github.com/ziglang/zig/issues/21525 once that happens
+
+1776965343
+ehill!~ehill@user/ehill
+Hey all 👋 - I'm new to the channel. Curious to hear what people's journey's have been with zig, it looks like a pretty interesting language. 
+
+1776965442
+andrewrk!~andrewrk@mail.ziglang.org
+welcome ehill
+
+1776965501
+ehill!~ehill@user/ehill
+hey andrewrk, thanks 
+
+1776965841
+blblack!~bblack@wikimedia/bblack-WMF
+ehill: hi :) did you work on some kafka stuff years ago? the nick sounds familiar
+
+1776966153
+ehill!~ehill@user/ehill
+hah not me, must be a different ehill
+
+1776966164
+ehill!~ehill@user/ehill
+I’ve been starting to work on agentic systems, and I’m curious how Zig could fit in. 
+
+1776966329
+blblack!~bblack@wikimedia/bblack-WMF
+ehill: fair warning since you hit a buzzword bingo item there: https://codeberg.org/ziglang/zig#strict-no-llm-no-ai-policy
+
+1776966373
+blblack!~bblack@wikimedia/bblack-WMF
+there are, obviously, people in the world who are building AI related things using Zig.  But Zig itself is a no-AI kind of project.
+
+1776966509
+ehill!~ehill@user/ehill
+blblack: Good to know fair point ;) not for zig itself though, more like using zig for the plumbing around agents, small fast runtimes, adapters, local tools, that sort of thing
+
+1776966794
+AmandaC!~m-yt727s@cloud.camnet.site
+Okay, am I doing something wrong here? Whenever the connection is made it immediately segfaults in the std net.zig:const std = @import("std");
+
+1776966796
+AmandaC!~m-yt727s@cloud.camnet.site
+... long message truncated: https://matrix.camnet.site/_heisenbridge/media/camnet.site/QvKCSjkVMgKmuXSNHEbyCbUG/SH1BNNgycRE (53 lines)
+
+1776966946
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I'm gonna guess it's copying .interface again
+
+1776966951
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+let's see if I'm right
+
+1776966958
+andrewrk!~andrewrk@mail.ziglang.org
+bingo
+
+1776966960
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+yep
+
+1776966963
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's always that
+
+1776966972
+AmandaC!~m-yt727s@cloud.camnet.site
+copying .interface?
+
+1776966994
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+AmandaC, .interface cannot be copied, you can only use it via a pointer
+
+1776967051
+andrewrk!~andrewrk@mail.ziglang.org
+there's also a missing defer group.cancel() which will cause illegal behavior if accept returns an error
+
+1776967052
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+because it uses @fieldParentPtr to find the actual object that contains it
+
+1776967079
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+i.e. interface doesn't like being alone
+
+1776967085
+andrewrk!~andrewrk@mail.ziglang.org
+in general, every async() needs a defer cancel() immediately after, every Group.init needs a defer group.cancel() after it
+
+1776967189
+AmandaC!~m-yt727s@cloud.camnet.site
+oh wait so I've gotta do reader.interface.foo instead of reader = interface; then reader.foo?
+
+1776967212
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+AmandaC, or `const reader = &(...).interface;`
+
+1776967232
+andrewrk!~andrewrk@mail.ziglang.org
+btw there is safety planned that will catch the interface thing
+
+1776967238
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, first of all the reader/writer needs to be in their own vars
+
+1776967378
+blblack!~bblack@wikimedia/bblack-WMF
+yeah it's a 3-step dance: var foo_buf: [888]u8 = undefined; var foo_writer = something.writer(...); const foo = &foo_writer.interface;
+
+1776967397
+blblack!~bblack@wikimedia/bblack-WMF
+then you can do foo.print() etc
+
+1776967430
+AmandaC!~m-yt727s@cloud.camnet.site
+NOw that's giving me "src/main.zig:52:15: error: expected type '*Io.Writer', found '*const Io.Writer'"
+
+1776967442
+blblack!~bblack@wikimedia/bblack-WMF
+the middle one is var, like the buf is
+
+1776967446
+blblack!~bblack@wikimedia/bblack-WMF
+(it has mutable state)
+
+1776967515
+AmandaC!~m-yt727s@cloud.camnet.site
+ah
+
+1776967654
+slowstatic_83!~slowstati@user/slowstatic
+is there a tracking issue for the dont-copy-interface thing? I'm interested in what the approach is
+
+1776969754
+ehill!~ehill@user/ehill
+slowstatic: good question, I searched and didn’t see one either, should we open an issue for this? I can do it if that makes sense. 
+
+1776973347
+chinmay!558230f1f2@user/chinmay
+if https://codeberg.org/ziglang/zig/issues/31272#issuecomment-13561178 is an issue with the linker, why does .use_lld = true not solve it? i have to set .use_llvm = true
+
+1776973466
+vyivel!~vyivel@user/Vyivel
+did they post an llm output
+
+1776973490
+chinmay!558230f1f2@user/chinmay
+yeah looks like it
+
+1776974060
+andrewrk!~andrewrk@mail.ziglang.org
+live coding stream starting imminently https://www.twitch.tv/andrewrok/
+
+1776974592
+badtuple!~badtuple@192.132.61.35
+the ziguana signal has been lit. quick, to the ziggurat
+
+1776975086
+yrds96!~yuri@189.4.105.57
+andrewrk: watching it! will do my best to not get annoyed by ads
+
+1776984653
+andrewrk!~andrewrk@mail.ziglang.org
+yrds96: were there ads?
+
+1776984670
+andrewrk!~andrewrk@mail.ziglang.org
+my understanding was that there are no ads since the channel is demonetized
+
+1776984678
+andrewrk!~andrewrk@mail.ziglang.org
+if there are ads I'll simply delete my twitch account 
+
