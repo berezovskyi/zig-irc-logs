@@ -1,0 +1,416 @@
+1776995721
+Prestige|!~avahe@user/Prestige
+Anyone using nvim-lspconfig know how to set the zls version? It's auto updated to 0.16 but I'm using zig 0.15.2 still, they aren't compatible
+
+1776995734
+Prestige|!~avahe@user/Prestige
+I haven't found any useful info on https://github.com/neovim/nvim-lspconfig 
+
+1776997036
+badtuple!~badtuple@192.132.61.35
+Prestige: I don't use nvim-lspconfig, but pretty sure it doesn't handle versions/installation. It'll just use whatever zls is in your path. Was zls installed via Mason, or a different package manager?
+
+1776998099
+deevus!95670cc21b@irc.pico.sh
+Oh they're gone. I just solved this exact problem using `mise` 
+
+1776998199
+badtuple!~badtuple@192.132.61.35
+aw. Maybe they'll come back
+
+1776998271
+deevus!95670cc21b@irc.pico.sh
+As long as mise has zls configured in your project folder, and mason doesn't override it, it will use that one
+
+1776998439
+badtuple!~badtuple@192.132.61.35
+it's genuinely wild how complex neovim's ecosystem has gotten.
+
+1776998445
+badtuple!~badtuple@192.132.61.35
+not that that's new.
+
+1777003138
+deevus!95670cc21b@irc.pico.sh
+Luckily it only needs to be as complex as you want it
+
+1777034137
+AmandaC!~m-yt727s@cloud.camnet.site
+Okay, not sure if I'm X/Y probleming myself here, and it's probably bad code smell anyway, but I have a question about the whole managed vs unmanaged container stuff. What happens if a different allocator is passed along the container's lifetime.
+
+1777034267
+gschwind!~gschwind@user/gschwind
+AmandaC, if it's managed container the allocator is tracked by the container and you can use diferent allocator for diferent container, but they will not mix
+
+1777034303
+gschwind!~gschwind@user/gschwind
+if you do not change the allocator attribute ithin the container
+
+1777034399
+AmandaC!~m-yt727s@cloud.camnet.site
+Yeah, I mean with an unmanaged containers, which are mentioned as being "preferred" in the 0.16 release notes
+
+1777034403
+gschwind!~gschwind@user/gschwind
+otherwise I guess if you mix alloc/free from diferent allocator that does work, because free will not know anything from a foreign allocated memory
+
+1777034422
+gschwind!~gschwind@user/gschwind
+does not work *
+
+1777034495
+AmandaC!~m-yt727s@cloud.camnet.site
+It feels weird to me that it'd be preferred to pass an allocator along all the time, if it's essentially required to be the same allocator along the entire container's lifetime
+
+1777034513
+AmandaC!~m-yt727s@cloud.camnet.site
+by "all the time" I mean in all the container mutation methods
+
+1777034642
+gschwind!~gschwind@user/gschwind
+AmandaC, This is mostly a way to know where allocation/free may happen and it's allow to make a managed container
+
+1777034666
+gschwind!~gschwind@user/gschwind
+The unmanaged has the avantage to not store a fat pointer
+
+1777034944
+gschwind!~gschwind@user/gschwind
+frin every instance. You may want create your how flavor of managed container, with global shared allocator, you may need to deal with conrurency also
+
+1777034961
+AmandaC!~m-yt727s@cloud.camnet.site
+From the release notes: "Over time, Zig programmers realized together that the variant without the allocator field is more versatile and the other one should be removed." -- I guess I'm confused about how it's "more versitile"
+
+1777034963
+gschwind!~gschwind@user/gschwind
+s/frin/for
+
+1777035135
+gschwind!~gschwind@user/gschwind
+it's actually more versatile because from unmanaged you can implement custom managed container matching your need
+
+1777035146
+AmandaC!~m-yt727s@cloud.camnet.site
+I see
+
+1777035532
+Affliction!affliction@idlerpg/player/affliction
+For one thing, std.mem.Allocator is 2 pointers (8 or 16 bytes, on 32 or 64 bit platforms respectively), which really starts to add up when you eg, have an ArrayList of ArrayLists
+
+1777035590
+Affliction!affliction@idlerpg/player/affliction
+But yeah, switching allocators will pretty much just lead to invalid frees / reallocs
+
+1777035771
+Affliction!affliction@idlerpg/player/affliction
+Though I do feel array_list.Managed does have its place, if you do indeed need to pass it between contexts which don't have a common allocator
+
+1777035849
+Affliction!affliction@idlerpg/player/affliction
+But yeah, otherwise, keeping allocations explicit is part of zig's overarching style. Having to pass in an allocator to anything which might (re)alloc or free, makes that effect clear
+
+1777035861
+AmandaC!~m-yt727s@cloud.camnet.site
+Fair.
+
+1777036003
+blblack!~bblack@wikimedia/bblack-WMF
+to me that latter argument is more important than even the space efficiency one.  It's easy to lose sight of where allocations are happening if you're storing an allocator in a container
+
+1777036082
+blblack!~bblack@wikimedia/bblack-WMF
+and if you're passing a container between contexts which don't otherwise share an allocator, you can always pass two things: some_fn(my_array_list, my_array_list_allocator).  Or store the two together in some wrapping container that's passed around.
+
+1777036099
+Affliction!affliction@idlerpg/player/affliction
+true
+
+1777036224
+blblack!~bblack@wikimedia/bblack-WMF
+well, I'll caveat my last point: like many Zig users, I'm often being lazy and using inferred error sets and/or anyerror.  I guess if you were very strict about your error set definitions in returns, you'd always know where an allocation might happen, even in the absence of an explicit allocator argument, because you had to include Allocator.Error in the set
+
+1777036236
+blblack!~bblack@wikimedia/bblack-WMF
+err my first point, I meant :)
+
+1777036257
+Affliction!affliction@idlerpg/player/affliction
+true
+
+1777036617
+blblack!~bblack@wikimedia/bblack-WMF
+switching gears entirely: in the context of thinking about both future cpu-pinning of tasks or implicitly threads (in the thread pools of Io.Threaded and Io.Evented), and implementing userspace-rcu-like synch primitives in application code that work with std.Io... it might make sense to have an io.swapTheftProtection() that's kinda like io.swapCancelProtection().  For the (potentially long, spanning 
+
+1777036623
+blblack!~bblack@wikimedia/bblack-WMF
+potentially many other io.foo() calls) duration that theft is blocked, we're gauranteed that this task will remain in the same OS thread (no work-stealing to a different thread).
+
+1777036714
+blblack!~bblack@wikimedia/bblack-WMF
+(importantly for the RCU purpose: this means we can assume "threadlocal" RCU-synch-primitive state remains the same for that duration)
+
+1777036756
+blblack!~bblack@wikimedia/bblack-WMF
+(the same storage, does not get swapped out to a different OS thread's copy of that state because we did an io call and got stolen to another thread)
+
+1777036887
+blblack!~bblack@wikimedia/bblack-WMF
+the primitive can be implemented safely without such a thing, but it makes it more expensive one way or another (because we can't assume we're still in a registered/online thread)
+
+1777038490
+blblack!~bblack@wikimedia/bblack-WMF
+the pinning bits, I'm not really sure about how to work that into std.Io design cleanly, yet.  But possibly something in InitOptions of the Io.Foo impl, which may vary per impl of course, that allows specifying something more-explict about the number of total threads and their cpu-pinning-mapping.  Something like along the lines of what e.g. https://docs.haproxy.org/3.3/configuration.html#cpu-map does, but 
+
+1777038497
+blblack!~bblack@wikimedia/bblack-WMF
+probably simpler and less-flexible and in Zig terms of course.
+
+1777038589
+blblack!~bblack@wikimedia/bblack-WMF
+being able to specify, effectively, things like "I want exactly 32 threads, and thread 0 is pinned to cpu0, thread 1 is pinned to cpu1, ..."
+
+1777038658
+blblack!~bblack@wikimedia/bblack-WMF
+(users would probably run some platform-specific code to probe out things like hyperthreading and NUMA layout to determine the mapping they provide to InitOptions)
+
+1777038696
+blblack!~bblack@wikimedia/bblack-WMF
+(either that or let the end-user figure that out and specify it as arguments/configuration to the program indirectly)
+
+1777038702
+AmandaC!~m-yt727s@cloud.camnet.site
+Is there any way to do closures in zig? I'm trying to make something like a "command handler" for a MUD, but I'd like to be able to also register metadata alongside that command, but my naieve approch of using *anyopaque and passing that back into the called functions seems to be triggering a SIGSEGV in the compiler... so I'm definately holding something wrong here, but I'm not sure what
+
+1777038750
+blblack!~bblack@wikimedia/bblack-WMF
+if you had all that, and some variant of concurrent() that could be used alongside it, that allowed picking a destination thread for the task by-number...
+
+1777038792
+blblack!~bblack@wikimedia/bblack-WMF
+you can get to a point where you're using the std.Io abstractions, but you have the level of control you need for super-high-perf stuff where everything about task->thread->cpu is explicit.
+
+1777039110
+blblack!~bblack@wikimedia/bblack-WMF
+(and of course, such a concurrent() variant that allows specifying a target thread#, would imply no thread theft, much like the io.swapTheftProtection() (which also works in the general case, even if you're not doing all this explicit-pinning junk))
+
+1777039289
+gschwind!~gschwind@user/gschwind
+AmandaC, there is no closure, you have to implement your closure manually
+
+1777039480
+blblack!~bblack@wikimedia/bblack-WMF
+thread groups might need to be something in the abstraction too, in some sense, although maybe multiple differently-configured instantiations of the same Io.Foo() suffices for that, too (maybe)
+
+1777039731
+AmandaC!~m-yt727s@cloud.camnet.site
+gschwind similar to in C with *void being passed as "userdata"? Not sure what the equivilent in zig would be, other than maybe *anyopaque, but that's causing a compiler SEGV when I try and convert a []u8 to/from that
+
+1777039765
+AmandaC!~m-yt727s@cloud.camnet.site
+void* even, forgot that it's inverted.
+
+1777040008
+blblack!~bblack@wikimedia/bblack-WMF
+a []u8 has length info that a *anyopaque lacks
+
+1777040024
+gschwind!~gschwind@user/gschwind
+if you want do something generic you can use *anyopaque
+
+1777040028
+blblack!~bblack@wikimedia/bblack-WMF
+but you could put your slice and/or other context metadata inside a struct, and pass an opaque pointer to that struct
+
+1777040042
+gschwind!~gschwind@user/gschwind
+but it's depend what you want achieve
+
+1777040215
+gschwind!~gschwind@user/gschwind
+in some case you may want use a funcition that take anytype as argument
+
+1777040267
+AmandaC!~m-yt727s@cloud.camnet.site
+Can't store several different types into a single std.array_list_map.String though
+
+1777040276
+AmandaC!~m-yt727s@cloud.camnet.site
+unless I'm missing something
+
+1777040397
+gschwind!~gschwind@user/gschwind
+AmandaC, you can using union, otherwise you can't
+
+1777040455
+AmandaC!~m-yt727s@cloud.camnet.site
+This is what I've got for handling commands in my little toy MUD thing:const CommandHandler = struct {
+
+1777040455
+AmandaC!~m-yt727s@cloud.camnet.site
+... long message truncated: https://matrix.camnet.site/_heisenbridge/media/camnet.site/iGYorkLZgUdJXuraHaXOextb/n-p9hz5uzbM (34 lines)
+
+1777040509
+AmandaC!~m-yt727s@cloud.camnet.site
+Not sure how I could make "Entry" genetic without having to enumerate every single type of ud that would be stored across the entire codebase
+
+1777040526
+AmandaC!~m-yt727s@cloud.camnet.site
+generic*
+
+1777040851
+gschwind!~gschwind@user/gschwind
+AmandaC, you can't do better, if you want handle any func and any userdata
+
+1777040940
+gschwind!~gschwind@user/gschwind
+args may be anyopaque too
+
+1777041604
+AmandaC!~m-yt727s@cloud.camnet.site
+Oh. That's why my dynamic command was spewing random nonsense. I was taking a pointer of a pointer.
+
+1777042824
+gschwind!~gschwind@user/gschwind
+playing with anyopaque pointer is dangerous :)
+
+1777043238
+AmandaC!~m-yt727s@cloud.camnet.site
+Yup, just like playing with void*
+
+1777043286
+AmandaC!~m-yt727s@cloud.camnet.site
+Hrm, is there something like "{f}" for optionals? where it'll print null if it's not filled out, but call the formatter otherwise
+
+1777043816
+AmandaC!~m-yt727s@cloud.camnet.site
+ah, {?f}
+
+1777058577
+AmandaC!~m-yt727s@cloud.camnet.site
+Does this look right for using a std.array_hash_map.String to store some stuff? https://git.camnet.site/amandac/ziggy-rhino/src/branch/main/src/GameState.zig#L45-L59 -- I can't tell if I'm somehow holding it wrong, or if the array_hash_map.String doesn't work how I expect (using the _value_ of the string keys, not the pointer addr )
+
+1777058702
+AmandaC!~m-yt727s@cloud.camnet.site
+"self.loadedRooms" seems to be getting it's values deleted whenever I try and leave the current "room" which makes no sense to me
+
+1777059270
+Eggbert!~Thunderbi@user/Eggbert
+yurr
+
+1777066517
+AmandaC!~m-yt727s@cloud.camnet.site
+... I think I found a bug in std.array_hash_map.String. if I pre-grow the backing storage, it behaves as expected. if I don't, it's behaving wrong(?) https://git.camnet.site/amandac/ziggy-rhino/src/branch/main/src/GameState.zig#L117-L134
+
+1777066703
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+AmandaC, try to minimize the test (e.g. inline the code in the test, remove everything irrelevant)
+
+1777066788
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it sounds like you're saying the second getOrPut with the same key gets found_existing == false, so you should be able to reproduce it with just three lines or so
+
+1777066839
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, six with both keys, if you need them both
+
+1777066946
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the value in value_ptr shouldn't matter unless you're doing something memory unsafe
+
+1777068417
+cryptocode!~zy@user/zy
+Would it make sense for the {any} format specifier to output valid zon? Alternatively a {zon} specifier, though {any} is pretty close already. Reason I ask is I'm doing some debug output of various nested structs, and by converting to zon I can just pass it through zig fmt to make it readable.
+
+1777068593
+AmandaC!~m-yt727s@cloud.camnet.site
+Still pretty complex of a test, but I'm not fluent enogh in zig to strip it down more:const std = @import("std");
+
+1777068593
+AmandaC!~m-yt727s@cloud.camnet.site
+... long message truncated: https://matrix.camnet.site/_heisenbridge/media/camnet.site/gZGnlRRhwtJbwWAtzLbpuBIv/e_UIUHSRh2s (65 lines)
+
+1777068740
+AmandaC!~m-yt727s@cloud.camnet.site
+I'm going to go ahead and say the @constCast in the deinit()s are probably bad, but they're not what's triggering what seems to be the bug, I don't think. Since it happens without the deinits, other than test screaming about leaked memory
+
+1777068955
+AmandaC!~m-yt727s@cloud.camnet.site
+bah, not sure if it's my client, or if somehow a "&lt;br/&gt;" ended up on the 4th-from-the-bottom line
+
+1777069033
+AmandaC!~m-yt727s@cloud.camnet.site
+pastebin which should be cleaner: https://pastebin.com/Kn8geYc9
+
+1777069356
+AmandaC!~m-yt727s@cloud.camnet.site
+Yeah, wrapping it all in an arena to silence the leak makes it still trigger the bug, and that shaves off ~20-30 lines  of the repro
+
+1777070103
+AmandaC!~m-yt727s@cloud.camnet.site
+Filed https://codeberg.org/ziglang/zig/issues/32061 -- going to unplug now as it's getting a bit late for computering
+
+1777071317
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+AmandaC, it's pretty simple and not a bug, test0A is invalidated
+
+1777071328
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+after operations like .getOrPut
+
+1777071418
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the reason ensureTotalCapacity "fixes" it is because it then doesn't have to resize the hash table at exactly that point, but you are never supposed to retain pointers to elements after doing writes to hash table
+
+1777071456
+AmandaC!~m-yt727s@cloud.camnet.site
+Hrm. I don't think I'm keeping the equivalent to test0A around in my full codebase though.
+
+1777071497
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+this does: https://git.camnet.site/amandac/ziggy-rhino/src/branch/main/src/GameState.zig#L117-L134
+
+1777071569
+AmandaC!~m-yt727s@cloud.camnet.site
+That's the prototype repro. I'm pretty sure in the places I'm seeing it I'm calling the get room each time
+
+1777071585
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+then it might not be the same problem
+
+1777071602
+AmandaC!~m-yt727s@cloud.camnet.site
+Yeah, I suspect I repro'd the wrong thing
+
+1777071726
+AmandaC!~m-yt727s@cloud.camnet.site
+For the full codebase the "test" is "zig build run" then in another terminal "nc localhost 4000" then amandac, lolbutts, look, debug, look, west, east, look with a new line instead of a ,
+
+1777071808
+AmandaC!~m-yt727s@cloud.camnet.site
+The "debug" command is modifying the player's current room's title, going west should "load" another room, then back east should go back, to the starting room, with it's title still edited
+
+1777071829
+AmandaC!~m-yt727s@cloud.camnet.site
+But it's loading the starting room again for some reason
+
+1777071877
+AmandaC!~m-yt727s@cloud.camnet.site
+So I think something's not getting copies over from the old list to the new
+
+1777072073
+AmandaC!~m-yt727s@cloud.camnet.site
+Old backing list*
+
+1777073984
+squeek502!~squeek502@user/squeek502
+AmandaC, `lockPointers`/`unlockPointers` might be helpful to narrow down the possible problem, see the comment i made on your issue
+
+1777074128
+AmandaC!~m-yt727s@cloud.camnet.site
+squeek502 yeah, I'll have a look tomorrow, need to veg out for the night or I'll be up way too late.
+
+1777074203
+squeek502!~squeek502@user/squeek502
+sounds good :)
+
