@@ -1,0 +1,160 @@
+1777104248
+gschwind!~gschwind@user/gschwind
+hello, how can I force -fsingle-threaded in the build.zig ?
+
+1777114571
+deevus!95670cc21b@irc.pico.sh
+My first PR. Nervous and looking for feedback https://codeberg.org/ziglang/zig/pulls/32067
+
+1777114599
+deevus!95670cc21b@irc.pico.sh
+I don't know why but this freaks me out a bit. 
+
+1777115765
+AmandaC!~m-yt727s@cloud.camnet.site
+... well then. I'm genuinely unsure how to narrow this bug down then. It doesn't happen in ReleaseSmall, but it does in ReleaseSafe, and Debug does std.array_hash_map.String behave differently between those?
+
+1777115800
+AmandaC!~m-yt727s@cloud.camnet.site
+I'm also unsure how to create a smaller repro for this
+
+1777115948
+AmandaC!~m-yt727s@cloud.camnet.site
+for ReleaseSafe/Debug the room seems to be getting loaded again (GetOrPutResult.found_existing=false) when the player leaves it for ReleaseSmall it's properly using the existing one loaded (GetOrPutResult.found_existing=true)
+
+1777116327
+gschwind!~gschwind@user/gschwind
+AmandaC, be carfull of copy and alloc, GetOrPutResult may alloc and if you working on copy of the root of the map, the alloc is not seen by the original
+
+1777116446
+gschwind!~gschwind@user/gschwind
+it's a guess I did not check the implementation of map
+
+1777116551
+AmandaC!~m-yt727s@cloud.camnet.site
+I'm not sure how I could be making a copy of the map, the pointer for the map and the pointer for the struct holding the map are the same across calls where it seems to  be "forgetting" the room
+
+1777116623
+gschwind!~gschwind@user/gschwind
+ok
+
+1777116768
+AmandaC!~m-yt727s@cloud.camnet.site
+and I'm not holding onto the pointer returned by getOrPutResult either, as far as I can tell.
+
+1777116790
+AmandaC!~m-yt727s@cloud.camnet.site
+It _is_ safe to mutate the values under that pointer, right?
+
+1777116804
+AmandaC!~m-yt727s@cloud.camnet.site
+( bar usual concurrency stuff )
+
+1777116811
+gschwind!~gschwind@user/gschwind
+if it is not the key yes
+
+1777116927
+gschwind!~gschwind@user/gschwind
+I would say your are using an undefined behaviour by mistake
+
+1777118958
+AmandaC!~m-yt727s@cloud.camnet.site
+... I'm at a total loss. I thought "maybe I'm deiniting the Room somewhere my grepping isn't finding" so I added a log to the Room struct's deinit... now it's not storing the room at all it seems? Previously if I went west then back east, it'd only reload the initial room, now it's reloading _every_ room.
+
+1777119164
+AmandaC!~m-yt727s@cloud.camnet.site
+... but only if I use std.log.scoped
+
+1777119191
+AmandaC!~m-yt727s@cloud.camnet.site
+am I somehow corrupting the memory? I'm not sure how I would be.
+
+1777119221
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+sounds like it
+
+1777120527
+AmandaC!~m-yt727s@cloud.camnet.site
+... and now it's behaving the same again, only losing the room data on the first player movement.
+
+1777122976
+AmandaC!~m-yt727s@cloud.camnet.site
+Quick sanity check: None of the hashmaps or anything secretly call ".deinit" on their elements do they?
+
+1777123012
+ifreund!2940d10f8b@user/ifreund
+no
+
+1777123040
+ifreund!2940d10f8b@user/ifreund
+I'd recommend reaching for tooling like the debug allocator or valgrind
+
+1777124094
+ahto!~ahto@user/ahto
+AmandaC: Possible to find out with lldb if you have an idea where in your codebase you think it could be calling it or where the problem lies.
+
+1777124164
+ahto!~ahto@user/ahto
+Or use @breakpoint() 
+
+1777124942
+AmandaC!~m-yt727s@cloud.camnet.site
+Well, I found somewhere I was temoporially storing the result of the getOrPut, but now it's duplicating the entries every time. Sanity check: std.array_hash_map.String compares off the string's values, not the pointer of the string, tight?
+
+1777125010
+AmandaC!~m-yt727s@cloud.camnet.site
+cause now that I fixed that, it's acting like it's never found the keys at all, and if I iterate them, it lists each room multiple time.s
+
+1777126254
+AmandaC!~m-yt727s@cloud.camnet.site
+... figured it out. I was assuming the array_hash_map would clone/take ownership of the keys passed in. iterating that same list but looking at the keys showed the keys were freed, or otherwise somehow made empt
+
+1777126257
+AmandaC!~m-yt727s@cloud.camnet.site
+y
+
+1777138161
+AmandaC!~m-yt727s@cloud.camnet.site
+Is there any way to take an Io.Reader and parse it as json, other than to read the entire reader and then use std.json.parseSlice
+
+1777138194
+ahto!~ahto@user/ahto
+You mean stream it?
+
+1777138278
+AmandaC!~m-yt727s@cloud.camnet.site
+I guess? Not sure what the exact phrasing would be
+
+1777138468
+ahto!~ahto@user/ahto
+Feel free to say if I am wrong, however I believe you want to know that instead of reading the whole file and holding it in memory and then parse it, you want to lazily get segments of the JSON structure on request or iterate over the elements but only one at a time if it happens to be an array?
+
+1777138522
+AmandaC!~m-yt727s@cloud.camnet.site
+I'd ideally like something like std.json.parseSlice but just consuming an std.Io.Reader, parsing into a given type all at once, without me having to have three buffers
+
+1777138663
+AmandaC!~m-yt727s@cloud.camnet.site
+Hrm, looking at https://ziglang.org/documentation/master/std/#std.json.Scanner I'm not seeing much in the way of that
+
+1777138664
+AmandaC!~m-yt727s@cloud.camnet.site
+bleh
+
+1777138714
+ahto!~ahto@user/ahto
+TokenSource may be the thing you are after?
+
+1777138720
+ahto!~ahto@user/ahto
+parseFromTokenSource*
+
+1777138796
+ahto!~ahto@user/ahto
+So, you can make a json.Reader from an io.Reader and then throw it into parseFromTokenSource and that might meet your criteria
+
+1777138893
+AmandaC!~m-yt727s@cloud.camnet.site
+ah, that takes a Reader as well!
+
