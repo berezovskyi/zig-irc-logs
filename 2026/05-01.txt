@@ -1,0 +1,120 @@
+1777598090
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+can we detect growing error set on an API?  with `foo() catch do_something()` it's not possible, right?  i always write `foo() catch |e| switch (e) { ..}` even if foo has single error in a set, fearing that what if foo() extends its set in future
+
+1777598120
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+i mean from long-term maintenance perspective
+
+1777598236
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+iow, shouldn't capture-less catch be avoided as inherently not future proof?
+
+1777598640
+deevus!95670cc21b@irc.pico.sh
+andrewrk What's the contributor friendly idea that you have for me? And also how do you feel about my suggestion above with expanding the objdump PR?
+
+1777599130
+torque!~tachyon@user/torque
+one way to catch it is if the calling function declares the error set it returns explicitly
+
+1777599254
+torque!~tachyon@user/torque
+but in general when it's appropriate to catch without a capture depends on the library
+
+1777599267
+torque!~tachyon@user/torque
+er, on the application/usage
+
+1777599315
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+it seems that if i don't capture the error, the code stays valid (per compiler) even if errors are addded/removed
+
+1777599548
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+ie. critical code should probably not use the captureless catch at all.  (or add something like comptime asserts on exact error set)
+
+1777599723
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+i guess the reason why it bugs me is that it feels at odds with Zig philosophy of explicit vs. implicit  (more than try or inferred error sets, since try does not lose info and inferred sets are checked at comptime)
+
+1777599977
+andrewrk!~andrewrk@mail.ziglang.org
+deevus: the other idea is to start updating sites from using std.array_list.Managed to std.ArrayList
+
+1777599985
+andrewrk!~andrewrk@mail.ziglang.org
+I gave you a review, hope that helps
+
+1777600111
+deevus!95670cc21b@irc.pico.sh
+andrewrk Thank you. I'll look at the other idea as well 👍
+
+1777604308
+deevus!95670cc21b@irc.pico.sh
+andrewrk addressed your review comments. Thanks again
+
+1777604634
+deevus!95670cc21b@irc.pico.sh
+425 instances of `std.array_list.Managed` in the codebase
+
+1777604676
+deevus!95670cc21b@irc.pico.sh
+Should I create an issue?
+
+1777605624
+yrds96!~yuri@189.4.105.57
+netvor: not sure if i did understand. but I created a simple example of a function that can return a error set {errorA, errorB} and then using swith catch |e| handling only A. by doing that I received an error: "error: switch must handle all possibilities". Is that what you mean?
+
+1777605650
+andrewrk!~andrewrk@mail.ziglang.org
+deevus: no, there is already an issue
+
+1777605666
+deevus!95670cc21b@irc.pico.sh
+GitHub mebe? I couldn't find it on Codeberg
+
+1777605693
+andrewrk!~andrewrk@mail.ziglang.org
+https://codeberg.org/ziglang/zig/issues/31220
+
+1777605751
+deevus!95670cc21b@irc.pico.sh
+Thanks. I was searching for the wrong keyword
+
+1777605767
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+vrds96:  i meant when you use `catch` without the `|e|` part.   then later if the function adds new errors to its set (even if it's explicit) the code will compile and you won't get notified
+
+1777605813
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+it's a minor thing, though, i was kind of just thinking loud :)
+
+1777606229
+deevus!95670cc21b@irc.pico.sh
+I'm trying to configure my M4 to use the self-hosted backend through Rosetta. Stage4 takes a long time with LLVM. 
+
+1777606275
+yrds96!~yuri@189.4.105.57
+oh got it. in that case i dont know other way besides using a switch
+
+1777606746
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+(oh i was wondering why tab completion does not work on your nick, => i'm blind lol :D)
+
+1777637616
+blblack!~bblack@wikimedia/bblack-WMF
+re: capture-less catches: prior to the std.Io revolution, I could see some cases where it might make sense even in a ~robust application to e.g. "foo.readSomeFile(bar) catch return error.FileReadFailed" as a sort of "I don't care how it failed or if a new error kind is added, just fail".
+
+1777637650
+blblack!~bblack@wikimedia/bblack-WMF
+but I think with std.Io in play now, the bulk of all faily cases will also need to propagate error.Canceled, too, so that makes it rarer.
+
+1777637731
+blblack!~bblack@wikimedia/bblack-WMF
+(non-"io" failure modes would either be allocator ooms, or some sort of logic/value -based error return from pure code)
+
+1777637920
+blblack!~bblack@wikimedia/bblack-WMF
+and there's the unexpectedError sort of way to do this, too, which is more robust than narrowing everything to one error value.
+
