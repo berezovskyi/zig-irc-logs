@@ -1,0 +1,244 @@
+1777858100
+chinmay!558230f1f2@user/chinmay
+can i express an addSystemCommand depending on a file which is not in its argv
+
+1777858170
+chinmay!558230f1f2@user/chinmay
+so the command still needs to be rerun if the file changes but it's only imported in the files included in the argv
+
+1777858300
+chinmay!558230f1f2@user/chinmay
+nvm found addFileInput
+
+1777886682
+identity2!~identity@user/timide
+The doc of std.process.execve mentions "Due to the heap-allocation, it is illegal to call this function in a fork() child", but why? In C it's common to fork() -> if pid == 0 -> execve.
+
+1777887331
+ifreund!2940d10f8b@user/ifreund
+timide: std.process.execve doesn't exist
+
+1777887371
+timide!~identity@user/timide
+What ? https://ziglang.org/documentation/0.15.2/std/#std.process.execve
+
+1777887379
+ifreund!2940d10f8b@user/ifreund
+oh, 0.15
+
+1777887396
+ifreund!2940d10f8b@user/ifreund
+that function is not a direct syscall, and the comment is correct
+
+1777887411
+ifreund!2940d10f8b@user/ifreund
+if you are using 0.15 and want the direct syscall try std.posix.execve
+
+1777887428
+ifreund!2940d10f8b@user/ifreund
+sorry, execveZ
+
+1777887444
+timide!~identity@user/timide
+that's what i am doing but what would be the issue with the heap when using std.process.execve ?
+
+1777887496
+AmandaC!~m-yt727s@cloud.camnet.site
+std.process.execve is a higher level wrapper around what c does, I assume
+
+1777887515
+ifreund!2940d10f8b@user/ifreund
+according to posix, it is illegal to call malloc after fork and before execve
+
+1777887584
+ifreund!2940d10f8b@user/ifreund
+if your allocator is "fork safe" it would be OK I guess
+
+1777888116
+timide!~identity@user/timide
+are you sure it's illegal? i've never read that about that
+
+1777888127
+timide!~identity@user/timide
+The only thing I found in the man doc : After a fork() in a multithreaded program, the child can safely call only async-signal-safe functions (see signal-safety(7)) until such time as it calls execve(2).
+
+1777888141
+ifreund!2940d10f8b@user/ifreund
+malloc isn't async signal safe
+
+1777888151
+timide!~identity@user/timide
+"in a multithreaded program"
+
+1777888199
+ifreund!2940d10f8b@user/ifreund
+if you aren't using threads you are probably fine indeed, the problems (as per usual) arise from the existence of other threads doing things at the same time
+
+1777888230
+ifreund!2940d10f8b@user/ifreund
+for example, you can deadlock in malloc after fork before execve if another thread is holding a mutex when fork is called
+
+1777888235
+timide!~identity@user/timide
+yes, i can imagine issues with locks maybe in such a case
+
+1777888265
+timide!~identity@user/timide
+so the comment in the std doc a bit radical right?
+
+1777888286
+ifreund!2940d10f8b@user/ifreund
+no, it's a totally reasonable comment, allocator implementations are not required to be "fork safe"
+
+1777888308
+timide!~identity@user/timide
+oh ok
+
+1777888366
+ifreund!2940d10f8b@user/ifreund
+If your code will only ever run in a single threaded context, you can probably ignore it with the knowledge that you are technically violating the documented API contract :)
+
+1777888393
+ifreund!2940d10f8b@user/ifreund
+but I would just write the more correct version personally
+
+1777888400
+ifreund!2940d10f8b@user/ifreund
+it's also much easier to handle errors before forking in any case
+
+1777888500
+timide!~identity@user/timide
+it was just out of curiosity when i read this comment :)
+
+1777891588
+timide!~identity@user/timide
+oh, execv(p)eZ was removed in 0.16!
+
+1777892165
+ifreund!2940d10f8b@user/ifreund
+https://ziglang.org/download/0.16.0/release-notes.html#posix-and-oswindows-removals
+
+1777892369
+timide!~identity@user/timide
+thanks, it seems to me execve is now under std.os.linux, any reason execvpe has not been added there?
+
+1777893472
+ifreund!2940d10f8b@user/ifreund
+timide: execvpe isn't a syscall, it's implemented on top of execve in libc
+
+1777893845
+timide!~identity@user/timide
+oh yes, thanks
+
+1777902300
+kenrap!~kenrap@user/kenrap
+I'm noticing that waylock fails with `ld-elf.so.1: /lib/libc.so.7: Undefined symbol "environ"` when building with the 0.16 compiler on FreeBSD. Is that bug to report about?
+
+1777902864
+ifreund!2940d10f8b@user/ifreund
+kenrap: that's strange, waylock's FreeBSD CI passed...
+
+1777903073
+kenrap!~kenrap@user/kenrap
+ifreund: sorry, I meant that waylock 1.6.0 fails to run. I expressing it as if it might be compiler related to how it fails to run. It builds fine for me though.
+
+1777903980
+ifreund!2940d10f8b@user/ifreund
+kenrap: ah, I don't think I tested actually running it on freebsd :/
+
+1777903992
+ifreund!2940d10f8b@user/ifreund
+I'll have a look
+
+1777904057
+kenrap!~kenrap@user/kenrap
+ifreund: Appreciate it. I'm using 16-current, let me know if you experience the same in 15.
+
+1777904243
+kenrap!~kenrap@user/kenrap
+I'm in the process of updating zig ports for 0.16 and just testing things to make sure they still work. :)
+
+1777904960
+ifreund!2940d10f8b@user/ifreund
+kenrap: huh, waylock seems to run fin for me on FreeBSD 15-release
+
+1777904975
+ifreund!2940d10f8b@user/ifreund
+could you share the exact build command and error message?
+
+1777906648
+kenrap!~kenrap@user/kenrap
+ifreund: it happens when using any of the Release* optimize flags and this error occurs when running waylock: ld-elf.so.1: /lib/libc.so.7: Undefined symbol "environ"
+
+1777906773
+ifreund!2940d10f8b@user/ifreund
+kenrap: what does ldd /path/to/waylock print?
+
+1777906838
+ifreund!2940d10f8b@user/ifreund
+only happening in release mode does seems like a Zig regression...
+
+1777906885
+ifreund!2940d10f8b@user/ifreund
+ok, I can reproduce it now when building in release mode
+
+1777906912
+ifreund!2940d10f8b@user/ifreund
+It notably doesn't reproduce when building with lld/llvm in debug mode either, so could also be an llvm regression...
+
+1777906931
+ifreund!2940d10f8b@user/ifreund
+(the default debug backend doesn't use llvm/lld any more)
+
+1777906972
+kenrap!~kenrap@user/kenrap
+Oof... Thanks checking all of this. :)
+
+1777911097
+vipoxin!~vipoxin@user/vipoxin
+greetings
+
+1777911231
+blblack!~bblack@wikimedia/bblack-WMF
+hi :)
+
+1777913189
+hadronized!2d33342fd7@2a03:6000:1812:100::14e0
+searching for « std zig » on Google leads to old version of the standard library, which is super confusing; I had error with zig regarding the variant of the Type tagged union and it took me a couple minutes to realize what was wrong
+
+1777915293
+yrds96!~yuri@189.4.105.57
+hadronized: that sucks, but expected given by the fact zig website contains all zig versions documentations available. I personally would use `zig std` to avoid this kind of mistake
+
+1777915481
+hadronized!2d33342fd7@2a03:6000:1812:100::14e0
+that’s probably a good advice indeed
+
+1777933547
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+i came here to chew gum and allocate memory.   and i'm all out of memory.
+
+1777933603
+meidam!~meidam@user/meidam
+lol, good one
+
+1777934031
+andrewrk!~andrewrk@mail.ziglang.org
+lol
+
+1777934083
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+but what i *really* want is to have `fn foo(comptime T: type) type` that takes union and just slaps `fn format()` on it which just delegates to the union members (as in `switch .. inline else `)
+
+1777934184
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+but maybe that's not very zigalicious,  it's too close to first-class functions i guess
+
+1777934232
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+(ok i talked myself back to not knowing what i want)
+
+1777934413
+netvor!~netvor@2a00:ca8:a1f:cd0:32c5:3c6a:f10f:2a8e
+(and turns out i already have a better version of what i want in my api)
+
