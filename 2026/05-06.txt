@@ -1,0 +1,164 @@
+1778040196
+daurnimator!~daurnimat@vultr.daurnimator.com
+It seems that `zig fetch` now demands I use a build.zig: is there a way to add something to the global zig cache?
+
+1778040380
+torque!~tachyon@user/torque
+this is a known regression in 0.16 and will be fixed in 0.17. see also https://codeberg.org/ziglang/zig/pulls/31992 / https://codeberg.org/ziglang/zig/issues/31866
+
+1778040701
+daurnimator!~daurnimat@vultr.daurnimator.com
+Wait until 0.17?? I'm avoiding upgrading any arch packages to 0.16 until I can figure this out
+
+1778040748
+daurnimator!~daurnimat@vultr.daurnimator.com
+but thanks for the link torque 
+
+1778040779
+torque!~tachyon@user/torque
+0.17 should be released soon™
+
+1778040825
+torque!~tachyon@user/torque
+I think the main changes slated are the llvm 22 upgrade, some build system redesign, and misc fixes
+
+1778061695
+ksynwa!~ksynwa@49.36.209.51
+What does tag mean exactly in this context? "If you want access to the ordinal value of an enum, you can specify the tag type"
+
+1778062636
+dutchie!~dutchie@user/dutchie
+ksynwa: `usize` in `enum(usize) { }` 
+
+1778062691
+dutchie!~dutchie@user/dutchie
+i.e. the integer type underlying the enum, which that sentence says you have to explicitly specify if you want to get the ordinal value
+
+1778070897
+ksynwa!~ksynwa@49.36.209.51
+dutchie thank youy
+
+1778070899
+ksynwa!~ksynwa@49.36.209.51
+you*
+
+1778073714
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+src/main.zig:70:34: error: expected type '*align(1) const fn (os.linux.SIG__enum_3335) callconv(.c) void', found '*const fn (i32) callconv(.c) void' .handler = .{ .handler = signalHandler },
+
+1778074084
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+std.os.linux.SIG
+
+1778074097
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok
+
+1778076036
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+std.log.info("contains HOME: {any}", .{init.environ.contains(arena, "HOME")});
+
+1778076046
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+is this a typo in release notes?
+
+1778076070
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ error: no field named 'environ' in struct 'process.Init'
+
+1778077978
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+init.minimal.environ.
+
+1778077980
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm ok
+
+1778082153
+dutchie!~dutchie@user/dutchie
+https://zigbin.io/93334c this feels dumb but since BoundedArray died is there a more sensible way to do it?
+
+1778082323
+dutchie!~dutchie@user/dutchie
+I can always have my own data_count field and do all the bookkeeping by hand but it feels like the *Bounded methods on ArrayList are what I should be using here
+
+1778083279
+blblack!~bblack@wikimedia/bblack-WMF
+dutchie: you can also just use it directly, passing the storage diretly to initBuffer and then letting ArrayList.deinit deallocate the buffer.
+
+1778083392
+dutchie!~dutchie@user/dutchie
+yeah maybe that's easiest
+
+1778083759
+blblack!~bblack@wikimedia/bblack-WMF
+I don't know if that's intended, since the initBuffer stuff says all methods taking an allocator cause IB, and deinit does so :)
+
+1778083775
+blblack!~bblack@wikimedia/bblack-WMF
+but in practice it seems fine: if you gpa-alloc the argument to initBuffer, you can call .deinit(gpa)
+
+1778083842
+blblack!~bblack@wikimedia/bblack-WMF
+which is really just putting Bounded/initBuffer lipstick on what could otherwise be regular ArrayList usage with initCapacity() and .appendAssumeCapacity() etc
+
+1778084049
+Sivecano!~Sivecano@user/Sivecano
+dutchie: if you do it like that, init should probably just mutate the uninitialized memory in-place
+
+1778084073
+Sivecano!~Sivecano@user/Sivecano
+then you can choose if you put this struct on the stack or heap
+
+1778086229
+Sivecano!~Sivecano@user/Sivecano
+but I guess that datastructure isn't safe to move
+
+1778093133
+gmc2000!~arvid@user/gmc2000
+hi all, very new to zig, trying to figure things out. Using 0.16, looking at '
+
+1778093134
+gmc2000!~arvid@user/gmc2000
+pub fn openFile(dir: Dir, io: Io, sub_path: []const u8, options: OpenFileOptions) File.OpenError!File
+
+1778093158
+gmc2000!~arvid@user/gmc2000
+What is the 'io' argument supposed to be? How do i get an Io instance?
+
+1778093471
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+gmc2000: https://ziglang.org/download/0.16.0/release-notes.html#Juicy-Main
+
+1778093885
+gmc2000!~arvid@user/gmc2000
+tranzystorekk: thanks, but I'm building an app with dvui, so I don't have a main unfortunately
+
+1778094112
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+in that case you can construct an ad-hoc, workaround io instance via var threaded: Io.Threaded = .init_single_threaded; const io = threaded.io();
+
+1778094389
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+gmc2000, dvui.io
+
+1778094398
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+or yeah, that
+
+1778094406
+gmc2000!~arvid@user/gmc2000
+tranzystorekk: thanks, I found this indeed: https://pedropark99.github.io/zig-book/Chapters/12-file-op.html#using-the-single-threaded-io-implementation, which tells me the same :)
+
+1778094411
+gmc2000!~arvid@user/gmc2000
+Gliptic: oh, aha!
+
+1778094577
+gmc2000!~arvid@user/gmc2000
+Both of your suggestions worked, I'll settle for dvui.io, seems the most appropriate.
+
+1778094584
+gmc2000!~arvid@user/gmc2000
+Thanks!
+
