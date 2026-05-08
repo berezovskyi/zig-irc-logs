@@ -1,0 +1,564 @@
+1778115060
+jodijodington!~thelounge@user/JodiJodington
+is there any way to change the path of and/or disable the project zig-pkg directory? 
+
+1778115072
+jodijodington!~thelounge@user/JodiJodington
+it doesn't seem like it based on the source code of the compiler but I thought i'd ask
+
+1778116353
+andrewrk!~andrewrk@mail.ziglang.org
+jodijodington: yes, check the `--help` text for the command you're using
+
+1778116364
+andrewrk!~andrewrk@mail.ziglang.org
+  --pkg-dir [path]              Override path to local package directory
+
+1778116372
+andrewrk!~andrewrk@mail.ziglang.org
+it was added recently (after the 0.16.0 tag)
+
+1778116418
+jodijodington!~thelounge@user/JodiJodington
+ah, I'm on 0.16.0
+
+1778116420
+andrewrk!~andrewrk@mail.ziglang.org
+not sure how you're expecting to disable it and still have dependencies
+
+1778116459
+andrewrk!~andrewrk@mail.ziglang.org
+don't worry, 0.17.0 is just around the corner
+
+1778116580
+jodijodington!~thelounge@user/JodiJodington
+I thought you were joking but the milestone doesn't seem to have too many things in it
+
+1778116618
+jodijodington!~thelounge@user/JodiJodington
+so no huge breaking changes this time around?
+
+1778117114
+andrewrk!~andrewrk@mail.ziglang.org
+there are still breaking changes, even in this short release cycle
+
+1778121863
+deevus!95670cc21b@irc.pico.sh
+andrewrk I addressed all your comments and would like a re-review if you have time https://codeberg.org/ziglang/zig/pulls/32067
+
+1778122050
+deevus!95670cc21b@irc.pico.sh
+Tyvm
+
+1778127233
+jodijodington!~thelounge@user/JodiJodington
+is it expected that std.Build.libc_file doesn't apply to a TranslateC step? Usually you want to translate the target's headers and not the system ones so it feels unintuitive 
+
+1778140240
+ifreund!2940d10f8b@user/ifreund
+jodijodington: no, that doesn't seem like expected behavior to me
+
+1778140260
+ifreund!2940d10f8b@user/ifreund
+feel free to open a bug report or pull request on tha translate-c repo: https://codeberg.org/ziglang/translate-c/
+
+1778141493
+jodijodington!~thelounge@user/JodiJodington
+ifreund: looks like a very simple fix, I'll make a PR shortly
+
+1778141540
+jodijodington!~thelounge@user/JodiJodington
+there's a discussion on if we want TranslateC to also have a settable libc_file field/option like the Compile steps do (probably yes) so maybe ill open an issue for that
+
+1778141755
+jodijodington!~thelounge@user/JodiJodington
+also looks like the `zig translate-c` command allows you to specify a --libc, but the independent package (ziglang/translate_c) does not so I'm working on a way to make that work. I might have gotten nerd sniped though, it looks like this one will be a lot more complicated lol
+
+1778142995
+jodijodington!~thelounge@user/JodiJodington
+ifreund: here you go if you'd like to look it over https://codeberg.org/ziglang/zig/pulls/35236
+
+1778147878
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can I set a global allocator for a certain module? It handles c api callbacks, I need a allocator, but can't pass it I think, as the callback needs to have a specific signature
+
+1778147939
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+like a function, setGlobalModuleAlloctor, set via main 
+
+1778148064
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I had it set in a config file: https://git.sr.ht/~jasm/jasmlabels-private-with-log/tree/develop/item/src/config.zig
+
+1778148111
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+now with juicy main, I take the init allocator
+
+1778149203
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Same issue for a Io probably
+
+1778149389
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+Io interface is nice, but it might force users to reason about multithreading, which might make Zig a harder to use language for simple stuff. 
+
+1778149444
+Sivecano!~Sivecano@user/Sivecano
+eh, just don't use async or concurrent and you're safe
+
+1778149604
+blblack!~bblack@wikimedia/bblack-WMF
+I actually think, if you stick to the provided interfaces, std.Io will make it easier for users to take advantage of multi-threading, uring, kqueue, etc without havint to get so deep in the weeds of those issues as they would otherwise have to.
+
+1778149660
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blblack: I certainly agree on that part, but not so sure if you don't need it
+
+1778149664
+blblack!~bblack@wikimedia/bblack-WMF
+where things get dicey and it requires even more such reasoning, is when you're trying to skirt around the edges of the design and directly do multithreading-level things
+
+1778149702
+blblack!~bblack@wikimedia/bblack-WMF
+(like writing code that uses explicit threads of its own + "threadlocal" vars, and then expecting std.Io tasks to work with it easily)
+
+1778149770
+blblack!~bblack@wikimedia/bblack-WMF
+but yeah, I think, a lot users will have a little bit of a learning curve and then aha moment about concurrent-vs-async, and then it'll be pretty breezy.
+
+1778149958
+blblack!~bblack@wikimedia/bblack-WMF
+relatedly, I've been pushing hard locally on trying out the Operation/Batch stuff.  I locally did some ugly patches to port netSend, netWrite, and netAccept over to Operations, and then moved a typical tcp connection server model of mine over to trying to operate based on Batched with them.
+
+1778149962
+blblack!~bblack@wikimedia/bblack-WMF
+it's been an interesting ride!
+
+1778150013
+blblack!~bblack@wikimedia/bblack-WMF
+netSend was for my UDP case that wouldn't use Batched anyways, that worked pretty well.  TCP + Batched is the tricky thing.
+
+1778150170
+blblack!~bblack@wikimedia/bblack-WMF
+So, the way I modeled things at the applayer was to treat Batch like a higher-level version of poll() itself: the server has a fixed maximum connection concurrency count, preallocates all structures/buffers for that many, preallocates an Operation.Storage slice (one slot per conn, to hold whichever read or write op a given conn needs at the moment, plus an extra one for the netAccept that creates new conns).
+
+1778150264
+blblack!~bblack@wikimedia/bblack-WMF
+the idea is that only the net_accept one is added to the batch at first.  as that creates new connections, they each use .addAt() to put their current read or write op into the batch, and the higher-level application "runloop" calls batchAwaitConcurrent once per iteration: get completions for various conns and/or accept, handle them, re-arm or switch some ops, loop again, etc...
+
+1778150321
+blblack!~bblack@wikimedia/bblack-WMF
+all things considered, it worked surprisingly well at passing a lot of tests.  but where I hit a wall was when I realized there's no way to get rid of an existing operation in a batch.
+
+1778150422
+blblack!~bblack@wikimedia/bblack-WMF
+what I wanted to do, was keep one persistent Batch for life.  My connections are already in a priority queue ordered by idleness, so I always know the timeout I want to allow batchAwaitConcurrent() to wait (until the most-idle conn's "timeout" time would fire, causing us to want to tear down that connection for client timeout)
+
+1778150476
+blblack!~bblack@wikimedia/bblack-WMF
+but if said connection added a .net_read operation, and the client never sent us any data, and we reach that timeout.... now I've got a net_read operation for it stuck in my batch that I can't get rid of when I want to tear down the rest of that connection's state to free up the slot for some other client.
+
+1778150679
+blblack!~bblack@wikimedia/bblack-WMF
+so, I donno.  the inability to do a batch.removeAt() -like thing, seemed pretty limiting yesterday.  and because Operation.Storage's union is not a union(enum), it's kind of tricky to even inspect the state of said slots to delete them safely, if you don't know whether they're in "submitted" vs "completed" (or "pending", which I don't quite understand fully yet, but I assume userland removing a "pending" 
+
+1778150685
+blblack!~bblack@wikimedia/bblack-WMF
+would be breaky either way)
+
+1778150738
+blblack!~bblack@wikimedia/bblack-WMF
+I suspect that, as usual, the Zig design is probably better than me, and I just need to keep readjusting my thinking and how I'm using things :)
+
+1778150781
+blblack!~bblack@wikimedia/bblack-WMF
+like, the thought occurs to me as I rubber-duck this to the channel, that perhaps I'm not meant to keep one Batch for life, even if I do keep one persistently-allocated []Operation.Storage for life.
+
+1778150823
+blblack!~bblack@wikimedia/bblack-WMF
+if I create a fresh Batch on each iteration, that would give me a lot of freedom to make adjustments to "ongoing" operations in the storage between batchAwaitConcurrent() calls.
+
+1778150860
+blblack!~bblack@wikimedia/bblack-WMF
+I donno, need more coffee before I can get further :)
+
+1778152138
+blblack!~bblack@wikimedia/bblack-WMF
+Reflecting on that a bit more: if I made a fresh Batch per iteration, I'd have to re-arm *everything* ongoing.  Maybe that's ok.  I could have each conn keep a state of something like "next_op: ?Io.Operation", and then at the  "bottom" of my runloop, create a fresh batch, iterate the conn list and have them all .addAt() their current operation (if any), call batchAwaitConcurrent to get new completions, 
+
+1778152145
+blblack!~bblack@wikimedia/bblack-WMF
+iterate .next() for completions, and in the per-conn callbacks that generates, update the connection's .next_op so we know what to add into the next fresh Batch.
+
+1778154521
+blblack!~bblack@wikimedia/bblack-WMF
+tried that strategy, it works, and makes things simpler!  It feels wasteful to instantiate a batch just to call awaitConcurrent() once (and then deferred-cancel it at the bottom of the loop) and start over again each time.  But maybe my feelings are misplaced in the grand scheme of things.
+
+1778154563
+blblack!~bblack@wikimedia/bblack-WMF
+but the []Io.Operation.Storage persists anyways, and Batch is fairly cheap outside of that
+
+1778154633
+blblack!~bblack@wikimedia/bblack-WMF
+I worry a little about lost completions during .cancel, though.
+
+1778154676
+blblack!~bblack@wikimedia/bblack-WMF
+I guess I can iterate .next() again and catch them?
+
+1778155430
+blblack!~bblack@wikimedia/bblack-WMF
+maybe if this is a supported use-case at all (single-shot Batches for a runloop like this), there should be something like batch.awaitConcurrentFinal(io, timeout), which blends the behaviors of awaitConcurrent+cancel, leaving us just one iteration and a clean, canceled state afterwards.
+
+1778155451
+blblack!~bblack@wikimedia/bblack-WMF
+but doing the two separately and calling my completions iterator twice does seem to work
+
+1778155630
+blblack!~bblack@wikimedia/bblack-WMF
+hmmmm... actually, I don't even need to iterate between the two calls, can just do: batch.awaitConcurrent(io, timeout); batch.cancel(io); iterate(batch.next());
+
+1778155661
+blblack!~bblack@wikimedia/bblack-WMF
+but it does leave me wondering what the time bounds are on .cancel() (will it effectively honor the original timeout for anything that was in-progress?)
+
+1778156400
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm why is my build suddenly complaining for a fingerprint, while it's there already for a long time
+
+1778156406
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+zig 0.15
+
+1778156455
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+error: missing top-level 'fingerprint' field; suggested value: 
+
+1778156692
+blblack!~bblack@wikimedia/bblack-WMF
+yeah so for Posix+Threaded, batch.cancel() is pretty minimal.  Windows is... I kinda don't care, other than how it impacts the higher-level design, but clearly more complex under the hood than Posix.  Uring is interesting to look at too, though, because it also does complex and potentially time-unbounded things on batch.cancel() at a glance.
+
+1778156719
+blblack!~bblack@wikimedia/bblack-WMF
+hmmm
+
+1778156961
+blblack!~bblack@wikimedia/bblack-WMF
+oh, maybe not.  ASYNC_CANCEL is issued for remaining pending things.
+
+1778157052
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+fingerprint, ah default zig version in arch linux is 0.16 now
+
+1778157130
+blblack!~bblack@wikimedia/bblack-WMF
+so, yeah, "within reason", I shouldn't have to worry too much about .cancel() taking forever, I think.
+
+1778157347
+blblack!~bblack@wikimedia/bblack-WMF
+(by "within reason", I mean I don't expect it to hang ~forever because some io I had submitted just never finishes, like a network read where the peer has gone silent.  It should, on ~short timescales for things like user-level sync primitive, complete)
+
+1778157392
+blblack!~bblack@wikimedia/bblack-WMF
+I could always quiesce between the two as well, JIC
+
+1778158812
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+defer if (gpa.deinit() != .ok) @panic("Memory leak on exit!");
+
+1778158822
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+this doesn't work anymore in 0.16
+
+1778159203
+blblack!~bblack@wikimedia/bblack-WMF
+flower_: yeah, if you're using the std.process.Init's gpa, you don't get the chance to do that directly (or technically, even pick an allocator that does so: it picks based on release/debug build mode)
+
+1778159238
+blblack!~bblack@wikimedia/bblack-WMF
+and its default behavior in debug with debugallocator, IIRC, is going to be to emit leak info to stderr, but not prevent the process from exiting in a normal non-error way
+
+1778159267
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ok, sounds not bad
+
+1778159273
+blblack!~bblack@wikimedia/bblack-WMF
+it feels like maybe there should be an std.options thing for this (to ask for leaks->panic/error)
+
+1778159359
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+probably
+
+1778172068
+netvor!~netvor@2a00:ca8:a1f:cd0:19b7:818f:a572:c479
+is this a bug in 0.15.2 or am i going crazy (or misundertanding)?  trying to append to a file using print() signature.   `fd.seekFromEnd(0);  var fw = fd.writer(&.{}); try fw.interface.print(..); try fw.interface.flush();`
+
+1778172087
+netvor!~netvor@2a00:ca8:a1f:cd0:19b7:818f:a572:c479
+but the file now contains only the forrmatted data, ie. as if i did not seek  to the end
+
+1778172132
+netvor!~netvor@2a00:ca8:a1f:cd0:19b7:818f:a572:c479
+mode is .write_only and writing directly to fd works as expected
+
+1778172210
+netvor!~netvor@2a00:ca8:a1f:cd0:19b7:818f:a572:c479
+(by directly i mean the deprecated fd.writeAll(data))
+
+1778172711
+netvor!~netvor@2a00:ca8:a1f:cd0:19b7:818f:a572:c479
+here's a minimal repro: https://bpa.st/EHBQ
+
+1778172803
+netvor!~netvor@2a00:ca8:a1f:cd0:19b7:818f:a572:c479
+(doing the seek after creating writer does not change anything, not that i would expect to)
+
+1778176094
+andrewrk!~andrewrk@mail.ziglang.org
+blblack: I disagree, I don't think trying to configure the default init makes sense at all. at that point just do your own initialization
+
+1778176878
+blblack!~bblack@wikimedia/bblack-WMF
+andrewrk: where I see the utility, is software that is fine with default init generally, but you want to run a hard-exit leak check under CI or something.  It's relatively-trivial to plumb a build CLI flag though a b.addOptions(), vs having to change how main initializes itself just to get an error exit for leaks.
+
+1778189907
+tonybtw!~tony@user/tonybtw
+hi
+
+1778189928
+andrewrk!~andrewrk@mail.ziglang.org
+hi
+
+1778189937
+Sivecano-!~Sivecano@user/Sivecano
+hiii
+
+1778189989
+tonybtw!~tony@user/tonybtw
+can anyone provide me some insight on this? as someone who doesn't use LLMs, i respect this policy here https://ziglang.org/code-of-conduct/#strict-no-llm-no-ai-policy
+
+1778190040
+tonybtw!~tony@user/tonybtw
+but it seem's obvious that parts of this page were LLM'd (see emojis to represent left to right arros ->) https://ziglang.org/download/0.16.0/release-notes.html#File-System
+
+1778190042
+andrewrk!~andrewrk@mail.ziglang.org
+no, that's off topic here
+
+1778190075
+tonybtw!~tony@user/tonybtw
+ok
+
+1778190088
+Sivecano-!~Sivecano@user/Sivecano
+tonybtw: I don't think it's actually LLM'd
+
+1778190160
+andrewrk!~andrewrk@mail.ziglang.org
+LLM: off topic
+
+1778190162
+andrewrk!~andrewrk@mail.ziglang.org
+LLVM: on topic
+
+1778190216
+Sivecano-!~Sivecano@user/Sivecano
+tbh, I've been considering writing a little abi shim library that wraps functions and types so the data that doesn't have a clear data layout (and is hence ABI viable) gets one. (mainly talking about stuff like tagged unions and non-ptr optionals, which I've been consuming like and addict)
+
+1778190595
+tonybtw!~tony@user/tonybtw
+Lol. well LLVM is a 30 million line c++ dependency to turn "add rax, rcx" in my head into "add rax, rcx" on disk
+
+1778190838
+andrewrk!~andrewrk@mail.ziglang.org
+yeah, we're chipping away at the ways zig depends on it, little by little
+
+1778191257
+Sivecano-!~Sivecano@user/Sivecano
+how hard would it be to implement yet another backend for zig? (just for fun)
+
+1778191437
+andrewrk!~andrewrk@mail.ziglang.org
+I'd say on the difficulty axis, fairly easy, however on the time consuming axis: fairly time consuming
+
+1778191477
+andrewrk!~andrewrk@mail.ziglang.org
+basically it comes down to lowering those Air.Tag variants (src/Air.zig) into target machine instructions
+
+1778191489
+tonybtw!~tony@user/tonybtw
+have you ever experimented with 'qbe'?
+
+1778191533
+andrewrk!~andrewrk@mail.ziglang.org
+I never took qbe seriously since it outputs text and relies on system assembler being installed
+
+1778191549
+Sivecano-!~Sivecano@user/Sivecano
+that's what I was looking at
+
+1778191574
+Sivecano-!~Sivecano@user/Sivecano
+I thought, surely getting zig to compile to qbe is doable :D
+
+1778191596
+andrewrk!~andrewrk@mail.ziglang.org
+for fun? or ...?
+
+1778191597
+Sivecano-!~Sivecano@user/Sivecano
+andrewk: it's supposed to be more of a hobby thing anyway, right?
+
+1778191611
+Sivecano-!~Sivecano@user/Sivecano
+andrewk: just for fun
+
+1778191615
+Sivecano-!~Sivecano@user/Sivecano
+and to be quirky
+
+1778191624
+andrewrk!~andrewrk@mail.ziglang.org
+have fun
+
+1778191822
+tonybtw!~tony@user/tonybtw
+i originally wrote an x11 window manager in rust, but I ran into some issues with the rust crate "x11rb", which was not feature complete so to speak. i pivoted over to zig and the selling point for me was no hidden control flow, and the excellent C interop. zig has better C interop than C
+
+1778191889
+Sivecano-!~Sivecano@user/Sivecano
+tbh, xlib is incredibly miserable
+
+1778191914
+Sivecano-!~Sivecano@user/Sivecano
+if you wanna write a window manager, I recommend targeting https://codeberg.org/river/river instead
+
+1778191921
+Sivecano-!~Sivecano@user/Sivecano
+(it's written in zig too :D)
+
+1778191927
+Menchers!Menchers@user/menchers
+what about xcb?
+
+1778191930
+tonybtw!~tony@user/tonybtw
+and Zig fixes has all the nicities you would expect from a language in 2020+ for systems programming such as slices, actual import module system, no reliance on preprocessors/macros for metaprogramming, etc.
+
+1778191981
+tonybtw!~tony@user/tonybtw
+i dont mind xlib.
+
+1778192057
+Sivecano-!~Sivecano@user/Sivecano
+Menchers: look, I'm a professional X11 hater over here
+
+1778192078
+Menchers!Menchers@user/menchers
+>:(
+
+1778192213
+Sivecano-!~Sivecano@user/Sivecano
+is xcb actually nice?
+
+1778192273
+Sivecano-!~Sivecano@user/Sivecano
+last time I tried X11 rendering to the root window in a way that doesn't get entirely overidden by the compositor seemed like a herculean task
+
+1778192315
+Sivecano-!~Sivecano@user/Sivecano
+it's also one of those old C libraries that aren't that nice to use from zig...
+
+1778192350
+chooky!~chooky@user/chooky
+i've been daily driving river for a couple years now and I've had no issues :p
+
+1778192523
+Sivecano-!~Sivecano@user/Sivecano
+chooky: river is pretty great, I finally got to write my own window manager :D
+
+1778192562
+tonybtw!~tony@user/tonybtw
+x11 is excellent. and Zig was a great tool to create the WM
+
+1778192589
+tonybtw!~tony@user/tonybtw
+Is Isaac still maintaining 'zig-wayland'?
+
+1778192592
+Sivecano-!~Sivecano@user/Sivecano
+tonybtw: link?
+
+1778192607
+Sivecano-!~Sivecano@user/Sivecano
+tonybtw: yes, and tbh it's really great
+
+1778192626
+Sivecano-!~Sivecano@user/Sivecano
+so much better than the c wayland bindings
+
+1778192628
+tonybtw!~tony@user/tonybtw
+https://github.com/tonybanters/oxwm
+
+1778192640
+tonybtw!~tony@user/tonybtw
+this is the mirror, i have it on my local cgit instance
+
+1778192648
+Sivecano-!~Sivecano@user/Sivecano
+zig is really well suited to wrapping those kinds of APIs imo
+
+1778192666
+tonybtw!~tony@user/tonybtw
+yea I agree. no hidden control flow is the biggest thing for me
+
+1778192870
+Sivecano-!~Sivecano@user/Sivecano
+tonybtw: yooo, neat wm
+
+1778192900
+Sivecano-!~Sivecano@user/Sivecano
+Even just the flexibility in namespacing is pretty cool
+
+1778192929
+Sivecano-!~Sivecano@user/Sivecano
+and imo zig has the best metaprogramming I've seen
+
+1778193237
+tonybtw!~tony@user/tonybtw
+thanks, appreciate that
+
+1778193307
+chooky!~chooky@user/chooky
+Sivecano: that's so cool! I'm still on the older version.. haven't had the opportunity to make the switch to the newer version.
+
+1778193634
+tonybtw!~tony@user/tonybtw
+same here. i need to jump to 0.16 haha
+
+1778193667
+Sivecano-!~Sivecano@user/Sivecano
+tonybtw: the transition to zig 0.16 was surprisingly easy (I miss std.posix :( )
+
+1778193715
+Sivecano-!~Sivecano@user/Sivecano
+the main disappointment of that was that my project doesn't really have a use for the new async stuff
+
+1778193742
+chooky!~chooky@user/chooky
+Sivecano: the only annoyance I had was the conversion from explicit buffered writers to implicit haha. had some refactoring to do
+
+1778193782
+Sivecano-!~Sivecano@user/Sivecano
+chooky: surprisingly enough that was way more annoying than the Io stuff 
+
+1778193807
+Sivecano-!~Sivecano@user/Sivecano
+there's also the deprecation of @Type...
+
+1778193818
+Sivecano-!~Sivecano@user/Sivecano
+which I think is actually a pretty good thing
+
