@@ -1,0 +1,284 @@
+1778225934
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+var threaded: Io.Threaded = .init_single_threaded;
+
+1778225936
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+const io = threaded.io();
+
+1778225940
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+also for build.zig?
+
+1778226041
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+b.graph.io if that's what youre asking
+
+1778226117
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ah
+
+1778226147
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+https://ziglang.org/documentation/0.16.0/std/#std.Io.Dir.copyFile
+
+1778226160
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+hm somehow I expected io as first parameter
+
+1778231047
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+const err = std.process.replace(io, .{ .argv = argv });
+
+1778231066
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how do I handle that err? Function doesn't return if succeeded.
+
+1778232113
+dutchie!~dutchie@user/dutchie
+you can just switch on it like a regular value. either `switch (err) { ... }` if you are defining it like that or just `switch (std.process.replace(io, .{ ... })) { ... }`
+
+1778237209
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+dutchie: thx
+
+1778251486
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to run a script from my application and want to give the process a environ map to be used by the script. Maybe it would be good if the script has the same environment variables as the main application, plus the ones set by the main application. Do I need to copy the init.environ_map into a new map for that?
+
+1778253369
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+let's clone it: std.process.Environ.Map
+
+1778253564
+gschwind!~gschwind@user/gschwind
+Hello, after looking at https://codeberg.org/ziglang/zig/issues/32032 , I wonder if array of float or integer could have operators +,-,*,/, @intFromFloat, @floatFromInt that broadcast as for @Vector ?
+
+1778253692
+teleyos!~tristandu@user/teleyos
+test
+
+1778253714
+teleyos!~tristandu@user/teleyos
+nice it works, first time trying out irc
+
+1778254376
+teleyos!~tristandu@user/teleyos
+i feel like it's made to be hard to send messages lol
+
+1778254397
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+huh
+
+1778254521
+teleyos!~tristandu@user/teleyos
+i mean using irc
+
+1778254536
+teleyos!~tristandu@user/teleyos
+i might just be too dumb/unfamiliar
+
+1778255088
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+getting connected is a bit harder than other "chats" I guess
+
+1778256303
+blblack!~bblack@wikimedia/bblack-WMF
+https://status.codeberg.org/status/codeberg :(
+
+1778256388
+blblack!~bblack@wikimedia/bblack-WMF
+these days it seems to be a decent statistical guess that any outage anywhere was at least indirectly caused by AI scrapers :P
+
+1778256537
+blblack!~bblack@wikimedia/bblack-WMF
+back on the Io.Batch thing from yesterday: ultimately, I don't think Batch was intended to be used like this (as a generic poll for many concurrent TCP connections over the long haul of a server).  It can be made to work, but it's not a natural fit.
+
+1778256567
+blblack!~bblack@wikimedia/bblack-WMF
+probably better off sticking with concurrent Futures, even if that means lots of threads under Threaded
+
+1778257071
+blblack!~bblack@wikimedia/bblack-WMF
+somewhere in some channel, I recall someone (andrew?) talking about changing how/where error.Timeout happens in the std.Io interfaces anyways, so that might have a big design impact on all related things.  I can't quite find it right now.
+
+1778257257
+blblack!~bblack@wikimedia/bblack-WMF
+if Operations had their own individual timeouts as part of that, that could make this interesting.  then batch.awaitConcurrent() could still have an overall max timeout, but the effective poll timeout inside would be the minimum of all Operation timeouts and the overall timeout, and when an individual operation times out, it would be completed into an error.Timeout state at the per-Op level....
+
+1778257320
+blblack!~bblack@wikimedia/bblack-WMF
+that would make Batch interesting as a non-one-shot solution for a generic TCP server accepting multiple connections all within one Task/Fiber
+
+1778257493
+blblack!~bblack@wikimedia/bblack-WMF
+(althought it might still be nice, on top of that, to also have a .removeAt())
+
+1778257558
+blblack!~bblack@wikimedia/bblack-WMF
+((but I don't know if that's realistic with the "pending" state being a possibility.  maybe removeSubmissionAt() which only works if it's still in the submitted state and returns an error otherwise?)
+
+1778257565
+blblack!~bblack@wikimedia/bblack-WMF
+)
+
+1778258028
+blblack!~bblack@wikimedia/bblack-WMF
+backing out a few abstraction layers: really, does it fundamentally ever make sense to ever have an I/O operation with no timeout whatsoever which blocks indefinitely?  I mean, eventually at various layers: the task must eventually be canceled somehow, or the "other side" must give up eventually (be it a human or a process or a remote machine or whatever) or the whole process must die somehow, or the heat 
+
+1778258034
+blblack!~bblack@wikimedia/bblack-WMF
+death of the universe, whatever.
+
+1778258069
+blblack!~bblack@wikimedia/bblack-WMF
+block-forever operations are common and effectively the default in many legacy APIs, but philosophically they don't make sense in robust software?
+
+1778258158
+blblack!~bblack@wikimedia/bblack-WMF
+it's sort of like unbounded stack allocation or a truly-infinite loop, but in the dimension of time instead of space :P
+
+1778258223
+blblack!~bblack@wikimedia/bblack-WMF
+I donno, I'm sure there's holes in my random thoughts here.  But in the moment, I feel like time-unbounded I/O is fundamentally unsound.
+
+1778258558
+blblack!~bblack@wikimedia/bblack-WMF
+(it occurs to me though: with per-op timeouts and multiple calls to batch.awaitConcurrent in a loop, that they'd all need to be converted to deadline form at the Operation level to make sense)
+
+1778263145
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+the new std.Io.RwLock gives me a lot of errors to handle. 
+
+1778263331
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+there should be other ways to tell that my code is not sane ;)
+
+1778263544
+blblack!~bblack@wikimedia/bblack-WMF
+arguably RwLock is rarely a good design decision
+
+1778263570
+blblack!~bblack@wikimedia/bblack-WMF
+(I mean that in general, not zig-specific)
+
+1778263670
+blblack!~bblack@wikimedia/bblack-WMF
+generally you're doing rwlock because you have heavy reads that you'd like to be concurrent on the shared side, and hopefully-relatively-rare writes that need the exclusive locks.
+
+1778263706
+blblack!~bblack@wikimedia/bblack-WMF
+but if the overlapping concurrent readers (shared lock holders) never let up, the writer could be blocked for a very long time.
+
+1778263752
+blblack!~bblack@wikimedia/bblack-WMF
+or you change the lock design (or parameters, depending) to give writers priority (once I writer is attempting to lock, further attempts to lockshared are blocked until the writer gets its turn and then unlocks)
+
+1778263785
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I need to redesign it for sure
+
+1778263789
+blblack!~bblack@wikimedia/bblack-WMF
+but now you've got writers causing hiccups in all that fast reader-side concurrency you were hoping for
+
+1778263804
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I was waiting for 0.16
+
+1778263805
+blblack!~bblack@wikimedia/bblack-WMF
+(which is still arguably a better outcome for most cases than starving the write-side)
+
+1778263892
+blblack!~bblack@wikimedia/bblack-WMF
+I've come to think of the desire for an rwlock as a strong sign that what I really want is something more like RCU or EBR
+
+1778263915
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+so you're suggesting a mutex instead of a RwLock?
+
+1778263917
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Finally getting around to upgrading my project to 0.16.0. Should I be making my own structs have .empty consteads instead of just doing `const foo: Foo = .{}`? 
+
+1778263955
+blblack!~bblack@wikimedia/bblack-WMF
+(which are essentially ways for the writer/updater side to allocate the new thing, publish it for readers' ~lockless consumption, and then eventually-destroy the old copy once nobody's referencing it anymore)
+
+1778264022
+blblack!~bblack@wikimedia/bblack-WMF
+flower_: I don't know what you're designing, just speaking generally.  I would assume if a regular mutex would've scaled well for what you're doing, you wouldn't have reached for an rwlock to begin with though.
+
+1778264093
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+blblack: I'm a newbie. I was (mis)using goroutines in Go
+
+1778264104
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+let's make it build first
+
+1778264115
+blblack!~bblack@wikimedia/bblack-WMF
+always a good first step! :)
+
+1778266921
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+how to switch on a err and just return the err?
+
+1778266939
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+switch (err) { else => return err,} 
+
+1778267489
+gschwind!~gschwind@user/gschwind
+just return err ?
+
+1778267506
+gschwind!~gschwind@user/gschwind
+or just `try`
+
+1778267556
+gschwind!~gschwind@user/gschwind
+or catch |err| { return err }
+
+1778273412
+Furai!~Furai@user/Furai
+Wow, nice, didn't know there was Zig IRC channel. :)
+
+1778273536
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+psss, it's "secret"
+
+1778276805
+santy!~santy@user/santy
+hi
+
+1778276808
+santy!~santy@user/santy
+oh god finally
+
+1778276810
+santy!~santy@user/santy
+i can talk
+
+1778276822
+santy!~santy@user/santy
+what's a good IRC client... haven't used this in years
+
+1778276855
+yrds96!~yuri@189.4.105.57
+depends on what you need, i'm using irssi because i just need to see text
+
+1778276945
+santy!~santy@user/santy
+i'm ok with seeing just text but i'm using weechat and it truly does not remember anything when i close it
+
+1778277284
+Furai!~Furai@user/Furai
+santy: not sure what you mean by that but I'm also using weechat and I don't have any issues with it. 
+
+1778277763
+santy!~santy@user/santy
+Furai: np, not a client issue, my DNS was getting fucky.
+
