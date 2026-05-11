@@ -1,0 +1,620 @@
+1778371222
+thermos!~thermos@user/thermos
+idk, I'm new to zig and in all of the example build.zig scripts under here https://ziglang.org/learn/build-system/#generating-files they do not do what I said above, looks like the idea is to create small helpers? seems excessive for something like just reading a file thoough?
+
+1778371286
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+i am now .. i was assuming build system would supply the io instance+interface, similarly to how it supplies allocator
+
+1778371374
+grimtyr!~quassel@196.119.175.117
+if your using 0.16 there is init in pub fn main(init: std.process.Init) which has init.io
+
+1778371384
+thermos!~thermos@user/thermos
+yeah, again I personally haven't even used the build system before 0.17 (finishing ziglings right now XD) but from what I've seen I would've imagined b.* would provide an Io like std.process.Init \o/
+
+1778371448
+grimtyr!~quassel@196.119.175.117
+sorry read that wrong there is an io in build.zig its in b.graph.io
+
+1778371470
+thermos!~thermos@user/thermos
+ah there it is!
+
+1778371571
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+nice, thanks
+
+1778373850
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+thermos: `zig init` includes a "tasty main" that shows a standard way of getting an io
+
+1778373870
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+well, at least version 0.17.0-dev.284+cd23f7a81 does, not sure about the latest release.
+
+1778373962
+thermos!~thermos@user/thermos
+yea yea that's what I've been seeing, my initial suggestion of std.Io.Threaded.init* was a quick guess at how to get an Io in build.zig where you dont have the std.process.Init option
+
+1778374042
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+oh my bad I missed that
+
+1778374108
+thermos!~thermos@user/thermos
+started my programming journey in Rust ~ 1.5 yr ago and dabbled with C here and there, always annoyed me how you can just get argc and argv in C but its a hassle in Rust, I really liked seeing the "tasty/juicy main" stuff being implemented in Zig!
+
+1778375164
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+you mean juicy main, right?  or is there also tasty main now in 0.17.0?   (i assumed that the juicy one is already tasty! :D)
+
+1778375985
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+lol
+
+1778375988
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I mean juicy
+
+1778375993
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+maybe in my head cannon it's tasty
+
+1778382415
+swid!~swid@user/exaltedtoast
+noob question: have been trying to copy stdin to stdout with the new io interface, and am getting segfaults when i try to read a line https://paste.linux.chat/?33a34ab09a15dce0#C9yuPHHKsNWGCbzxBMkHJaMfSfG98jgmnibcMEgvFC1s
+
+1778382431
+swid!~swid@user/exaltedtoast
+as best as i can tell i'm very off with how buffers are meant to work
+
+1778385547
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+swid: you need to make the reader itself var as well, same for writer.  the reader maintains state such as position inside of the buffer.  
+
+1778385591
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+eg. https://bpa.st/LYLA
+
+1778385685
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+(btw you can often just use the .interface directly, eg.  `try stdin_reader.interface.takeDelimiterInclusive('\n');` taking the pointer is useful if you then need to pass it to functions )
+
+1778385810
+swid!~swid@user/exaltedtoast
+yeah saw a tutorial that made it var, but compiler complains that i'm not modifying them... but removing the separate interface step and just doing `reader.interface.take...` works O.o
+
+1778385896
+swid!~swid@user/exaltedtoast
+i guess if i want a shorthand for .interface, i need to also find some excuse to "modify" the reader with a no-op
+
+1778385923
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+there's File.Reader and Io.Reader, which are separate types, which can be confusing since they often show up as `Reader`.   File.Reader contains Io.Reader plus more details which only make sense in context of filesystem
+
+1778386077
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+Io.Reader does not actually contain contain the variable data, it basically just wraps pointer to the "parent" reader (in this case File.Reader) where the position etc. is kept
+
+1778386117
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+so taking the shortcut is perfectly fine, it just needs to be const.  there's no need to change it
+
+1778386172
+swid!~swid@user/exaltedtoast
+i must be missing something because making it const is what causes the segfault when you try to use it
+
+1778386200
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+check my snippet:  i'm only making the *address* const
+
+1778386226
+swid!~swid@user/exaltedtoast
+:o
+
+1778386227
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+if you see std.Io.Reader, think "this is pointer".  which you almost never want to modify
+
+1778386246
+swid!~swid@user/exaltedtoast
+i missed those ampersands lol
+
+1778386277
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+oh that as well :)
+
+1778386325
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+it's actually quite similar to how allocators work.  they wrap address of some "unspecified allcation facility" plus refer to methods how to work with it
+
+1778386350
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+same for readers/writers, except it's "unspecified writing/reading facility"
+
+1778386553
+swid!~swid@user/exaltedtoast
+right ok, makes sense
+
+1778386767
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+if you want to have more fun, check out eg.  std.Io.Writer.Allocating.  this is a "writing facility" which writes to memory (and grows as needed) instead of file.   i like to use it a lot for reading files in combination of eg. Reader.steamRemaining() -> i stream from a file backed reader to memory backed writer (Allocating)
+
+1778386837
+swid!~swid@user/exaltedtoast
+yeah that's about where i'm headed soon-ish since length limits on a cat clone is annoying :p
+
+1778386941
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+well it's annoying but probably safer..  to be fair me using this method too often has its risks :D
+
+1778386942
+Affliction!affliction@idlerpg/player/affliction
+Yeah, Reader/Writer implementations might expect additional context, that they'll access using @fieldParentPtr
+
+1778386950
+Affliction!affliction@idlerpg/player/affliction
+I too, ran into that footgun
+
+1778386993
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+ouch, you just reminded me of my forgotten fear ... @fieldParentPtr :D
+
+1778386999
+Affliction!affliction@idlerpg/player/affliction
+So if you copy the Io.Reader/Writer out of the struct they're contained in, then pass a ref to that copy, then, @fieldParentPtr will produce a pointer to nowhere
+
+1778387009
+Affliction!affliction@idlerpg/player/affliction
+I think it's really neat, but yeah, gotta be careful with it, heh
+
+1778387030
+Affliction!affliction@idlerpg/player/affliction
+When I fell over this particular footgun, I didn't segfault, it just acted weird. Fun debugging session.
+
+1778387116
+Affliction!affliction@idlerpg/player/affliction
+Allocator is slightly different, since it contains a pointer to the allocator's context, and another one to the vtable. So, allocators can be duplicated safely
+
+1778387123
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+i should wrap my head around it and play with it to demystify it for myself.   sometimes i run into weird errors which i end up working around somehow, hoping that no one asks why that thing works but the other does not :D
+
+1778387195
+swid!~swid@user/exaltedtoast
+ACTION considers asking netvor many annoying questions
+
+1778387209
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+:D
+
+1778387245
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+ACTION needs to go to bed soon, though
+
+1778387308
+Affliction!affliction@idlerpg/player/affliction
+Conceptually it's pretty straight forward. const baz: *Foo = @fieldParentPtr(foo, "bar"); pretty much says: "Assume 'foo' is contained within field 'bar' within a struct of the inferred result type (Foo)." Subtract the offset of "bar" within Foo from 'foo's address, and return it. 
+
+1778387328
+Affliction!affliction@idlerpg/player/affliction
+that analogy could have flowed better, partially edited it a few times while writing it heh
+
+1778387337
+Affliction!affliction@idlerpg/player/affliction
+probably could have picked better names
+
+1778387491
+Affliction!affliction@idlerpg/player/affliction
+and if we're writing a cat clone, you can pipe a Reader directly to a Writer, see the *stream* methods
+
+1778387539
+Affliction!affliction@idlerpg/player/affliction
+that's also designed to use efficient paths the OS might provide if you're moving data between 2 file descriptors
+
+1778387751
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+Affliction: "So if you copy the Io.Reader/Writer out of the struct they're contained in"  ... didn't you mean File.Reader/Writer?   iiuc Io.Reader/Writer are copied all the time
+
+1778387847
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+oh wait no i'm full of .. :D
+
+1778387897
+Affliction!affliction@idlerpg/player/affliction
+yeah, you don't want to copy the Io.Reader out of the File.Reader, but I think the File.Reader is copyable, since it has all the context it needs
+
+1778387936
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+i think i was incorrect in my explanation above, swid, sorry :D   Io.Writer/Reader is not supposed to be const, the pointer is! :)  it's a bit different from allocator
+
+1778387950
+Affliction!affliction@idlerpg/player/affliction
+so you'll have to point to the Io.Reader/Writer within File.Reader/Writer
+
+1778387961
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+i got so much used to copying around the pointer that i forgot about the star :D
+
+1778387961
+Affliction!affliction@idlerpg/player/affliction
+since, @fieldParentPtr is used to get that extra context
+
+1778387983
+Affliction!affliction@idlerpg/player/affliction
+yeah, when you're a few functions deep in the call stack, you start to think of them as values
+
+1778387996
+Affliction!affliction@idlerpg/player/affliction
+but yeah, Io.Reader/Writer should always be a pointer in function sigs
+
+1778388026
+Affliction!affliction@idlerpg/player/affliction
+some Readers/Writers are indeed standaline, like Reader.fixed()
+
+1778388038
+Affliction!affliction@idlerpg/player/affliction
+but, if you want to be generic, they should always be passed as a pointer
+
+1778388042
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+it sort of converges in my head:  i learn to think of `[]const u8` as a pointer, `std.mem.Allocator` as a pointer, `*std.Io.Writer` as a pointer :D
+
+1778388045
+thermos!~thermos@user/thermos
+another noob question: when passing the Io and Allocator from main to my other functions, is it sensible to simply passby value or should I really be passing by ptr i.e. do_io_stuff(&io, &arena_allocator) and within the function do Io.Dir.openDir(io.*, ...)?
+
+1778388063
+Affliction!affliction@idlerpg/player/affliction
+std.mem.Allocator is indeed, 2 pointers
+
+1778388118
+Affliction!affliction@idlerpg/player/affliction
+I generally pass Io and Allocators by value
+
+1778388125
+thermos!~thermos@user/thermos
+right, so if i just do do_io_stuff(io, arena_allocator) its just copying the pointers and &io/&arena_allocator is just excessive
+
+1778388157
+Affliction!affliction@idlerpg/player/affliction
+yeah, looks like Io has a similar memory layout to Allocator - had to make sure heh
+
+1778388178
+Affliction!affliction@idlerpg/player/affliction
+so, both are 2 poitners, one to an opaque context, and another to the vtable that might use that context
+
+1778388202
+thermos!~thermos@user/thermos
+makes sense since both of these are lightweight a.k.a just pointers that we would be cool with just passing by value and copying then
+
+1778388214
+Affliction!affliction@idlerpg/player/affliction
+yup
+
+1778388236
+Affliction!affliction@idlerpg/player/affliction
+naturally, if the underlying Allocator is deinited or otherwise doesn't outlive its users, you'll have problems
+
+1778388253
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+i always accept allocator interface (as value), and io reader/writer pointer (as .. pointer)  `fn foo(allocator: std.mem.Allocator, w: *std.Io.Writer) !void ..`
+
+1778388254
+Affliction!affliction@idlerpg/player/affliction
+but otherwise, those pointers should remain valid
+
+1778388258
+thermos!~thermos@user/thermos
+naturally,, big ones
+
+1778388292
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+it's all over the place in std, so it's easy to get used to over time
+
+1778388306
+Affliction!affliction@idlerpg/player/affliction
+I'd wonder if Reader/Writer would ever get an opaque context pointer added to them to help avoid this trap that seems common?
+
+1778388348
+thermos!~thermos@user/thermos
+netvor: but in your case you're specifically accepting Io.Reader/Writer as ptr cause they are a bit heavier than the Io interace, have more than just pointers inside
+
+1778388381
+Affliction!affliction@idlerpg/player/affliction
+that too, they are 5 ptr/usizes
+
+1778388387
+Affliction!affliction@idlerpg/player/affliction
+so, 20 or 40 bytes in 32 or 64 bit
+
+1778388421
+Affliction!affliction@idlerpg/player/affliction
+and, of course, @fieldParentPtr is often used by implementations as we've covered
+
+1778388432
+thermos!~thermos@user/thermos
+and the state would diverge from the caller if not passed by pointer right?
+
+1778388442
+Affliction!affliction@idlerpg/player/affliction
+yes
+
+1778388443
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+oh i was not thinking about Io at all .. Io is still new to me, i only started upgrading today
+
+1778388466
+thermos!~thermos@user/thermos
+which wouldn't really matter in a simple context without concurrency stuff happening
+
+1778388483
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+(just don't mind me i'm just a mumbling sleepy old man :D)
+
+1778388519
+thermos!~thermos@user/thermos
+I take that back, it would matter if you're relying on it's state later one XD
+
+1778388700
+Affliction!affliction@idlerpg/player/affliction
+but yeah, I think you can safely copy eg, a File.Reader, since they read positionally, you'd have multiple "cursors" into the same file.  Naturally you only want to close the actual file handle once.
+
+1778388859
+thermos!~thermos@user/thermos
+Affliction: perhaps you can help me understand something about the Reader interfaces from something like Io.File.Reader. I just finished ziglings today and starting to play around and when reading the docs, after opening a file, I would think that I would call File.reader(io, my_buffer) which returns a File.Reader then there's methods like init(File, Io, buffer) and initInterface , Do i need to call initInterface() before using the interface
+
+1778388902
+thermos!~thermos@user/thermos
+scenario: read file to my buffer - the layers of Reader and init methods are confusing me 
+
+1778388910
+Affliction!affliction@idlerpg/player/affliction
+thermos: File.Reader contains an Io.Reader in its "interface" field
+
+1778388918
+Affliction!affliction@idlerpg/player/affliction
+it should be initialized by .reader()
+
+1778388964
+Affliction!affliction@idlerpg/player/affliction
+so, you call var rd =  file.reader(...);  then pass &rd.interface to things which require Io.Reader
+
+1778388988
+thermos!~thermos@user/thermos
+okay and then I can use the methods under Io.Reader of my liking to read into my buffer?
+
+1778389038
+Affliction!affliction@idlerpg/player/affliction
+indeed
+
+1778389070
+Affliction!affliction@idlerpg/player/affliction
+https://bpa.st/VJ6KADQVQ57B2OX4U2ZAFJ25ZE is what some of my code does
+
+1778389180
+thermos!~thermos@user/thermos
+right on, alternatively, could one theorhetically use the File.Reader.init() and other methods directly? or are they mainly intended to be called from other abstractions to make sure they are called in a particular order?
+
+1778389214
+Affliction!affliction@idlerpg/player/affliction
+I believe they're internal
+
+1778389246
+Affliction!affliction@idlerpg/player/affliction
+well, nothing's really "internal", zig tends to encourage looking and poking at internals, bit of a shock coming from an OOP world
+
+1778389268
+Affliction!affliction@idlerpg/player/affliction
+so, if you knew what invariants it expects, no reason you couldn't call it directly
+
+1778389310
+thermos!~thermos@user/thermos
+Okay, they looked that way to me but I wasn't sure (used to Rust docs where private things aren't initially visible/documented) but I suppose if I read the context to understand the invariants I could call it directly.
+
+1778389315
+thermos!~thermos@user/thermos
+beat me to it
+
+1778389367
+Affliction!affliction@idlerpg/player/affliction
+https://ziglang.org/documentation/0.16.0/std/#std.Io.File.Reader.initInterface in particular, just sets up an Io.Reader with an appropriate vtable
+
+1778389423
+Affliction!affliction@idlerpg/player/affliction
+that's another thing, if you're used to C++ (and, IMO, kinda, to an extent, rust), the std lib is full of deep magic. Zig's is pretty straight forward and readable.
+
+1778389448
+thermos!~thermos@user/thermos
+Ah yes I see that, basically doing the invariant work for you - hence the name
+
+1778389534
+thermos!~thermos@user/thermos
+yes its been a very plesant experience so far. Mildly more confusing (mostly I think because I'm used to one thing aka learning curve) but yes the readablity is almost always less than 2 hyperlinks deep... Rust stdlib tends to be a multiple of 5
+
+1778389620
+Affliction!affliction@idlerpg/player/affliction
+"how's this work?" "oh, compiler magic..."
+
+1778389657
+thermos!~thermos@user/thermos
+or 10 different wrappers and 50 lines of cfg! macros
+
+1778389700
+Affliction!affliction@idlerpg/player/affliction
+or in C++, "I've been staring at these 20 lines of code for an hour and can feel my sanity slipping away"
+
+1778389712
+thermos!~thermos@user/thermos
+XD
+
+1778389787
+thermos!~thermos@user/thermos
+after ziglings I felt a breath of fresh air, but I'm in a weird state where I feel like I understand it all on the surface level and how nice some of these zig features and concepts are but will struggle for a bit when it comes to actually implementing stuff. it will be a fun journey though, I'm sure of it.
+
+1778389862
+swid!~swid@user/exaltedtoast
+you can make yourself suffer like me by deciding you want to learn system programming but also learn a good language, which means writing every program in C and zig at the same time
+
+1778389871
+swid!~swid@user/exaltedtoast
+while knowing neither C nor zig
+
+1778389969
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+fwiw barely anyone really *knows* c
+
+1778389991
+thermos!~thermos@user/thermos
+I was writing, somewhat of a terminal emulator program in rust (enough of an emulator where I would have to parse most ANSII codes) and after writing all of my parsing logic I went to see what it would look like in zig and I looked at Ghostty's src code - funny because we had written almost the exact same code, yet the zig variant had some really nice features cough tagged unions that made me want explore zig
+
+1778390053
+swid!~swid@user/exaltedtoast
+tranzystorekk: while probably true, it stands that the vast majority of the core unix ecosystem seems to be C still :p
+
+1778390100
+swid!~swid@user/exaltedtoast
+i am trying to write but a humble posix-style cli that's a good citizen with error codes et al (i should really get around to learning what posix *actually* is...)
+
+1778390151
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+swid: you just activated my trap card https://faultlore.com/blah/c-isnt-a-language/
+
+1778390162
+swid!~swid@user/exaltedtoast
+egads!
+
+1778390284
+thermos!~thermos@user/thermos
+swid: have you referenced existing source code for cat? When it comes to learning how to write posix-C (or close-enough-to-posix) I have found FreeBSD's source code to be a great resource.
+
+1778390491
+swid!~swid@user/exaltedtoast
+i ought to be, but i get scared by code with a lot of macros in it and every project that actually exists seems to be full of them (shoutout to zig not having them)
+
+1778390507
+swid!~swid@user/exaltedtoast
+for reference this is the most complex c program i have written to date :P https://bpa.st/HNTA
+
+1778390524
+swid!~swid@user/exaltedtoast
+why are affliction's bpast urls so long and mine is tiny, does that url actually work
+
+1778390537
+Affliction!affliction@idlerpg/player/affliction
+I enable the long url checkbox
+
+1778390545
+swid!~swid@user/exaltedtoast
+oh
+
+1778390546
+thermos!~thermos@user/thermos
+Agreed, works for me yes
+
+1778390550
+Affliction!affliction@idlerpg/player/affliction
+makes them slightly less bruteforceable
+
+1778390564
+swid!~swid@user/exaltedtoast
+oh no people are gonna brute force read my bad c code what am i gonna do :(
+
+1778390572
+swid!~swid@user/exaltedtoast
+(it's fine :p)
+
+1778390580
+Affliction!affliction@idlerpg/player/affliction
+:D
+
+1778390599
+Affliction!affliction@idlerpg/player/affliction
+yeah, force of habit by me really, I don't only use it for things posted into a large channel
+
+1778390691
+thermos!~thermos@user/thermos
+macros are annoying, fwiw, FreeBSD's man pages are really great at explaining the code and invariants and providing links to other important man pages, i.e. when I was learning how to interface with kqueue (similar concept to Linux's epoll) all I had to do was reference FreeBSD's manpage for kqueue and read the source when I was more curious.
+
+1778390713
+swid!~swid@user/exaltedtoast
+ACTION runs `man 3 epoll`
+
+1778390728
+swid!~swid@user/exaltedtoast
+ACTION runs `man epoll`
+
+1778390833
+thermos!~thermos@user/thermos
+Only reason I'm explicitly referencing FreeBSD is that, for me personally, it has been a better readability experience :p
+
+1778390846
+swid!~swid@user/exaltedtoast
+noted
+
+1778390852
+swid!~swid@user/exaltedtoast
+ACTION still needs to learn what BSD actually is...
+
+1778392421
+swid!~swid@user/exaltedtoast
+tranzystorekk: fun read, confirms my intuition that macros are scary and bad :p
+
+1778402936
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+somehow fmt with boolean is hard ...
+
+1778403020
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+ std.log.debug("client stopped: {b}, optional-gui: {b}: button_icon_width: {d}", .{ (cl.status() == .stopped), cl.hasOptionalGui(), button_icon_width })
+
+1778418493
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+fwiw i almost always `std.log.debug("cl.status()=.{t} cl.hasOptionalGui()={} button_icon_width={d}", `.{cl.status(), .cl.hasOptionalGui(), button_icon_width});`
+
+1778418764
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+but yeah it's kind of weird that afaik there's no format specifier for bool
+
+1778418860
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+otoh somehow, although i was slightly annoyed initially, i don't find myself needing to write bools like that very often.
+
+1778425961
+thermos!~thermos@user/thermos
+how come I cannot use a [5]u8 field within a packed struct?
+
+1778427562
+gschwind!~gschwind@user/gschwind
+according to the documentation it's not allowed: https://ziglang.org/documentation/0.16.0/#packed-struct
+
+1778427636
+gschwind!~gschwind@user/gschwind
+maybe you want @bitCast to u40 ?
+
+1778427723
+gschwind!~gschwind@user/gschwind
+or packed struct with 5 u8 members
+
+1778427927
+thermos!~thermos@user/thermos
+yeah i made it u40 for now, is there a builtin or something to take my u40 and splat it into a [5]u8?
+
+1778428241
+gschwind!~gschwind@user/gschwind
+@bitCast I guess
+
+1778428440
+thermos!~thermos@user/thermos
+that'll do! thank you
+
+1778449869
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+how do i append to file?  i used to do fd.seekFromEnd(0) but  and fd.writeAll(data) but those have been removed
+
+1778449920
+netvor!~netvor@2a00:ca8:a1f:cd0:751b:fb0e:c0a5:d31f
+oh nvm i see it in the release notes now :)
+
