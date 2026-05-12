@@ -1,0 +1,176 @@
+1778458030
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+thermos sounds like someone I work with, who was doing a terminal emulator in rust and then I told him about zig and he finally realized how great it is. 
+
+1778520711
+drbeco!~beco@user/beco
+hello there
+
+1778520773
+drbeco!~beco@user/beco
+I am teaching Zig to my students. Its being a nice road. There is somethings here and there that the students kinda make you think about, question values and truths
+
+1778520835
+drbeco!~beco@user/beco
+This one is from my new book. I just realized that the Zig rule of all being explicit is quietly broken in one hidden small spot. Something that comes from C
+
+1778520876
+drbeco!~beco@user/beco
+a pointer needs the & to get the address of the object it wants to point, almost always, but not always
+
+1778520904
+drbeco!~beco@user/beco
+const p1: FnPtr = addfunc; // bare name decay to pointer
+
+1778520916
+drbeco!~beco@user/beco
+const p2: FnPtr = &addfunc; // explicit pointer
+
+1778520948
+drbeco!~beco@user/beco
+const FnPtr = *const fn(i32, i32) i32; // or something like that
+
+1778520979
+drbeco!~beco@user/beco
+And we have @TypeOf(somar) = fn(i32, i32) i32 , and  @TypeOf(&somar) = *const fn(i32, i32) i32
+
+1778521051
+drbeco!~beco@user/beco
+How you guys feel about letting only the '&func' work, and the point conversion gives an error? That would be nice to keep the & explicit
+
+1778521321
+drbeco!~beco@user/beco
+typo : @TypeOf(addfunc) and @TypeOf(&addfunc) . Thanks
+
+1778521548
+gschwind!~gschwind@user/gschwind
+drbeco, you can also arg that var x: struct { v: u8 = 10, } = .{}; const px = &x; px.v = 20; is not explicit and it should be px.*.v = 20;
+
+1778521749
+drbeco!~beco@user/beco
+oh, no; that is a nice feature called auto-deref , px.v , right? It is perfect. The auto-deref makes perfect sense, and in my view is unrelated; although I see your point.
+
+1778521773
+gschwind!~gschwind@user/gschwind
+usually zig claim not hidden control flow
+
+1778521862
+gschwind!~gschwind@user/gschwind
+it's a bit different from implicit dereference or implicit reference
+
+1778521976
+gschwind!~gschwind@user/gschwind
+even if I agree that const p1: FnPtr = addfunc; could be forbiden
+
+1778522070
+blblack!~bblack@wikimedia/bblack-WMF
+const p1: FnPtr = addfunc; // In a language like Zig, this can really only sensibly mean two things: either &addfunc or a compile error.  I guess Zig took the former road.
+
+1778522127
+blblack!~bblack@wikimedia/bblack-WMF
+it might be different in another language where an actual-function (not a pointer to a function) is capable of being a value.
+
+1778522157
+blblack!~bblack@wikimedia/bblack-WMF
+but then I think you're off in a very different paradigm
+
+1778522331
+gschwind!~gschwind@user/gschwind
+type coercion is also implicit even if it's limited in safe zone in zig
+
+1778522496
+drbeco!~beco@user/beco
+yep, blblack , I cant think of any usage of a function as a value in Zig. That is why it is safe to assume the user wants a type conversion. The question is not the functionality, it works fine. It is the pedagogical gap. It would be more coherent to need the '&'
+
+1778522611
+drbeco!~beco@user/beco
+(could be a warning, no need for a compiler error --- anything that would help the concept of what is happening under the hood be explicit)
+
+1778522769
+blblack!~bblack@wikimedia/bblack-WMF
+zig avoids compiler "warnings" by design, too, IIRC.  Either something is legal or it isn't.
+
+1778522774
+gschwind!~gschwind@user/gschwind
+under the wood fn foo() void may be a pointer by definition, it's like went you write a = 10; in the language you mean (&a).* = 10;
+
+1778522829
+gschwind!~gschwind@user/gschwind
+s/went/when/
+
+1778522838
+blblack!~bblack@wikimedia/bblack-WMF
+yeah, true, maybe the right language to use here is that an fn is always an address, really.  An address that is callable.
+
+1778522885
+blblack!~bblack@wikimedia/bblack-WMF
+well, runtime fns anyways? I have no idea what comptime fns are represented as.  comptime callable pointers?
+
+1778523333
+gschwind!~gschwind@user/gschwind
+blblack as far as I now function are always comptime known pointer
+
+1778523519
+blblack!~bblack@wikimedia/bblack-WMF
+yeah that makes sense, the more I think about it.  A function itself is always a comptime-known pointer.  A function pointer as a runtime value would have the value of one of the comptime-known ones.
+
+1778523897
+gschwind!~gschwind@user/gschwind
+you may craft a function at runtime and call it, but I wonder if it could be done at comptime
+
+1778524124
+blblack!~bblack@wikimedia/bblack-WMF
+"craft a function at runtime" means what? craft a pointer (for example, to something like a function pointer gained a runtime from dlopen()?)
+
+1778524250
+blblack!~bblack@wikimedia/bblack-WMF
+unrelated: I'm 90% of the way there on a trial patch to make all Io.Operation have their own per-operation timeouts (for the batch.awaitConcurrent() usecase, so that one op can complete via op-level timeout).  Now I'm finally realizing that this means error.Timeout has to be handled in *so* many places.  It becomes as ubiquitous as error.Canceled :P
+
+1778524264
+gschwind!~gschwind@user/gschwind
+you can mmap a buffer flagued as executable put some assembly, take the address of the entry point of you function within the buffer in var p: * fn() void
+
+1778524285
+gschwind!~gschwind@user/gschwind
+and call it
+
+1778524348
+blblack!~bblack@wikimedia/bblack-WMF
+either that or we make two sets of errors for every operation, one for when it's timeout-able and one when it isn't.
+
+1778524356
+gschwind!~gschwind@user/gschwind
+emulator, and virtual machine software use this more or less
+
+1778524356
+blblack!~bblack@wikimedia/bblack-WMF
+and maybe that implies two kinds of results, ewww
+
+1778524458
+gschwind!~gschwind@user/gschwind
+compiler may do that also event if I dont know if they do so.
+
+1778538378
+blblack!~bblack@wikimedia/bblack-WMF
+oh, I think I found a way to get per-Operation timeouts without causing all readers/writers everywhere to have to handle a new error.Timeout=>unreachable case everywhere.  It's not super-elegant.  I'll test it with my code as a consumer a bit first, but maybe tomorrow I'll upload an experimental branch to stare at on Codeberg.
+
+1778538570
+jjido!~jjido@2a02:c7c:a308:7800:c101:9adb:b109:5bee
+Huh, are you using unreachable as the substitute for the "new error to handle everywhere"?
+
+1778539394
+blblack!~bblack@wikimedia/bblack-WMF
+jjido: no, I've specialized it to where it only affects callers that ask for it (by using new batch.addTimed()/addTimedAt()), and instead of being part of the real error set in the usual result from batch.next(), an operation-level timeout returns a distinct `.timed_out` result (instead of e.g. `.net_receive => ... `)
+
+1778539429
+blblack!~bblack@wikimedia/bblack-WMF
+that was my compromise.  basically a fake operation named "timed_out" that is only used for this result purpose :)
+
+1778539468
+blblack!~bblack@wikimedia/bblack-WMF
+(and also, cannot be returned for callers that aren't using these new interfaces and thus aware of it)
+
+1778539643
+jjido!~jjido@2a02:c7c:a308:7800:c101:9adb:b109:5bee
+as an operation sounds reasonable
+
