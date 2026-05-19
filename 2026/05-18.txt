@@ -1,0 +1,148 @@
+1779112075
+jetpackjackson!~jetpackja@user/JetpackJackson
+https://zigbin.io/bf03df how can i pipe the stdout of one process to the stdin of another using the new syntax?
+
+1779112088
+jetpackjackson!~jetpackja@user/JetpackJackson
+ive tried spawn and run but cant figure out the combination
+
+1779112806
+blblack!~bblack@wikimedia/bblack-WMF
+jetpackjackson: I think you want spawn in both cases (run is just a wrapper over spawn).  Then in the second one, you basically want to spawn with the options including: .stdin = .{ .file = child.stdout.? }
+
+1779112836
+blblack!~bblack@wikimedia/bblack-WMF
+or something ~close to that, I'm just reading the source
+
+1779112869
+jetpackjackson!~jetpackja@user/JetpackJackson
+oh ok
+
+1779112871
+jetpackjackson!~jetpackja@user/JetpackJackson
+lemme try
+
+1779113169
+jetpackjackson!~jetpackja@user/JetpackJackson
+https://zigbin.io/8d9d62 ok now i get a panic from trying to use a null value
+
+1779113171
+jetpackjackson!~jetpackja@user/JetpackJackson
+hmm
+
+1779113262
+blblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/431aa8
+
+1779113279
+blblack!~bblack@wikimedia/bblack-WMF
+^ this works for me, with the "wc -l" output to the original terminal
+
+1779113317
+jetpackjackson!~jetpackja@user/JetpackJackson
+ohh
+
+1779113328
+dutchie!~dutchie@user/dutchie
+I guess it's getting closed after you .wait it
+
+1779113334
+jetpackjackson!~jetpackja@user/JetpackJackson
+yeah
+
+1779113376
+jetpackjackson!~jetpackja@user/JetpackJackson
+ok now to figure out how to get the stdout into a string instead of Io.File
+
+1779113398
+jetpackjackson!~jetpackja@user/JetpackJackson
+*stdout of foo/the second command
+
+1779113428
+dutchie!~dutchie@user/dutchie
+.pipe again and use std.Io.Reader.streamRemaining to Writer.Allocating
+
+1779113428
+blblack!~bblack@wikimedia/bblack-WMF
+well, if you set .stdout = .pipe on the second one, you can access foo.stdout as a ?Io.File
+
+1779113444
+blblack!~bblack@wikimedia/bblack-WMF
+then do usual reader methods on it into a string
+
+1779113555
+jetpackjackson!~jetpackja@user/JetpackJackson
+ok lemme look up how to do readers and writers cause i forgot
+
+1779113932
+jetpackjackson!~jetpackja@user/JetpackJackson
+wow i have no idea what im doing
+
+1779113987
+blblack!~bblack@wikimedia/bblack-WMF
+Always a good place to start! :)
+
+1779114611
+jetpackjackson!~jetpackja@user/JetpackJackson
+also i love the log print functions 
+
+1779114909
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I'm trying to debug a unit test in lldb, but when I do `frame variable myVar` I don't see anything. otherwise lldb does seem aware of the source code, I was able to set a breakpoint and step through etc.
+
+1779114945
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+could I be missing some other flag needed for this to work? or am I using lldb wrong?
+
+1779114994
+jetpackjackson!~jetpackja@user/JetpackJackson
+https://zigbin.io/7764ef ok got the output, but for some reason i cant trim the newline?
+
+1779115507
+dutchie!~dutchie@user/dutchie
+I'd just grab the first line with reader.takeDelimiter('\n') and then trim the spaces. no need for an extra buffer, the result will point into read_buffer
+
+1779115536
+dutchie!~dutchie@user/dutchie
+not sure why your trimEnd isn't working
+
+1779115621
+dutchie!~dutchie@user/dutchie
+you should be able to do it all in a single std.mem.trim(u8, line, " \n")
+
+1779115639
+dutchie!~dutchie@user/dutchie
+(or &std.ascii.whitespace)
+
+1779115682
+jetpackjackson!~jetpackja@user/JetpackJackson
+ok lemme try
+
+1779115889
+jetpackjackson!~jetpackja@user/JetpackJackson
+https://zigbin.io/f2e2d2
+
+1779116004
+jetpackjackson!~jetpackja@user/JetpackJackson
+oh
+
+1779116006
+jetpackjackson!~jetpackja@user/JetpackJackson
+wait
+
+1779116009
+jetpackjackson!~jetpackja@user/JetpackJackson
+one sec
+
+1779116086
+jetpackjackson!~jetpackja@user/JetpackJackson
+https://zigbin.io/a35796 success!
+
+1779116404
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+gdb's info locals seems to work, but unfortunately when I step into the function under test, it doesn't seem to be able to show me that source code, just the assembly
+
+1779118570
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Interesting: I have a `fn fuzzPhysicsLoop(walls: []Wall, smith: *std.testing.Smith) !void`, and in my unit test I define a `var walls = [6]Wall{...}`. if I try `try std.testing.fuzz(&walls, fuzzPhysicsLoop, .{});` I get a compiler error https://bpa.st/GTMA, but if I first `const slice: []Wall = &walls;` and then `try std.testing.fuzz(slice, fuzzPhysicsLoop, .{});` it works fine. is this WAI?
+
