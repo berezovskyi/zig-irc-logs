@@ -1,0 +1,120 @@
+1779556985
+thermos!~thermos@user/thermos
+is there a way to use arbitrary values for fmt string alignment? since it is a comptime string I can't just use a variable right, but is there a better way than just printing ' ' * (largest_len - current_len) value? For context I'm just trying to align stuff like file sizes which are obviously dynamic values (like ls -l)
+
+1779561689
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+thermos: not sure but i think you could eg. use fmt.bufPrint() to create the formatting string.  you can definitely use vars in comptime: `var fmt_buf: [1024]u8 = undefined;` then `const final_fmt = fmt.bufPrint(&buf, ...);`
+
+1779561832
+thermos!~thermos@user/thermos
+yeah that's what I currently have, iterating over everything once with bufPrint on the value to find the max, and then iterate again using Writer.splatByteAll to print ' ' for the diff - not terrible but was curious if there was a way to use the max_align value in the fmt string like '{s:>max_align}'
+
+1779561865
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+it sometimes helps to keep the vars in custom scopes inside a labeled block:  ie. `const width: usize = b: { var n: ... (compute it) .. ; break :b n;)`
+
+1779561887
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+s/)/}/
+
+1779561990
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+what i meant is to use fmt.bufPrint to create the actual formatting field for the row.   so that you can pass the desired width (which will be something like log10(max_size)) using {d} to create the desired fmt string
+
+1779562156
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+thermos: or wait, scratch that,  sorry that does not make sense 
+
+1779562176
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+(coz you don't know the width comptime)
+
+1779562192
+thermos!~thermos@user/thermos
+would you care to see what I came up with?
+
+1779562199
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+sorry i'm too tired i should have shut up :sweat-smile:
+
+1779562238
+thermos!~thermos@user/thermos
+haha np
+
+1779562362
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+btw here's my code that i use to do tabular output:  https://git.sr.ht/~netvor/zig-povel/tree/zig016/item/src/txt/table.zig
+
+1779562410
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+but i'm just passing in strings as cells, so fmt them regardless of width and then just collect them in the table.  and compute the width on render time
+
+1779562450
+netvor!~netvor@2a00:ca8:a1f:cd0:62da:87ad:1414:c5c7
+(it's pretty old code but i think it works)
+
+1779562810
+thermos!~thermos@user/thermos
+thanks, its funny how we all come up with similar solutions to the same problem, your code looks very similar to a rust program I wrote about a year ago
+
+1779566013
+rvrb!~rvrb@67-42-146-234.ptld.qwest.net
+andrewrk: do you think there's any world where we can use a remote zig cache directory?
+
+1779566040
+andrewrk!~andrewrk@mail.ziglang.org
+what problem are you trying to solve?
+
+1779566074
+rvrb!~rvrb@67-42-146-234.ptld.qwest.net
+heh; I am messing around with a nixpkgs-like package set on Zig build system, and it just would be reasonably helpful to not have to boostrap from Zig up to use a leaf
+
+1779566082
+rvrb!~rvrb@67-42-146-234.ptld.qwest.net
+it's not exactly a standard use case, but just curious
+
+1779566213
+rvrb!~rvrb@67-42-146-234.ptld.qwest.net
+or maybe it's something I could implement in userspace
+
+1779568041
+brka!~brka@user/brka
+Hello, I come from the sad world of web dev. Would anyone be so kind to explain to me how to think about buffer sizes for Writer/Reader interfaces? I assume it depends somehow on the specific Writer/Reader
+
+1779568256
+brka!~brka@user/brka
+To avoid the "XY" problem. As an example I'm building a toy proxy+recorder, I need to read the server response and write it to both the client (TCP) and to the filesystem. For now it's just that simple, I plan to add some configurability like "match header or body"
+
+1779568271
+brka!~brka@user/brka
+But I want to understand the though process, not necessarily how to implement this specific thing
+
+1779569357
+kenrap!~kenrap@user/kenrap
+What's the 0.16 equivilant to 0.15's File.readToEndAlloc?
+
+1779570102
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/download/0.16.0/release-notes.html#fsFilereadToEndAlloc
+
+1779576949
+kenrap!~kenrap@user/kenrap
+andrewrk: thank you :)
+
+1779578643
+GreaseMonkey!greaser@user/greasemonkey
+trying to wrap unrealircd into the zig build system, and it seems that the dynamically-linked modules need to be able to grab symbols from the main executable but they seem to be failing to do so
+
+1779578677
+GreaseMonkey!greaser@user/greasemonkey
+what do i have available to tell the linker to export all the symbols needed?
+
+1779578802
+andrewrk!~andrewrk@mail.ziglang.org
+GreaseMonkey: -rdynamic? (there's a corresponding bool in std.Build.Step.Compile)
+
+1779579153
+GreaseMonkey!greaser@user/greasemonkey
+andrewrk: thank you, i just managed to find it under exe.rdynamic
+
