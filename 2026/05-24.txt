@@ -1,0 +1,156 @@
+1779586497
+thermos!~thermos@user/thermos
+how do i call std.process.replace from main? compiler complains that T!noreturn cannot cast into T!void ?
+
+1779586594
+thermos!~thermos@user/thermos
+ignore that... just forgot to use a try in front of it.
+
+1779586675
+thermos!~thermos@user/thermos
+on that note however, do the defers run before the replace function runs?
+
+1779587123
+Affliction!affliction@idlerpg/player/affliction
+good question, defer happens at the end of the block, but is a noreturn function considered the end of a block?
+
+1779587262
+torque!~tachyon@user/torque
+I would expect not
+
+1779587271
+Affliction!affliction@idlerpg/player/affliction
+doesn't look like it
+
+1779587278
+torque!~tachyon@user/torque
+`noreturn` should just be considered that execution doesn't continue after that point
+
+1779587293
+torque!~tachyon@user/torque
+which means the defer would only trigger in the case that an error was returned
+
+1779587311
+torque!~tachyon@user/torque
+other than that, it doesn't have a special impact on block scoping
+
+1779587343
+torque!~tachyon@user/torque
+defer only runs after all statements in a block complete, but the noreturn statement never completes, in other words
+
+1779587354
+Affliction!affliction@idlerpg/player/affliction
+just tested: pub fn main() void { defer std.debug.print("Defer\n"); std.process.exit(0); }
+
+1779587357
+Affliction!affliction@idlerpg/player/affliction
+sure doesn't
+
+1779587358
+thermos!~thermos@user/thermos
+yeah like you said, you would kinda naively expect it to however since it is not really a scope or block, they don't run
+
+1779587390
+thermos!~thermos@user/thermos
+yeah i concluded the same cause my terminal kept getting stuck in raw mode XD
+
+1779587428
+thermos!~thermos@user/thermos
+so for all the defer's related to memory stuff, they should really be freed before calling a noreturn function
+
+1779587464
+torque!~tachyon@user/torque
+it depends. if you're just doing some small setup before launching a loop or something that runs forever, it probably doesn't matter
+
+1779587535
+thermos!~thermos@user/thermos
+what's interesting though is that pgrep -a zig still shows it running a zig build run after calling process.replace? am i correct in thinking that execve would show the new process/program or am i mistaken
+
+1779587560
+torque!~tachyon@user/torque
+does it execve or does it run it as a child process
+
+1779587580
+thermos!~thermos@user/thermos
+good question, hadn't look as deep as that yet
+
+1779587615
+torque!~tachyon@user/torque
+I guess exec makes more sense but I don't really know the details of how the os gets the process name
+
+1779587719
+thermos!~thermos@user/thermos
+its calling Io.vtable function for processReplace and I haven't figured out yet how to trace the vtable functions in src
+
+1779587769
+Affliction!affliction@idlerpg/player/affliction
+it'd depend on the Io implementation in use
+
+1779587795
+Affliction!affliction@idlerpg/player/affliction
+if it's coming from the default std.process.Init, on linux I think that's https://ziglang.org/documentation/master/std/#std.Io.Threaded
+
+1779587964
+thermos!~thermos@user/thermos
+thanks for that, yeah it does call posix.system.execve but like torque said, I'm not sure how os gets the process name either - i thought on execve it changes but maybe I have it backwards \o/ not really important, just curious
+
+1779623888
+jodijodington!~thelounge@user/JodiJodington
+does anyone have the codeberg issue for ranged ints? I can find the github one but not the codeberg one
+
+1779623906
+jodijodington!~thelounge@user/JodiJodington
+unless it was just never migrated but that seems unlikely to me
+
+1779623996
+AmandaC!~m-yt727s@cloud.camnet.site
+I don't htink they were migrated, the codeberg issues start at 30,000, anything below stayed on github
+
+1779624340
+jodijodington!~thelounge@user/JodiJodington
+hm, interesting. I guess it probably isn't planned then? or is that not a good heuristic 
+
+1779624535
+AmandaC!~m-yt727s@cloud.camnet.site
+It just means it's not been migrated over, AIUI. None of the github issues were migrated, I don't think?
+
+1779624881
+jodijodington!~thelounge@user/JodiJodington
+some were, I've seen plenty on codeberg that said "migrated from github". It's just whenever someone wants to add to the discussion
+
+1779624891
+AmandaC!~m-yt727s@cloud.camnet.site
+I see
+
+1779633822
+tamburlaine!~tamburlai@user/tamburlaine
+i upgraded a project to 0.16.0 and i'm seeing 40% slowdown in release fast. i think most of that is related to my thread pool implementation, as that had to be completely rewritten. would someone be able to give me pointers on what i've misunderstood with std.Io here? https://codeberg.org/fjebaker/twine/src/branch/main/src/root.zig
+
+1779633834
+tamburlaine!~tamburlai@user/tamburlaine
+for comparison, my previous thread map implementation: https://git.sr.ht/~fjebaker/kerrz/tree/main/item/src/threads.zig
+
+1779649576
+blblack!~bblack@wikimedia/bblack-WMF
+tamburlaine: not a direct answer to your question, but the first thing that pops out reading your thread-map stuff is: once you switch to std.Io, technically you're not operating on true threads in the kernel sense.  You're operating now with Tasks, which are abstract units of potentially-concurrent execution.  Task<->OSThread relationships are an implementation detail of the backend std.Io implementation 
+
+1779649582
+blblack!~bblack@wikimedia/bblack-WMF
+(e.g. Threaded, Evented).  The critical thing here is you can't expect "threadlocal" to mean "tasklocal", so you have to move anything that was thread-local into some kind of per-task context/state.
+
+1779649631
+blblack!~bblack@wikimedia/bblack-WMF
+currently, AFAIK, nobody merged work-stealing into std.Io.Threaded, and so it happens to be true that Threaded io.concurrent() Tasks will each be a stable individual OS Thread.
+
+1779649693
+blblack!~bblack@wikimedia/bblack-WMF
+but that's just implementation detail, and I think there's open PRs and/or Issues about implementing work-stealing for Threaded (where e.g. the Task might jump to a different OS Thread after some I/O call has suspended the task for a bit)
+
+1779649708
+blblack!~bblack@wikimedia/bblack-WMF
+and Evented definitely bends the rules, and I think already has work-stealing across OS Threads
+
+1779649723
+blblack!~bblack@wikimedia/bblack-WMF
+(and that aside, may put several Tasks in one OS Thread)
+
