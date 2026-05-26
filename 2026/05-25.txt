@@ -1,0 +1,208 @@
+1779681617
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Huh, I thought the Zig standard library had dynamic/resizable structs.
+
+1779686783
+squeek502!~squeek502@user/squeek502
+clevor, maybe thinking of https://codeberg.org/tristanpemble/zig-flexible-struct ?
+
+1779686964
+andrewrk!~andrewrk@mail.ziglang.org
+there's also an open PR to add it to std lib
+
+1779691654
+squeek502!~squeek502@user/squeek502
+ah i thought that was the case: https://codeberg.org/ziglang/zig/pulls/30823
+
+1779692308
+Affliction!affliction@idlerpg/player/affliction
+not too painful to reinvent that wheel, allocate sizeOf(T) + alignment_required_between_T_and_U + sizeOf(U * N), cast to T, give T method to access tle slice of U, have T's deinit free all the memory.
+
+1779692339
+Affliction!affliction@idlerpg/player/affliction
+those FlexibleStructs do look nice though. Bonus points for supporting many
+
+1779706272
+foxglv!~foxglv@user/sunflr
+haiiii guys. I'm looking to see if i can reduce output of `zig build` so i can only read the error message it prints about the code, what's the best way to do that?
+
+1779706727
+daurnimator!~daurnimat@vultr.daurnimator.com
+foxglv: `zig build --summary=failures`?
+
+1779706753
+daurnimator!~daurnimat@vultr.daurnimator.com
+s/=/ /
+
+1779706840
+foxglv!~foxglv@user/sunflr
+i just want to see the parts with error: or note:
+
+1779706874
+foxglv!~foxglv@user/sunflr
+i found this https://github.com/ziglang/zig/issues/6673#issuecomment-1661499763 but no idea what it means lol
+
+1779714997
+gbrlsnchs!d584fe5421@2a03:6000:1812:100::10b4
+hey folks, as of 0.16, what would be the appropriate way of spawning a subprocess and detaching it from the parent process, so that it gets reaped by the OS independently? right now I'm ignoring SIGCHLD in the main process and forking then resetting SIGCHLD for the subprocess, then using process.spawn
+
+1779718208
+ifreund!2940d10f8b@user/ifreund
+gbrlsnchs: iirc you can use sigaction and SA_NOCLDWAIT instead
+
+1779718232
+ifreund!2940d10f8b@user/ifreund
+with that approach, there's no change to the signal disposition that affects children
+
+1779718242
+ifreund!2940d10f8b@user/ifreund
+so there's nothing to reset post-fork pre-execve
+
+1779718526
+gbrlsnchs!d584fe5421@2a03:6000:1812:100::10b4
+ifreund: gotcha, that's a flag, right? in this case, would handler be null?
+
+1779718591
+ifreund!2940d10f8b@user/ifreund
+SIG_DFL in C
+
+1779718639
+ifreund!2940d10f8b@user/ifreund
+if you set it to SIG_IGN, then you have the same problem with needing to reset post-fork pre-execve
+
+1779718805
+gbrlsnchs!d584fe5421@2a03:6000:1812:100::10b4
+ah, I see... thank you, I will try that!
+
+1779718964
+ifreund!2940d10f8b@user/ifreund
+brka: since you didn't seem to get an answer, the "ideal" buffer size depends a lot on your workload. It's always tradeoff between memory usage and reducing the number of sycalls
+
+1779718981
+tamburlaine!~tamburlai@user/tamburlaine
+blblack: thanks for the hints! i've changed my std.Io implementation based on what you said, to launch as many concurrent jobs as there are threads and handle the thread id and batch calculations within the task's work (so no more threadlocal). i'm now at 30% slower instead of 40%, so a little better but still not great...
+
+1779718997
+ifreund!2940d10f8b@user/ifreund
+a larger buffer means more memory usage but less frequent flushing and potentially greater performance due to fewer syscalls
+
+1779719050
+ifreund!2940d10f8b@user/ifreund
+in most cases it probably wont matter a whole lot what you choose though, somewhere around 1024 bytes is a fine default
+
+1779719100
+ifreund!2940d10f8b@user/ifreund
+another thing to consider is that several Reader functions require a minimum buffer size to work (e.g. takeInt())
+
+1779744281
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Hello! I have questions about Io.net.Stream, specifically related to reading and writing concurrently. I am trying to adapt the test "listen on a unix socket, send bytes, receive bytes" so that after the bytes are sent one way, more bytes get sent the other way. However, it seems that there's some hanging on the "server" side, until the "client" closes its stream after writing. Should this be happening, even though the client is in a 
+
+1779744281
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+concurrent function? Is it a bug, or am I misunderstanding how things work? Any sort of guidance would be great. Thanks!
+
+1779745637
+AmandaC!~m-yt727s@cloud.camnet.site
+Are you flushing?
+
+1779745720
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+on the client, I use writeAll, which, to my understanding, flushes.
+
+1779745737
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+AmandaC ^
+
+1779745826
+AmandaC!~m-yt727s@cloud.camnet.site
+It'll only flush if it's longer than the buffer size, it seems. It just calles this repeatedly: https://ziglang.org/documentation/master/std/#std.Io.Writer.write
+
+1779746062
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+AmandaC, if I add a flush after the writeAll, that doesn't seem to change much, still hangs.
+
+1779746170
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+but, if I close the client stream, then the server is able to read the data from readSliceShort
+
+1779746194
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Problem is I would like to keep the stream open so I can send the data the other way.
+
+1779747630
+brka!~brka@user/brka
+ifreund: thank you :)
+
+1779747855
+brka!~brka@user/brka
+Is tracy still the standard for profiling? I encountered a lot of scattered info and linkrot
+
+1779748753
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Same thing seems to happen with a localhost TCP connection in .stream mode as with Unix sockets
+
+1779749732
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Progress! Okay, so I think the issue I was having is that I was using readSliceShort to read, and the buffer I was passing in was larger than what was being passed in. So it was hanging because it was waiting for the end of the stream (which makes sense in retrospect). I changed it so that it uses takeDelimiter instead, and the messages I send end with \n as a convention. So it'll read until it hits the newline, and then continue. This 
+
+1779749732
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+seems to work! Only remaining issue is deallocation/closing things properly which is more manageable I think.
+
+1779749754
+chooky!~chooky@user/chooky
+encryptedwhisper: nice! glad to hear
+
+1779749949
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+It was also important to flush after writeAll as that caused a hang too. Think that makes sense as well.
+
+1779750023
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Perhaps this could be avoided if the writer buffers were passed as empty
+
+1779750056
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+indeed :) 
+
+1779750399
+brka!~brka@user/brka
+Tbh. I still do not understand when I need to manually flush a writer/reader
+
+1779750412
+brka!~brka@user/brka
+I had similar issues encryptedwhisper 
+
+1779751970
+andrewrk!~andrewrk@mail.ziglang.org
+brka: what do you mean "flush a reader"?
+
+1779751997
+brka!~brka@user/brka
+I meant writer, sorry
+
+1779752149
+andrewrk!~andrewrk@mail.ziglang.org
+short answer: if you receive a *Io.Writer as a parameter, it's not your responsibility
+
+1779752152
+brka!~brka@user/brka
+For example, after calling `Reader.streamRemaining`, it wasn't clear to me if I should call `flush`, it seems like I only need `end`, but I still am not certain
+
+1779752182
+andrewrk!~andrewrk@mail.ziglang.org
+the code that constructs the writer is the code that is responsible for flushing
+
+1779752183
+brka!~brka@user/brka
+andrewrk: ah, that explains it, thanks!
+
+1779752196
+andrewrk!~andrewrk@mail.ziglang.org
+same thing with handling error.WriteFailed
+
+1779752326
+brka!~brka@user/brka
+Ah, I see now in the source that `end` calls `flush` itself, I do not know how I didn't notice it at first
+
