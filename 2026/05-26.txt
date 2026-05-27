@@ -1,0 +1,164 @@
+1779782106
+Affliction!affliction@idlerpg/player/affliction
+hm, coercing from enum to a union - compiler complains some fields are void (which makes sense). is there a method of doing this when you have asserted that the enum is of a type that would be void in the union?
+
+1779782157
+Affliction!affliction@idlerpg/player/affliction
+And in the more general sense, I have many union fields of the same type - dispatching from a network protocol where many verbs have similar fields. 
+
+1779782345
+ifreund!2940d10f8b@user/ifreund
+inline switch cases are very useful for things like that
+
+1779782380
+Affliction!affliction@idlerpg/player/affliction
+that might just do what I need, good hint, wasn't thinking about comptime at all
+
+1779782388
+Affliction!affliction@idlerpg/player/affliction
+Alternatively I could do something like:  struct Message { verb: VerbEnum, payload: union { s1: Struct1, s2: Struct2 } }; 
+
+1779782437
+Affliction!affliction@idlerpg/player/affliction
+but, I would perfer the flatter mapping, without massive redundancy. Which is exactly where inline for / switch shines!
+
+1779783544
+Affliction!affliction@idlerpg/player/affliction
+perfect
+
+1779783779
+Affliction!affliction@idlerpg/player/affliction
+appreciate the nudge, this is much more elegant
+
+1779783833
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1779798390
+tfpk!~pk@user/tfpk
+Test. I love you
+
+1779798595
+foxglv!~foxglv@user/sunflr
+tfpk: <3
+
+1779801008
+slowstatic_!~slowstati@user/slowstatic
+tfpk: ack that luv
+
+1779807432
+kasimir_!~ksmr@user/ksmr
+the annoying thing about using inline switch like that is that it very easily and invisibly tends to result in gigantic  stack usage since locals currently live beyond the end of their block
+
+1779809643
+blblack!~bblack@wikimedia/bblack-WMF
+safeallocator broke my software, revert revert! :)
+
+1779809689
+blblack!~bblack@wikimedia/bblack-WMF
+[but seriously - nice job.  it's crashing my stuff on a trivial UAF that was being missed by testing with DebugAllocator]
+
+1779812872
+andrewrk!~andrewrk@mail.ziglang.org
+oh nice
+
+1779813392
+AmandaC!~m-yt727s@cloud.camnet.site
+UAF?
+
+1779813400
+doclic!~doclic@user/doclic
+hello, i was wondering how i can make std.Build.addTranslateC not error out on implicit int? i don't see any field in the Options struct that seem related
+
+1779813407
+doclic!~doclic@user/doclic
+AmandaC: use after free
+
+1779813411
+AmandaC!~m-yt727s@cloud.camnet.site
+ahhh
+
+1779814823
+blblack!~bblack@wikimedia/bblack-WMF
+yeah I had an "fn destroy(...)" type of function, which was literally doing "gpa.dealloc(thing); thing.* = undefined" :)
+
+1779814847
+blblack!~bblack@wikimedia/bblack-WMF
+err I meant to say "gpa.free(thing); thing.* = undefined"
+
+1779814874
+blblack!~bblack@wikimedia/bblack-WMF
+and it never crashed before under debug, but ~all my integration tests panic'd with safeallocator
+
+1779815080
+blblack!~bblack@wikimedia/bblack-WMF
+is it possible to give a file-level struct attributes like "extern"?
+
+1779815110
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+nope
+
+1779815195
+blblack!~bblack@wikimedia/bblack-WMF
+oh well
+
+1779816312
+doclic!~doclic@user/doclic
+blblack: just wondering, what's the point of setting something to undefined?
+
+1779816479
+blblack!~bblack@wikimedia/bblack-WMF
+well, in an earlier iteration of this struct, I had an "fn deinit(thing: *Thing, gpa: Allocator) { gpa.free(thing.suballocation); thing.* = undefined; }", with the caller destroying the actual storage of thing.
+
+1779816502
+blblack!~bblack@wikimedia/bblack-WMF
+which is generally the better pattern most of the time, all things considered, because it allows better composition.
+
+1779816535
+andrewrk!~andrewrk@mail.ziglang.org
+doclic: it communicates to the person reading the code in a way that they can trust more than a comment that the variable is no longer used after this. zig will write 0xaa memory into there in safe modes to catch bugs
+
+1779816538
+blblack!~bblack@wikimedia/bblack-WMF
+in that case, the point of assigning undefined was to help catch mistakes, where the caller tried to call more functions on the deinitialized Thing
+
+1779816543
+andrewrk!~andrewrk@mail.ziglang.org
+also it integrates with valgrind
+
+1779816593
+blblack!~bblack@wikimedia/bblack-WMF
+at some point I switched that method from a deinit() to a destroy() that deallocates it directly, but left the assignment of undefined there at the end of the function like an idiot (assign after free)
+
+1779816772
+doclic!~doclic@user/doclic
+ooh that's neat
+
+1779816787
+doclic!~doclic@user/doclic
+i'll start doing that in my deinit's :)
+
+1779816855
+andrewrk!~andrewrk@mail.ziglang.org
+consider when you come across unfamiliar code that assigns something to undefined when it's done, even though you're unfamiliar you can have  high confidence that data isn't used anymore, not even on accident
+
+1779816904
+blblack!~bblack@wikimedia/bblack-WMF
+I still struggle and waffle back and forth with old C habits.  Really, I think structs with the "fn create() fn destroy()" is probably always an anti-pattern.  It limits the ways in which that struct can be used by callers (as a direct struct field or part of an array).
+
+1779816987
+blblack!~bblack@wikimedia/bblack-WMF
+I have counter-examples where the create/destroy works fine for me today, but inevtiably as I continue the refactoring journey, I end up wanting to convert them back to init/deinit style eventually.
+
+1779816995
+blblack!~bblack@wikimedia/bblack-WMF
+*inevitably
+
+1779817952
+andrewrk!~andrewrk@mail.ziglang.org
+blblack: I think it makes sense to start with init/deinit and then move to create/destroy if you have some reason you want to heap allocate the state, such as because you have variably sized data to include in the same allocation
+
+1779817985
+andrewrk!~andrewrk@mail.ziglang.org
+with init/deinit, the caller can always choose to heap allocate
+
