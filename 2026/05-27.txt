@@ -1,0 +1,236 @@
+1779840545
+grimtyr!~quassel@196.119.124.191
+can zig and zig build turn off the ansi escape? trying to build on emacs using compilation modes spews out noisy escape code that you have to skim through to find stuff
+
+1779841045
+andrewrk!~andrewrk@mail.ziglang.org
+grimtyr: I believe that is due to emacs incorrectly advertising itself as having terminal capabilities and then failing to have them. but yes you can override it. have a look at `zig env`
+
+1779841076
+andrewrk!~andrewrk@mail.ziglang.org
+(the standard NO_COLOR env var is what I'm thinking of)
+
+1779841237
+grimtyr!~quassel@196.119.124.191
+ye its true some thing in emacs is wrong, the NO_COLOR envvar turns off print escape codes, I looked at the source code in build_runner and main, and it seems it disables printing if the --color off is set but not the those tree branches escape codes, the initial Compiler Build Script root node still gets printed with escape code.
+
+1779841333
+andrewrk!~andrewrk@mail.ziglang.org
+hmm I'm seeing --color should affect that too
+
+1779841357
+andrewrk!~andrewrk@mail.ziglang.org
+src/main.zig line 5186 
+
+1779841428
+grimtyr!~quassel@196.119.124.191
+yes but I was thinking that if NO_COLOR env is set it should also like if --color off is passed
+
+1779841509
+grimtyr!~quassel@196.119.124.191
+NO_COLOR=1 zig build is not the same as NO_COLOR=1 zig build --color off, the initial root prog node still prints escape codes in the first command
+
+1779841532
+andrewrk!~andrewrk@mail.ziglang.org
+ah yes I do see missing integration with NO_COLOR specifically in the `zig build` subcommand
+
+1779841942
+squeek502!~squeek502@user/squeek502
+andrewrk, grimtyr: https://codeberg.org/ziglang/zig/pulls/35242
+
+1779842067
+grimtyr!~quassel@196.119.124.191
+that would work in main, but the build_runner looks for something in windows
+
+1779842136
+grimtyr!~quassel@196.119.124.191
+std/Io/Terminal.zig 57 in Mode.detect
+
+1779842645
+grimtyr!~quassel@196.119.124.191
+would something like this be enough for build_runner https://zigbin.io/93247a
+
+1779842931
+andrewrk!~andrewrk@mail.ziglang.org
+squeek502: ah nice I hadn't seen this yet
+
+1779843041
+andrewrk!~andrewrk@mail.ziglang.org
+unfortunately I just reimplemented it (and more) at https://codeberg.org/ziglang/zig/pulls/35482
+
+1779843733
+squeek502!~squeek502@user/squeek502
+grimtyr, that logic is in lib/compiler/Maker.zig now, and `graph.stderr_mode` is always set so you should be able to just do `.disable_printing = graph.stderr_mode.? == .no_color`
+
+1779843867
+grimtyr!~quassel@196.119.124.191
+oh nice
+
+1779844058
+grimtyr!~quassel@196.119.124.191
+oh while your here andrew I was wondering if you've seen this https://codeberg.org/ziglang/zig/pulls/32104 I think it has been there since 0.15.0 when I try to run the fuzzer with just --fuzz the webui fails
+
+1779844359
+andrewrk!~andrewrk@mail.ziglang.org
+thx for pointing it out
+
+1779844367
+andrewrk!~andrewrk@mail.ziglang.org
+merged
+
+1779845962
+grimtyr!~quassel@196.119.124.191
+tried the latest commits and the no_color envvar works, thx andrewk & squeek502
+
+1779846717
+andrewrk!~andrewrk@mail.ziglang.org
+nice
+
+1779846985
+andrewrk!~andrewrk@mail.ziglang.org
+new dev log entry https://ziglang.org/devlog/2026/#2026-05-26
+
+1779848373
+ScTpA!~T@p200300dbdf003200cfef8b6ef0172870.dip0.t-ipconnect.de
+"This page contains entries for the year 2026. Other years are available in the Devlog archive page."---If you don't show, at least, two years, or maybe do a rolling year, you'll always have many articles available at the end of the year and, maybe even more importantly, none at the very beginning of it (unless you schedule them in advance :P). Consider changing that sometime around this year before
+
+1779848375
+ScTpA!~T@p200300dbdf003200cfef8b6ef0172870.dip0.t-ipconnect.de
+it ends. :)
+
+1779848780
+ScTpA!~T@p200300dbdf003200cfef8b6ef0172870.dip0.t-ipconnect.de
+I've read through it, seems solid, no further comment from me as I don't really use Zig.
+
+1779849837
+ScTpA!~T@p200300dbdf003200cfef8b6ef0172870.dip0.t-ipconnect.de
+(Just a fan.) I hadn't read through some of the older posts it seems. ... You intend to offer torrenting of deps!?!? Ok. I mean, not dumb; just interesting.
+
+1779852022
+squeek502!~squeek502@user/squeek502
+ScTpA: https://github.com/ziglang/zig/issues/23236
+
+1779864969
+ksynwa!~ksynwa@49.36.209.135
+Can someone please suggest a simple command line argument parsing library? I need four things: 1) relatively easy 2) subcommands 3) simple flags 4) help text generation
+
+1779866938
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+clap
+
+1779867314
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+what is a ArrayList after deinit? null?
+
+1779867353
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+can I return a ArrayList from a function?
+
+1779867451
+Affliction!affliction@idlerpg/player/affliction
+assume an object is useless after deinit unless otherwise documented. Looks like ArrayLists' just frees the slice without changing anything further, so it'd become a dangling pointer.
+
+1779867453
+Affliction!affliction@idlerpg/player/affliction
+and, yes
+
+1779867484
+Affliction!affliction@idlerpg/player/affliction
+if you want to reuse an arraylist, .clearAndFree() or .clearRetainingCapacity()
+
+1779872239
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ksynwa: zig-clap mentioned earlier is simple as in kiss, but maybe not that simple to use since you have to do a bit manually, e.g. it provides helpers for printing --help parts like usage, but you need to write the code that outputs help message yourself
+
+1779888282
+slowstatic_!~slowstati@user/slowstatic
+0.17 will release within a couple weeks?? I'm beginning to think yall just don't like even numbered versions. Not to say there's a grand conspiracy at play, just an idle observation from a neutral party
+
+1779888544
+ifreund!2940d10f8b@user/ifreund
+the plan is indeed that it will release within a couple weeks
+
+1779888593
+ifreund!2940d10f8b@user/ifreund
+the big build system changes just landed, so afaik it's now it's pretty much just fixing any regressions
+
+1779891614
+blblack!~bblack@wikimedia/bblack-WMF
+so the major stuff for 0.17 will mostly be the build system and the llvm bump, basically?
+
+1779900096
+beastd!~kvirc@p5b3e1a51.dip0.t-ipconnect.de
+blblack: AFAIU including the llvm bump and not much more is the motivation for 0.17
+
+1779902642
+tonybtw!~tony@user/tonybtw
+watching the interview now
+
+1779902666
+tonybtw!~tony@user/tonybtw
+with Jetbrains
+
+1779902671
+tonybtw!~tony@user/tonybtw
+https://youtu.be/iqddnwKF8HQ
+
+1779902820
+blblack!~bblack@wikimedia/bblack-WMF
+struggling with transitioning various installation dirs paths in build.zig 
+
+1779902827
+blblack!~bblack@wikimedia/bblack-WMF
+.getInstallPath() and such
+
+1779902916
+blblack!~bblack@wikimedia/bblack-WMF
+interview is a good distraction from the above :)
+
+1779905040
+rockorager!~rockorage@mail.spunky.lol
+andrewrk: thanks for the shoutout in that interview
+
+1779905061
+rockorager!~rockorage@mail.spunky.lol
+also it's "rocko RAGEr" ;)
+
+1779907557
+andrewrk!~andrewrk@mail.ziglang.org
+lol sorry about that
+
+1779907568
+andrewrk!~andrewrk@mail.ziglang.org
+that's definitely how I *wanted* to say it
+
+1779907668
+blblack!~bblack@wikimedia/bblack-WMF
+nicely done on the interview!
+
+1779912533
+badtuple!~badtuple@192.132.61.35
+^++
+
+1779915079
+dutchie!~dutchie@user/dutchie
+badtuple: latest operator from the Haskell lens library? ;)
+
+1779915143
+dutchie!~dutchie@user/dutchie
+( https://hackage-content.haskell.org/package/lens-5.3.6/docs/Control-Lens-Operators.html )
+
+1779915298
+badtuple!~badtuple@192.132.61.35
+lolol, if they keep going eventually they'll converge w/ APL :P
+
+1779916075
+Earnestly!~earnest@user/earnestly
+afaik a key factor in C's adoption was its ease of porting to new architectures, as an aside
+
+1779923365
+meidam!~meidam@user/meidam
+wow, an interview with jetbrains, interesting. thanks for mentioning it, tonybtw. I gotta watch that too at some point
+
+1779923910
+paulieeeee!~paulieeee@user/paulieeeee
+hi! is it possible to use your own `std.Thread` backend implementation, similarly to how you can override the debug std.Io implementation with `std_options_debug_io`? 
+
