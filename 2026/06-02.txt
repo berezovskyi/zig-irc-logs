@@ -1,0 +1,376 @@
+1780358789
+andrewrk!~andrewrk@mail.ziglang.org
+`extern "c"` is C++ code
+
+1780358822
+andrewrk!~andrewrk@mail.ziglang.org
+it looks like they intended for the .h file to also work with C code but they didn't test it very well
+
+1780358834
+andrewrk!~andrewrk@mail.ziglang.org
+(hence they forgot to include stdbool.h)
+
+1780364059
+th3rm0s!~thermos@user/thermos
+what is the best way to go searching for a change that has happened on the dev branch? looking at commit history for a file? trying to figure out where I saw the information about Build.args changing and can't remember where I saw it
+
+1780366270
+badtuple!~badtuple@192.132.61.35
+th3rm0s: Depends on what you're looking for. That's where I'd start. If you know a string/pattern that'd be introduced/removed in the commit `git log -S <string> path/to/file` will show you commits that did that. But the blame/history of a file is usually enough. Could also look for a PR for the change on Codeberg/GH.
+
+1780366491
+badtuple!~badtuple@192.132.61.35
+git log -S 'args: ' lib/std/Build.zig
+
+1780366493
+th3rm0s!~thermos@user/thermos
+thanks for the git command, I'll try that one out. I struggle surfing PRs compared to grepping 
+
+1780366529
+badtuple!~badtuple@192.132.61.35
+np, hope it helps. And if it doesn't, curious how you eventually find it :P
+
+1780366580
+th3rm0s!~thermos@user/thermos
+in this case I got lucky and was able to make a new project with zig init and see what the boilerplate build.zig file did XD
+
+1780366605
+badtuple!~badtuple@192.132.61.35
+pragmatic :P
+
+1780367551
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+th3rm0s: I usually check commit history
+
+1780367727
+th3rm0s!~thermos@user/thermos
+Word, I'm liking this git log -S ... with git diff commit and grep a lot - I think its my new goto method vs commit history \o/
+
+1780368083
+nickc!~nickc@user/nickc
+git log -p <file> will also let you see what changed to that file in order, if you're fuzzy with what to look for specifically.
+
+1780368389
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+fwiw I've been using jj recently....
+
+1780368391
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+it's pretty nice lol
+
+1780368712
+nickc!~nickc@user/nickc
+fossil here
+
+1780369384
+th3rm0s!~thermos@user/thermos
+nickc: even better - thanks
+
+1780370662
+foxglv!~foxglv@user/sunflr
+nickc: niiice
+
+1780373650
+gracen!~gracen@user/gracen
+hello all! i'm looking for a way to allocate memory using the standard allocation interface with an alignment which is only known at runtime; is there a reason this isn't possible with the Allocator interface?
+
+1780373668
+gracen!~gracen@user/gracen
+oops just realized i repeated myself there
+
+1780373765
+gracen!~gracen@user/gracen
+i'm assuming the intended way to do this is to use mem.alignInSlice or equivalent
+
+1780373988
+jodijodington!~thelounge@user/JodiJodington
+gracen: if you know the maximum necessary alignment and theyre multiples of 2, you can just align it to that maximum
+
+1780374018
+jodijodington!~thelounge@user/JodiJodington
+you can also use allocAdvancedWithRetAddr from the allocator vtable, that's how allocAligned is implemented
+
+1780374034
+jodijodington!~thelounge@user/JodiJodington
+and use align(1) as the type
+
+1780374061
+jodijodington!~thelounge@user/JodiJodington
+oh nevermind that takes a comptime alignment as well
+
+1780374111
+gracen!~gracen@user/gracen
+it's not that difficult to work around, i'm more curious the reasoning behind this not being idiomatic zig
+
+1780374136
+jodijodington!~thelounge@user/JodiJodington
+because you lose a lot of the benefits of the safety checks and type system
+
+1780374149
+jodijodington!~thelounge@user/JodiJodington
+and usually there's a good way to do it with the type system
+
+1780374196
+jodijodington!~thelounge@user/JodiJodington
+for the record I think youd need to use the allocator.vtable.alloc function directly, that takes a runtime alignment, but it is unfortunately quite low level
+
+1780374227
+gracen!~gracen@user/gracen
+yeah :(
+
+1780374248
+gracen!~gracen@user/gracen
+my use case is doing blockdev i/o through uefi
+
+1780374271
+gracen!~gracen@user/gracen
+so ig low level is to be expected
+
+1780410845
+thermos!~thermos@user/thermos
+am I wrong in thinking that function pointers are simply &myFunction? this is then called by C if that matters
+
+1780410901
+Sivecano-!~Sivecano@user/Sivecano
+you're not wrong but if your functions are called by c you should probably mark them as export
+
+1780410920
+Sivecano-!~Sivecano@user/Sivecano
+this is so the function uses the correct calling convention
+
+1780411048
+thermos!~thermos@user/thermos
+okay, have it with export and callconv(.c) - trying to write an erlang NIF and I keep getting segfaults on load and cant figure out why
+
+1780411068
+Sivecano-!~Sivecano@user/Sivecano
+one of the two is good enough
+
+1780411074
+Sivecano-!~Sivecano@user/Sivecano
+export implies callconv(.c)
+
+1780411101
+thermos!~thermos@user/thermos
+okay thanks for the clearup, callconv(.c) would be more used with extern functions then?
+
+1780411651
+ifreund!2940d10f8b@user/ifreund
+If you are passing a function pointer to C, the function pointer type must be callconv(.c)
+
+1780411699
+ifreund!2940d10f8b@user/ifreund
+i.e. `extern fn foo(bar: *const fn () callconv(.c) c_int) void`
+
+1780411979
+thermos!~thermos@user/thermos
+but if its a function I'm writing I'd have to use export right, cause extern functions cant have function bodies
+
+1780412063
+ifreund!2940d10f8b@user/ifreund
+thermos: `export` is what you do when you want someone linking against your code to be able to access your function through an `extern` definition
+
+1780412096
+ifreund!2940d10f8b@user/ifreund
+that's not what's happening when you pass a pointer to your function to an `extern` function implemented in C though
+
+1780412259
+ifreund!2940d10f8b@user/ifreund
+that is to say, whether your function is declared with `export` or not is irrelevant aside from the fact that it changes the default calling convention
+
+1780412314
+ifreund!2940d10f8b@user/ifreund
+but regardless of how you define the function you wish to pass a pointer to, you need to get the type signature of the extern function accepting the pointer correct
+
+1780412408
+thermos!~thermos@user/thermos
+okay, there is an extern struct that needs to hold a function pointer to one of my functions, in this case would I just need that function to be callconv(.c) and pass it like &myFunc and dont need either extern or export?
+
+1780412567
+ifreund!2940d10f8b@user/ifreund
+indeed, the function pointer field of the `extern struct` must be declared with callconv(.c)
+
+1780412586
+ifreund!2940d10f8b@user/ifreund
+and you will then get a compile error if you try to set it to a function that is not callconv(.c)
+
+1780412686
+thermos!~thermos@user/thermos
+indeed yes, export was doing that for me but i think export is unnecessary and all I need is the callconv, thanks for the explanation - although I'm still getting segfaults, damn C macros..
+
+1780412811
+ifreund!2940d10f8b@user/ifreund
+note that Zig's tooling is currently failing you here (though it's not really worse than other non-C languages)
+
+1780412820
+ifreund!2940d10f8b@user/ifreund
+I'm working on https://github.com/ziglang/zig/issues/20654 though
+
+1780412869
+ifreund!2940d10f8b@user/ifreund
+you could also consider staring with the output of `zig translate-c` for the C header you want to use and than massage that into a nicer shape
+
+1780413123
+thermos!~thermos@user/thermos
+that is what I've done, in my build.zig I added a translate-c step to translate the header file I needed and imported it into my dylib. translate-c struggled with the main INIT macro so I've hand rolled that one.
+
+1780413275
+thermos!~thermos@user/thermos
+if I'm reading that issue correctly, is it moreor less taking zig and exporting a header file to check that the zig code is conforming to the expected C ABI?
+
+1780413390
+ifreund!2940d10f8b@user/ifreund
+The idea is to have tooling that can automatically verfiy that the types on one side of the ABI boundry match the types on the other side
+
+1780413429
+ifreund!2940d10f8b@user/ifreund
+If you want to share the INIT macro you're struggling with I could probably give you a hint :)
+
+1780413839
+thermos!~thermos@user/thermos
+sure I would appreciate that, thanks for your time - https://bpa.st/XW4Q
+
+1780414254
+ifreund!2940d10f8b@user/ifreund
+ah, that does look fun. Sometimes it can help to have gcc/clang expand the macros for you with `-E` so you don't have to do as much string manipulation in your head
+
+1780414295
+ifreund!2940d10f8b@user/ifreund
+also, wasn't there a project with tooling for zig elixir nifs that's been around for quite a while?
+
+1780414311
+thermos!~thermos@user/thermos
+LOL thanks, should I take the c version that I have working and just run the build with -E?
+
+1780414321
+thermos!~thermos@user/thermos
+I will go on a search
+
+1780414397
+ifreund!2940d10f8b@user/ifreund
+hmm, I'm thinking of https://github.com/E-xyza/zigler but it seems to be being vibecoded to some degree now...
+
+1780414424
+ifreund!2940d10f8b@user/ifreund
+not what I would personally want for unsafe bindings code but perhaps it's useful to you nonetheless
+
+1780414501
+thermos!~thermos@user/thermos
+looking at it right now, in agreement with you. project I'm working on is porting a Rust NIF that I have (which works with no problems) to Zig as a, "lets see how this goes" thing
+
+1780414593
+thermos!~thermos@user/thermos
+frustrating trying to debug, becuase erlang just spits out "segmentation fault. core dumped" - can run objdump on my *.so and see the nif_init and whatnot but somethings just not quite right. I'm gonna try expanding the macro from C
+
+1780414858
+ifreund!2940d10f8b@user/ifreund
+yeah, debugging this kind of thing does suck
+
+1780414940
+ifreund!2940d10f8b@user/ifreund
+Looking at how the rust implementation works could also shed some light
+
+1780414958
+ifreund!2940d10f8b@user/ifreund
+rust macros are also cursed, but in very different less-bad ways than C macros :)
+
+1780414967
+thermos!~thermos@user/thermos
+yeah I've bounced around there too, its painful XD
+
+1780415105
+thermos!~thermos@user/thermos
+for the cc -E, I should be running that on the header containing the macro correct?
+
+1780415414
+nickc!~nickc@user/nickc
+cc -E simply runs the preprocessor pass, it will expand macros and defines and inline them in your C or header files. You can write the output for inspection or look at what you get directly sent to stdout.
+
+1780415464
+ifreund!2940d10f8b@user/ifreund
+yeah, should be something like `cc -E erlang.h > out.txt`
+
+1780415489
+ifreund!2940d10f8b@user/ifreund
+you may need to pass -I flags to provide include paths to other headers if you get an error
+
+1780415510
+ifreund!2940d10f8b@user/ifreund
+there may also be a better way to do this, I've always done it in very ad-hoc ways for debugging
+
+1780415531
+thermos!~thermos@user/thermos
+yeah I was missing the -I flag, ad-hoc is the best way ;)
+
+1780415836
+thermos!~thermos@user/thermos
+we're in business!
+
+1780420234
+thermos!~thermos@user/thermos
+got another one, so my build.zig has two steps, translate-c and addLibrary - where the lib has a dependency/import from the translate-c module. Trying to addTest where the root module is the library but it fails to build because the extern fn from translate-c are not linked into the test module exe. Any ideas?
+
+1780424446
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+thermos: are you putting Q's around code or is my terminal just not rendering some unicode properly?
+
+1780424476
+thermos!~thermos@user/thermos
+` putting backticks
+
+1780424477
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+ref: https://imgur.com/a/VefWk3v
+
+1780424493
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+oh interesting. I wonder why it's rendering like that
+
+1780424538
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not `, it's 
+
+1780424563
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+which is DEVICE CONTROL ONE
+
+1780424638
+thermos!~thermos@user/thermos
+XD, weird. wonder if my client is sending that, Gliptic, is it a backtick for you?
+
+1780424652
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+it's not, it's what I said :P
+
+1780424670
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the second time you sent a backtick
+
+1780424682
+thermos!~thermos@user/thermos
+interesting, noted
+
+1780424858
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+now I want to send DEVICE CONTROL ONE how do I do it?
+
+1780424886
+thermos!~thermos@user/thermos
+just hold your DEVICE CONTROL ONE hotkey
+
+1780424989
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I assume Alt+17 if you're a poor sod running windows
+
+1780425287
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I'm on a thinkpad running a version fo linux
+
+1780434609
+ifreund!2940d10f8b@user/ifreund
+thermos: in case you haven't figured it out yet, you need to do the same addImport()/linkSystemLibrary()/etc calls on the result of addTest() as you do on the result of addLibrary()
+
+1780444692
+thermos!~thermos@user/thermos
+ifreund: thank you
+
