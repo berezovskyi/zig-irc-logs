@@ -1,0 +1,268 @@
+1780618900
+Affliction!affliction@idlerpg/player/affliction
+I'd strongly advise against doing operations that result in (re)allocation on the copy of the arraylist though. The original struct is still out there somewhere, with the old .items and .capacity
+
+1780618947
+Affliction!affliction@idlerpg/player/affliction
+Better to make that explicit by accepting a slice though, IMO
+
+1780619487
+Affliction!affliction@idlerpg/player/affliction
+when I think of it that way, passing an ArrayList by value doesn't make much sense. Sure you can modify the items through .items, but, you could just as well pass in a slice. Otherwise, using even non-reallocating methods like .appendAssumeCapacity, again, the old .items will still be used by the caller. 
+
+1780619626
+andrewrk!~andrewrk@mail.ziglang.org
+if you copy an array list it's good practice to set the old one to undefined
+
+1780619811
+Affliction!affliction@idlerpg/player/affliction
+the only possibly-legit usage I can think of would be so the callee can use the extra capacity as scratch space without allocating. But the size of this scratch space might sometimes be 0 so you can't rely on it. So you might as well just use a stack buffer or allocator.
+
+1780619888
+Affliction!affliction@idlerpg/player/affliction
+but yeah, undefining old container structs would at least let you find the footguns in debug
+
+1780665352
+gschwind!~gschwind@user/gschwind
+hello, what would be a usefull PR review ?
+
+1780675576
+Barion!~Thunderbi@user/Barion
+i find myself writing a pattern like this quite often and was wondering whether there is a better way of doing this
+
+1780675576
+Barion!~Thunderbi@user/Barion
+```zig
+
+1780675576
+Barion!~Thunderbi@user/Barion
+var inited_count: usize = 0;
+
+1780675576
+Barion!~Thunderbi@user/Barion
+const slice = try gpa.alloc(MyStruct, n);
+
+1780675576
+Barion!~Thunderbi@user/Barion
+errdefer {
+
+1780675577
+Barion!~Thunderbi@user/Barion
+    for (slice[0..inited_count]) |*elem| {
+
+1780675577
+Barion!~Thunderbi@user/Barion
+        elem.deinit();
+
+1780675577
+Barion!~Thunderbi@user/Barion
+    }
+
+1780675578
+Barion!~Thunderbi@user/Barion
+    gpa.free(slice);
+
+1780675578
+Barion!~Thunderbi@user/Barion
+}
+
+1780675579
+Barion!~Thunderbi@user/Barion
+for (slice) |*elem| {
+
+1780675579
+Barion!~Thunderbi@user/Barion
+    elem.* = try .init();
+
+1780675631
+ifreund!2940d10f8b@user/ifreund
+Barion: the better way is to make your code more data-oriented and not need to call deinit() N times
+
+1780675637
+ifreund!2940d10f8b@user/ifreund
+https://www.hytradboi.com/2025/05c72e39-c07e-41bc-ac40-85e8308f2917-programming-without-pointers
+
+1780676371
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+yea nice video, I've found myself trending towards this style of coding too
+
+1780676938
+Barion!~Thunderbi@user/Barion
+@ifreund thanks, i think i understand, but i'm not sure how that would work with error handling, if, while constructing the collection, one add/init call fails i would still need to deinit all the added items. e.g. (i'm working on a vulkan renderer) unmapping and destroying all the vulkan buffers created before the failed creation
+
+1780677079
+ifreund!2940d10f8b@user/ifreund
+Barion: the idea is to design things such that init cannot fail. I do understand that you may be constrained by an external, object-oriented API though
+
+1780677083
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Barion: oh neat! I've done vulkan stuff in zig, e.g. github.com/ezzieyguywuf/zcad, which may be of help to you as a reference
+
+1780677117
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I have a more recent project that uses vk-kickstart, but that repo is private at the moment. I can give you access if you want to take a look
+
+1780677491
+tsmanner!~tsmanner@165.225.38.131
+Does anyone here have experience using `zig cc` while exporting a specific set of dynamic symbols?  I _can_ use -Wl,-rdynamic to expose all of them, but I'd rather just expose the one symbol I actually want a dynamically linked lib to have access to.
+
+1780677612
+Barion!~Thunderbi@user/Barion
+ifreund: i sort of tried that by making init return an empty object and making deinit empty-safe but creating invalid data just felt wrong, i don't see how i could init the render pipline without something failing, i suppose vulkans design makes that harder
+
+1780677657
+Barion!~Thunderbi@user/Barion
+(that way i could also avoid duplicating cleanup logic in errdefer-init and deinit)
+
+1780677736
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Barion: can you share your code?
+
+1780677793
+Barion!~Thunderbi@user/Barion
+ifreund: if i would use an ArrayList i could at least avoid keeping track of how many items where inited myself 
+
+1780677903
+Barion!~Thunderbi@user/Barion
+ezzieyguywuf: yes, i was planning on making it public anyway, but it's still an evolving mess right now, it is my first time using newer vulkan concepts like dynamic rendering https://codeberg.org/Barion/ametrin-engine
+
+1780677927
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+yea no worries, just w anted to take a look at the data structures under discussion in context
+
+1780678023
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Barion: which file should I look at?
+
+1780678065
+Barion!~Thunderbi@user/Barion
+ezzieyguywuf: i think SpriteRenderNode.zig has the worst cases 
+
+1780682251
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+think in this case since there's an API boundary with the underlying vulkan stuff, I'm not sure if it's feasible to flatten the data structures out any more
+
+1780682274
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+e.g. I think it may  just be a The Way, but I'm not rly an authority so don't listen to me lol
+
+1780682276
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Barion: btw 
+
+1780682315
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Barion: btw, your code seems based on https://vulkan-tutorial.com/ similar to mine, I found https://docs.vulkan.org/tutorial/latest/00_Introduction.html recentlny which I think is more up-to-date ond from khronos to boot
+
+1780682349
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I also highly suggest giving vk-kickstart a look, it doesn't solve as much boilerplate as I wanted it to, but it is very well written and also gave me some ideas on how to better manage vulkan in zig
+
+1780682621
+Barion!~Thunderbi@user/Barion
+ezzieyguywuf: it is based on the new vulkan introduction from khronos, they didn't change much except dynamic rendering and using the RAII wrapper instead of raw c vulkan
+
+1780682692
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+ah. vma is a nice upgrade too it cleaned up some of that mess for me
+
+1780682799
+Barion!~Thunderbi@user/Barion
+id rather keep control over whats happening and reduce dependencies so no vk-kickstart but i might look at it for ideas
+
+1780682922
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+yea I hear you
+
+1780684450
+andrewrk!~andrewrk@mail.ziglang.org
+sometimes the value in an open source project is in just being a fantastic example
+
+1780684637
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+frfr
+
+1780684663
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+but I really like vk-kickstart lol, maybe b/c he did everything pretty much how I would do it, except he cleaned it up and published it.
+
+1780684670
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I've contributed :-D
+
+1780694398
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+https://hachyderm.io/@hgrsd/116699470916343442
+
+1780694428
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+it feels instinctive but i dont have a good technical answer to this question
+
+1780694976
+andrewrk!~andrewrk@mail.ziglang.org
+it's basically the same except one of them type-annotates the variable and one does not
+
+1780695170
+Barion!~Thunderbi@user/Barion
+i actually prefer not type-annotating the variable in this case because e.g. with arrays you can't infer the length
+
+1780695182
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah but why do we prefer the former, if it isnt just an aesthetic preference
+
+1780695706
+yrds96!~yuri@189.4.105.57
+i do like the first one because makes explicit the type of the variable. the second one `.init` can be anything
+
+1780698844
+andrewrk!~andrewrk@mail.ziglang.org
+it's not aesthetic because there is a type annotation
+
+1780698897
+andrewrk!~andrewrk@mail.ziglang.org
+if you were cutting and pasting the expression from a var decl to a function call argument, one of those two ways of writing it makes it more cut and pastable
+
+1780698919
+andrewrk!~andrewrk@mail.ziglang.org
+in any context where the type is already known
+
+1780702900
+ElSucioDan!~dan@user/ElSucioDan
+Hi. I'm looking for a learning advice - I would like to learn more about systems programming and low level computer architecture through zig. I don't have a particular roadmap yet, but a list of topics that could be relevant for my goal. One of the topics is memory management;  I don't have a wide experience with manual memory management. I was thinking on read something like the "Effective C" book in order to have a better idea on  systems programming and 
+
+1780702901
+ElSucioDan!~dan@user/ElSucioDan
+memory management and try to translate that knowledge to Zig (If there were an "Effective Zig" book I would read it.). Any suggestions? I am self-taught, most of my profesional experience is focused on web development and devops.
+
+1780703036
+andrewrk!~andrewrk@mail.ziglang.org
+ElSucioDan: good luck. The best way to learn is through practice. Pick a fun project and start hacking away
+
+1780703047
+andrewrk!~andrewrk@mail.ziglang.org
+then show other people your code and ask for review
+
+1780703449
+foxglv!~foxglv@user/sunflr
+ElSucioDan: you probably want to try this first: https://codeberg.org/ziglings/exercises
+
+1780703731
+ElSucioDan!~dan@user/ElSucioDan
+andrewrk: Thank you
+
+1780703740
+ElSucioDan!~dan@user/ElSucioDan
+foxglv: Thank you 
+
+1780703796
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+ElSucioDan: +2 to what andrewrk said. I'm also self-taught for what it's worth, I ended up getting a job doing programming - it's definitely doabl, jsut requires hard work like what you're describing
+
+1780703887
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I find when doing these fun projects, I tend to rub up against some sort of friction, and that's when I go deep - e.g. "oh, this was hard b/c I didn't know anything about memory management", or "oh, this was hard b/c I've never heard about object-orient programming (and the project I'm tryna contribute to uses that paradigm)" etc. the fun factor always gave me sufficient motivation to dig deep into
+
+1780703889
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+these various topics
+
