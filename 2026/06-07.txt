@@ -1,0 +1,380 @@
+1780793885
+brka!~brka@user/brka
+Just finished ziglings
+
+1780794013
+brka!~brka@user/brka
+Although I found the exercises trivial to solve, I found them interesting and very useful to understand the intent behind some language features
+
+1780803125
+badtuple!~badtuple@192.132.61.35
+yeah, I'm actually very curious about a minimal program you can write via a tutorial that'd touch all the stuff in ziglings. Perhaps a little repl or something.
+
+1780803175
+badtuple!~badtuple@192.132.61.35
+people are motivated by very different forms of learning material, and I've been mulling over that alternate angle alot lately
+
+1780803351
+badtuple!~badtuple@192.132.61.35
+games are a "fun" choice for something like that, but often pull in so many extra pieces that it dilutes the purpose and erodes the reader's motivation rather quickly
+
+1780803440
+foxglv!~foxglv@user/sunflr
+ziglings has too much explanation in some exercises
+
+1780803458
+foxglv!~foxglv@user/sunflr
+i think they can be broken up into multiple other exercises instead
+
+1780803542
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+I am trying to use std.Io.Group and am running into an issue where I want to add a function that returns non-void to the group. I'd like to just discard the return value in this case. Is there a way to get that to work, or do I need to like, create an inline struct with a function that discards the return value in order to get a working function to pass to group.async ?
+
+1780803814
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+I suppose it might be possible to write a comptime function to accomplish this - curious if something already exists in std
+
+1780804265
+badtuple!~badtuple@192.132.61.35
+I haven't actually needed to do async stuff, but I'm 99% sure you have to wrap it in a function that discards is so that the return type is either void or error{Canceled}!void
+
+1780804277
+badtuple!~badtuple@192.132.61.35
+*discards it
+
+1780804333
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Yeah, seems like it (and also seems comptime isn't powerful enough to create a helper function to do that for you)
+
+1780804357
+badtuple!~badtuple@192.132.61.35
+hrm...that's a nerd snipey statement
+
+1780804465
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+hehe. I started trying to implement it and basically am running into issues with creating a function with an arbitrary length of args
+
+1780804513
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+and the args being specific types
+
+1780805000
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+I think it would only be possible if you could cast a non-void returning function pointer into a void returning function pointer, which I doubt
+
+1780805435
+badtuple!~badtuple@192.132.61.35
+I'm out and about so can't really try it. But look at the definition of std.Io.Group.async. I feel like you could basically do the same thing that it does before the final line.
+
+1780805457
+badtuple!~badtuple@192.132.61.35
+otherwise should be back at a computer in like...I dunno, a couple hours :P
+
+1780805503
+badtuple!~badtuple@192.132.61.35
+tho I dunno how much a helper really saves tbh
+
+1780805842
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+mhm, it is true that the async code *is* done in the standard library after all. I'll take a look :)
+
+1780807650
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+I did manage to make something, but it corrupts memory so I obviously didn't quite do it correctly :) 
+
+1780808277
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Mm yeah badtuple, so I made a function that *almost* accomplishes it, but because it returns a function with a single *anyopaque arg, I have to pass .{&.{arg1...}} as the args argument to group.concurrent, which is obviously messy haha
+
+1780808335
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Now, I could probably create a function that replaces async/concurrent entirely, but that would be too messy to use very effectively, I think.
+
+1780808903
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Yeah, I can just copy the group.concurrent function and remove the cast inside the start function in the body, and it gets me what I want. Presumably that is there as a guard to prevent important returns from being eaten.
+
+1780809152
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Perhaps there's some value in adding these to std, but with a name that makes it clear that they discard the results (which of course could leak depending on the return). like concurrentDiscarding and asyncDiscarding
+
+1780811392
+badtuple!~badtuple@192.132.61.35
+encryptedwhisper: oh I see what you mean. Yeah, I don't know how to splat the argument types into the new function. Here was my attempt once back at a computer https://zigbin.io/587991
+
+1780811398
+badtuple!~badtuple@192.132.61.35
+sounds like you got to the same place
+
+1780811458
+badtuple!~badtuple@192.132.61.35
+I dunno if it'd be worth adding to the stdlib though. I don't think I'd ever really want/need the helper? It's so quick to just write it directly
+
+1780811473
+badtuple!~badtuple@192.132.61.35
+and at that point you don't have to do the nested tuple thing
+
+1780811971
+badtuple!~badtuple@192.132.61.35
+encryptedwhisper: realizing you can probably do it with @Fn somehow. My motivation to figure it out on a Saturday night is like riiiiggghhhttt on the fence.
+
+1780812500
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Fn only gives you a function type though, doesn't let you define the body of the function, right?
+
+1780812575
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+badtuple: it's somewhat quick, but having to recreate and pass the arguments in the wrapper function is irritating, no?
+
+1780812655
+badtuple!~badtuple@192.132.61.35
+Only the type, yeah. But I was wondering if there was something you could do if you were willing to resort to ✨fuckery✨ (there isn't afaict...but maybe? but no...but maybe?)
+
+1780812703
+badtuple!~badtuple@192.132.61.35
+encryptedwhisper: I mean, it's some boilerplate but no not really. That being said, I spent alot of my career writing Go :P.  
+
+1780812741
+badtuple!~badtuple@192.132.61.35
+I just can't imagine a scenario where you're typing a bunch of them. Doing it like 3 times just doesn't phase me.
+
+1780812757
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+By far the cleanest solution was the one where I redefined async/concurrent to not do the @as cast. I assume that cast is there to a) ensure that the type has a cancelable error type, and b) avoid losing return value. So having a discard helper, which only checks for the cancelable error type with a comptime check would keep the safety but allow the programmer to say "I want to discard this" without the excess ceremony
+
+1780812773
+badtuple!~badtuple@192.132.61.35
+and there's always editor snippets and copy-and-paste if there's an particularly insane scenario
+
+1780812824
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Yeah. This isn't something I'm super invested in, as it was just a small irritation I ran into when attempting to use Group for a one-off
+
+1780812851
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+But it is somewhat frustrating that the only thing keeping it from working is a single @as that is there just as a safety measure :)
+
+1780812920
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+to me, having the "discard" variant would be similar to how the language has `_ =` -- a helper to avoid needing the extra boilerplate to handle the discarding
+
+1780812985
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+Still, fun to experiment with the limits of the system here.
+
+1780813042
+badtuple!~badtuple@192.132.61.35
+yeah, regardless of the specific use case, I kinda feel like this is something that should be possible.
+
+1780813076
+badtuple!~badtuple@192.132.61.35
+I can see legitimate use cases scaffolding out things from tables and stuff.
+
+1780813188
+badtuple!~badtuple@192.132.61.35
+("this" being defining function args via metaprogramming, to be clear)
+
+1780832357
+brka!~brka@user/brka
+badtuple: This conversation might've gone over my head, but is this what you are looking for (look at signature): https://ziglang.org/documentation/0.16.0/std/#std.Io.async ?
+
+1780832373
+brka!~brka@user/brka
+Specifically `@typeInfo(@TypeOf(function)).@"fn".return_type`
+
+1780838574
+foxglv!~foxglv@user/sunflr
+what should i mention about Zig when describing it to people? Like it's a low-level lang and resembles C but what else
+
+1780839314
+brka!~brka@user/brka
+foxglv: depends on what the previous experience of your interlocutor is
+
+1780839377
+brka!~brka@user/brka
+For me personally it was "this language solves literally every single gripe you have with go (and C for good measure, though I rarely use C)"
+
+1780839733
+brka!~brka@user/brka
+Btw. I am looking to contribute to zig projects if anyone has any pointers (of the `*Project` kind) :)
+
+1780840290
+foxglv!~foxglv@user/sunflr
+huh, interesting. I dunno much about go or why people use it but that seems like a bold statement x3
+
+1780840415
+foxglv!~foxglv@user/sunflr
+i once saw a comment about Zig that read "it's like C if it took a shower" or something xD
+
+1780840433
+foxglv!~foxglv@user/sunflr
+i find that one amusing
+
+1780840767
+brka!~brka@user/brka
+foxglv: it's not a bold statement because that is *my* reason :D
+
+1780840894
+brka!~brka@user/brka
+foxglv: I use go because it's nicer to use than Java for writing web application servers. For Java I need a full blown IDE, frameworks etc. to be able to do anything useful. For go it's just go run main.go
+
+1780841463
+foxglv!~foxglv@user/sunflr
+i seeee
+
+1780841475
+foxglv!~foxglv@user/sunflr
+yeah i still don't understand java either
+
+1780841536
+foxglv!~foxglv@user/sunflr
+brka: would you say that Zig could replace go for you tho? I mean i bet it's still useful
+
+1780841609
+brka!~brka@user/brka
+I could only say that when I see what http library looks like at v1.0
+
+1780841651
+brka!~brka@user/brka
+But I think I will always have a usecase for Go
+
+1780841774
+foxglv!~foxglv@user/sunflr
+m-hm makes sense
+
+1780841974
+brka!~brka@user/brka
+foxglv: just curious, what would you use to write a web server?
+
+1780842113
+foxglv!~foxglv@user/sunflr
+i think i would see if i can install an existing one first x3c I haven't really written much in other prog langs to be honest... Not sure what i'd use
+
+1780842147
+foxglv!~foxglv@user/sunflr
+i haven't written much myself either
+
+1780842189
+brka!~brka@user/brka
+foxglv: are you a sysadmin?
+
+1780842205
+foxglv!~foxglv@user/sunflr
+i tried C and Rust briefly but didn't stick with me
+
+1780842237
+genr8eofl!~genr8@user/genr8eofl
+programmer != sysadmin
+
+1780842242
+foxglv!~foxglv@user/sunflr
+i mean, i don't have a job still
+
+1780842262
+genr8eofl!~genr8@user/genr8eofl
+do you derive your identity from your job ?
+
+1780842304
+foxglv!~foxglv@user/sunflr
+well i'm kinda useless overall soooo
+
+1780842323
+genr8eofl!~genr8@user/genr8eofl
+you should be useful to yourself
+
+1780842324
+brka!~brka@user/brka
+Well, considering that job takes almost half of your awake hours, I feel like it's normal to derive at least a bit of your identity from it
+
+1780842379
+foxglv!~foxglv@user/sunflr
+fair enuff
+
+1780842463
+foxglv!~foxglv@user/sunflr
+i like Linux because of how many cool programs exist on it
+
+1780842477
+brka!~brka@user/brka
+foxglv: that is how I started
+
+1780842499
+foxglv!~foxglv@user/sunflr
+and i think it would be cool to write something but i just can't focus on what
+
+1780842597
+foxglv!~foxglv@user/sunflr
+i wanted to learn a low-level lang because i thought that higher level ones ran a lot slower on the crappy laptop i used for like 6 years or something
+
+1780842645
+brka!~brka@user/brka
+foxglv: most of the slowness comes from io latency (reading from the disc/network)
+
+1780842665
+foxglv!~foxglv@user/sunflr
+yeah, it has an hdd lol
+
+1780842698
+foxglv!~foxglv@user/sunflr
+my newer laptop is a lot better and has an ssd too
+
+1780842867
+genr8eofl!~genr8@user/genr8eofl
+just keep at it, you'll know what to do in 20 years
+
+1780842964
+foxglv!~foxglv@user/sunflr
+i wish i knew what to do tomorrow to be honest
+
+1780843006
+foxglv!~foxglv@user/sunflr
+i don't really remember what i did yesterday x3
+
+1780848322
+badtuple!~badtuple@192.132.61.35
+brka: no, they explicitly wanted to use std.Io.Group whose async throws away the return value
+
+1780848395
+badtuple!~badtuple@192.132.61.35
+*does not allow a return value (sorry, just woke up)
+
+1780864001
+encryptedwhisper!~encrypted@97.ip-167-114-155.net
+brka: yeah the normal async and concurrent functions allow for return values, but if you use Io.Group the function has to be a void function to work.
+
+1780864022
+brka!~brka@user/brka
+encryptedwhisper: yeah, just found out today
+
+1780864028
+brka!~brka@user/brka
+I needed it myself so I learned :)
+
+1780865371
+brka!~brka@user/brka
+Can anyone explain why z pointer is always the same in this example? https://zigbin.io/0d45b4
+
+1780865607
+brka!~brka@user/brka
+I didn't think too much of it, but I was calling a function concurrently and passing a similarly constructed variable's pointer, took me a few hours to debug it
+
+1780865654
+brka!~brka@user/brka
+Basically, all of the concurrent functions were using the same pointer and things became a mess
+
+1780865702
+brka!~brka@user/brka
+Anyway, my zig server can now concurrently serve requests :)
+
+1780865727
+brka!~brka@user/brka
+https://beej.us/guide/bgnet/html I found this guide useful
+
+1780866391
+brka!~brka@user/brka
+From what I understand, the loop variables are pushed onto the stack, then popped, thus arriving back to the original position on the stack before every iteration, and so `z` gets the same place on the stack
+
+1780867265
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+z is a stack variable, so yea what you said is what I would imagine is happening, though I'm unsure if the language provides any guarantees about this behaviour.
+
