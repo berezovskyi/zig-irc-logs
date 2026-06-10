@@ -1,0 +1,480 @@
+1780998679
+Barion!~Thunderbi@user/Barion
+why does std.StaticBitSet switch to ArrayBitSet for sizes larger than what usize can cover instead of using larger integer sets?
+
+1780999170
+ifreund!2940d10f8b@user/ifreund
+Barion: as the doc comments state, it's an optimization
+
+1780999226
+Barion!~Thunderbi@user/Barion
+ifreund: yes, but why? what makes an array of usize faster than lets say a u128
+
+1780999296
+Affliction!affliction@idlerpg/player/affliction
+might be worth seeing what the generated code is with certain operations on very large integer types, compiler might be limited in how it optimizes operations on them
+
+1780999381
+ifreund!2940d10f8b@user/ifreund
+Barion: I suspect it comes down to the fact that LLVM is much better at optimizing code dealing with an array of register-sized integers than a u512 or whatever
+
+1780999487
+Barion!~Thunderbi@user/Barion
+ifreund: that makes me wonder why zig does not represent larger int types as array of usize
+
+1780999544
+Barion!~Thunderbi@user/Barion
+Affliction: good idea
+
+1780999648
+ifreund!2940d10f8b@user/ifreund
+I'm not actually sure exactly how Zig lowers big integers to LLVM currently
+
+1780999688
+Affliction!affliction@idlerpg/player/affliction
+iirc LLVM itself can express integer types up to a megabit
+
+1780999723
+Affliction!affliction@idlerpg/player/affliction
+but yeah, those larger integer sizes might not be frequently used enough to see much optimization
+
+1780999865
+Affliction!affliction@idlerpg/player/affliction
+I think there's similar caveats with large packed structs, too. Since internally they're backed by an integer
+
+1781025899
+andrewrk!~andrewrk@mail.ziglang.org
+llvm codegen for arithmetic on integers larger than 256 is really bad. I think we don't try to mitigate it currently but it would be better to lower those as calls to zig's compiler_rt functions for doing arbitrary big int arithmetic
+
+1781025928
+andrewrk!~andrewrk@mail.ziglang.org
+or not, idk, it's the llvm backend, maybe we should just emit the llvm code and let llvm do its thing
+
+1781039365
+mefistofeles!~mefistofe@user/mefistofeles
+oh nice, this exists
+
+1781039408
+andrewrk!~andrewrk@mail.ziglang.org
+welcome mefistofeles
+
+1781039443
+mefistofeles!~mefistofe@user/mefistofeles
+o/
+
+1781039484
+mefistofeles!~mefistofe@user/mefistofeles
+do we have GPGPU with ziglang? 
+
+1781039495
+mefistofeles!~mefistofe@user/mefistofeles
+zig*
+
+1781039585
+andrewrk!~andrewrk@mail.ziglang.org
+there's a spir-v backend
+
+1781039653
+jjido!~jjido@2a02:c7c:a308:7800:78b2:f7aa:6d52:c151
+Doesn't look fully baked. https://slavakurilyak.com/posts/zig-and-gpus
+
+1781039702
+andrewrk!~andrewrk@mail.ziglang.org
+this looks ai generated
+
+1781039734
+mefistofeles!~mefistofe@user/mefistofeles
+andrewrk: definitely haha
+
+1781039757
+mefistofeles!~mefistofe@user/mefistofeles
+Content Attribution: 95% by Alpha, 5% by Claude
+
+1781040296
+torque!~tachyon@user/torque
+given how heavily AI-styled the writing is, that's either a wildly off-base attribution or people have started trying to write like AI
+
+1781040453
+jjido!~jjido@2a02:c7c:a308:7800:78b2:f7aa:6d52:c151
+oops sorry I thought it was a real page.
+
+1781040618
+badtuple!~badtuple@192.132.61.35
+people have definitely started writing like AI (in general, no opinion on the article). It's become so pervasive that writing styles in upper economic classes have mutated incredibly fast while lower economic classes have retained the same language.
+
+1781040644
+badtuple!~badtuple@192.132.61.35
+a friend who studies linguistics at PSU has a prof who is researching it
+
+1781040689
+torque!~tachyon@user/torque
+I'm not going to argue against an academic study I know nothing about but I personally haven't seen people I interact with on a regular basis start writing like AI
+
+1781040746
+torque!~tachyon@user/torque
+they have started just using AI to write for them much more, which makes distinguishing between their voice and AI voice more of a chore since it's all attributed to a single user
+
+1781040765
+badtuple!~badtuple@192.132.61.35
+I mean, statistical trend doesn't mean much at the individual level. Also, a study isn't infallible by any means.
+
+1781040785
+badtuple!~badtuple@192.132.61.35
+especially one that hasn't been published yet :P
+
+1781040902
+torque!~tachyon@user/torque
+I mean I believe it, since there is so much "content" that is either wholesale generated or fully edited/rewritten by AI out there with a person's name on it at this point
+
+1781040926
+torque!~tachyon@user/torque
+just haven't really seen it myself, even with people I work with who have started using AI pretty heavily
+
+1781041285
+andrewrk!~andrewrk@mail.ziglang.org
+anyway it's true that gpgpu in zig is half baked
+
+1781041295
+andrewrk!~andrewrk@mail.ziglang.org
+depending on your interests, that could be great news or disappointing news :)
+
+1781041344
+andrewrk!~andrewrk@mail.ziglang.org
+worth mentioning, Ali Chraghi has joined the Zig core team as of today, and has an interest in pushing forward zig on the GPU
+
+1781041514
+badtuple!~badtuple@192.132.61.35
+woo! Congrats to them
+
+1781042205
+rockorager!~rockorage@mail.spunky.lol
+cool to see the zig team growing! congrats
+
+1781042382
+mefistofeles!~mefistofe@user/mefistofeles
+andrewrk: great
+
+1781047179
+carpel!~carpel@user/carpel
+good evening everyone! o/
+
+1781047197
+carpel!~carpel@user/carpel
+I'm having some trouble getting an ArrayList to work as part of a struct
+
+1781047220
+carpel!~carpel@user/carpel
+I'm not new to systems programming and am familiar enough with C, but a complete beginner with Zig
+
+1781047230
+carpel!~carpel@user/carpel
+are there any resources that can point me in the right direction?
+
+1781047365
+slowstatic!~slowstati@user/slowstatic
+don't sleep on the lang ref: https://ziglang.org/documentation/master/ 
+
+1781047389
+carpel!~carpel@user/carpel
+I got three tabs open on it atm xD
+
+1781047399
+carpel!~carpel@user/carpel
+but thanks anyways
+
+1781047423
+slowstatic!~slowstati@user/slowstatic
+lol good! zig.guide and github.com/ratfactor/ziglings are also good
+
+1781047449
+slowstatic!~slowstati@user/slowstatic
+oh shoot ziglings moved to codeberg, my bad: codeberg.org/ziglings/exercises
+
+1781047466
+carpel!~carpel@user/carpel
+please dont hate me, but I also looked into those as well lol
+
+1781047481
+carpel!~carpel@user/carpel
+zig.guide in particular is pretty barebones on ArrayLists
+
+1781047511
+carpel!~carpel@user/carpel
+talking to a friend of mine led me to changing the self reference on the functions to *Self
+
+1781047521
+carpel!~carpel@user/carpel
+which changed my error message at least
+
+1781047533
+slowstatic!~slowstati@user/slowstatic
+I'm not really an expert either, but maybe I can help? What's the error
+
+1781047589
+carpel!~carpel@user/carpel
+Well, to be succinct, its a struct called Chunk, with a field called "code"
+
+1781047602
+carpel!~carpel@user/carpel
+that field is supposed to be an ArrayList of u8s
+
+1781047629
+carpel!~carpel@user/carpel
+an Init function returns an empty instance of chunk, write writes a single byte to the array list
+
+1781047644
+carpel!~carpel@user/carpel
+both are inside the struct and use a self reference to access the code field
+
+1781047685
+carpel!~carpel@user/carpel
+while trying to use both methods, write fails indicating that "code.append expected *T but received *const T"
+
+1781047693
+carpel!~carpel@user/carpel
+and that was pretty much it
+
+1781047699
+slowstatic!~slowstati@user/slowstatic
+you can share a snippet with pb https://privatebin.net/
+
+1781047704
+carpel!~carpel@user/carpel
+oh thanks!
+
+1781047734
+carpel!~carpel@user/carpel
+https://privatebin.net/?a2c15e9ab1911524#GqGxWtzhHGwBrcDzqCaR79rctjym7qbdqXBkXaVPYJkH this is chunk
+
+1781047749
+carpel!~carpel@user/carpel
+https://privatebin.net/?ee4f187ba6488ef0#7TPo9Ha9zxWqgKpJAN3BUhLP9LfWFZjKJJek1yfwScKv this is main
+
+1781047773
+carpel!~carpel@user/carpel
+I made a small change just now, self is now *Chunk inside the struct fns
+
+1781047779
+carpel!~carpel@user/carpel
+which gave me a new error
+
+1781047788
+carpel!~carpel@user/carpel
+expected type '*chunk.Chunk', found '*const chunk.Chunk'
+
+1781047819
+desttinghim!~desttingh@50.243.2.129
+instead of `const chunk = Chunk.init()` use `var chunk = Chunk.init()`
+
+1781047825
+slowstatic!~slowstati@user/slowstatic
+in main your declaration `const chunk = Chunk.init();` makes chunk a constant. When you call write it expects a pointer to a mutabe (non const) chunk
+
+1781047834
+slowstatic!~slowstati@user/slowstatic
+desttinghim: 2 fast 4 me
+
+1781047851
+desttinghim!~desttingh@50.243.2.129
+slowstatic: You actually explained it though
+
+1781047865
+carpel!~carpel@user/carpel
+makes total sense, lets try it
+
+1781047869
+slowstatic!~slowstati@user/slowstatic
+s/mutabe/mutable
+
+1781047891
+carpel!~carpel@user/carpel
+NICE
+
+1781047894
+carpel!~carpel@user/carpel
+it worked <3
+
+1781047909
+slowstatic!~slowstati@user/slowstatic
+is this crafting interpreters?
+
+1781047916
+carpel!~carpel@user/carpel
+good eye!
+
+1781047925
+slowstatic!~slowstati@user/slowstatic
+good book!
+
+1781047926
+carpel!~carpel@user/carpel
+it is :)
+
+1781047953
+carpel!~carpel@user/carpel
+I implemented a bunch of stuff in C already, and read about 75% of the book
+
+1781047963
+carpel!~carpel@user/carpel
+but I wanted to switch to zig
+
+1781047979
+carpel!~carpel@user/carpel
+i love this book sm
+
+1781047986
+slowstatic!~slowstati@user/slowstatic
+literally every time I do crafting interpreters I get 50-75% of the way and switch langs lol
+
+1781047993
+carpel!~carpel@user/carpel
+hahah
+
+1781048019
+carpel!~carpel@user/carpel
+I studied a bunch of techniques for the first half using typescript
+
+1781048024
+carpel!~carpel@user/carpel
+pretty nice stuff
+
+1781048035
+carpel!~carpel@user/carpel
+now I want to get into the grittier second half strong
+
+1781048056
+slowstatic!~slowstati@user/slowstatic
+good luck
+
+1781048072
+carpel!~carpel@user/carpel
+thanks! I'm looking forward to getting a good grip on it
+
+1781048080
+carpel!~carpel@user/carpel
+I plan on teaching the subject at uni in the future
+
+1781048086
+carpel!~carpel@user/carpel
+so its good practice anyways
+
+1781048128
+carpel!~carpel@user/carpel
+but thanks for the help everyone!
+
+1781048144
+carpel!~carpel@user/carpel
+the code of conduct made me feel safe enough to come ask for help
+
+1781048448
+andrewrk!~andrewrk@mail.ziglang.org
+welcome carpel
+
+1781048470
+carpel!~carpel@user/carpel
+:0
+
+1781048480
+carpel!~carpel@user/carpel
+hello mr. zig!
+
+1781048488
+carpel!~carpel@user/carpel
+thanks for such an awesome language
+
+1781048505
+carpel!~carpel@user/carpel
+and such an awesome stance on AI
+
+1781048512
+andrewrk!~andrewrk@mail.ziglang.org
+you're welcome. at this point any thanks belongs to a lot more people than just me
+
+1781048543
+andrewrk!~andrewrk@mail.ziglang.org
+let's try to avoid the mistake of continuing to give that topic all the oxygen in the room :) let's talk about computers instead
+
+1781048566
+carpel!~carpel@user/carpel
+sounds good
+
+1781048586
+carpel!~carpel@user/carpel
+by the way, looks like I'm doing something else wrong now :P
+
+1781048612
+carpel!~carpel@user/carpel
+I'll search around and see if I can figure it out
+
+1781048635
+andrewrk!~andrewrk@mail.ziglang.org
+there is also ziggit.dev, which is a great place to ask longer form questions
+
+1781048730
+carpel!~carpel@user/carpel
+I actually just bumped into a thread about this exact problem I just had
+
+1781048744
+carpel!~carpel@user/carpel
+but it was caused by something else
+
+1781048751
+carpel!~carpel@user/carpel
+regardless, I managed to figure it out
+
+1781048764
+carpel!~carpel@user/carpel
+I was calling gpa.destroy instead of list.deinit
+
+1781048820
+carpel!~carpel@user/carpel
+the stack trace helped, but the message was a bit opaque
+
+1781048852
+carpel!~carpel@user/carpel
+`access of union field 'pointer' while field 'struct' is active`
+
+1781048897
+carpel!~carpel@user/carpel
+but when I saw that it was being referenced by my deallocation function, it made more sense
+
+1781048949
+carpel!~carpel@user/carpel
+also, just a more general question
+
+1781048986
+carpel!~carpel@user/carpel
+https://privatebin.net/?bdf6b257e886e068#5EFpJQSrRBfESWADhScvD4tcTqdgWZs149dAttBdxKNh
+
+1781049020
+carpel!~carpel@user/carpel
+the enum holds u8 values
+
+1781049040
+carpel!~carpel@user/carpel
+does it make a difference to declare the arraylist as a list of OpCodes or a list of u8s?
+
+1781049061
+carpel!~carpel@user/carpel
+aside from the fact that I have to include a call to @intFromEnum
+
+1781049176
+andrewrk!~andrewrk@mail.ziglang.org
+in general more type information is better since it prevents bugs
+
+1781049186
+andrewrk!~andrewrk@mail.ziglang.org
+the language is designed with that in mind
+
+1781049227
+carpel!~carpel@user/carpel
+so OpCode would be preferred, even though internally its just an u8 like any other
+
+1781049229
+carpel!~carpel@user/carpel
+makes sense
+
+1781049486
+andrewrk!~andrewrk@mail.ziglang.org
+correct
+
