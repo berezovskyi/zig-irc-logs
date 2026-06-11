@@ -1,0 +1,932 @@
+1781053419
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+Any idea why I may be getting this TlsInitializationFailed? this is zig 0.16.0 https://bpa.st/LOBQ
+
+1781054089
+carpel!~carpel@user/carpel
+thats weird
+
+1781054099
+carpel!~carpel@user/carpel
+can you download the file through curl?
+
+1781055283
+carpel!~carpel@user/carpel
+looks like I'll have to roll my own dynamic array
+
+1781055309
+carpel!~carpel@user/carpel
+because because arraylist.items.len is apparently returning a huge number for no reason
+
+1781055313
+carpel!~carpel@user/carpel
+capacity too
+
+1781055474
+eggbert!~eggbert@user/Eggbert
+does zig have a theme song?
+
+1781055691
+carpel!~carpel@user/carpel
+wait, why is arraylist append adding a bajilion copies of a value?
+
+1781055708
+carpel!~carpel@user/carpel
+I'm doing a single append, but when debugging, its filled with tons of values
+
+1781056034
+slowstatic!~slowstati@user/slowstatic
+do a std.debug.print("booyah") in the same block as your .append() and see how many times its being called
+
+1781056088
+carpel!~carpel@user/carpel
+once
+
+1781056188
+carpel!~carpel@user/carpel
+oh okay
+
+1781056199
+carpel!~carpel@user/carpel
+apparently its being repeated 0xaa times
+
+1781056207
+carpel!~carpel@user/carpel
+which tells me something is undefined
+
+1781056224
+carpel!~carpel@user/carpel
+i searched for the arraylist length and its 12297829382473034410
+
+1781056235
+carpel!~carpel@user/carpel
+which, upon searching, is 0xAA
+
+1781056496
+eggbert!~eggbert@user/Eggbert
+i think something else must be happening
+
+1781056504
+carpel!~carpel@user/carpel
+i think too
+
+1781056523
+carpel!~carpel@user/carpel
+https://prnt.sc/Q-h87lyC5X3z
+
+1781056529
+carpel!~carpel@user/carpel
+this is the output
+
+1781056539
+carpel!~carpel@user/carpel
+I'm printing the contents for the arraylist before and after appending
+
+1781056549
+eggbert!~eggbert@user/Eggbert
+can i see the code too?
+
+1781056555
+carpel!~carpel@user/carpel
+of course
+
+1781056603
+carpel!~carpel@user/carpel
+https://privatebin.net/?2be2f13fd0c4e735#BDZvispTbnYAPtPGcnobmjpWphDCCeq33kExQxGRX99B
+
+1781057022
+eggbert!~eggbert@user/Eggbert
+i suspect it has to do with debug mode perhaps
+
+1781057029
+eggbert!~eggbert@user/Eggbert
+im trying to do some digging though
+
+1781057033
+eggbert!~eggbert@user/Eggbert
+i really have no idea
+
+1781057037
+carpel!~carpel@user/carpel
+thanks a lot!
+
+1781057045
+carpel!~carpel@user/carpel
+maybe changing the allocator could help?
+
+1781057056
+carpel!~carpel@user/carpel
+I'm using an arena + page
+
+1781057188
+eggbert!~eggbert@user/Eggbert
+I got the same weirdly huge capacity with release mode and an initial capacity
+
+1781057273
+eggbert!~eggbert@user/Eggbert
+oh I did not know you could print structs like that, that is so neat!
+
+1781057279
+eggbert!~eggbert@user/Eggbert
+with the {any}
+
+1781057313
+eggbert!~eggbert@user/Eggbert
+it could be because its a page allocator
+
+1781057326
+eggbert!~eggbert@user/Eggbert
+since they have to allocate an entire page, even if thats more than you need
+
+1781057353
+carpel!~carpel@user/carpel
+okay, thats unfortunate
+
+1781057362
+eggbert!~eggbert@user/Eggbert
+i dont know for sure tho
+
+1781057374
+carpel!~carpel@user/carpel
+I'm trying to change it out for the debug allocator to check, but I can't figure out how to instantiate it
+
+1781057404
+eggbert!~eggbert@user/Eggbert
+std.heap.DebugAllocator(.{})
+
+1781057407
+eggbert!~eggbert@user/Eggbert
+smth like that
+
+1781057449
+carpel!~carpel@user/carpel
+thanks, it was the .{}
+
+1781057690
+eggbert!~eggbert@user/Eggbert
+no way, im still getting the same large capacity, with debug and c allocator
+
+1781057710
+carpel!~carpel@user/carpel
+thats REALLY weird
+
+1781057720
+carpel!~carpel@user/carpel
+either we're both doing something stupid
+
+1781057731
+carpel!~carpel@user/carpel
+or we just stumbled upon a very weird edge case
+
+1781057734
+eggbert!~eggbert@user/Eggbert
+must be the latter lol
+
+1781058071
+eggbert!~eggbert@user/Eggbert
+ok so I may have found something
+
+1781058093
+eggbert!~eggbert@user/Eggbert
+ive been getting a capacity of 18446744073709551615 which turns out to be equal to 2^64 - 1
+
+1781058121
+eggbert!~eggbert@user/Eggbert
+the arraylist capacity is represented as a usize which is a integer with 64 bits
+
+1781058139
+eggbert!~eggbert@user/Eggbert
+the capacity is more likely -1, but when we print it as a usize, it comes out as that huge number
+
+1781058164
+carpel!~carpel@user/carpel
+makes sense
+
+1781058166
+carpel!~carpel@user/carpel
+but also
+
+1781058171
+carpel!~carpel@user/carpel
+why would the capacity be -1?
+
+1781058178
+eggbert!~eggbert@user/Eggbert
+lmao i have no idea
+
+1781058197
+carpel!~carpel@user/carpel
+lemme try something stupid
+
+1781058257
+carpel!~carpel@user/carpel
+no wait, its not gonna work
+
+1781058269
+carpel!~carpel@user/carpel
+I thought I defined that usize somewhere, but its not defined
+
+1781058274
+carpel!~carpel@user/carpel
+its internal
+
+1781058340
+Affliction!affliction@idlerpg/player/affliction
+sounds like uninitialized memory, .empty should init .capacity to 0 https://ziglang.org/documentation/0.16.0/std/#std.array_list.Aligned.empty
+
+1781058392
+eggbert!~eggbert@user/Eggbert
+I'm using .initCapacity, but i still get that huge number
+
+1781058395
+Affliction!affliction@idlerpg/player/affliction
+are you actually calling .init() where this struct is created?
+
+1781058428
+Affliction!affliction@idlerpg/player/affliction
+(or you can provide .empty as a default for that field)
+
+1781058465
+carpel!~carpel@user/carpel
+just to resend
+
+1781058466
+carpel!~carpel@user/carpel
+https://privatebin.net/?2be2f13fd0c4e735#BDZvispTbnYAPtPGcnobmjpWphDCCeq33kExQxGRX99B
+
+1781058478
+eggbert!~eggbert@user/Eggbert
+i have my variation too
+
+1781058478
+eggbert!~eggbert@user/Eggbert
+https://pastebin.com/QX9wCADH
+
+1781058483
+carpel!~carpel@user/carpel
+nice
+
+1781058494
+Affliction!affliction@idlerpg/player/affliction
+sure, does the code which creates a Chunk, do so with .init()?
+
+1781058501
+carpel!~carpel@user/carpel
+hmmm
+
+1781058509
+carpel!~carpel@user/carpel
+yes
+
+1781058522
+eggbert!~eggbert@user/Eggbert
+ok after more digging i may have found it
+
+1781058525
+eggbert!~eggbert@user/Eggbert
+lemme see if this works
+
+1781058594
+eggbert!~eggbert@user/Eggbert
+it looks like its because you are appending enums to the list
+
+1781058605
+Affliction!affliction@idlerpg/player/affliction
+then, we'll probably need more context, .deinit() sets the ArrayList's fields to undefined (which would be all 0xAAs in debug or releasesafe builds), so if you're using it after deinit it should fall over in a similar way
+
+1781058608
+eggbert!~eggbert@user/Eggbert
+and because your enum only has one value, it actually takes up no memory
+
+1781058627
+eggbert!~eggbert@user/Eggbert
+if you add once more value to the enum things should behave like normal
+
+1781058637
+carpel!~carpel@user/carpel
+huh
+
+1781058640
+carpel!~carpel@user/carpel
+thats interesting
+
+1781058660
+carpel!~carpel@user/carpel
+if I "desugar" the enum to straight u8s should solve it too, no?
+
+1781058663
+Affliction!affliction@idlerpg/player/affliction
+hm, feels like ArrayList should have an assert on the size of its type
+
+1781058669
+Affliction!affliction@idlerpg/player/affliction
+try and see
+
+1781058686
+carpel!~carpel@user/carpel
+how can I do that? I'm a complete beginner :)
+
+1781058686
+Affliction!affliction@idlerpg/player/affliction
+I've not done much with actual zero-size types in zig
+
+1781058692
+Affliction!affliction@idlerpg/player/affliction
+try enum(u8)
+
+1781058698
+Affliction!affliction@idlerpg/player/affliction
+which forces it to be stored in a u8
+
+1781058705
+Affliction!affliction@idlerpg/player/affliction
+or enum(u1) at least
+
+1781058715
+carpel!~carpel@user/carpel
+that did it!
+
+1781058722
+carpel!~carpel@user/carpel
+I have no idea why I took the u8 away
+
+1781058727
+carpel!~carpel@user/carpel
+it was there before
+
+1781058728
+eggbert!~eggbert@user/Eggbert
+its still beyond me why this is what happens
+
+1781058743
+eggbert!~eggbert@user/Eggbert
+maybe you can look at the source for arralists to see if they check type sizes
+
+1781058746
+Affliction!affliction@idlerpg/player/affliction
+yeah, I know Rust's Vec has actual optimizations for zero-size types
+
+1781058754
+carpel!~carpel@user/carpel
+seems like very strange behavior
+
+1781058767
+carpel!~carpel@user/carpel
+unintuitive, at least
+
+1781058769
+eggbert!~eggbert@user/Eggbert
+i mean it guess it makes sense
+
+1781058779
+carpel!~carpel@user/carpel
+yeah
+
+1781058781
+eggbert!~eggbert@user/Eggbert
+kinda, but idk if setting a usize to -1 makes a whole log of sense
+
+1781058789
+eggbert!~eggbert@user/Eggbert
+like it makes sense that no allocations actually need to happen
+
+1781058803
+carpel!~carpel@user/carpel
+but that just means the capacity should stay at 0
+
+1781058820
+carpel!~carpel@user/carpel
+but ints dont overflow that easily though
+
+1781058824
+carpel!~carpel@user/carpel
+at least in zig
+
+1781058837
+eggbert!~eggbert@user/Eggbert
+yeah i dont know why its at -1
+
+1781058846
+carpel!~carpel@user/carpel
+is it though, did you see it?
+
+1781058858
+eggbert!~eggbert@user/Eggbert
+perhaps 0 indicates that it can grow, but -1 is like a flag to say that no actual allocations need to be made
+
+1781058906
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+carpel: yes curl works
+
+1781058907
+eggbert!~eggbert@user/Eggbert
+ill have to read the source later
+
+1781058954
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+and this builds fine on my other machine, I figure there's something wonky going on with my laptop - it _does_ have a fresh gentoo installation so wonkiness is expected. but I can't tell from the error what's going on exactly
+
+1781058956
+Affliction!affliction@idlerpg/player/affliction
+line 405 https://ziglang.org/documentation/0.16.0/std/#src/std/array_list.zig
+
+1781058958
+carpel!~carpel@user/carpel
+ezzieyguywuf than that might be very much beyond me
+
+1781059014
+eggbert!~eggbert@user/Eggbert
+lmaoooo
+
+1781059021
+eggbert!~eggbert@user/Eggbert
+Affliction: good catch
+
+1781059025
+Affliction!affliction@idlerpg/player/affliction
+so, yeah, it guarantees that it'll never realloc
+
+1781059026
+carpel!~carpel@user/carpel
+thats such an odd thing to do
+
+1781059036
+Affliction!affliction@idlerpg/player/affliction
+since maxInt(usize) >= any other size
+
+1781059063
+eggbert!~eggbert@user/Eggbert
+oh so it is the max int and not -1
+
+1781059073
+eggbert!~eggbert@user/Eggbert
+its basically saying since this type has 0 size
+
+1781059078
+eggbert!~eggbert@user/Eggbert
+you can have A LOT of it
+
+1781059082
+Affliction!affliction@idlerpg/player/affliction
+pretty much
+
+1781059085
+carpel!~carpel@user/carpel
+yuh
+
+1781059085
+eggbert!~eggbert@user/Eggbert
+mmmmmmm
+
+1781059089
+eggbert!~eggbert@user/Eggbert
+it all makes sense now
+
+1781059104
+carpel!~carpel@user/carpel
+it does make sense, but its still weird behavior
+
+1781059105
+carpel!~carpel@user/carpel
+but again
+
+1781059114
+carpel!~carpel@user/carpel
+I'm not a professional compiler engineer xD
+
+1781059123
+carpel!~carpel@user/carpel
+so it might be for a good reason
+
+1781059157
+Affliction!affliction@idlerpg/player/affliction
+I think it's more about the logic I said above than compiler internals
+
+1781059173
+Affliction!affliction@idlerpg/player/affliction
+It pretty much ensures any logic which might realloc, doesn't
+
+1781059190
+carpel!~carpel@user/carpel
+yeah, it does make sense in that regard
+
+1781059197
+carpel!~carpel@user/carpel
+if you think about it
+
+1781059209
+carpel!~carpel@user/carpel
+capacity = availability / size
+
+1781059212
+carpel!~carpel@user/carpel
+if size is 0
+
+1781059221
+carpel!~carpel@user/carpel
+capacity is functionally infinite
+
+1781059225
+carpel!~carpel@user/carpel
+in a very rough sense
+
+1781059257
+Affliction!affliction@idlerpg/player/affliction
+and since @sizeOf is comptime, the compiler knows the realloc code is unreachable, and can optimize it all out
+
+1781059273
+carpel!~carpel@user/carpel
+which leaves us with one last question
+
+1781059276
+Affliction!affliction@idlerpg/player/affliction
+now I'm curious how zero size types interact with slices. I assume nonzero but possibly nonsensical pointer, with .len reflecting the number of elements
+
+1781059292
+carpel!~carpel@user/carpel
+in this case, how are we supposed to keep track of element count?
+
+1781059293
+Affliction!affliction@idlerpg/player/affliction
+that probably involves a special path in the compiler
+
+1781059298
+Affliction!affliction@idlerpg/player/affliction
+.items.len
+
+1781059305
+Affliction!affliction@idlerpg/player/affliction
+just like with nonzero sized types
+
+1781059313
+carpel!~carpel@user/carpel
+but items.len returns that weird value again
+
+1781059315
+Affliction!affliction@idlerpg/player/affliction
+.items is a slice which reflects the actual valid part
+
+1781059320
+Affliction!affliction@idlerpg/player/affliction
+o
+
+1781059362
+carpel!~carpel@user/carpel
+i was iterating using items.len this whole itme
+
+1781059364
+carpel!~carpel@user/carpel
+time*
+
+1781059370
+carpel!~carpel@user/carpel
+and it went out on an infinite loop
+
+1781059385
+carpel!~carpel@user/carpel
+only after I typed the enum to u8 it stopped
+
+1781059415
+carpel!~carpel@user/carpel
+so it might be a very niche edge case, an array list of zero sized enum values
+
+1781059420
+carpel!~carpel@user/carpel
+but still
+
+1781059433
+carpel!~carpel@user/carpel
+worth reporting?
+
+1781059447
+Affliction!affliction@idlerpg/player/affliction
+slices of zero size types seems to work, going to test myself with an arraylist
+
+1781059462
+carpel!~carpel@user/carpel
+sounds good
+
+1781059474
+carpel!~carpel@user/carpel
+please report back with findings, I'm quite curious now
+
+1781059477
+carpel!~carpel@user/carpel
+xD
+
+1781059820
+Affliction!affliction@idlerpg/player/affliction
+carpel: seems to work fine https://godbolt.org/z/5ohb33Gqz
+
+1781059847
+carpel!~carpel@user/carpel
+god bless matt
+
+1781059851
+carpel!~carpel@user/carpel
+lets check it out
+
+1781059982
+Affliction!affliction@idlerpg/player/affliction
+seems to have fallen over for me now, yay
+
+1781060038
+Affliction!affliction@idlerpg/player/affliction
+but yeah, after 3 .appends() of a zero size type, I get: info: 3/18446744073709551615
+
+1781060057
+Affliction!affliction@idlerpg/player/affliction
+so, .items should definitely reflect the size
+
+1781060401
+Affliction!affliction@idlerpg/player/affliction
+and in debug builds, the allocator doesn't complain about me leaking the list, which makes sense, since it never allocates
+
+1781060559
+carpel14!~carpel@user/carpel
+ oh great I lost my chat history
+
+1781060566
+carpel14!~carpel@user/carpel
+and I can't even use my nick
+
+1781060569
+carpel14!~carpel@user/carpel
+:|
+
+1781060580
+Affliction!affliction@idlerpg/player/affliction
+if it's registered, /msg nickserv regain carpel
+
+1781060586
+Affliction!affliction@idlerpg/player/affliction
+or it'll time out eventually
+
+1781060588
+Affliction!affliction@idlerpg/player/affliction
+oh, it just did
+
+1781060594
+Affliction!affliction@idlerpg/player/affliction
+should be able to /nick to it now
+
+1781060602
+carpel!~carpel@user/carpel
+thats better
+
+1781060604
+carpel!~carpel@user/carpel
+thanks
+
+1781060619
+carpel!~carpel@user/carpel
+so as i was saying, does it warrant filing an issue?
+
+1781060633
+carpel!~carpel@user/carpel
+sounds like a reproducible "bug" (?)
+
+1781060645
+carpel!~carpel@user/carpel
+if anything its weird behavior
+
+1781060685
+Affliction!affliction@idlerpg/player/affliction
+what's the bug? seemed to work for me
+
+1781060702
+carpel!~carpel@user/carpel
+you said it fell over afterwards
+
+1781060705
+Affliction!affliction@idlerpg/player/affliction
+.items.len reflects the number of .appends, .capacity is set to the highest possible value to prevent it from being realloced
+
+1781060713
+carpel!~carpel@user/carpel
+ah okay
+
+1781060713
+Affliction!affliction@idlerpg/player/affliction
+ah I meant godbolt.org
+
+1781060730
+carpel!~carpel@user/carpel
+yeah it stopped showing logs for me as well
+
+1781060749
+Affliction!affliction@idlerpg/player/affliction
+https://bpa.st/YGJKUAYBV6VJJN63ZXIMNRTLF4
+
+1781060799
+carpel!~carpel@user/carpel
+thanks! I missed that last message
+
+1781060809
+carpel!~carpel@user/carpel
+well, I guess that settles that
+
+1781060881
+Affliction!affliction@idlerpg/player/affliction
+are you sure items.len ended up high?
+
+1781060903
+carpel!~carpel@user/carpel
+I can definitely test
+
+1781060906
+carpel!~carpel@user/carpel
+1sec
+
+1781060915
+Affliction!affliction@idlerpg/player/affliction
+if you can repro it, I'd call that a bug
+
+1781061047
+carpel!~carpel@user/carpel
+in that case
+
+1781061054
+carpel!~carpel@user/carpel
+you just got yourself a bug, friend
+
+1781061057
+carpel!~carpel@user/carpel
+reproduced
+
+1781061063
+Affliction!affliction@idlerpg/player/affliction
+exciting
+
+1781061073
+carpel!~carpel@user/carpel
+brb, taking clothes out the dryer
+
+1781061265
+Affliction!affliction@idlerpg/player/affliction
+probably worth mentioning - if you're removing more elements than you add in ReleaseFast/ReleaseSmall, then .len could underflow
+
+1781061308
+carpel!~carpel@user/carpel
+cutting corners and stuff?
+
+1781061312
+carpel!~carpel@user/carpel
+with the optimizations
+
+1781061391
+Affliction!affliction@idlerpg/player/affliction
+they disable a lot of the safety checks
+
+1781061403
+Affliction!affliction@idlerpg/player/affliction
+including int over/underflow
+
+1781061410
+carpel!~carpel@user/carpel
+gotta go fast, as the kids say
+
+1781061424
+carpel!~carpel@user/carpel
+I'm writing the minimal example now
+
+1781061428
+carpel!~carpel@user/carpel
+I'll share in a sec
+
+1781062227
+carpel!~carpel@user/carpel
+I'm stupid
+
+1781062239
+carpel!~carpel@user/carpel
+```
+
+1781062240
+carpel!~carpel@user/carpel
+    chunk.free(gpa);
+
+1781062240
+carpel!~carpel@user/carpel
+    Dbg.disassembleChunk(chunk, "test chunk");
+
+1781062241
+carpel!~carpel@user/carpel
+```
+
+1781062249
+carpel!~carpel@user/carpel
+I'm reading the chunk after freeing it
+
+1781062346
+carpel!~carpel@user/carpel
+yeah it just works now
+
+1781062364
+carpel!~carpel@user/carpel
+guess its time for bed, thanks for helping out everyone!
+
+1781062398
+carpel!~carpel@user/carpel
+lesson of the day: calling ArrayList.deinit() then trying to read its items len returns usize max
+
+1781062415
+carpel!~carpel@user/carpel
+reading an element also provokes a segfault
+
+1781062482
+Affliction!affliction@idlerpg/player/affliction
+Affliction │ then, we'll probably need more context, .deinit() sets the ArrayList's fields to undefined (which would be all 0xAAs in debug or releasesafe builds), so if you're using it after deinit it should fall over in a similar way
+
+1781062511
+carpel!~carpel@user/carpel
+good catch
+
+1781062517
+Affliction!affliction@idlerpg/player/affliction
+ah well, learned a thing or two about zero sized types myself so, can't complain :)
+
+1781062524
+carpel!~carpel@user/carpel
+hah
+
+1781062528
+carpel!~carpel@user/carpel
+I was about to say
+
+1781062539
+carpel!~carpel@user/carpel
+we got you along for the goose chase for a bit there
+
+1781062547
+carpel!~carpel@user/carpel
+but its all in good sport
+
+1781062559
+Affliction!affliction@idlerpg/player/affliction
+sure
+
+1781062579
+carpel!~carpel@user/carpel
+Thanks for all the help anyways, I'll be around!
+
+1781069756
+pmitobacco!~user@user/pmitobacco
+I'm trying to combat Io interface upgrade in my zig library. I have a dedicate function to print structs in specific way. And new version of zig requires me to pass an std.Io interface to the writer. Where can I get one from library code?
+
+1781069800
+pmitobacco!~user@user/pmitobacco
+init.io is not an option, I scrapped the sources, and the nearest thing I've found was global_single_threaded
+
+1781069833
+pmitobacco!~user@user/pmitobacco
+std.Io.global_single_threaded.io() to be precise
+
+1781070388
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Can the user supply an std.Io?
+
+1781070616
+pmitobacco!~user@user/pmitobacco
+no, libs used from C code
+
+1781071046
+pmitobacco!~user@user/pmitobacco
+also I wonder why jumping from 0.14.1 to 0.17.0-dev bloats my binaries x10? even i supply -fsingle-threaded -O ReleaseSmall -fPIE
+
+1781071104
+pmitobacco!~user@user/pmitobacco
+the code uses only print functions, it seems to be odd. as a solution, I compile print libraries with 0.14.1 compiler and other code 0.16.0
+
+1781071214
+foxglv!~foxglv@user/sunflr
+pmitobacco: the way you get init is by passing an argument to main like this: main(init: std.process.Init), then you can get io from init.io
+
+1781071266
+foxglv!~foxglv@user/sunflr
+you can also get an arena allocator like this: const arena = init.arena.allocator();
+
+1781071596
+pmitobacco!~user@user/pmitobacco
+i don't have a main function, it's a C ABI library code
+
+1781072367
+sensille!~arne@dsnsi.rzone.de
+i'm trying to use prlimit to get the fd limit of a process, but it looks like std.c.prlimit forces me to also populate the new_limit value, I'd like to pass null there
+
+1781072662
+sensille!~arne@dsnsi.rzone.de
+(zig 0.16.0)
+
+1781072710
+foxglv!~foxglv@user/sunflr
+pmitobacco: here's the code you can use to get an io: `var threaded: std.Io.Threaded = .init(arena, .{}); const io = threaded.io();`
+
+1781072782
+sensille!~arne@dsnsi.rzone.de
+i guess i can just define it directly with extern "c"
+
+1781072819
+foxglv!~foxglv@user/sunflr
+pmitobacco: i found the code here: https://pedropark99.github.io/zig-book/Chapters/12-file-op.html#sec-new-io-backend
+
