@@ -1,0 +1,312 @@
+1781308949
+Affliction!affliction@idlerpg/player/affliction
+Hard to elaborate without an actual question. Are you trying to implement one? or use one? or just general information about how it works?
+
+1781309506
+andrewrk!~andrewrk@mail.ziglang.org
+bxtn: sure, the explanation is: this is how you make a reusable API that wants to write or read a stream of data
+
+1781311862
+Affliction!affliction@idlerpg/player/affliction
+working with Io.Queue, in 0.16, are there any plans for a failable non-blocking put? I have other logic I could run if the queue is currently full
+
+1781311927
+Affliction!affliction@idlerpg/player/affliction
+oh, .put with min of 0, nevermind
+
+1781311939
+Affliction!affliction@idlerpg/player/affliction
+thought that was invalid for some reason, thanks brain
+
+1781313156
+bxtn!~user@user/bxtn
+Affliction: fair poiny. i guess the question is: what would the proper way to read from stdin and write to stdout? different guides online have a prelude ritual setting up a buffer and addresses and the main doc has std.Io.File.stdout().writeStreamingAll().
+
+1781313248
+Affliction!affliction@idlerpg/player/affliction
+Fair point, you do need a buffer (which can be &.{} in some cases, some use cases might require some minimal buffer size in Reader/Writers, they should document that)
+
+1781313309
+Affliction!affliction@idlerpg/player/affliction
+so, yeah, .stdout() is an Io.File, which does have methods for reading and writing, but they lack much of the convenience methods writers have
+
+1781313345
+Affliction!affliction@idlerpg/player/affliction
+They'll be unbuffered. Every call you make to them, will result in a read or write syscall
+
+1781313370
+Affliction!affliction@idlerpg/player/affliction
+unlike eg, C, where libc provides a buffer, which may save or cause you trouble :)
+
+1781313403
+Affliction!affliction@idlerpg/player/affliction
+.reader() will give you a std.Io.File.Reader, not to be confused with an std.Io.Reader
+
+1781313428
+Affliction!affliction@idlerpg/player/affliction
+it has extra context, including its own seek position
+
+1781313459
+Affliction!affliction@idlerpg/player/affliction
+Now, it won't be passable to stuff which expects the actual std.Io.Reader, but it contains one of those in its .interface field
+
+1781313525
+Affliction!affliction@idlerpg/player/affliction
+THey provide the nice fancy read/write functions, and that's also where buffering happens
+
+1781313593
+Affliction!affliction@idlerpg/player/affliction
+The justification for that is, your hot code can use those fancy read/write functions in a hot loop, the compiler can inline them for perf, and only when the buffer is full or you ask for a flush, the actual concerete implementation gets involved through dynamic dispatch
+
+1781313711
+Affliction!affliction@idlerpg/player/affliction
+You'll always want to accept Reader/Writer by reference in functions, since their underlying implementation might have extra context that it'll access using @fieldParentPtr()
+
+1781313778
+Affliction!affliction@idlerpg/player/affliction
+bxtn: bit of an info dump, maybe it helps, maybe it just causes more questions :)
+
+1781313790
+Affliction!affliction@idlerpg/player/affliction
+https://www.youtube.com/watch?v=f30PceqQWko is worth a watch
+
+1781314045
+Affliction!affliction@idlerpg/player/affliction
+And, yeah, I do agree there is a bit of an "ugh, now I have to decide on a buffer size and where the buffer is stored" feeling whenever you need to read/write a file, but, at least, after watching that presentation, I at least respect the reason for it.
+
+1781314084
+Affliction!affliction@idlerpg/player/affliction
+Zig makes things explicit that even C did not, so, that'll be a bit of a learning curve coming from higher level languages
+
+1781314319
+Affliction!affliction@idlerpg/player/affliction
+bxtn: I guess, to answer your question more directly - "what would the proper way to read from stdin and write to stdout?" -- The methods on the File will work just fine if you don't need the fancier methods in Reader/Writer or don't plan on passing them to a function which accepts them.
+
+1781322448
+bxtn!~user@user/bxtn
+i've seen that "don't forget to flush" talk on another thing but didn't havethe time to watch it. after doing so, now i think i get it.
+
+1781323583
+bxtn!~user@user/bxtn
+yeah. think i got it working. finally got a struct that takes a writer, then passing it a &writer.interface.
+
+1781334864
+andrewrk!~andrewrk@mail.ziglang.org
+bxtn: don't forget to unwrap the error.WriteFailed into the actual error at the source location where you construct the interface
+
+1781340353
+librecat!uid714233@id-714233.helmsley.irccloud.com
+can i make a funny joke
+
+1781340407
+librecat!uid714233@id-714233.helmsley.irccloud.com
+Anyway zen c is getting lots of hype and im falling back to c and c++ at the same time
+
+1781340452
+librecat!uid714233@id-714233.helmsley.irccloud.com
+The name is sure intresting
+
+1781340470
+librecat!uid714233@id-714233.helmsley.irccloud.com
+and it does have cool properties
+
+1781340565
+foxglv!~foxglv@user/sunflr
+not another fil-c lol
+
+1781340625
+librecat!uid714233@id-714233.helmsley.irccloud.com
+foxglv: guys zen c is the future of programming cancel zig /n
+
+1781340630
+librecat!uid714233@id-714233.helmsley.irccloud.com
+./j
+
+1781340646
+librecat!uid714233@id-714233.helmsley.irccloud.com
+that was the joke
+
+1781340660
+librecat!uid714233@id-714233.helmsley.irccloud.com
+Also the name is funny to me
+
+1781340667
+librecat!uid714233@id-714233.helmsley.irccloud.com
+Because it reminds me of zig zen
+
+1781340693
+foxglv!~foxglv@user/sunflr
+zen reminds me of the zen browser
+
+1781340721
+librecat!uid714233@id-714233.helmsley.irccloud.com
+foxglv: there is also holy c but that isnt really in the same position as zig or fil-c or zen-c
+
+1781340725
+foxglv!~foxglv@user/sunflr
+i think if people don't wanna use Zig there's Odin i guess
+
+1781340757
+librecat!uid714233@id-714233.helmsley.irccloud.com
+I think zig is way past the point of being just another summer project
+
+1781340758
+foxglv!~foxglv@user/sunflr
+is holy-c even maintained anymore?
+
+1781340765
+foxglv!~foxglv@user/sunflr
+yeah
+
+1781340767
+librecat!uid714233@id-714233.helmsley.irccloud.com
+holy c is a joke
+
+1781340773
+librecat!uid714233@id-714233.helmsley.irccloud.com
+Its the thing temple os is written in
+
+1781340791
+librecat!uid714233@id-714233.helmsley.irccloud.com
+zen-c has a way higher risk of dying
+
+1781340799
+librecat!uid714233@id-714233.helmsley.irccloud.com
+also when you make a language you cant just focus on what you want
+
+1781340844
+librecat!uid714233@id-714233.helmsley.irccloud.com
+Even rust suffers from not having enough maturity
+
+1781340850
+librecat!uid714233@id-714233.helmsley.irccloud.com
+or golang
+
+1781340868
+foxglv!~foxglv@user/sunflr
+yeah seems to be something weird going on with golang
+
+1781340898
+librecat!uid714233@id-714233.helmsley.irccloud.com
+when zig 1.0 is out and its stable as promised and makes it into gcc then trust will grow exponentially from there
+
+1781340947
+librecat!uid714233@id-714233.helmsley.irccloud.com
+People like the idea of port once use any language with gcc
+
+1781340952
+librecat!uid714233@id-714233.helmsley.irccloud.com
+and embedded or microcontrollers
+
+1781341013
+foxglv!~foxglv@user/sunflr
+woag
+
+1781341024
+foxglv!~foxglv@user/sunflr
+Zig in gcc would be crazy x3
+
+1781341047
+foxglv!~foxglv@user/sunflr
+i was already surprised when i saw build.zig in the Raylib repo
+
+1781342330
+wootehfoot!~wootehfoo@user/wootehfoot
+the only thing Go should do is Go Away
+
+1781343182
+foxglv!~foxglv@user/sunflr
+lol
+
+1781343778
+aks!~m-n2ods6@user/akselmo
+Zig 1.0 when
+
+1781348291
+foxglv!~foxglv@user/sunflr
+hmm
+
+1781348319
+foxglv!~foxglv@user/sunflr
+i could try to calculate that but i'm lazy
+
+1781350180
+aks!~m-n2ods6@user/akselmo
+What is still missing?
+
+1781352243
+genr8eofl!~genr8@user/genr8eofl
+rome wasnt build in a day
+
+1781352381
+kenrap!~kenrap@user/kenrap
+Is there a way I can check if std.posix.kill() was successful?
+
+1781352713
+aks!~m-n2ods6@user/akselmo
+my question was genuine :') i dont meant to rush anyone
+
+1781352849
+brka!~brka@user/brka
+aks: have you watched the recent Jetbrains interview with Andrew?
+
+1781352859
+aks!~m-n2ods6@user/akselmo
+oh yeah, i liked it
+
+1781352910
+brka!~brka@user/brka
+aks: there is a chapter Why Zig Isn't 1.0 After 10 Years
+
+1781352922
+brka!~brka@user/brka
+In the video
+
+1781352927
+aks!~m-n2ods6@user/akselmo
+i'll have to rewatch that part
+
+1781354007
+kenrap!~kenrap@user/kenrap
+Nevermind, I borrowed from the source example to do what I needed.
+
+1781356816
+netvor!~netvor@2a00:ca8:a1f:cd0:64b6:1f93:33e5:237b
+this is rather confusing. a footgun, if you will:  if i do zig fetch --save <URL>#<BRANCH>, then in build.zig.zon, zig saves <URL>?ref=<BRANCH>#<COMMIT_HASH>
+
+1781356853
+netvor!~netvor@2a00:ca8:a1f:cd0:64b6:1f93:33e5:237b
+but if I do zig fetch --save <URL>?ref=<BRANCH>  then zig simply ignores the ref part
+
+1781356930
+netvor!~netvor@2a00:ca8:a1f:cd0:64b6:1f93:33e5:237b
+it becomes a footgun because, maintainers will often provide the wrong syntax (i suspect they copy the ref part from build.zig.zon, assuming it will work)
+
+1781357029
+gschwind!~gschwind@user/gschwind
+I guess if a part of an arguments is ignored it's a bug if it's not stated in the documentation
+
+1781357139
+netvor!~netvor@2a00:ca8:a1f:cd0:64b6:1f93:33e5:237b
+i'm not sure, it maybe that it's not technically ignored: it's just saved as prefix of the `.url` in build.zig.zon.   but it's not parsed.
+
+1781357530
+gschwind!~gschwind@user/gschwind
+you mean that `?ref=<BRANCH>` is saved as url ? in that case it may be expected
+
+1781357553
+gschwind!~gschwind@user/gschwind
+while being a bit missleading
+
+1781357842
+netvor!~netvor@2a00:ca8:a1f:cd0:64b6:1f93:33e5:237b
+i've filed it as https://codeberg.org/ziglang/zig/issues/35756
+
+1781380133
+nullndvoid!~jacob@user/nullndvoid
+Hey, I have a Backend struct and I want to have a setCallback method on it, but I am not sure how I should store it in the struct. Are callbacks an antipattern? For context I am trying to write a clipboard manager and I want a callback that is fired when the clipboard is updated.
+
+1781381058
+torque!~tachyon@user/torque
+I certainly don't consider callbacks to be an antipattern. but a callback, like anything else, is just a regular function
+
