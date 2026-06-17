@@ -1,0 +1,500 @@
+1781603378
+aixin!aixin@user/aixin
+I'm new to Zig and currently rewriting some TypeScript code in Zig.
+
+1781603380
+aixin!aixin@user/aixin
+I’ve been using generic functions that take a comptime type parameter to define reusable types. For example:
+
+1781603382
+aixin!aixin@user/aixin
+fn Point(comptime T: type) type {
+
+1781603384
+aixin!aixin@user/aixin
+    return struct {
+
+1781603386
+aixin!aixin@user/aixin
+        x: T,
+
+1781603388
+aixin!aixin@user/aixin
+        y: T,
+
+1781603390
+aixin!aixin@user/aixin
+    };
+
+1781603392
+aixin!aixin@user/aixin
+}
+
+1781603403
+aixin!aixin@user/aixin
+As the project grows, I find that almost all my custom types end up being defined this way because they depend on these base generic types
+
+1781603419
+aixin!aixin@user/aixin
+Is this the idiomatic/recommended approach in Zig, or am I over-engineering it?
+
+1781604410
+foxglv!~foxglv@user/sunflr
+aixin: if it returns a struct why not just use a struct without the function? Unless i'm not seeing something
+
+1781604849
+ifreund!2940d10f8b@user/ifreund
+aixin: I think you should prefer concrete types whenever possible
+
+1781604876
+ifreund!2940d10f8b@user/ifreund
+generics are usually only justified for implementing container types like a hash map
+
+1781604888
+ifreund!2940d10f8b@user/ifreund
+I would never make a Point type like that generic
+
+1781606516
+pmitobacco!~user@user/pmitobacco
+how can I get MSG struct (https://learn.microsoft.com/en-us/windows/win32/api/winuser/ns-winuser-msg) in zig code?
+
+1781606587
+pmitobacco!~user@user/pmitobacco
+or maybe we got a message loop example in zig?
+
+1781608480
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+pmitobacco, there are win32 binding libraries for zig, google should find them
+
+1781610612
+gschwind!~gschwind@user/gschwind
+aixin, I'am not sure about what you want to do but maybe you can put everything that depend of your type T in a single struct, i.e. using struct as namespace : https://pastebin.com/zzjKarfG
+
+1781611404
+brka!~brka@user/brka
+is it normal that zig cache takes up a lot of space?
+
+1781611539
+Affliction!affliction@idlerpg/player/affliction
+probably depends on how much "a lot" is
+
+1781611562
+brka!~brka@user/brka
+`du -sch ~/.cache/zig` returns 2.7G
+
+1781611593
+brka!~brka@user/brka
+One project I've been working on (around 200 lines total) was more than a GiB (I cleaned it manually)
+
+1781611628
+Affliction!affliction@idlerpg/player/affliction
+mine's 109M, think I purged it when I switched to 0.16, or at least 0.15, think it also includes builds from 'zig build-exe'
+
+1781611655
+Affliction!affliction@idlerpg/player/affliction
+over a gig in the local cache for a 200 line project feels heavy
+
+1781611674
+Affliction!affliction@idlerpg/player/affliction
+unless it's got heavy dependencies, naturally
+
+1781611690
+brka!~brka@user/brka
+0 deps, it's for learning
+
+1781611715
+brka!~brka@user/brka
+Shouldn't have deleted it, it would probably be useful for debugging
+
+1781611742
+Affliction!affliction@idlerpg/player/affliction
+I'll probably defer to others for how they age, I clear my local build caches periodically
+
+1781611765
+Affliction!affliction@idlerpg/player/affliction
+but, frequent recompiles on small edits I could see building up
+
+1781611916
+aixin!aixin@user/aixin
+foxglv: I want the code is more reusable as a library that user can choose the float precision like f32 or f64.
+
+1781611969
+gschwind!~gschwind@user/gschwind
+aixin, have look at pastebin.com/zzjKarfG
+
+1781612020
+gschwind!~gschwind@user/gschwind
+* https://pastebin.com/zzjKarfG
+
+1781612235
+aixin!aixin@user/aixin
+gschwind: I see it, but it is exactly what I am doing right now. My problem is that almost all my struct(type) go like that.
+
+1781612414
+aixin!aixin@user/aixin
+gschwind: oh, I get your point. You mean put all related struct in one namespace function. 
+
+1781612431
+gschwind!~gschwind@user/gschwind
+yes
+
+1781612506
+aixin!aixin@user/aixin
+gschwind: that function will be really huge..
+
+1781612557
+Affliction!affliction@idlerpg/player/affliction
+that function can call your other type generators which can call their other type generators
+
+1781612652
+Affliction!affliction@idlerpg/player/affliction
+each level of the heirarchy doesn't have to be significantly larger than it is already
+
+1781612784
+aixin!aixin@user/aixin
+Affliction: so I can still put my code in multi files, except that I wrap the most code in the file in a namespace function?
+
+1781612853
+Affliction!affliction@idlerpg/player/affliction
+aixin: pretty much, so if eg, root.zig exported Point's generator before, it might have a function which calls Point(T)
+
+1781613011
+Affliction!affliction@idlerpg/player/affliction
+aixin: something like this - https://bpa.st/CB7MHYQ6XLZACAV6SYXSGTS3S4
+
+1781613029
+Affliction!affliction@idlerpg/player/affliction
+ok that example won't work because of the shadowing, but, it shows the general idea
+
+1781614122
+aixin!aixin@user/aixin
+Affliction: I got it. Now, I am considering only use generic functions only for 'base' geometry types. For 'upper' application code I just choose the float precision by one global const. I think this make more sense that use generic function everywhere.
+
+1781614171
+Affliction!affliction@idlerpg/player/affliction
+Yeah, that makes sense, something like std.options ?
+
+1781614245
+Affliction!affliction@idlerpg/player/affliction
+Naturally that would prevent the app from using eg, f32 and f64 versions in parallel in different contexts, but if that doesn't make any sense at all for your use case anyway, sounds practical
+
+1781614302
+aixin!aixin@user/aixin
+Affliction: I have not used std.options. Is this used like a compile parameter?
+
+1781614345
+Affliction!affliction@idlerpg/player/affliction
+kinda, sorta, it lets the root module override various comptime settings within std
+
+1781614388
+Affliction!affliction@idlerpg/player/affliction
+but then, your package would have its own root, so, not sure how practical this is to replicate, not something I've done
+
+1781614590
+Affliction!affliction@idlerpg/player/affliction
+heading to sleep, if you try to replicate ^ let me know if it works or how painful it ended up, mildly curious
+
+1781614608
+aixin!aixin@user/aixin
+Affliction: may look into it later, for now, I just hard code it. :-)
+
+1781614646
+Affliction!affliction@idlerpg/player/affliction
+otherwise, yeah, I'd just stick with a namespace builder calling other namespace builders
+
+1781614674
+Affliction!affliction@idlerpg/player/affliction
+that should comfortably nest as deep as you need
+
+1781615271
+aixin!aixin@user/aixin
+Affliction: I did some search. I believe it should using std.Build.addOptions in build.zig not std.options. And in src code use `const build_options = @import("build_options"); ` to obtatin the option in comptime.
+
+1781619183
+pmitobacco!~user@user/pmitobacco
+how to get something like closure? compiler says error: 'ctx' not accessible from inner function
+
+1781619513
+pmitobacco!~user@user/pmitobacco
+* https://pastebin.com/FfRMAC4i
+
+1781620228
+gschwind!~gschwind@user/gschwind
+I do not see where do you want a closure, but if you want a general purpose closure you need a fat pointer with pointer to data and pointer to the function to apply to the data, or pointer to data that hold the pointer to the function
+
+1781620292
+gschwind!~gschwind@user/gschwind
+the data hold the captured data
+
+1781620294
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+typically you'd have some way to specify some "user data" that will be passed as w or l where you can pass your ctx
+
+1781620342
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+one of the parameters of SetWindowsHookEx is that I'm pretty sure
+
+1781620394
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+hm, or not
+
+1781620507
+pmitobacco!~user@user/pmitobacco
+unfortunately, not, in C++ I used static namespace, I'm trying to port the old codebase and very new to Zig
+
+1781620548
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+so a global pretty much
+
+1781620568
+gschwind!~gschwind@user/gschwind
+to workaround this you can use a static function that call you closure
+
+1781620643
+pmitobacco!~user@user/pmitobacco
+gschwind: how? I tried to do the same thing as far as i understand, compiler said that I'm wrong :/
+
+1781620710
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there aren't any closures in the language
+
+1781620716
+gschwind!~gschwind@user/gschwind
+in your code, put ctx as member of the struct
+
+1781620733
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that doesn't help
+
+1781620812
+gschwind!~gschwind@user/gschwind
+return struct { const static_ctx = ctx, ... }; and use it from this static member
+
+1781620867
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's not going to compile
+
+1781620878
+gschwind!~gschwind@user/gschwind
+my explanation is bad, just wait a sec
+
+1781620912
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+ctx is a runtime value
+
+1781620930
+pmitobacco!~user@user/pmitobacco
+I'm using zig 0.16.0 btw
+
+1781620979
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you're going to need a global var somewhere
+
+1781621037
+pmitobacco!~user@user/pmitobacco
+gschwind: error: 'ctx' not accessible outside function scope
+
+1781621147
+gschwind!~gschwind@user/gschwind
+https://pastebin.com/wK2yMZeA
+
+1781621172
+gschwind!~gschwind@user/gschwind
+more like this, the idea is to store your capture date in the static storage
+
+1781621213
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that's a global var, yes
+
+1781621213
+gschwind!~gschwind@user/gschwind
+const S = struct { var _ctx : *Keyboard = undefined; }; // S._ctx is in the static storage
+
+1781621248
+pmitobacco!~user@user/pmitobacco
+gschwind: it compiles, wow
+
+1781621268
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but it can only be called once
+
+1781621273
+gschwind!~gschwind@user/gschwind
+you cannot make severals instance of this
+
+1781621280
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+you can do exactly the same thing in C++
+
+1781621337
+gschwind!~gschwind@user/gschwind
+to overide this you can add a comptime arg to the hookproc function
+
+1781621441
+gschwind!~gschwind@user/gschwind
+That way each time you change the comptime arg you get a new instance
+
+1781621680
+gschwind!~gschwind@user/gschwind
+Gliptic, yes
+
+1781622165
+gschwind!~gschwind@user/gschwind
+I don't know if there is a library that allow to create a function at runtime
+
+1781622948
+pmitobacco!~user@user/pmitobacco
+gschwind: your solution is enough for my problem, but how can I make sure the function only called once? I changed signature to pub fn hookproc(comptime T: type, ctx: *T) win32.HOOKPROC {
+
+1781623002
+pmitobacco!~user@user/pmitobacco
+so it should be fine to add mouse hooks as well
+
+1781623051
+pmitobacco!~user@user/pmitobacco
+check if the function called once at compile time
+
+1781623115
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I think runtime check is as good as you get
+
+1781623345
+gschwind!~gschwind@user/gschwind
+as Gliptic, you can have a runtime check, const S = struct { var _ctx : ?*Keyboard = null; }; and check if the value is not null
+
+1781623465
+pmitobacco!~user@user/pmitobacco
+I came up with this code https://pastebin.com/cjtYvsz2
+
+1781623497
+pmitobacco!~user@user/pmitobacco
+after ziglings it feels like there should be a compile time check for this
+
+1781623513
+gschwind!~gschwind@user/gschwind
+you may enable the check only in debug optimization
+
+1781623533
+pmitobacco!~user@user/pmitobacco
+that would be better than runtime check IMO
+
+1781623760
+gschwind!~gschwind@user/gschwind
+I think it's not what you would expect, because 1 call site does not ensure 1 call at runtime
+
+1781623914
+gschwind!~gschwind@user/gschwind
+And if you want have only one call site you can put the definition of the function in a block around the call site
+
+1781624115
+pmitobacco!~user@user/pmitobacco
+Yeah, makes sense. I wouldnt think about limiting one function call at runtime if i were not porting C++ code. Maybe I will figure out something more natural than this
+
+1781624459
+Sivecano-!~Sivecano@user/Sivecano
+I've actually come up with a pretty nice inotify abstraction: https://codeberg.org/Sivecano/libtributary/src/branch/main/src/inotify.zig
+
+1781626472
+Sivecano-!~Sivecano@user/Sivecano
+is there a way to comptime case a slice to an array?
+
+1781626876
+Sivecano-!~Sivecano@user/Sivecano
+I figured it out, slice syntax works
+
+1781626964
+Sivecano-!~Sivecano@user/Sivecano
+on another note: basically whenever I use @Enum, I don't really care about the field values. is there anything more elegant than having to fill up an array with integers from 0 to the tag type max every time?
+
+1781627222
+blblack!~bblack@wikimedia/bblack-WMF
+Sivecano-: std.meta.DeclEnum has an example of how to do it with std.simd.iota()
+
+1781627228
+blblack!~bblack@wikimedia/bblack-WMF
+    return @Enum(IntTag, .exhaustive, decl_names, &std.simd.iota(IntTag, decl_names.len));
+
+1781627261
+Sivecano-!~Sivecano@user/Sivecano
+thx :)
+
+1781627569
+Sivecano-!~Sivecano@user/Sivecano
+so much of my code that's cleaner now :)
+
+1781632683
+pmitobacco!~user@user/pmitobacco
+I'm trying to wrap my head around porting make_unique code, or better say make_shared. Can stdlib help me with that?
+
+1781632727
+pmitobacco!~user@user/pmitobacco
+With Zig's feature not hiding allocations, I bet no. But how to pass state that is shared, and lastly accessed from detached thread?
+
+1781633246
+Amun-Ra!~amun-ra@retro.rocks
+can I use the same buffer for multiple opened files? I don't read the data simultaneously
+
+1781633271
+Amun-Ra!~amun-ra@retro.rocks
+I guess so
+
+1781633520
+pmitobacco!~user@user/pmitobacco
+yeah, go for it
+
+1781633580
+Amun-Ra!~amun-ra@retro.rocks
+thanks
+
+1781642311
+torque!~tachyon@user/torque
+porting std::unique_ptr or std::shared_ptr code is more of a lack of RAII than hiding allocations
+
+1781642356
+torque!~tachyon@user/torque
+they're all just pointers, so use pointers. the piece that is missing is the ownership/automatic cleanup. the api might need to be adjusted to make ownership more clear
+
+1781642405
+torque!~tachyon@user/torque
+the easy option in zig is using an arena allocator to manage allocated memory lifetimes, but it's not always appropriate
+
+1781643683
+andrewrk!~andrewrk@mail.ziglang.org
+pmitobacco: in general, trying to port code that relies heavily on destructors is going to be a bad time. the zig way is to batch more things together instead
+
+1781643699
+andrewrk!~andrewrk@mail.ziglang.org
+for example instead of reference counting, arena allocators 
+
+1781648444
+Sivecano-!~Sivecano@user/Sivecano
+is there a way to await a future with a timeout?
+
+1781650508
+andrewrk!~andrewrk@mail.ziglang.org
+Sivecano-: tracking issue: https://codeberg.org/ziglang/zig/issues/31098
+
+1781651533
+badtuple!~badtuple@192.132.61.35
+huh. Interesting. I'm so used to timeouts happening in the runtime it didn't even occur to me that those could (and should) be lowered to mechanism specific implementations.
+
+1781651554
+badtuple!~badtuple@192.132.61.35
+one of those TILs that's incredibly obvious in retrospect 
+
+1781653532
+andrewrk!~andrewrk@mail.ziglang.org
+https://ziglang.org/news/welcoming-new-team-members/
+
+1781653538
+andrewrk!~andrewrk@mail.ziglang.org
+new core team members
+
+1781653564
+badtuple!~badtuple@192.132.61.35
+🎉
+
+1781653647
+badtuple!~badtuple@192.132.61.35
+congrats to any who are in here! 
+
