@@ -1,0 +1,200 @@
+1781829926
+pmitobacco!~user@user/pmitobacco
+i need an advise. i have a long living background task that require some preconfiguration, the chose is GUI. After clicky ok I think it should be fine to destroy windows and leave the task on its own. The background process is *ZIG* program
+
+1781829940
+pmitobacco!~user@user/pmitobacco
+Target platform is Windows
+
+1781833065
+carlosdagos!~user@user/carlosdagos
+G'day all I am new here, joined using the codeberg link to "ask questions" :)
+
+1781833065
+carlosdagos!~user@user/carlosdagos
+I was building zig for the first time using the provided instructions and as provided they didn't work for me. I am using a mac with llvm installed using homebrew.
+
+1781833065
+carlosdagos!~user@user/carlosdagos
+So the README says to use `CMAKE_PREFIX_PATH` which I used and then got another error.
+
+1781833066
+carlosdagos!~user@user/carlosdagos
+Eventually what worked was
+
+1781833068
+carlosdagos!~user@user/carlosdagos
+```
+
+1781833071
+carlosdagos!~user@user/carlosdagos
+cmake .. \
+
+1781833075
+carlosdagos!~user@user/carlosdagos
+  -DCMAKE_PREFIX_PATH=/opt/homebrew/opt/llvm \
+
+1781833078
+carlosdagos!~user@user/carlosdagos
+  -DCMAKE_C_COMPILER=/opt/homebrew/opt/llvm/bin/clang \
+
+1781833081
+carlosdagos!~user@user/carlosdagos
+  -DCMAKE_CXX_COMPILER=/opt/homebrew/opt/llvm/bin/clang++
+
+1781833084
+carlosdagos!~user@user/carlosdagos
+```
+
+1781833087
+carlosdagos!~user@user/carlosdagos
+I still don't know if this is _fully_ correct but I do know it gets me a stage3 compiler that works (or rather, appears to work to a newcomer like myself) :D
+
+1781833091
+carlosdagos!~user@user/carlosdagos
+My question is: Is it worth documenting in the build instructions that the `CMAKE_PREFIX_PATH` may need to be accompanied by `CMAKE_C_COMPILER` and `CMAKE_CXX_COMPILER`? I get that zig's purpose is not exactly to document or teach cmake, so totally understand if it's a silly question!
+
+1781876201
+pmitobacco!~user@user/pmitobacco
+how does *anyopaque differ from *opaque? 
+
+1781876662
+Sivecano-!~Sivecano@user/Sivecano
+you don't need to put the curly brackets
+
+1781876675
+Sivecano-!~Sivecano@user/Sivecano
+also, opaque creates a concrete opaque type
+
+1781876734
+Sivecano-!~Sivecano@user/Sivecano
+as in `const A = opaque{};` and `const B = opaque{}` wiil make A and B different types (typing isn't structural)
+
+1781876761
+Sivecano-!~Sivecano@user/Sivecano
+*anyopaque gives an entirely type-erased pointer
+
+1781877449
+pmitobacco!~user@user/pmitobacco
+ok, I got it, but what's the purpose? It doesn't make sense for interop with C, only within Zig itself
+
+1781881294
+timide!~timide@user/timide
+i'm trying to follow how std.process.Init is filled, where is std.process.Args.vector set?
+
+1781882072
+timide!~timide@user/timide
+found it: lib/std/start.zig
+
+1781894168
+Sivecano-!~Sivecano@user/Sivecano
+is there an easy way to get an @EnumLiteral() from a comptime-known string, so the inverse of @tagName ?
+
+1781895327
+fahien!~fahien@user/fahien
+Hey, this is an excellent language!
+
+1781896650
+gschwind!~gschwind@user/gschwind
+Sivecano- did you looked in std.enums ?
+
+1781896665
+Sivecano-!~Sivecano@user/Sivecano
+ooooh, always forget that that exists
+
+1781896792
+Sivecano-!~Sivecano@user/Sivecano
+but I don't think that has the functionality that I want either
+
+1781896798
+gschwind!~gschwind@user/gschwind
+I do not know if there is what you are looking for
+
+1781896863
+Sivecano-!~Sivecano@user/Sivecano
+I want to get an enum literal from a string
+
+1781896931
+gschwind!~gschwind@user/gschwind
+You can probably implement it using comptime for loop, or comptime HashMap
+
+1781897142
+gschwind!~gschwind@user/gschwind
+Sivecano- did you tried @field(Enum, "name") ? 
+
+1781897157
+gschwind!~gschwind@user/gschwind
+too obvious :D
+
+1781897237
+Sivecano!~Sivecano@user/Sivecano
+I want an enum literal, not a field
+
+1781897279
+Sivecano!~Sivecano@user/Sivecano
+gschwind: that's my problem. and creating an ad-hoc bespoke enum feels scuffed
+
+1781897302
+gschwind!~gschwind@user/gschwind
+@field work on type
+
+1781897323
+torque!~tachyon@user/torque
+you can't create an enum literal from a string
+
+1781897338
+torque!~tachyon@user/torque
+there's no way to construct an enum literal, it has to be a literal in the source
+
+1781897377
+torque!~tachyon@user/torque
+this makes apis that take enum literals as names fundamentally less flexible than those that take comptime-known strings
+
+1781897447
+Sivecano!~Sivecano@user/Sivecano
+ very sad
+
+1781897489
+torque!~tachyon@user/torque
+<pmitobacco> ok, I got it, but what's the purpose? It doesn't make sense for interop with C, only within Zig itself
+
+1781897496
+torque!~tachyon@user/torque
+opaque is actually primarily useful for c interop
+
+1781897535
+torque!~tachyon@user/torque
+there's a fairly common pattern in C where only forward declarations of datatypes are exposed to the API, so the api consumer can only operate on pointers to those types
+
+1781897537
+gschwind!~gschwind@user/gschwind
+Sivecano, I think I get your need
+
+1781897567
+torque!~tachyon@user/torque
+`opaque` allows you to model this in zig will providing "method syntax" style APIs
+
+1781897650
+torque!~tachyon@user/torque
+s/will/while/
+
+1781897733
+torque!~tachyon@user/torque
+I haven't touched it in a long time at this point, but here's an example of using `opaque` to wrap a C api: https://github.com/epicyclic-dev/nats-client/blob/master/src/message.zig
+
+1781897854
+gschwind!~gschwind@user/gschwind
+Sivecano, Does comptime code and `@Enum` can do the job ?
+
+1781897917
+gschwind!~gschwind@user/gschwind
+parsing a string at comptime maybe chanlenging
+
+1781898353
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+How am I supposed to use HashMapUnmanaged.getOrPut()? 
+
+1781898553
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+oh I figured it out but also I don't even need it
+
