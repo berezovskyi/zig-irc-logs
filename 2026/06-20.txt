@@ -1,0 +1,156 @@
+1781967459
+vivaldi`!~ident@user/blackbox
+whoa
+
+1781973427
+gschwind!~gschwind@user/gschwind
+how can I @embedFile from `resources` directory outside `src` directory, zig build complain of file not found or path outside the src tree
+
+1781973451
+pmitobacco!~user@user/pmitobacco
+torque: in this case why nats.Message can't be struct? what does opaque here?
+
+1781973454
+gschwind!~gschwind@user/gschwind
+I tried addEmbedPath
+
+1781973496
+pmitobacco!~user@user/pmitobacco
+torque: the zig code still uses @ptrCast to pass Message type into C functions
+
+1781974007
+torque!~tachyon@user/torque
+using `struct` is less descriptive (arguably, completely semantically incorrect). The reason it uses @ptrCast is because I was lazily using translate-c to translate the header, but translate-c itself outputs `opaque` declarations for the underlying C structs 
+
+1781974078
+torque!~tachyon@user/torque
+thus the ptrcasts are between two opaque types and the reason they're there is because `translate-c` will not generate method-like functions inside the opaque object itself. Hand-rolled or modified declarations could get rid of the ptrcasting
+
+1781974475
+torque!~tachyon@user/torque
+basically, `opaque` prevents the caller from creating the object themselves, whereas a struct (even one with no fields) could be instantiated by the caller. for this style of C api, the user can only ever hold pointers, (a forward declaration is fundamentally uninstantiable) so allowing the zig side to create (incorrect) objects would allow misuse of the API
+
+1781974493
+torque!~tachyon@user/torque
+which would make it no longer type safe (i.e. there would be a class of error the compiler could not protect you against)
+
+1781974595
+gschwind!~gschwind@user/gschwind
+I did found `addAnonymousImport` that do the job
+
+1781974989
+torque!~tachyon@user/torque
+I guess maybe `addEmbedPath` didn't work because it's for c `#embed` rather than zig's @embedFile?
+
+1781975099
+torque!~tachyon@user/torque
+would be nice if there were doc comments...
+
+1781977097
+gschwind!~gschwind@user/gschwind
+It seems that std.Build lack of a lot of documentations :)
+
+1781977380
+gschwind!~gschwind@user/gschwind
+even if some recipes can be found here: https://ziglang.org/learn/build-system/
+
+1781977622
+pmitobacco!~user@user/pmitobacco
+torque: that makes sense, thank you
+
+1781978683
+jodijodington!~thelounge@user/JodiJodington
+gschwind: what are you having trouble with? Ime its not too bad once you know the high level model of the build graph
+
+1781980217
+gschwind!~gschwind@user/gschwind
+jodijodington, I'm using `@embedFile` with file path that where not in `src` directory
+
+1781980311
+gschwind!~gschwind@user/gschwind
+thus I did `addAnonymousImport`, but does not look very obvious
+
+1781980400
+gschwind!~gschwind@user/gschwind
+maybe there is a better way, but I did not found recipes
+
+1781980537
+gschwind!~gschwind@user/gschwind
+my first guess was to look to some addSearchPath and ended at `addEmbedPath` which is not what I need
+
+1781980999
+jodijodington!~thelounge@user/JodiJodington
+gschwind, @embedFile works the same as @import. It just looks for modules, thats why it doesnt have its own method
+
+1781983937
+gschwind!~gschwind@user/gschwind
+jodijodington, thanks for the hint 
+
+1781985398
+gschwind!~gschwind@user/gschwind
+I think I need to create a dedicated resource module with `pub inline  fn get(comptime path: []const u8) [:0]const u8 { return struct{ const data = @embedFile(path); }.data; }`
+
+1781985748
+gschwind!~gschwind@user/gschwind
+that seems to work :)
+
+1781985773
+jodijodington!~thelounge@user/JodiJodington
+why do that instead of just using @embedFile(path) yourself
+
+1781985791
+jodijodington!~thelounge@user/JodiJodington
+also I had no clue embedFile let you use comptime strings. @import only allows string literals so that's interesting
+
+1781985913
+gschwind!~gschwind@user/gschwind
+because, the path of resource is outside `src` where the root module is sitting, and @embedFile("../resourses") generate the error something like "outside the project path" 
+
+1781986024
+gschwind!~gschwind@user/gschwind
+according to the doc: `@import(comptime target: []const u8) anytype`
+
+1781986546
+torque!~tachyon@user/torque
+the type system doesn't have a way to distinguish string literals, but I though this restriction was written in the description. was it relaxed at some point or am I misremembering?
+
+1781986606
+torque!~tachyon@user/torque
+0.16 at least says `./example.zig:2:21: error: @import operand must be a string literal` as expected
+
+1781986634
+torque!~tachyon@user/torque
+it looks like embedFile doesn't have that limitation though
+
+1781986844
+gschwind!~gschwind@user/gschwind
+does foo(path: anytype) will forward a string literal ?
+
+1781988391
+Yinameah!e74173ad36@user/Yinameah
+Does somebody know if mentionning @"struct".fields -> @"struct".field_names in the upcoming 0.17 release notes is planned ? Because based on my (non representative of course) sample of a dozen of dependencies I've been through in the past week, almost none is spared
+
+1781988450
+Yinameah!e74173ad36@user/Yinameah
+Worth noting than vast majority of the time, people seem to want to iterate the names, so change is very straightforward. Tribute to the right design I guess
+
+1781988515
+Yinameah!e74173ad36@user/Yinameah
+But still, I'm convinced mentionning it in the release notes will spare some frustration
+
+1781990090
+torque!~tachyon@user/torque
+I'd sure expect that to be in the release notes
+
+1781990126
+torque!~tachyon@user/torque
+usually language breaking changes like that are documented in the corresponding pull request in a way that they get pulled into the release notes
+
+1781990247
+torque!~tachyon@user/torque
+https://codeberg.org/ziglang/zig/pulls/35234 hmm, it's got the release-notes tag on it but I guess the notes haven't been fully written yet. sometimes they get written early
+
+1781990290
+torque!~tachyon@user/torque
+https://codeberg.org/ziglang/zig/issues/32046 has a bit more of a description
+
