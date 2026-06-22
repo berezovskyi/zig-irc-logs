@@ -1,0 +1,272 @@
+1782034256
+gschwind!~gschwind@user/gschwind
+does zig reorder internal function arguments ?
+
+1782034314
+gschwind!~gschwind@user/gschwind
+does arguments order matter for register allocation for instance ?
+
+1782034819
+Affliction!affliction@idlerpg/player/affliction
+there's no guaranteed ABI for functions unless one is defined in their signature
+
+1782034846
+Affliction!affliction@idlerpg/player/affliction
+the compiler can do whatever it wants with args and return values
+
+1782035417
+gschwind!~gschwind@user/gschwind
+Affliction ok
+
+1782054653
+gschwind!~gschwind@user/gschwind
+zls does not index module ?
+
+1782064826
+andrewrk!~andrewrk@mail.ziglang.org
+hello all
+
+1782064829
+andrewrk!~andrewrk@mail.ziglang.org
+what are we working on today?
+
+1782065400
+Sivecano-!~Sivecano@user/Sivecano
+I'm rewriting the status bar I use in zig...
+
+1782065415
+Sivecano-!~Sivecano@user/Sivecano
+the C++ was a mess and I want better scheduling control
+
+1782065490
+Sivecano-!~Sivecano@user/Sivecano
+andrewrk: it's amazing just how much nicer C libraries can get simply by using zig's namespace features :D
+
+1782065575
+andrewrk!~andrewrk@mail.ziglang.org
+proper use of namespaces really help you choose concise, correct names, doesn't it?
+
+1782065599
+Sivecano-!~Sivecano@user/Sivecano
+it does
+
+1782065614
+Sivecano-!~Sivecano@user/Sivecano
+it makes most library code like 10 times more readable
+
+1782065678
+Sivecano-!~Sivecano@user/Sivecano
+was a bit disappointed to not see statvfs in the zig standard library...
+
+1782065817
+andrewrk!~andrewrk@mail.ziglang.org
+statvfs eh? that's the first I've heard of it
+
+1782066119
+Sivecano-!~Sivecano@user/Sivecano
+andrewrk: it's a libc thing for file system statistics. (in the linux kernel it's the statfs and fstatfs syscalls) I use it to display how much of my disk space is currently being used
+
+1782066352
+andrewrk!~andrewrk@mail.ziglang.org
+and it appears to be a posix standard. interesting
+
+1782066394
+andrewrk!~andrewrk@mail.ziglang.org
+I think such additions to the std lib would be welcome
+
+1782066838
+Sivecano-!~Sivecano@user/Sivecano
+I'll work on a contribution then :)
+
+1782069946
+vyivel!~vyivel@user/Vyivel
+https://lemon.eclair.cafe/ip57I39H.png hm
+
+1782069967
+vyivel!~vyivel@user/Vyivel
+this kinda breaks my qobject qml crimes
+
+1782071959
+vyivel!~vyivel@user/Vyivel
+right, libc++/libstdc++ differences
+
+1782074689
+jodijodington!~thelounge@user/JodiJodington
+it might also be a flag that zig c++ is passing that clang++ is not
+
+1782074693
+jodijodington!~thelounge@user/JodiJodington
+try using verbose cc
+
+1782074795
+Nerubian!~Nerubian@user/Nerubian
+just a public shout out to Alex Rio's Book Learning Zig. I never had this fun following a technical book hahaha
+
+1782075536
+vyivel!~vyivel@user/Vyivel
+jodijodington: afaiu libstdc++ and libc++ just have different std::function sizes
+
+1782075866
+jodijodington!~thelounge@user/JodiJodington
+very strange but that's c++ I guess lol
+
+1782078791
+andrewrk!~andrewrk@mail.ziglang.org
+Nerubian: interesting, this is the first I've heard of that book
+
+1782079897
+Nerubian!~Nerubian@user/Nerubian
+andrewrk: yea, Zig have two great books, I think one is free in a website and this by Rios is by packt
+
+1782079980
+Nerubian!~Nerubian@user/Nerubian
+in those LLM's times, I got back to full books, pen and paper mode hahaha
+
+1782082299
+carpel!~carpel@user/carpel
+hai gais
+
+1782082326
+carpel!~carpel@user/carpel
+havin' some trouble with function pointers, anyone up?
+
+1782082354
+carpel!~carpel@user/carpel
+I'm implementing Crafting Interpreters and got to the Pratt parser bit
+
+1782082380
+carpel!~carpel@user/carpel
+I created a switch for picking the functions appropriate for every operator
+
+1782082403
+carpel!~carpel@user/carpel
+but the compiler keeps complaining about the function body vs. function signature
+
+1782082415
+carpel!~carpel@user/carpel
+one being available at runtime and the other at comptime
+
+1782082465
+torque!~tachyon@user/torque
+a concrete code snippet of the problem you're having would probably help
+
+1782082475
+carpel!~carpel@user/carpel
+you got it
+
+1782082477
+carpel!~carpel@user/carpel
+1 sec
+
+1782082518
+carpel!~carpel@user/carpel
+https://hastebin.ianhon.com/e345
+
+1782082576
+carpel!~carpel@user/carpel
+relevant fns are getRule and parsePrecedence
+
+1782082587
+carpel!~carpel@user/carpel
+relevant types are ParseRule and ParseFn
+
+1782082618
+carpel!~carpel@user/carpel
+I'm aware of some functions not dealing with errors properly, but thats beside the point for now
+
+1782082636
+carpel!~carpel@user/carpel
+inside parsePrecedence I'm trying to get a function pointer using getRule
+
+1782082653
+carpel!~carpel@user/carpel
+but the returned function can't be dereferenced to be called
+
+1782082690
+carpel!~carpel@user/carpel
+compiler.zig:188:66: error: cannot load comptime-only type 'fn (*compiler) void'
+
+1782082692
+torque!~tachyon@user/torque
+> const prefix_rule = getRule(self.parser.previous.type).prefix.*;
+
+1782082695
+carpel!~carpel@user/carpel
+pointer of type '*const fn (*compiler) void' is runtime-known
+
+1782082700
+carpel!~carpel@user/carpel
+yes
+
+1782082702
+torque!~tachyon@user/torque
+yeah this is wrong, you can't dereference a function pointer like this
+
+1782082705
+torque!~tachyon@user/torque
+you just call it
+
+1782082711
+carpel!~carpel@user/carpel
+oh
+
+1782082826
+Nerubian!~Nerubian@user/Nerubian
+carpel: https://www.openmymind.net/learning_zig/pointers/ maybe this could help?
+
+1782083736
+carpel!~carpel@user/carpel
+nice
+
+1782083740
+carpel!~carpel@user/carpel
+I'll def give it a read
+
+1782083746
+carpel!~carpel@user/carpel
+torque, thanks for the tip
+
+1782083760
+carpel!~carpel@user/carpel
+I have other errors now, but the one I mentioned vanished
+
+1782084568
+carpel!~carpel@user/carpel
+is there an easy way to check FOR an error using an If?
+
+1782084605
+carpel!~carpel@user/carpel
+if (thing is error) then
+
+1782084616
+carpel!~carpel@user/carpel
+wait
+
+1782084618
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+that's what catch is for
+
+1782084627
+carpel!~carpel@user/carpel
+makes sense
+
+1782085364
+carpel!~carpel@user/carpel
+> 1+1
+
+1782085364
+carpel!~carpel@user/carpel
+Stack overflow (no address available)
+
+1782085364
+carpel!~carpel@user/carpel
+aborting due to recursive panic
+
+1782085377
+carpel!~carpel@user/carpel
+amazing
+
+1782085396
+carpel!~carpel@user/carpel
+lets see where did I invoke the nasal demons
+
