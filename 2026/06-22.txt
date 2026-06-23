@@ -1,0 +1,288 @@
+1782088138
+torque!~tachyon@user/torque
+you can use `if (error_union_expression) |success_type| { ... } else |error_code| { ... }` to unwrap an error union with an if statement, but yeah `catch` is normally better if you only want to do something with the error case
+
+1782088180
+torque!~tachyon@user/torque
+I'd recommend reading through the language ref if you haven't, this sort of syntax is demonstrated there: https://ziglang.org/documentation/0.16.0/#if
+
+1782088248
+torque!~tachyon@user/torque
+(since error unions are boolean-ish like optionals and proper bools, you can also do this with while-else which is definitely more niche but very nice syntactic symmetry imo)
+
+1782090341
+carpel!~carpel@user/carpel
+i did
+
+1782090358
+carpel!~carpel@user/carpel
+i usually ask here when I haven't found anything particularly illuminating
+
+1782090365
+carpel!~carpel@user/carpel
+or I'm just being dumb
+
+1782090378
+carpel!~carpel@user/carpel
+which, on this topic
+
+1782090394
+carpel!~carpel@user/carpel
+i cant for the life of me figure out stdin
+
+1782090406
+carpel!~carpel@user/carpel
+I'll probably regen the starter project to see whats up
+
+1782090496
+carpel!~carpel@user/carpel
+yeah no dice
+
+1782090513
+carpel!~carpel@user/carpel
+I'm probably messing up ownership, let me try something
+
+1782090781
+carpel!~carpel@user/carpel
+yup, I have no idea of what I'm doing
+
+1782090787
+carpel!~carpel@user/carpel
+brb, getting a paste
+
+1782137616
+Sivecano-!~Sivecano@user/Sivecano
+I used to think that linux was well-documented...
+
+1782138445
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+lmao
+
+1782138530
+slowstatic_!~slowstati@user/slowstatic
+Sivecano- REAL
+
+1782138589
+Sivecano-!~Sivecano@user/Sivecano
+direct quote from the man-page "buf is a pointer to a statfs structure  defined  approximately as follows:"
+
+1782138594
+Sivecano-!~Sivecano@user/Sivecano
+_approximately_ ??????
+
+1782138644
+Sivecano-!~Sivecano@user/Sivecano
+you end up having to scrape together documentation by comparing gnu libc and musl....
+
+1782139082
+slowstatic_!~slowstati@user/slowstatic
+yeah reading musl source has been the most helpful
+
+1782146076
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+Can a zig expert take a look at why packaging zig on void seems like such a pain? Seems ridiculous that we can't get zig working like the rest of the distros for over a year now, so I'm keen to hear a zig expert on the root cause: https://github.com/void-linux/void-packages/pull/59955
+
+1782147091
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+deuxexmachina: (IANAZE btw) at a glance, this doesn't seem to be a problem with packaging zig the compiler per-se but it looks like the ecosystem of zig packages in void is having some headaches. this is understandable (I think) due to the state of the zig ecosystem at large: Foo project is built against zig-0.16, Bar project zig-0.15, Baz against nightly. I can't speak to other distros, but e.g.
+
+1782147093
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+gentoo (also a rolling update distro) handles this with its "slot" system - e.g. multiple versions of the zig compiler can happily coexist in an install, so any zig package that requires a specific zig compiler version can simply list the specific version as a dependency
+
+1782147148
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I'd imagine that other distros where packages are precompiled don't run into this issue as much since the package can be compiled ahead of time with the correct zig version
+
+1782147157
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I'm not sure if void has a similar concept of 'slots' like gentoo though
+
+1782147164
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+had to stop using ghostty over a year ago because i couldn't upgrade it on void
+
+1782147197
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+ezzieyguywuf: so in zig land the versioning issues should be handled by the OS/distro, not zig tooling?
+
+1782147214
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+hm
+
+1782147225
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+"IANAZE" = I Am Not A Zig Expert lol
+
+1782147244
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+while I'm aware that build.zig.zon has an allowance for a minimum zig version, I'm not well-versed enough to comment on your question
+
+1782147324
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+you did comment :) well, let's let a zig expert in here like Aandrew comment then
+
+1782147484
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ we don't have slots on void, we'd have to package versions like zig0.13 manually
+
+1782147585
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+oof. void is source-based right? similar to gentoo?
+
+1782147602
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah
+
+1782147772
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+tbf this is similar to how gentoo solves it, it's just that the package manager handles it seemslessly. but at the end of the day I have /usr/bin/zig-0.16 and friends installed side-by-side, and a symlink to one of those from /usr/bin/zig
+
+1782147789
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+What? What FOSS distro isn't based on source or "source based"? Void does not require users to compile software like most gentoo systems do
+
+1782147810
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+oh, that's what I meant, maybe I asked it in a weird way.
+
+1782147821
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+it's not impossible, but we already have enough on our plate managing llvm version by version
+
+1782147859
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+tranzystorekk: I think you should explain this problem clearly to some zig experts and see their suggestions and you might be surprised... They're designing this language to deal with problems just like this
+
+1782147939
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the problem is that zig is still fundamentally in development, so everything is a moving target from a distro pov
+
+1782147987
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+it's not a complaint from me, just an observation
+
+1782148090
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+Yes and it is designed to be... And they should provide suggestions for making it easy to keep up with this moving target. 
+
+1782148096
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+to be... for now
+
+1782151148
+Sivecano-!~Sivecano@user/Sivecano
+libc ABI compatability is this strangely sisyphean task 
+
+1782151673
+andrewrk!~andrewrk@mail.ziglang.org
+deuxexmachina: zig projects can solve this problem by making a release against each release of zig. this is the same thing zig does with its llvm dependency
+
+1782151760
+andrewrk!~andrewrk@mail.ziglang.org
+this is why I recommend for projects in the ecosystem to stick with tagged releases. distros can then have a fixed point to aim for
+
+1782151910
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+andrewrk: i feel like if I wrote that in that thread they'd 1) not believe me 2) not understand why / what that means exactly... There are a bunch more threads in the void repo complicating the issue with builds for different architectures failing, but maybe that's unrelated. Think it makes sense for someone from zig to pop in there and show them the best path - or is that still difficult / asking for
+
+1782151912
+deuxexmachina!deuxexmach@2a01:7e01::f03c:92ff:fecb:5a96
+too much work for the void devs/packagers?
+
+1782154038
+andrewrk!~andrewrk@mail.ziglang.org
+well, tranzystorekk already shot down the best idea in the thread which is to package multiple versions of zig. it was dismissed as "chaotic" without sound rationale
+
+1782154074
+andrewrk!~andrewrk@mail.ziglang.org
+the argument was that they would eventually have to delete the old zig packages, but it's not a goal to avoid deleting packages, so not sure why that argument has any weight
+
+1782154106
+blblack!~bblack@wikimedia/bblack-WMF
+distros (at least some!) already do something similar with multi-versioning gcc and clang et al
+
+1782154158
+blblack!~bblack@wikimedia/bblack-WMF
+right now on Debian I have 3 versions of clang installed
+
+1782154174
+blblack!~bblack@wikimedia/bblack-WMF
+oh wait, 4 actually.  19-22
+
+1782154196
+andrewrk!~andrewrk@mail.ziglang.org
+zig is competing with clang and gcc, so it's rather unfair that they get special treatment of having multiple versions packaged
+
+1782154219
+andrewrk!~andrewrk@mail.ziglang.org
+it's not really an issue with zig's stability is it
+
+1782154230
+andrewrk!~andrewrk@mail.ziglang.org
+just use the release tags, that's what they're for
+
+1782154314
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/NixOS/nixpkgs/blob/master/pkgs/development/compilers/zig/default.nix
+
+1782154316
+andrewrk!~andrewrk@mail.ziglang.org
+no issues on nixos
+
+1782155855
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+interesting, `zig build --prefix=Foo` fails but `zig build --prefix Foo` does not - is this WAI? this is on zig-0.1.6
+
+1782157065
+blblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: check zig build --help
+
+1782157068
+blblack!~bblack@wikimedia/bblack-WMF
+  -p, --prefix [path]          Where to install files (default: zig-out)
+
+1782161829
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+blblack: the --help doesn't say anything about including/excluding the `=`, but maybe that's just how argument parsing works in zig. it's a bit counterintuitive though
+
+1782163656
+blblack!~bblack@wikimedia/bblack-WMF
+ezzieyguywuf: what I mean is the help is explicit.  some options use =, some don't, e.g.:
+
+1782163662
+blblack!~bblack@wikimedia/bblack-WMF
+  -Demit-asm=[bool]            Emit asm files for each built binary (implies llvm!)
+
+1782163693
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I see. still non-intuitive though.
+
+1782163694
+blblack!~bblack@wikimedia/bblack-WMF
+  --prefix-exe-dir [path]      Where to install executables
+
+1782163736
+blblack!~bblack@wikimedia/bblack-WMF
+perhaps once the great std.cli parser debates are settled, Zig will use whatever that is and be more intuitive :)
+
+1782163777
+blblack!~bblack@wikimedia/bblack-WMF
+https://codeberg.org/ziglang/zig/pulls/31620 vs https://codeberg.org/ziglang/zig/pulls/35304 vs https://codeberg.org/ziglang/zig/pulls/30725
+
+1782163880
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+lol "the great std.cli parser debates"
+
+1782163912
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+thanks for the link, I'll take a look, maybe I have an opinions :-P
+
+1782168122
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+std is where libraries go to die :P
+
+1782172491
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I think std is quite great personally
+
