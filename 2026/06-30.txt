@@ -1,0 +1,156 @@
+1782780090
+andrewrk!~andrewrk@mail.ziglang.org
+test-standalone
+
+1782785169
+perryprog!~perryprog@wikipedia/perryprog
+Ah, thanks!
+
+1782831850
+pmitobacco!~user@user/pmitobacco
+what is a comman, most used way to pass std.Io to thread instance?
+
+1782831908
+pmitobacco!~user@user/pmitobacco
+or use globals
+
+1782831947
+pmitobacco!~user@user/pmitobacco
+I grep here and there to find common patterns and stay with them
+
+1782832051
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+for thread you can pass it as a parameter in the thread entrypoint, that seems to me the best way
+
+1782832337
+gschwind!~gschwind@user/gschwind
+as intermediate solution is to store it in thread local variable
+
+1782832341
+pmitobacco!~user@user/pmitobacco
+too many casts, cant wrap my head around, should be the better way
+
+1782832388
+gschwind!~gschwind@user/gschwind
+https://ziglang.org/documentation/0.16.0/#Thread-Local-Variables
+
+1782832523
+pmitobacco!~user@user/pmitobacco
+what if I use win32.CreateThread instead of std.Thread.Spawn, does the threadlocal work?
+
+1782832543
+pmitobacco!~user@user/pmitobacco
+any it's the same global, I guess I can use just var here
+
+1782832658
+gschwind!~gschwind@user/gschwind
+you can have different value for each thread if you are using threadlocal
+
+1782832691
+pmitobacco!~user@user/pmitobacco
+but why would I?
+
+1782832718
+gschwind!~gschwind@user/gschwind
+But if you do not expect to use different IO per thread you can keep globals.
+
+1782832765
+gschwind!~gschwind@user/gschwind
+pmitobacco, I do not know, I even do not known what you want to do :D
+
+1782832842
+gschwind!~gschwind@user/gschwind
+but at the first place if you have an IO API it's for being able to make code that can use different API
+
+1782832904
+gschwind!~gschwind@user/gschwind
+different implementation of the same API *
+
+1782832943
+pmitobacco!~user@user/pmitobacco
+I have a background thread, which collects data over time and saves it in files, I need to format filenames and create files, not a big deal
+
+1782833041
+blblack!~bblack@wikimedia/bblack-WMF
+generally, the low-friction path in Zig is going to be to embrace std.Io for all your concurrency needs, rather than blending its I/O interfaces into manual threads
+
+1782833103
+blblack!~bblack@wikimedia/bblack-WMF
+if you accept the default Threaded you get from main()'s process.std.Init , then "io.concurrent()" spawns a Task, which happens to be an abstraction of an OS Thread.
+
+1782833125
+blblack!~bblack@wikimedia/bblack-WMF
+(and you can pass the same "io" as an argument to the task's start fn)
+
+1782833185
+pmitobacco!~user@user/pmitobacco
+yeah, I think I should consider using Zig threads, will look into them
+
+1782833207
+blblack!~bblack@wikimedia/bblack-WMF
+but the mental model you're working with here is abstract Tasks.  Whether they're truly async from each other in which senses, or implemented as real threads or not, etc is a low-level detail you don't necessarily have to know
+
+1782833260
+pmitobacco!~user@user/pmitobacco
+I ported C code with wWinMain, it inits arena and std.Io
+
+1782833304
+pmitobacco!~user@user/pmitobacco
+blblack: I forgot, I use WINAPI heuristics to set thread priority
+
+1782833325
+blblack!~bblack@wikimedia/bblack-WMF
+yeah there's no abstract sense of task priorities, at least not AFAIK yet
+
+1782833389
+pmitobacco!~user@user/pmitobacco
+it is necessary to have time critical priority on the thread, so I go with global std.Io and that's it
+
+1782834119
+pmitobacco!~user@user/pmitobacco
+I'm looking into std.Io.Threaded.deinit, what does 't.* = undefined' do? Looks suspicious
+
+1782834145
+pmitobacco!~user@user/pmitobacco
+I would say it's noop?
+
+1782834222
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in ReleaseFast, it's most likely a no-op, but in other modes it would overwrite the bytes with (IIRC) 0xdd bytes that would cause more deterministic behaviour when misused
+
+1782834248
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+in theory it could be a signal to static analysis tools
+
+1782834251
+pmitobacco!~user@user/pmitobacco
+Yeah, I see
+
+1782834284
+pmitobacco!~user@user/pmitobacco
+forgot about nursery mode haha
+
+1782835055
+pmitobacco!~user@user/pmitobacco
+btw I could get a native thread handler with std.Thread.getHandle()
+
+1782835060
+pmitobacco!~user@user/pmitobacco
+handle
+
+1782847112
+pmitobacco!~user@user/pmitobacco
+I'm looking into std.Thread.spawn, and noticed that Windows implementation uses RtlAllocateHeap instead of config.allocator. Why so?
+
+1782860404
+visagemsc!~visagemsc@46.196.225.13
+hello is there any way to make Zig targets? I'd like to make a Windows target that interfaces with KERNEL32 instead of NTDLL for compatibility with older versions of Windows
+
+1782860754
+squeek502!~squeek502@user/squeek502
+visagemsc, you can specify the os version of the target, e.g. -target x86-windows.xp, see https://codeberg.org/ziglang/zig/issues/31424 for more info about the status of this use case
+
+1782863291
+andrewrk!~andrewrk@mail.ziglang.org
+new devlog: https://ziglang.org/devlog/2026/#2026-06-30
+
