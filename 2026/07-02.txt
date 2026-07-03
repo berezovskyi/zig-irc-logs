@@ -1,0 +1,280 @@
+1782955405
+torque!~tachyon@user/torque
+reading two values from a queue with a buffer of length one seems suspect to me.
+
+1782955439
+torque!~tachyon@user/torque
+simply not putting a "not found" value in the queue should solve the problem
+
+1782955447
+torque!~tachyon@user/torque
+though I haven't reasoned about it significantly
+
+1782955563
+torque!~tachyon@user/torque
+I guess this will block forever if no result is found
+
+1782955575
+banna!~banna@banna.tech
+torque: the backing buffer for the queue should definately be 2, not 1
+
+1782955914
+banna!~banna@banna.tech
+the abstract pattern at play is running multiple threads with distinct work, expecting a result from each thread, and if an expected result is found, cancel the pool of threads. it seems "nicer" using std.Io.Group for the collection of threads + awaiting results on a queue with getOne in a controlling thread
+
+1782956016
+banna!~banna@banna.tech
+then the controlling thread has a handle on the group and can .cancel the long-running threads
+
+1782956095
+banna!~banna@banna.tech
+the synchronization primitive is reduced to the thread cancellation, rather than both thread cancellation in addition to the queue being placed in the "closed" state
+
+1782956587
+torque!~tachyon@user/torque
+well, ultimately it's just a short program designed to demonstrate a feature, so it's not terribly surprising that it's not completely sound
+
+1782956609
+torque!~tachyon@user/torque
+you could certainly write it using group.concurrent
+
+1782956914
+banna!~banna@banna.tech
+oh, I'm not interested in "fixing" ziglings, I'm just hashing out different approaches
+
+1782957205
+banna!~banna@banna.tech
+I backtracked myself, though, using queue.get with min=<# threads expecting a result>, is really the aspect that makes this successful
+
+1782958182
+banna!~banna@banna.tech
+revised diff: https://p.mort.coffee/LxP and the whole exercise: https://p.mort.coffee/qgR
+
+1782958989
+torque!~tachyon@user/torque
+https://zigbin.io/cd1cd1 here's a variation. since the futures get canceled when the function ends, there's no real need to close the queue
+
+1782959184
+banna!~banna@banna.tech
+yeah, closing the queue is rather messy
+
+1782959238
+banna!~banna@banna.tech
+looking into std.Io.Condition next for fun
+
+1782960865
+banna!~banna@banna.tech
+my transgressions against zig has been entombed in those pastes... `for (rxbuf[0..resultCount]) |result| ` is much nicer.
+
+1782962807
+clevor!sid649024@id-649024.hampstead.irccloud.com
+What's the precedence for `try`? Like, would `try a catch b` be equivalent to `try (a catch b)`, or `(try a) catch b`?
+
+1782962965
+andrewrk!~andrewrk@mail.ziglang.org
+clevor: https://github.com/ziglang/zig/issues/114
+
+1782962986
+andrewrk!~andrewrk@mail.ziglang.org
+when this proposal is implemented, that expression will require parentheses
+
+1782963012
+andrewrk!~andrewrk@mail.ziglang.org
+I honestly don't know what the precedence is, because I always use parens in this case
+
+1782963954
+banna!~banna@banna.tech
+doesn't `try` dissolve the error union type though?
+
+1782964017
+banna!~banna@banna.tech
+i.e. if you use `try` on an expression that provides a SomeErr!u32, the resultant value is a u32 in that case
+
+1782964134
+Affliction!affliction@idlerpg/player/affliction
+banna: This example, 'a' would be something like SomeErr!SomeOtherErr!u32
+
+1782964176
+Affliction!affliction@idlerpg/player/affliction
+I guess if the compiler wanted to be smart it might be able to infer the order by the error type caught in b
+
+1782964211
+Affliction!affliction@idlerpg/player/affliction
+but, that could get footgunny fast, when you have Err!Err!u32 but the inner error is semantically different to the outer
+
+1782964244
+banna!~banna@banna.tech
+is there a case where an expression would evaluate to a signature of Err!Err!u32?
+
+1782964266
+banna!~banna@banna.tech
+(not that I doubt it, it's late and I should be sleeping now, so brain is strained)
+
+1782964316
+Affliction!affliction@idlerpg/player/affliction
+maybe, the main use case I'd have for nested errors would generally have different error types. Eg, doing an RPC call, the outer might signal network issues, the inner one the network request worked, but the function returned an error
+
+1782964397
+banna!~banna@banna.tech
+"Encountered exception while handling exception" is unfortunately a lovely reality of error handling, yeah
+
+1782964463
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Recursive panics :p
+
+1782964496
+Affliction!affliction@idlerpg/player/affliction
+But yeah, I +1 making precedence explicit for the non-math operators
+
+1782964579
+Affliction!affliction@idlerpg/player/affliction
+"Most people will remember to do multiplication before addition, but what about left bit shifting versus bitwise and?" been footgunned by that too
+
+1782965880
+banna!~banna@banna.tech
+clevor: it seems like `try a catch b` is evaluated left-to-right
+
+1782965947
+banna!~banna@banna.tech
+where it is equiv to `(try a) catch b` on 0.17.0-dev.864+3deb86baf
+
+1782966047
+banna!~banna@banna.tech
+but again that implies that `a` is a doubly wrapped error union... which seems unweildy?
+
+1782966075
+banna!~banna@banna.tech
+...if anyone has any real life examples of doubly wrapped error unions, show me the light. for now, sleep!
+
+1782998274
+brka!~brka@user/brka
+Today I figured out that column-databases are just SoA as a database
+
+1783006295
+slowstatic!~slowstati@user/slowstatic
+When would I want to reach for a locally-scoped variable with global lifetime? https://ziglang.org/documentation/master/#Locally-Scoped-Global-Variables
+
+1783006357
+slowstatic!~slowstati@user/slowstatic
+It seems alluring because I haven't used it before, but I think I can achieve the same thing by adding a field to a struct
+
+1783008270
+banna!~banna@banna.tech
+brka: what flavor of alphabet soup is SoA in this case?
+
+1783008303
+brka!~brka@user/brka
+banna: struct of arrays
+
+1783008305
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+struct of arrays
+
+1783008361
+banna!~banna@banna.tech
+thx!
+
+1783013668
+pmitobacco!~user@user/pmitobacco
+Do I understand correctly that defer is a compiler feature, unlike in Go, where defers does have their own stack
+
+1783013684
+pmitobacco!~user@user/pmitobacco
+BTW that would be a great article to compare Go and Zig defers
+
+1783013825
+pmitobacco!~user@user/pmitobacco
+I think about defers somewhat this way: before each scope exit point compiler puts deferred statement 
+
+1783015572
+thermos!~thermos@user/thermos
+Just built Zig from the most recent commit (the cmake way) and I ran cmake with -DZIG_STATIC=ON and -DZIG_NO_LIB=ON but I'm running into something odd. Wanted to build stdlib so I used the new stage3/build/zig, no problems, even spits out a new zig compiler, but if I try to build with this compiler I get an undefined symbol.
+
+1783015601
+andrewrk!~andrewrk@mail.ziglang.org
+thermos: why -DZIG_STATIC=ON ?
+
+1783015657
+thermos!~thermos@user/thermos
+Honestly just because I saw it the README
+
+1783015872
+thermos!~thermos@user/thermos
+Wonder if it'll happen if I dont enable ZIG_STATIC, I'll try it out. The weird thing is the static (cmake built one) works, its the executable that gets made by this new one which throws the undefined symbol if I try to build with that one. Not convinced it's anything more than me getting some weird config happening.
+
+1783016093
+thermos!~thermos@user/thermos
+ah yeah I went with ZIG_STATIC because I was using what the CI script uses for x86_64-freebsd-release
+
+1783016562
+andrewrk!~andrewrk@mail.ziglang.org
+thermos: um, technically it's in the readme in one location but is that really the situation you are in?
+
+1783016614
+andrewrk!~andrewrk@mail.ziglang.org
+youre on windows and you downloaded the zip file used by the CI?
+
+1783016891
+thermos!~thermos@user/thermos
+on freebsd, order of ops: cloned src, built via the commands right under the "Building from Source" section, then I looked at the CI scripts to see what options are used in CI and built stage3 via the cmake cmd in x86_64-freebsd-release.sh. Now I am building stage 4 with the command from the same script (wasn't doing this before)
+
+1783017321
+thermos!~thermos@user/thermos
+It's sorted now, after building stage4 as done in the CI script, it works, no undefined symbols, and the diff stage3-zig stage4-zig checks out.
+
+1783020570
+thermos!~thermos@user/thermos
+andrewrk: I still cant get this stage4 compiler to build another compiler from source that works (undefined symbols), I've gone through all of the readme commands now. Although, in the readme, stage4 is always built by stage3, not by another stage4, is this the insight I'm missing or am I just loosing it.
+
+1783020633
+andrewrk!~andrewrk@mail.ziglang.org
+did you already share the error message? I don't see it
+
+1783020651
+thermos!~thermos@user/thermos
+"ld-elf.so.1: /lib/libc.so.7: Undefined symbol "environ""
+
+1783020661
+andrewrk!~andrewrk@mail.ziglang.org
+need more context
+
+1783020795
+thermos!~thermos@user/thermos
+hm. my stage4 compiler works, and it can compile another zig exe from source without errors, but when I then try to use that second compiler, it won't compile and it shoots out that error.
+
+1783020834
+andrewrk!~andrewrk@mail.ziglang.org
+is this your first time asking for help on IRC? you gotta paste more stuff for people to look at 
+
+1783020851
+andrewrk!~andrewrk@mail.ziglang.org
+what commands you ran etc
+
+1783021440
+thermos!~thermos@user/thermos
+sorry, this sums it up: https://paste.rs/umaXj.txt I tried all of the different combinations of using llvm, libc, static, etc between those last two build steps and to no avail
+
+1783021560
+andrewrk!~andrewrk@mail.ziglang.org
+thanks this helps me understand 
+
+1783021632
+andrewrk!~andrewrk@mail.ziglang.org
+can you pass --verbose to that last command
+
+1783021665
+andrewrk!~andrewrk@mail.ziglang.org
+wait a minute... you truncated the output. can you just include everything  in the paste
+
+1783021687
+andrewrk!~andrewrk@mail.ziglang.org
+idk why people always hide the important details
+
+1783021798
+thermos!~thermos@user/thermos
+as far as the last command goes, no I didn't cut any output out, that's all it spits out, same when passing --verbose now
+
+1783022579
+thermos!~thermos@user/thermos
+it can build-exe the programs under tools/* actually, can see it links with the same ld-elf.so and libc.so with --verbose-link just fine. Passing both --verbose --verbose-link when trying build.zig don't seem to help as it crashes after seemingly compiling Maker and the output gets cleared by asnsi escape and replaced with error msg. ill try running with script and see.
+
