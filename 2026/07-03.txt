@@ -1,0 +1,264 @@
+1783053535
+bxtn!~user@user/bxtn
+some of this is getting ridiculous. as in, trying to improve on zigisms using advent of code problems, my solutions are working on the first try. 99% of previous attempts had some sort of logic error, like off-by-ones and misunderstanding problems. when it compiles successfully, it works  correctly here. not sure what the deliberate focus does but something's working.
+
+1783053709
+bxtn!~user@user/bxtn
+that and looking at std.zig.tokenizer made parsing and lexing...click. now I see the hubbub of labeled switches.
+
+1783055346
+andrewrk!~andrewrk@mail.ziglang.org
+bxtn: nice sounds like you are honing your skills
+
+1783065897
+sensille!~arne@dsnsi.rzone.de
+my first zig project: https://github.com/ionos-cloud/qcore
+
+1783069569
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i can't seem to get this switch right:  https://bpa.st/KUMQ
+
+1783069617
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i started with simple `const fmt = switch (FMT_STYLE) ... ` with 2 inline prongs, but i got `unable to resolve comptime value`
+
+1783069641
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+so i tried to wrap it in an inline fn, same result
+
+1783069659
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+now i tried to doubly-wrap it like this but still the same
+
+1783069787
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i mean i can fall back to simply switching and having `writer.print` in the prongs, but i really thought i could do that the other way, i'm confused
+
+1783069796
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the inline prongs seem completely pointless
+
+1783069828
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+why?  wouuldn't they make the result comptime known?
+
+1783069848
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+they make the switched on value comptime
+
+1783069857
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not the result of course
+
+1783069878
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+the result cannot be comptim because FMT_STYLE isn't comptime
+
+1783069939
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i thought this way i will create code that is equivalent to having 2 variants of the function: fmtExact and fmtCompact
+
+1783069955
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+(both with comptime known arg and result)
+
+1783070118
+ifreund!2940d10f8b@user/ifreund
+netvor: for that your function would need to accept a comptime argument
+
+1783070213
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+and have the switch and inline prong outside it, I suppose `inline else =>` might work there, never used it
+
+1783070267
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i think for me that would beat the point of using the function
+
+1783070302
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+weird, i've been using inline prongs for a while and apparently misunderstanding them
+
+1783070352
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+how could the caller of fmt() know what's going on inside it? 
+
+1783070364
+ifreund!2940d10f8b@user/ifreund
+inline switch prongs are only useful when you switch on a runtime value and want that value to be comptime known within the switch prong
+
+1783070403
+ifreund!2940d10f8b@user/ifreund
+`inline .foo => {}` is always redundant, you already know at comptime that the value is .foo for that switch prong
+
+1783070408
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+oh i get it now.  i can't ave the comptime return out
+
+1783070442
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i see now.  thanks :)
+
+1783070515
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+what happens if you switch on a u32 with `inline else`, is it going to generate 4 billion prongs :P? 
+
+1783070553
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+i would think so .. i never dared to try it :)
+
+1783070568
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I assume it's limited to enums or other few-valued types 
+
+1783070585
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+in docs they show it with usize, i think
+
+1783070591
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+really.. 
+
+1783070600
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+        inline 0, 1 => |idx| @typeInfo(field_types[idx]) == .optional,
+
+1783070613
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+well, no, that's with 0 and 1
+
+1783070617
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not else
+
+1783070634
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+oh i see.  maybe it's time to try it then :D
+
+1783070669
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I was surprised else was even allowed
+
+1783070689
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but I see there's an example for it
+
+1783070710
+ifreund!2940d10f8b@user/ifreund
+just like all comptime execution, you are bounded by the eval branch quota
+
+1783070777
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+oh, eval branch quota, such a party pooper :D
+
+1783071437
+netvor!~netvor@2a00:ca8:a1f:cd0:93ed:8740:4f23:d526
+fwiww, this version works, although it's not worth the hassle: https://bpa.st/OPWA
+
+1783075582
+brka!~brka@user/brka
+I think it would be nice if we could pass an option to `std.json.Stringify.Options` to serialize ArrayList as normal JSON arrays. Is there already a simple way I might have missed?
+
+1783083375
+vloh!~vlo@user/vloh
+Hi, recently I came across some oddities when trying to compare bools - where false != false evaluates to false, not as expected to true. Is this intended design?
+
+1783083403
+vloh!~vlo@user/vloh
+sorry I mean false == false
+
+1783083417
+vloh!~vlo@user/vloh
+or vice versa false != true
+
+1783083770
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+vloh, you'll have to be more specific, false == false is true, there must be something more to the story
+
+1783097524
+pmitobacco!~user@user/pmitobacco
+tell me if it's not good to put such videos here but I'm dying
+
+1783097529
+pmitobacco!~user@user/pmitobacco
+https://inv.nadeko.net/watch?v=zeT0abXpbpw
+
+1783098008
+pmitobacco!~user@user/pmitobacco
+real question, my dev loop now is build, deploy, test, repeat. And suddenly I noticed that time to time, I have very different binary sizes. I could get 300KBs to 900KBs without importing, nor using any other branch. Just rebuild with client code changes
+
+1783098071
+pmitobacco!~user@user/pmitobacco
+I use 0.16.0 btw, only zigwin32 external module dependency
+
+1783099630
+pmitobacco!~user@user/pmitobacco
+also one more sneaky question. where the VTable struct allocates in this case? https://codeberg.org/ziglang/zig/src/commit/2f7e082381e64bbcdd06cf8f06eb84a9c8ad67de/lib/std/Io/Threaded.zig#L1810 As I remember correctly, it's impossible code in C++ as &.{} would rvalue
+
+1783099737
+pmitobacco!~user@user/pmitobacco
+i followed the same vtable pattern in my code for making universal containers for different implementations, but "this dangling pointer" gives me chills
+
+1783100990
+slynk!~ryank@user/slynk
+I'm pretty sure a constant reference known at compile time gets stuffed into the read only data section and compiles into an offset not actually a pointer
+
+1783101900
+pmitobacco!~user@user/pmitobacco
+yeah, it should be doing that, otherwise it would just segv
+
+1783102566
+beepbooptheory!~beepboopt@user/beepbooptheory
+Hi. does anyone know how to fix/replace this bit after the recent build system merge on master? https://github.com/raysan5/raylib/blob/bb96b920d34eed642a5076d21684aeb1f36ef044/build.zig#L725-L729 
+
+1783102573
+beepbooptheory!~beepboopt@user/beepbooptheory
+because no more `getInstallPath`?
+
+1783103209
+slynk!~ryank@user/slynk
+addInstallFile().dest_rel_path maybe?
+
+1783103549
+pmitobacco!~user@user/pmitobacco
+in case it helps that function moved to lib/compiler/maker/Step.zig in this commit https://codeberg.org/ziglang/zig/commit/0505318efe0d2757a344dded9ae1607f948f7511
+
+1783104075
+pmitobacco!~user@user/pmitobacco
+and then it was deleted completely https://codeberg.org/ziglang/zig/commit/afd7507a197d516c7240f92fc19e4f43adb0b79c
+
+1783104926
+slynk!~ryank@user/slynk
+const install_file = bob.addInstallFile(.{ .cwd_relative = b.fmt("web/{s}/{s}/{s}.html", .{module, filename, wasm.name}) }, dest_rel_path);
+
+1783104962
+slynk!~ryank@user/slynk
+then add install_file.step into the chain and pass dest_rel_path to the emrunStep?
+
+1783106012
+beepbooptheory!~beepboopt@user/beepbooptheory
+slynk: this seems right/idiomatic to me and will try it out, but this migration is a bit more in the weeds so will have to let you know
+
+1783106084
+beepbooptheory!~beepboopt@user/beepbooptheory
+note to anyone you can build raylib on nightly rn mostly by just commenting out the building examples stuff I believe 
+
+1783106651
+gschwind!~gschwind@user/gschwind
+pmitobacco: in C++ ref to rvalue is actually possible with void foo(T const &) for instance
+
+1783111403
+beepbooptheory!~beepboopt@user/beepbooptheory
+slynk: just fyi but was pointed to something more like this: b.graph.path(.install_prefix, b.fmt("{s}/{s}.html", .{ filename, wasm.name }))
+
+1783112657
+gschwind!~gschwind@user/gschwind
+is there a shortcut to `@as(?*Node, &link)` ?
+
+1783112743
+gschwind!~gschwind@user/gschwind
+something like `fn make_optional(v: anytype) ?@TypeOf(v) { return v }`
+
+1783112895
+slynk!~ryank@user/slynk
+beepbooptheory: sorry if i gave you bad intel, I have not dabbled with b.graph
+
