@@ -1,0 +1,420 @@
+1783242602
+dcz_!~dcz@user/dcz
+hey, I'm trying to use Dovecot API from Zig cause I heard Zig is a good C replacement, and I'm hitting an issue: some structs from the headers end up opaque and there's no indication why
+
+1783242742
+Sivecano!~Sivecano@user/Sivecano
+dcz_: and those structs are accessible from the C API? 
+
+1783242747
+dcz_!~dcz@user/dcz
+yeah
+
+1783242761
+dcz_!~dcz@user/dcz
+like @cInclude("dovecot/mail-user.h");
+
+1783242778
+dcz_!~dcz@user/dcz
+pub const struct_mail_user_connection_data = opaque {}; // /usr/include/dovecot/mail-user.h:52:35: warning: struct demoted to opaque type - has opaque field
+
+1783242856
+dcz_!~dcz@user/dcz
+it has some non-pointer fields which I tried to include in separate @cinclude's but that doesn't seem to do the trick
+
+1783242937
+Sivecano!~Sivecano@user/Sivecano
+what's your entire @cImport statement look like (note: @cImport is getting deprecated...) 
+
+1783242973
+dcz_!~dcz@user/dcz
+https://paste.debian.net/hidden/fabba3d5 this is after adding everything I could think of
+
+1783243026
+torque!~tachyon@user/torque
+it's probably due to the use of bitfields in that struct
+
+1783243114
+dcz_!~dcz@user/dcz
+...oh I do get a warning about that. It was visually elsewhere though
+
+1783243183
+dcz_!~dcz@user/dcz
+is there a way to work around that? I would like to be able to check mail_user.username without touching the bitfields
+
+1783243331
+torque!~tachyon@user/torque
+you could probably manually define something that is abi-compatible, but it would be clunky to use with the other generated bindings
+
+1783243468
+dcz_!~dcz@user/dcz
+casting would work I guess. Maybe I should do that
+
+1783243837
+dcz_!~dcz@user/dcz
+what makes bitflags hard to translate into Zig?
+
+1783244173
+torque!~tachyon@user/torque
+there isn't really a corresponding language construct
+
+1783244379
+pmitobacco!~user@user/pmitobacco
+don't you talk about packed struct and bunch of u1?
+
+1783244566
+pmitobacco!~user@user/pmitobacco
+hope that helps
+
+1783244568
+pmitobacco!~user@user/pmitobacco
+https://github.com/marlersoft/zigwin32/blob/ec98bb4d9eea532320a8551720a9e3ec6de64994/win32/ui/windows_and_messaging.zig#L1373-L1406
+
+1783244784
+pmitobacco!~user@user/pmitobacco
+dcz_: in case you can share isolated part of code you want to port to zig I'm down to help figuring it out
+
+1783244965
+dcz_!~dcz@user/dcz
+there's no code to port, I just want to interface with dovecot from Zig
+
+1783245006
+dcz_!~dcz@user/dcz
+basically that's what I have https://paste.debian.net/hidden/f476a6af
+
+1783245031
+dcz_!~dcz@user/dcz
+and zig says: no go, can't access the username field
+
+1783245124
+dcz_!~dcz@user/dcz
+right now my idea is to copy the relevant structs, replace the bitfields with u8, re-cimport them and cast between them and the opaque structs as needed
+
+1783245311
+pmitobacco!~user@user/pmitobacco
+what package you got header files from?
+
+1783245319
+dcz_!~dcz@user/dcz
+dovecot-devel
+
+1783245338
+dcz_!~dcz@user/dcz
+Fedora
+
+1783245444
+pmitobacco!~user@user/pmitobacco
+I see, on arch it would be just dovecot
+
+1783245457
+pmitobacco!~user@user/pmitobacco
+could not find -dev one
+
+1783246366
+gschwind!~gschwind@user/gschwind
+dcz_ it's look greedy are you sure that the bitfields would be stored in u8 by C compiler ?
+
+1783246863
+pmitobacco!~user@user/pmitobacco
+gschwind: what can we do with opaque structs from cimport and ig translate-c outputs? 
+
+1783246880
+pmitobacco!~user@user/pmitobacco
+ // /usr/include/dovecot/mail-user.h:52:35: warning: struct demoted to opaque type - has opaque field
+
+1783249312
+dcz_!~dcz@user/dcz
+gschwind: no idea. I'd have to take a look at the assembly or something
+
+1783249360
+dcz_!~dcz@user/dcz
+although, given it's a public ABI, that should be documented somewhere
+
+1783249614
+gschwind!~gschwind@user/gschwind
+pmitobacco, as you said you want to access a given field to the C struct, maybe look at the actual struct layout in C using some C code and craft an extern struct that copy the layout maybe with padding field for data not usefull for you or to difficult to translate such as bitfields and cast an opaque pointer to that struct
+
+1783249645
+gschwind!~gschwind@user/gschwind
+I guess the actual C layout is well defined
+
+1783249754
+gschwind!~gschwind@user/gschwind
+maybe you will end up to what dcz_ as proposed, but it's will be safer, until the API of dovecot change
+
+1783249911
+gschwind!~gschwind@user/gschwind
+in other hand you can write a C wrapper in C such as `char const * get_username_field(void * ths)`
+
+1783249928
+gschwind!~gschwind@user/gschwind
+My last proposal is probably the best
+
+1783250605
+pmitobacco!~user@user/pmitobacco
+yeah, I would create C getters, but if you don't mind voodoo that might work too https://paste.debian.net/hidden/54b8ed6f
+
+1783250697
+gschwind!~gschwind@user/gschwind
+pmitobacco, if you have the correct layout for sure :)
+
+1783250792
+gschwind!~gschwind@user/gschwind
+I guess it matter of time (and work) to have better C translation of bitsfields
+
+1783250842
+pmitobacco!~user@user/pmitobacco
+yes, but if zig has corresponding thing, why translation of bitfields fails?
+
+1783250890
+pmitobacco!~user@user/pmitobacco
+dcz_: if you will use the code from my paste, I got offsets from this version of mail_user https://github.com/dovecot/core/blob/449c27765254f193f07c6eea607b03f58781ecc0/src/lib-storage/mail-user.h#L32-L113
+
+1783251201
+dcz_!~dcz@user/dcz
+pmitobacco: thanks! in the end I'll have to do it manually, there are other structs I need to touch
+
+1783252818
+pmitobacco!~user@user/pmitobacco
+does it work for you?
+
+1783253056
+dcz_!~dcz@user/dcz
+it does seem to compile
+
+1783253437
+dcz_!~dcz@user/dcz
+yup, the username checks out, flags look sane
+
+1783253477
+dcz_!~dcz@user/dcz
+thanks again :) one more step toward my silly project
+
+1783253533
+netvor!~netvor@2a00:ca8:a1f:cd0:3e5c:794a:dc50:ebd1
+hey, i just learned that 0.17.0 is out, yay!  \o\  \o/  /o/
+
+1783253558
+dcz_!~dcz@user/dcz
+umm, what are the breaking changes :P?
+
+1783253577
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+huh, this very minute? site isn't updated
+
+1783253618
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+there's no 0.17.0 tag
+
+1783253635
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+where did you hear this
+
+1783253708
+netvor!~netvor@2a00:ca8:a1f:cd0:3e5c:794a:dc50:ebd1
+https://ziglang.org/download/
+
+1783253719
+netvor!~netvor@2a00:ca8:a1f:cd0:3e5c:794a:dc50:ebd1
+no release notes, though
+
+1783253793
+netvor!~netvor@2a00:ca8:a1f:cd0:3e5c:794a:dc50:ebd1
+it says 2026-07-03  .. but site is not properly updated (docs etc.) indeed
+
+1783253868
+netvor!~netvor@2a00:ca8:a1f:cd0:3e5c:794a:dc50:ebd1
+oh wait that's just master. i did not realize it's always marked as 0.17.0 during dev
+
+1783253885
+netvor!~netvor@2a00:ca8:a1f:cd0:3e5c:794a:dc50:ebd1
+my badm, sorry for false alarm dcz_ , Gliptic :sweat-smile:
+
+1783254175
+ifreund!2940d10f8b@user/ifreund
+semver continues to be confusing...
+
+1783256310
+Earnestly!~earnest@user/earnestly
+systemd did versioning right
+
+1783257545
+Sivecano!~Sivecano@user/Sivecano
+ifreund: what's a reasonable alternative tho? 
+
+1783261099
+gschwind!~gschwind@user/gschwind
+How do you deal with allocators when you transfer the ownership ?
+
+1783261601
+pmitobacco!~user@user/pmitobacco
+ownership of allocated object? In my ported C WINAPI application I passed allocator and allocated *data* to window proc, accesssed it in WM_CREATE casting CREATESTRUCT, allocated Userdata with passed allocator, and in WM_DESTOY I used allocator to destroy userdata, and free data I allocated somewhere else
+
+1783261611
+pmitobacco!~user@user/pmitobacco
+Is that what you mean? :)
+
+1783261706
+pmitobacco!~user@user/pmitobacco
+So I guess to pass an allocator of allocated memory, that's an ownership transfer
+
+1783261931
+ifreund!2940d10f8b@user/ifreund
+I think I rarely if ever transfer ownership, feels like an anti-pattern to me
+
+1783262547
+gschwind!~gschwind@user/gschwind
+pmitobacco, yes the issue is that if you have to do that you need basically an allocator field in each struct
+
+1783262947
+gschwind!~gschwind@user/gschwind
+ifreund, Then, how do you avoid to transfer owner ship ?
+
+1783264031
+gschwind!~gschwind@user/gschwind
+I will try different pattern I think
+
+1783264535
+pmitobacco!~user@user/pmitobacco
+gschwind: actually you don't need an allocator in each struct, but to accept one in function params where memory management happens
+
+1783264714
+pmitobacco!~user@user/pmitobacco
+otherwise you hide memory management and go opposite direction to zig. my guess 
+
+1783264935
+pmitobacco!~user@user/pmitobacco
+also I saw some API use toOwned, fromOwned
+
+1783265185
+gschwind!~gschwind@user/gschwind
+ok, seems similar to ArrayList for instance
+
+1783267793
+pmitobacco!~user@user/pmitobacco
+the question I got from my zig journey day #1. where are .a/.so libraries supposed to get io instance from?
+
+1783267937
+pmitobacco!~user@user/pmitobacco
+I thought it would be appropriate to use std.Io.Threaded.global_single_threaded.io(), but now I'm really not sure
+
+1783269416
+gschwind!~gschwind@user/gschwind
+how can I initialize 0 len slice from another slice ?
+
+1783269492
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+eh, in what sense would it be "from another slice" when it's 0 length?
+
+1783269567
+gschwind!~gschwind@user/gschwind
+`var array[10]; const slice0 = array[0..]; const slice1 = slice0[0..0];`
+
+1783269614
+gschwind!~gschwind@user/gschwind
+slice1 is an array because `0..0` is comptime know
+
+1783269677
+gschwind!~gschwind@user/gschwind
+`var array: [10]u32 = undefined;`
+
+1783269730
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+that sounds odd, it should only be an array if assigned to an array type, did you try making slice1 explicitly a slice type
+
+1783269802
+gschwind!~gschwind@user/gschwind
+currently I do: `var slice1: []u32 = slice0[0..]; slice1.len = 0;`
+
+1783269923
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+`const slice1: []u32 = slice0[0..0];` works for me
+
+1783269986
+gschwind!~gschwind@user/gschwind
+Gliptic, thanks, it's work, probably did not try this exactly :)
+
+1783270062
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+but also, slice0[0..0] is not an array, it's a pointer to an array, `*[0]u32`
+
+1783270120
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+(which is then assignable to a slice)
+
+1783276242
+RelayChat!~RelayChat@user/RelayChat
+https://andrewkelley.me/post/zig-new-async-io-text-version.html
+
+1783276270
+RelayChat!~RelayChat@user/RelayChat
+does this async i/o implementation bring hidden control flow like rust's async/await?
+
+1783277520
+torque!~tachyon@user/torque
+what sort of hidden control flow does rust's async/await introduce?
+
+1783277574
+RelayChat!~RelayChat@user/RelayChat
+.await?
+
+1783277596
+RelayChat!~RelayChat@user/RelayChat
+it calls poll() at runtime in the background, but that's not obvious from reading the source code
+
+1783277626
+RelayChat!~RelayChat@user/RelayChat
+torque: 
+
+1783277681
+torque!~tachyon@user/torque
+I mean, it's not really "hidden", imo. `await` is basically explicitly saying yield to the scheduler until this work is done
+
+1783277717
+RelayChat!~RelayChat@user/RelayChat
+the order of execution is not explicit
+
+1783277779
+torque!~tachyon@user/torque
+I still wouldn't call that hidden control flow. that's, uh, the nature of the beast with concurrent programming
+
+1783277844
+ifreund!2940d10f8b@user/ifreund
+I feel like you should be able to answer the question of whether it's "explicit" or not based on your definition by reading the post you linked?
+
+1783277936
+ifreund!2940d10f8b@user/ifreund
+perhaps we can answer some question you have about something you don't understand in the post?
+
+1783278056
+perryprog!~perryprog@wikipedia/perryprog
+Isn't any control flow invoked just dependent on the io implementation?
+
+1783280901
+pmitobacco!~user@user/pmitobacco
+meantime that blog post low key RickRoll readers 
+
+1783284752
+pmitobacco!~user@user/pmitobacco
+real question: what labour I can do to support zig ecosystem? broke student no money
+
+1783284932
+pmitobacco!~user@user/pmitobacco
+i can see that it is a really problem to maintain projects to the current zig language
+
+1783284960
+pmitobacco!~user@user/pmitobacco
+personally I loved to help to write extern struct for dovecot extern struct
+
+1783285005
+pmitobacco!~user@user/pmitobacco
+for dovecot plugin
+
+1783290529
+toasterking!a5f2e7be36@2a03:6000:1812:100::149
+My slop detectors are going off: https://codeberg.org/ziglang/zig/pulls/36058
+
+1783290651
+toasterking!a5f2e7be36@2a03:6000:1812:100::149
+"// fp_barrier and eval_as_double are omitted: Zig floats are strict IEEE."
+
