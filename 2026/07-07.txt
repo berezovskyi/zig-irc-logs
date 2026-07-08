@@ -1,0 +1,388 @@
+1783386383
+ElliotLurie!~elliot@user/ElliotLurie
+Hi, I'm writing an application and I want to pass arena allocators to functions I am writing. Should they accept a pointer to std.heap.ArenaAllocator or just the std.mem.Allocator interface?
+
+1783386454
+perryprog!~perryprog@wikipedia/perryprog
+ElliotLurie: Just an Allocator. See the first item in https://ziglang.org/documentation/0.16.0/#Choosing-an-Allocator
+
+1783386528
+perryprog!~perryprog@wikipedia/perryprog
+oh, I slightly misread what you said, but that might still help answer your question
+
+1783386541
+ElliotLurie!~elliot@user/ElliotLurie
+I mean like if I want a function to always be run with an arena allocator, should the arena itself be passed to it and I call arena.allocator () in the function each time it is run?
+
+1783386556
+ElliotLurie!~elliot@user/ElliotLurie
+Fair enough, :D
+
+1783386587
+pmitobacco!~user@user/pmitobacco
+No, arena is intetded to be deinit in the same scope, pass an allocator
+
+1783386612
+pmitobacco!~user@user/pmitobacco
+if you need an arena inside a function, you could use pass gpa and create arena in the function scope
+
+1783386708
+ElliotLurie!~elliot@user/ElliotLurie
+So each funciton should have its own arena?
+
+1783386748
+pmitobacco!~user@user/pmitobacco
+not really, it depends on memory allocation flow
+
+1783386776
+pmitobacco!~user@user/pmitobacco
+read the thing what perrprog suggested it surely will answer your question 
+
+1783386825
+pmitobacco!~user@user/pmitobacco
+personally i've never seen a function accepting an arena, but allocators everywhere
+
+1783386836
+ElliotLurie!~elliot@user/ElliotLurie
+Ah okay
+
+1783386858
+ElliotLurie!~elliot@user/ElliotLurie
+I think one arena is the best choice since I'm creating a bunch of allocations only valid for initializing my game
+
+1783386906
+pmitobacco!~user@user/pmitobacco
+if your game loop doesn't allocate memory, yes, go with arena from main function, otherwise you will get leaks :P
+
+1783386926
+ElliotLurie!~elliot@user/ElliotLurie
+It's not for the loop, it's for the init function
+
+1783386933
+pmitobacco!~user@user/pmitobacco
+i mean doesn't *constantly* allocate memory, only at init phase
+
+1783386989
+ElliotLurie!~elliot@user/ElliotLurie
+To clarify, I'm using Vulkan so I need allocations in order to pass certain parameters to objects which don't need to be valid once they are created
+
+1783387016
+ElliotLurie!~elliot@user/ElliotLurie
+So one arena, and pass its interface?
+
+1783387035
+pmitobacco!~user@user/pmitobacco
+i'm not familiar with vulkan, can't answer this one, sorry :)
+
+1783387046
+ElliotLurie!~elliot@user/ElliotLurie
+Oh don't worry its a style question
+
+1783387075
+pmitobacco!~user@user/pmitobacco
+what kind of parameters you need to pass?
+
+1783387124
+ElliotLurie!~elliot@user/ElliotLurie
+Dynamic arrays specifying extension names
+
+1783387206
+ElliotLurie!~elliot@user/ElliotLurie
+I think the answer is just to pass the arena's interface since you said you've never seen anyone pass a structure before
+
+1783387226
+pmitobacco!~user@user/pmitobacco
+so I assume parameter type is const char**?
+
+1783387226
+ElliotLurie!~elliot@user/ElliotLurie
+It's a code style question, probably should've specified that
+
+1783387236
+pmitobacco!~user@user/pmitobacco
+no, no, pass an allocator, not arena
+
+1783387240
+pmitobacco!~user@user/pmitobacco
+arena only in a main function
+
+1783387271
+Affliction!affliction@idlerpg/player/affliction
+Yeah, always pass std.mem.Allocator, keep the ArenaAllocator in the scope it was created so it can be deinited with defer
+
+1783387313
+ElliotLurie!~elliot@user/ElliotLurie
+pmitobacco:  Oh I don't mean std.process.Init's parameter
+
+1783387321
+Affliction!affliction@idlerpg/player/affliction
+for init code, you might construct an arena from a general purpose allocator, and pass both to functions which both need temporary allocations but also create long lived objects
+
+1783387322
+ElliotLurie!~elliot@user/ElliotLurie
+Affliction: gotcha
+
+1783387346
+ElliotLurie!~elliot@user/ElliotLurie
+Affliction: That's what I'm doing! Thanks
+
+1783387352
+Affliction!affliction@idlerpg/player/affliction
+being consistent with argument names there is helpful, "arena: std.mem.Allocator, gpa: std.mem.Allocator" for instance
+
+1783387396
+ElliotLurie!~elliot@user/ElliotLurie
+Gotcha
+
+1783387404
+ElliotLurie!~elliot@user/ElliotLurie
+Thank you both!
+
+1783387418
+Affliction!affliction@idlerpg/player/affliction
+no problem
+
+1783387489
+Affliction!affliction@idlerpg/player/affliction
+same idea holds for std.Io, though you'll probably mostly only have one of those
+
+1783387532
+Affliction!affliction@idlerpg/player/affliction
+I haven't explored custom Io implementations myself yet, but having a kind of "arena" for the various objects it handles might be useful to me at some point too
+
+1783387900
+perryprog!~perryprog@wikipedia/perryprog
+huh, what backs Init.arena? PageAllocator?
+
+1783387957
+perryprog!~perryprog@wikipedia/perryprog
+Ditto for Init.gpa
+
+1783388313
+perryprog!~perryprog@wikipedia/perryprog
+ah, answers are in start.zig
+
+1783388333
+Affliction!affliction@idlerpg/player/affliction
+if you're used to C++, zig's std source is surprisingly readable :)
+
+1783388382
+ElliotLurie!~elliot@user/ElliotLurie
+I think Zig is just more readable in general XD
+
+1783388398
+perryprog!~perryprog@wikipedia/perryprog
+if linking libc, uses c_allocator, if not single threaded uses smb_allocator. Arena is backed by a page allocator (if not wasm) 
+
+1783388415
+perryprog!~perryprog@wikipedia/perryprog
+Not sure what it is if you're on ReleaseFast -fsingle-threaded with no libc tho
+
+1783388461
+perryprog!~perryprog@wikipedia/perryprog
+Ah, it forces a safe allocator in that case
+
+1783415883
+brka!~brka@user/brka
+https://ziggit.dev/t/benchmarking/4675 oh, nice
+
+1783416235
+brka!~brka@user/brka
+I'm embarrassed I hadn't found this earlier
+
+1783416309
+brka!~brka@user/brka
+The whole https://ziggit.dev/docs I mean 
+
+1783421788
+afiw!~afiw@user/afiw
+Hello, the openbsd amd64 build from https://ziglang.org/download/ is broken - it dies immediately with a SIGILL which is indicative of BTCFI problems on openbsd usually
+
+1783421797
+afiw!~afiw@user/afiw
+the zig from pkg_add runs successfully
+
+1783421819
+afiw!~afiw@user/afiw
+is the build in the tarball linked with -Wl,-z,nobtcfi or similar?
+
+1783455173
+pmitobacco!~user@user/pmitobacco
+is there a trick to force the compiler not to exclude my functions?
+
+1783455203
+pmitobacco!~user@user/pmitobacco
+cannot use export, function returns array
+
+1783455407
+pmitobacco!~user@user/pmitobacco
+not exclude, but include :^)
+
+1783455997
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+not to include functions?
+
+1783456010
+Gliptic!~glip@2a01:4f8:c012:91f3::1
+I think you did mean exclude, no?
+
+1783456162
+pmitobacco!~user@user/pmitobacco
+no, i want function to be NOT INLINED and not ran in comptime
+
+1783456772
+gschwind!~gschwind@user/gschwind
+pmitobacco, did you tried @TypeOf(foo) ?
+
+1783456915
+gschwind!~gschwind@user/gschwind
+it's just guess
+
+1783457461
+pmitobacco!~user@user/pmitobacco
+no, but I tried many ways, reliably i don't know how to make function to be not inlined
+
+1783457476
+pmitobacco!~user@user/pmitobacco
+meanwhile I export it and return u64 instead of [8]u8
+
+1783457512
+pmitobacco!~user@user/pmitobacco
+so in actual Zig code I can bitcast it to array
+
+1783457540
+pmitobacco!~user@user/pmitobacco
+I just need some kind of assembly guarantees, I play with SIMD different targets and CPU features
+
+1783457566
+pmitobacco!~user@user/pmitobacco
+so I inspect binary before deloy
+
+1783457567
+gschwind!~gschwind@user/gschwind
+@export with some options ?
+
+1783457586
+pmitobacco!~user@user/pmitobacco
+default export with keywoard
+
+1783457622
+pmitobacco!~user@user/pmitobacco
+i don't plan to use it in C, just helps to preserve it uninlined
+
+1783457627
+gschwind!~gschwind@user/gschwind
+may try `@export`, linkage internal ?
+
+1783457642
+pmitobacco!~user@user/pmitobacco
+let me see
+
+1783457663
+gschwind!~gschwind@user/gschwind
+https://ziglang.org/documentation/0.16.0/#export
+
+1783457690
+gschwind!~gschwind@user/gschwind
+https://ziglang.org/documentation/0.16.0/std/#std.builtin.ExportOptions
+
+1783457861
+pmitobacco!~user@user/pmitobacco
+requires me to specify callconv(.c)
+
+1783458137
+pmitobacco!~user@user/pmitobacco
+I think returning u32 instead of [4]u8 and u64 instead of [8]u8 works fine for me
+
+1783458177
+Sivecano-!~Sivecano@user/Sivecano
+the new bitcast semantics will make it easy to convert anyway :)
+
+1783458210
+pmitobacco!~user@user/pmitobacco
+yes, that's what I use
+
+1783459404
+pmitobacco!~user@user/pmitobacco
+actually 'noinline' works, it was compiler not producing assembly for function because it computed return values in comptime
+
+1783459540
+pmitobacco!~user@user/pmitobacco
+i wrote main reading input data from file and it works like a charm
+
+1783464495
+pmitobacco!~user@user/pmitobacco
+how do we benchmark? :)
+
+1783465447
+perryprog!~perryprog@wikipedia/perryprog
+pmitobacco there's the wonderfully named poop which is linux only, but hyperfine also exists: https://github.com/andrewrk/poop
+
+1783465468
+perryprog!~perryprog@wikipedia/perryprog
+Though those are both more just "timing a command accurately" but often times that can get you what you want
+
+1783465530
+perryprog!~perryprog@wikipedia/perryprog
+there's also zBench but the website for it being super vibe coded makes me dubious about the package itself: https://hendriknielaender.github.io/zBench/
+
+1783465950
+perryprog!~perryprog@wikipedia/perryprog
+and for profiling it again really depends on your OS. On macOS there's Instruments which is... eeeeeeeeeh kinda buggy and slow but sometimes good. Cross-platform there's https://github.com/mstange/samply which I don't know anything about tbh but it looks okay
+
+1783466170
+pmitobacco!~user@user/pmitobacco
+poop is good. Linux only is fine. I write different SIMD algorithms and suddenly found myself wondering how slow @shuffle (vectors rearrangement) is
+
+1783466230
+aks!~m-n2ods6@user/akselmo
+I open this room and "poop is good"
+
+1783466233
+aks!~m-n2ods6@user/akselmo
+Pardon??
+
+1783466236
+perryprog!~perryprog@wikipedia/perryprog
+you heard us
+
+1783466269
+aks!~m-n2ods6@user/akselmo
+Well i aint one to judge
+
+1783466277
+perryprog!~perryprog@wikipedia/perryprog
+I mean if you aren't doing it...
+
+1783466282
+pmitobacco!~user@user/pmitobacco
+isn't it good?
+
+1783466297
+pmitobacco!~user@user/pmitobacco
+only if you were to say it's awesome 
+
+1783466298
+andrewrk!~andrewrk@mail.ziglang.org
+try not pooping for 1 week and see how you feel
+
+1783466308
+aks!~m-n2ods6@user/akselmo
+Lmao
+
+1783467406
+squeek502!~squeek502@user/squeek502
+pmitobacco, there's also https://github.com/D-Berg/crap for macos
+
+1783467427
+perryprog!~perryprog@wikipedia/perryprog
+ooo
+
+1783467445
+perryprog!~perryprog@wikipedia/perryprog
+ty
+
+1783467474
+perryprog!~perryprog@wikipedia/perryprog
+(I tried getting tensorush's PR to build but didn't have any luck; this looks more promising)
+
