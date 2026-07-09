@@ -1,0 +1,540 @@
+1783499847
+dutchie!~dutchie@user/dutchie
+what's the best approach for something like an Io.Group but where my individual functions can raise non-Canceled errors?
+
+1783499983
+dutchie!~dutchie@user/dutchie
+I can just make an array of futures to await/cancel, but wonder if there's a shorter way
+
+1783504925
+Sivecano-!~Sivecano@user/Sivecano
+dutchie: the forbidden !!void
+
+1783505391
+dutchie!~dutchie@user/dutchie
+hmm, interesting
+
+1783505422
+dutchie!~dutchie@user/dutchie
+would it be better to wrap it in a function that does `inner catch return error.Canceled` or is returning error.Canceled not something I should be doing
+
+1783505435
+dutchie!~dutchie@user/dutchie
+I don't really quite understand the semantics of cancellation
+
+1783505560
+dutchie!~dutchie@user/dutchie
+would that then cancel the rest of the tasks in the group?
+
+1783513669
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+anyone know what happened to zgo? it was a build tool that combined zig and go so you could compile C code in your go programs using a better compiler
+
+1783513690
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+the dev left github, but killed the repo first and the new forge they use doesnt have it
+
+1783514858
+vyivel!~vyivel@user/Vyivel
+can't you just supply zig as c compiler to go?
+
+1783516148
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+vyivel: sure, but this program set it up for you
+
+1783516157
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+ill have to figure out how to do it without the program
+
+1783516169
+vyivel!~vyivel@user/Vyivel
+CC="zig cc" go build?
+
+1783516185
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+lol really, it cant be that easy
+
+1783516238
+vyivel!~vyivel@user/Vyivel
+iirc that's how it goes
+
+1783516274
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+oh wow, i feel dumb
+
+1783516282
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+thats probably why the project doesnt exist anymore xD
+
+1783516327
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+thank you vyivel 
+
+1783516341
+vyivel!~vyivel@user/Vyivel
+np
+
+1783516411
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+i just built a go+fyne app with it, flawless :D
+
+1783516425
+vyivel!~vyivel@user/Vyivel
+nice nice
+
+1783517521
+blblack!~bblack@wikimedia/bblack-WMF
+dutchie: you can make a queue for your Io.Group tasks to place their various more-complex futures in, and then read from the queue.  There's an existing general abstraction for this in std.Io.Select, although generally it's not that difficult to roll your own more-tailored variant.
+
+1783517561
+brka!~brka@user/brka
+britney: when would I need a C compiler when using Go? I used a lot of go but never thought about this. Does it use one in the background implicitly?
+
+1783517858
+vyivel!~vyivel@user/Vyivel
+brka: for cgo stuff
+
+1783517858
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+brka: if you are using a library that uses C/C++
+
+1783517892
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+yes, cgo stuff
+
+1783517901
+blblack!~bblack@wikimedia/bblack-WMF
+dutchie: re: cancelation - error.Canceled is not generally something your code would invent out of thin air.  It's a possible error of most I/O functions, and should generally be return up to the caller.  This is why you tend to see/write a lot of code like: [...] catch |err| switch (err) { error.Foo => ..., error.Bar => ..., error.Canceled => |e| return e }
+
+1783517910
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+fyne uses cgo for SDL i think
+
+1783518021
+blblack!~bblack@wikimedia/bblack-WMF
+as the application coder using std.Io (as opposed to implementing std.Io itself), generally you cancel things via Future.cancel() or Group.cancel() or Select.cancel(), and then just about anywhere any other I/O error could happen, you expect the possibility of receiving an error.Canceled and you return it upwards.
+
+1783518068
+blblack!~bblack@wikimedia/bblack-WMF
+(but there's also fooUncancelable() variants of some I/O calls, and you can also temporarily block cancelation around a critical section with .swapCancelProtection())
+
+1783518110
+blblack!~bblack@wikimedia/bblack-WMF
+there's also io.recancel() as a way of slightly-deferring the cancel request until the next cancellation point (generally those are I/O calls)
+
+1783518155
+blblack!~bblack@wikimedia/bblack-WMF
+so you could do: switch(err) { ..., error.Canceled => io.recancel(), }
+
+1783518187
+blblack!~bblack@wikimedia/bblack-WMF
+(which avoids canceling the task immediately, but causes the error.Canceled to pop up again on the *next* I/O call that can do so)
+
+1783518968
+brka!~brka@user/brka
+britney: ah, that makes sense, I originally picked up zig to try out SDL
+
+1783519326
+pmitobacco!~user@user/pmitobacco
+i decided to watch some entertainment content about zig, and man, isn't this that unhealthy for ecosystem growth? or such content gatekeeps us from 'outsourced opinions'?
+
+1783519392
+perryprog!~perryprog@wikipedia/perryprog
+welp wanted to try evented with GCD but even the example in https://ziglang.org/devlog/2026/#2026-02-13 fails for me on 0.16.0 and master and I have no clue why. https://bpa.st/QJEQ
+
+1783519403
+perryprog!~perryprog@wikipedia/perryprog
+but for some reason the evented.deinit() which calls ev.backing_allocator.free(ev.main_loop_stack[0..main_loop_stack_size]); ends up being a comptime error :(
+
+1783519424
+pmitobacco!~user@user/pmitobacco
+someone throws 'no sense comments' like how is it supposed to replace C, and because he plays emotional, others really will not even try Zig
+
+1783519482
+pmitobacco!~user@user/pmitobacco
+toolchain is 100% best, cross compiling of C/C++ is the peak feature
+
+1783519801
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+pmitobacco: i watched the recent interview with andrew in it
+
+1783519808
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+its quite good, very smart guy
+
+1783519828
+pmitobacco!~user@user/pmitobacco
+britney: Jet Brains?
+
+1783519835
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+yeah
+
+1783519836
+blblack!~bblack@wikimedia/bblack-WMF
+yeah, that interview was really nice in terms of breadth of topics
+
+1783519843
+pmitobacco!~user@user/pmitobacco
+our super hero
+
+1783519861
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+that interview was why i joined this channel
+
+1783519871
+pmitobacco!~user@user/pmitobacco
+to be honest, me too :)
+
+1783519881
+pmitobacco!~user@user/pmitobacco
+that was the final kick for me to try zig
+
+1783519893
+pmitobacco!~user@user/pmitobacco
+and i've been happy so far
+
+1783519944
+blblack!~bblack@wikimedia/bblack-WMF
+I had a Zig-shaped hole in my life for years, before I finally noticed Zig's existence and how it fit that hole :)
+
+1783519968
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+i was in the middle of learning pascal at the time and im almost finished a dos game i was working on, zig will be used in my next project
+
+1783520049
+blblack!~bblack@wikimedia/bblack-WMF
+I just wish I had more free time to delve deep on contributing to Zig itself.  Mostly I just submit PRs that try to solve my own minor pain points so far, when needed.
+
+1783520056
+perryprog!~perryprog@wikipedia/perryprog
+Unironically my interest in Zig was piqued when I heard about the LLM policy. Then I started reading it and was like "oh hey this is pretty cool"
+
+1783520057
+pmitobacco!~user@user/pmitobacco
+oh yeah, that's literally me, I use Go for anything simple, network related
+
+1783520085
+pmitobacco!~user@user/pmitobacco
+and cross compiling, static builds, fit the hole of my 'one day i be in embedded' hobby
+
+1783520110
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+i love the tools
+
+1783520126
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+i avoided c and c++ because i dont like gcc much
+
+1783520133
+pmitobacco!~user@user/pmitobacco
+now i basically compile my stuff to my router (runs on OpenWRT) and my Windows PC
+
+1783520143
+pmitobacco!~user@user/pmitobacco
+just with build.zig
+
+1783520153
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+Go is great because I can use its compiler, not GCC
+
+1783520158
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+same with pascal and fpc
+
+1783520163
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+zig
+
+1783520209
+pmitobacco!~user@user/pmitobacco
+perryprog: you love LLMs? :P
+
+1783520216
+perryprog!~perryprog@wikipedia/perryprog
+No!
+
+1783520247
+perryprog!~perryprog@wikipedia/perryprog
+Not sure how you read that from what I said :P
+
+1783520270
+pmitobacco!~user@user/pmitobacco
+that would be unpleasant to hear, glad you are one of us
+
+1783520292
+pmitobacco!~user@user/pmitobacco
+i'm far away from being english native, so please forgive me haha
+
+1783520302
+perryprog!~perryprog@wikipedia/perryprog
+ah nw
+
+1783520322
+pmitobacco!~user@user/pmitobacco
+enough praises, gotta back to work!
+
+1783520329
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+the LLM policy is anti-LLM
+
+1783520719
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+i did find this yesterday https://code.hexops.org/hexops/mach
+
+1783520730
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+appears to be a game engine in zig
+
+1783521059
+pmitobacco!~user@user/pmitobacco
+oh ty i will try to write something with it this weekend
+
+1783525641
+jodijodington!~thelounge@user/JodiJodington
+"Glad you are one of us" i dont think the zig community  largely anti-LLM generally. I dont think the zig core team is either
+
+1783527511
+pmitobacco!~user@user/pmitobacco
+I use AI to generate test data, to generate 'templated' code, but I'm 100% anti-slop. Personally I don't like lack of responsibility and I think it's the Ziglang policy
+
+1783527566
+pmitobacco!~user@user/pmitobacco
+stop slop policy targets specifically codeberg.org/ziglang, not your personal projects
+
+1783527582
+blblack!~bblack@wikimedia/bblack-WMF
+I've had to confront AI policy questions at $work and help form them, and as a result I've had to actually trial using some LLM agentic flows like Claude Code, just so that my opinions are grounded in reality instead of parrotting whatever some other blog posts have said or whatever.
+
+1783527639
+blblack!~bblack@wikimedia/bblack-WMF
+I don't think LLMs are completely useless in the world.  I question the ethics of the whole situation, and the bullshit claims of emerging super-intelligence or whatever, and the artificial economics and eventual token cost increases, etc.
+
+1783527702
+blblack!~bblack@wikimedia/bblack-WMF
+more importantly, every trial I've run where I tried to get Claude Code (Opus 4.8) to take on a serious coding task in a serious codebase, where I know the code well and know how to do the same task manually well, I've found it lacking.
+
+1783527737
+blblack!~bblack@wikimedia/bblack-WMF
+when I try to rationalize it in terms of "saving time" it never adds up.  It takes so much to clean it up to my standards.
+
+1783527769
+pmitobacco!~user@user/pmitobacco
+awesome conclusion, AI sucks, zig to the moon
+
+1783527770
+blblack!~bblack@wikimedia/bblack-WMF
+the investment just doesn't make sense, for "serious" work where quality matters
+
+1783527811
+pmitobacco!~user@user/pmitobacco
+love the fact, each zig minor upgrade almost always mean old code wont compile, so AI struggles to keep up
+
+1783527853
+blblack!~bblack@wikimedia/bblack-WMF
+but there's a lot of bullshit, low-quality/low-effort "work" (coding or otherwise) in this world, where we already accept a low bar.  And sure, LLMs can automate that just as shittily.  So if the economics of it ever make sense, it will have a purpose :P
+
+1783527931
+pmitobacco!~user@user/pmitobacco
+haha, correct, let's ship more shit to shitlands
+
+1783527969
+pmitobacco!~user@user/pmitobacco
+I don't read tech news, barely watch youtube on them. Am I crazy or anthropic bought rust foundation?
+
+1783528043
+pmitobacco!~user@user/pmitobacco
+I saw some articles and it feels like it sowewhat did, like some NDA + big money contracts are floating there
+
+1783528055
+blblack!~bblack@wikimedia/bblack-WMF
+in any case, I have no choice (so far) but to accept that co-workers are using LLMs to write code.  but what we're converging on policy-wise at this point is some things along the lines of: (1) Don't ever toss un-mediated LLM outputs at your co-workers (in chats, in tickets, in PRs).  It's anti-social.  If you can't be bothered to fully review it first yourself and make it something you'd have been proud to 
+
+1783528061
+blblack!~bblack@wikimedia/bblack-WMF
+write manually, don't ask others to do it for you.
+
+1783528090
+pmitobacco!~user@user/pmitobacco
+instantaneous enshitification of rust ecosystem and generally code
+
+1783528167
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+that happens when you are super popular
+
+1783528177
+blblack!~bblack@wikimedia/bblack-WMF
++ (2) Don't include LLM attributions like "Co-Authored-By: Claude Opus 4.8" - these are basically cop-outs, so that when it turns out to be shit, you can blame the LLM.  Again, if you won't put your own name on it and own it, don't push it.  If you push low-quality LLM output under your own name, you're taking the reputational hit for being a low-quality contributor in the end.
+
+1783528345
+pmitobacco!~user@user/pmitobacco
+hope ZSF will prosper and have enough money to not be bribed, so Andrew will be able to give more interviews dressed like a SS officer so we will have huge gatekeep
+
+1783528362
+blblack!~bblack@wikimedia/bblack-WMF
++ (3) Never use LLMs for reviews.  Reviews must be done by humans, with the usual thoroughness.
+
+1783528382
+pmitobacco!~user@user/pmitobacco
+reads like a bible
+
+1783528508
+blblack!~bblack@wikimedia/bblack-WMF
+the one narrow case where I've personally found LLMs helpful (and I think this mirrors the experience of the whole open source world lately) is that it's really good as a bug-hunting aid in existing large, complex codebases.
+
+1783528510
+banna!~banna@banna.tech
+I'd love to read a history of technologies and corporate interests, but there are so many examples of good work being squandered by big money interests
+
+1783528549
+blblack!~bblack@wikimedia/bblack-WMF
+not all of its bug reports will turn out to be valid, but it's good enough at that game, that it's worth some engineers' time to triage your way through what it finds.  there will be gems that humans didn't notice.
+
+1783528637
+blblack!~bblack@wikimedia/bblack-WMF
+anyways, I'm getting way off-topic, and to be clear, all this is about AI issues at my $dayjob for whatever insight it might lend, not about Zig's policy.
+
+1783528658
+banna!~banna@banna.tech
+the sad story of it all is that, before people were given a natural language interface to the things, AI was _always_ about applying the technique in careful consideration of its function (at least for the most part)
+
+1783528875
+blblack!~bblack@wikimedia/bblack-WMF
+I've been following the broader "AI" topic at a distance ever since like, 35 years ago I think, when I first read https://en.wikipedia.org/wiki/G%C3%B6del,_Escher,_Bach as a teenager
+
+1783528920
+blblack!~bblack@wikimedia/bblack-WMF
+it has eternally been just another "decade" or whatever from changing the world, but it never quite does.
+
+1783528930
+blblack!~bblack@wikimedia/bblack-WMF
+this is just the latest iteration of the fad
+
+1783529015
+CGML!~quassel@user/CGML
+Excuse me, what?  Giving interviews dressed like an SS officer?  Did that happen deliberately?
+
+1783529104
+blblack!~bblack@wikimedia/bblack-WMF
+yeah I guess I kinda glazed over past that reference earlier.  No idea what the context is there, but I don't recall anything like that in interviews I've seen.
+
+1783529182
+banna!~banna@banna.tech
+aand he left
+
+1783539232
+andrewrk!~andrewrk@mail.ziglang.org
+pmitobacco: are you ok? I'm confused about the conversation just now. are people angry at each other? or just saying nonsense for fun? 
+
+1783539699
+blblack!~bblack@wikimedia/bblack-WMF
+I don't know if anyone there typing at the time was angry.  Didn't seem like it.  But the "SS officer" comment seemed at least weird and kinda wtf, and I don't get the context or what that might have referred to.
+
+1783539769
+omendezmorales!~Thunderbi@2803:c600:810f:9edc:d414:dacf:b6c3:a40f
+yeah, quite some ppl left, but I'm also missing context... strange 🤓
+
+1783539815
+blblack!~bblack@wikimedia/bblack-WMF
+parsing through some earlier backscroll to try to make sense, there was another comment that now seems relevant too.  [my timestamps are UTC]:
+
+1783539818
+blblack!~bblack@wikimedia/bblack-WMF
+14:02 < pmitobacco> i decided to watch some entertainment content about zig, and man, isn't this that unhealthy for ecosystem growth? or such content gatekeeps us from 'outsourced opinions'?
+
+1783539853
+blblack!~bblack@wikimedia/bblack-WMF
+14:03 < pmitobacco> someone throws 'no sense comments' like how is it supposed to replace C, and because he plays emotional, others really will not even try Zig
+
+1783539889
+blblack!~bblack@wikimedia/bblack-WMF
+the wtf-inducing one was much later with:
+
+1783539891
+blblack!~bblack@wikimedia/bblack-WMF
+16:32 < pmitobacco> hope ZSF will prosper and have enough money to not be bribed, so Andrew will be able to give more interviews dressed like a SS officer so we will have huge gatekeep
+
+1783539912
+perryprog!~perryprog@wikipedia/perryprog
+there was the jetbrains interview mentioned but that was a good bit ago
+
+1783539923
+andrewrk!~andrewrk@mail.ziglang.org
+I'll give them one chance in case it was an accident, I don't really detect hostile intent
+
+1783539924
+omendezmorales!~Thunderbi@2803:c600:810f:9edc:d414:dacf:b6c3:a40f
+interesting project the machengine, @britney, will have a look later ;-)
+
+1783539934
+perryprog!~perryprog@wikipedia/perryprog
+I'm not gonna pretend like I understand any of what happened tho
+
+1783539936
+blblack!~bblack@wikimedia/bblack-WMF
+yeah and andrew's clothing doesn't seem in any way unusual in that jetbrains one
+
+1783539948
+andrewrk!~andrewrk@mail.ziglang.org
+that's how we dress in the pacific northwest lol like lumberjacks
+
+1783539949
+blblack!~bblack@wikimedia/bblack-WMF
+so I donno :)
+
+1783540045
+blblack!~bblack@wikimedia/bblack-WMF
+yeah I have some family that lives out around Sequim, WA.  I've gotten to spend a few months of my life out there over the years in little snippets.  I love the PNW weather and the vibe :)
+
+1783540085
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+omendezmorales: ty
+
+1783541766
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+They did say they weren't the best at English
+
+1783547923
+andrewrk!~andrewrk@mail.ziglang.org
+britney: here is another actively developed suite of game engine packages, being used for an upcoming game: https://codeberg.org/Games-by-Mason/
+
+1783547980
+andrewrk!~andrewrk@mail.ziglang.org
+this is also the person working on extending @Vector for SPIR-V (https://codeberg.org/ziglang/zig/issues/35376)
+
+1783548136
+perryprog!~perryprog@wikipedia/perryprog
+ooo a zig ecs 👀
+
+1783549035
+pmitobacco!~user@user/pmitobacco
+andrewrk: why have you decided it was negative connotation? you don't like the wording? the meaning is simple, i don't know how you didn't get it. There is a upgrowing external pressure to use AI, and it's a good chance they launch anti-Zig company because of no reason, but anti LLM policy 
+
+1783549050
+pmitobacco!~user@user/pmitobacco
+sorry, i didn't think it might be any harmful to your reputation
+
+1783549054
+pmitobacco!~user@user/pmitobacco
+your look was awesome
+
+1783549121
+pmitobacco!~user@user/pmitobacco
+and that was nothing, but a small talk, not intentional to harm the community
+
+1783549127
+pmitobacco!~user@user/pmitobacco
+here is an example
+
+1783549132
+pmitobacco!~user@user/pmitobacco
+https://www.youtube.com/watch?v=bh6S4N8TnYQ
+
+1783549296
+pmitobacco!~user@user/pmitobacco
+and I don't remember somebody was angry at all, we had fun saying LLMs suck
+
+1783553310
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+andrewrk: thank you =)
+
