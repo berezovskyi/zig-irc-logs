@@ -1,0 +1,200 @@
+1783557867
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+fuck, marry, kill: golang, pascal, zig
+
+1783557873
+britney!~britney@vps-eb8aba06.vps.ovh.ca
+GO
+
+1783560833
+abby!~abby@miaow/classabbyamp
+translate-c is generating objects for the host when cross-compiling: /builddir/river-0.4.5/.zig-cache/o/212c715d7f899a587414ad2d89626e5b/translate-c_zcu.o: ELF 64-bit LSB relocatable, x86-64, version 1 (SYSV), with debug_info, not stripped
+
+1783560833
+abby!~abby@miaow/classabbyamp
+this is happening on river v0.4.5 (https://codeberg.org/river/river/src/tag/v0.4.5), build log: https://p.qrm.cat/Q3wB0U.log
+
+1783560833
+abby!~abby@miaow/classabbyamp
+anyone have any ideas what's happening?
+
+1783561418
+andrewrk!~andrewrk@mail.ziglang.org
+abby: translate-c outputs .zig source files, not .o files. so there must be a different step that is compiling the .zig into .o which is not being supplied with the target
+
+1783561471
+abby!~abby@miaow/classabbyamp
+sorry i'm not very familiar with zig, this is what it's doing https://codeberg.org/river/river/src/tag/v0.4.5/build.zig#L157
+
+1783561639
+andrewrk!~andrewrk@mail.ziglang.org
+abby: can you share more context
+
+1783561658
+andrewrk!~andrewrk@mail.ziglang.org
+just pointing to a line in the source doesn't really help us help you
+
+1783561717
+abby!~abby@miaow/classabbyamp
+i provided the build log above
+
+1783561918
+abby!~abby@miaow/classabbyamp
+i pointed to the line in the build script where translate-c is invoked because maybe someone who knows anything about zig might notice a place where the target is missing
+
+1783562033
+abby!~abby@miaow/classabbyamp
+this is with zig 0.16.0, self-compiled, we use this script to run zig build itself: https://github.com/tranzystorekk/void-packages/blob/fe001e575c2ee486e740ec340fb599d3b22b3a2b/common/build-style/zig-build.sh
+
+1783566525
+andrewrk!~andrewrk@mail.ziglang.org
+abby: apologies, thank you for the build log
+
+1783566860
+andrewrk!~andrewrk@mail.ziglang.org
+abby: the thing that failed was building the translate-c tool itself, which is correctly being built for the host, to run on the host as part of the build process
+
+1783567052
+andrewrk!~andrewrk@mail.ziglang.org
+I don't know what --sysroot does, I think that flag should just be deleted
+
+1783567074
+andrewrk!~andrewrk@mail.ziglang.org
+I neither know what it actually does nor what users intend for it to do
+
+1783567105
+andrewrk!~andrewrk@mail.ziglang.org
+but it certainly is inappropriate to be passed directly to `zig build` and forwarded to all build-exe steps since some will be for the host
+
+1783567162
+abby!~abby@miaow/classabbyamp
+we set up our build environment so anything for the host is in /, then anything (libraries, cross-compiler headers, etc) for cross-compiled targets is in /usr/$TARGET_TRIPLET
+
+1783567283
+andrewrk!~andrewrk@mail.ziglang.org
+the lld error doesn't make sense to me, unless perhaps some sneaky environment variable is making its way behind zig's back and communicating to LLD
+
+1783567340
+abby!~abby@miaow/classabbyamp
+without --sysroot, the error is a bit different: https://p.qrm.cat/Yiv7TE.log
+
+1783567341
+abby!~abby@miaow/classabbyamp
+error: ld.lld: cannot open /lib/ld-linux-aarch64.so.1: No such file or directory
+
+1783567368
+abby!~abby@miaow/classabbyamp
+this makes sense because it,s in /usr/aarch64-linux-gnu/lib
+
+1783567382
+andrewrk!~andrewrk@mail.ziglang.org
+why is that compilation linking libc anyway
+
+1783567421
+abby!~abby@miaow/classabbyamp
+no clue, I didn't write the code
+
+1783567432
+andrewrk!~andrewrk@mail.ziglang.org
+this looks like a legacy choice from when zig didn't have a better allocator than libc malloc
+
+1783567456
+andrewrk!~andrewrk@mail.ziglang.org
+I'll make note of that separately but let me try to address the problem with the source as is
+
+1783567574
+andrewrk!~andrewrk@mail.ziglang.org
+https://codeberg.org/ziglang/translate-c/pulls/430
+
+1783567596
+andrewrk!~andrewrk@mail.ziglang.org
+I think the problem is the --libc xbps_zig_libc.txt arg
+
+1783567632
+andrewrk!~andrewrk@mail.ziglang.org
+that's similar to --sysroot in that it should only apply to the provided target, rather than also applying to compiled-for-host programs
+
+1783567653
+andrewrk!~andrewrk@mail.ziglang.org
+is the default libc detection failing for some reason? what's in that file?
+
+1783567673
+abby!~abby@miaow/classabbyamp
+https://github.com/tranzystorekk/void-packages/blob/fe001e575c2ee486e740ec340fb599d3b22b3a2b/common/build-style/zig-build.sh#L18-L25
+
+1783567687
+abby!~abby@miaow/classabbyamp
+XBPS_CROSS_BASE is /usr/$triplet
+
+1783567719
+andrewrk!~andrewrk@mail.ziglang.org
+I see
+
+1783567747
+andrewrk!~andrewrk@mail.ziglang.org
+unfortunately I think this is a problem with zig build system the way --libc works. I'll make an issue for it
+
+1783567803
+andrewrk!~andrewrk@mail.ziglang.org
+is it reasonable to carry this patch in the meantime? https://codeberg.org/ziglang/translate-c/pulls/430
+
+1783567809
+andrewrk!~andrewrk@mail.ziglang.org
+(and does it solve the issue?)
+
+1783567848
+abby!~abby@miaow/classabbyamp
+is there a way to fetch dependencies before zig build?
+
+1783567943
+andrewrk!~andrewrk@mail.ziglang.org
+yes
+
+1783567960
+andrewrk!~andrewrk@mail.ziglang.org
+you should be using the --system flag in a distro build script, which disables fetching
+
+1783567989
+andrewrk!~andrewrk@mail.ziglang.org
+the --fetch flag can be used to pre-fetch everything. see the docs in `zig build --help`
+
+1783568130
+abby!~abby@miaow/classabbyamp
+o.o why does it need to compile something to show the help text
+
+1783568153
+andrewrk!~andrewrk@mail.ziglang.org
+because the help text includes data from the configuration graph created by running build.zig
+
+1783568769
+abby!~abby@miaow/classabbyamp
+not linking libc in translate-c seems to fix part of it
+
+1783568935
+abby!~abby@miaow/classabbyamp
+now it doesn't pick up all the include paths it needs (should have -I/usr/aarch64-linux-gnu/usr/include or similar): /builddir/river-0.4.5/river/c.h:6:10: fatal error: 'libinput.h' not found
+
+1783580265
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hm, i periodically remember this suggestion from way back when: https://github.com/ziglang/zig/issues/22559#issuecomment-2603162255
+
+1783580430
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i am aware that --libc was just removed from translate-c, but maybe distros could have a more granular/predictable way to set include path for c stuff, i.e. to replace --sysroot
+
+1783632195
+nickbors!~nickbors@user/NickBors
+hello hello!
+
+1783632919
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+hi
+
+1783636711
+andrewrk!~andrewrk@mail.ziglang.org
+hello
+
+1783638095
+Sivecano!~Sivecano@user/Sivecano
+hii
+
