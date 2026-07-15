@@ -1,0 +1,256 @@
+1784003562
+lingxu!~lingxu@user/lingxu
+I have an enum with values like not_ok, ok_1, ok_2, and ok_N. Is there a way to use it so I don’t have to add a new ok_ value every time the code needs one?
+
+1784003796
+torque!~tachyon@user/torque
+sounds like what you want is a regular number
+
+1784003839
+torque!~tachyon@user/torque
+I mean, you could programmatically construct an enum with the appropriate number of members at comptime, but this seems like a real abuse
+
+1784003858
+torque!~tachyon@user/torque
+and you'd need to know up front how many you actually needed
+
+1784003886
+torque!~tachyon@user/torque
+for the use case of "a number but with a particular sentinel value" (i.e. not_ok), a non-exhaustive enum can be a good choice
+
+1784003919
+torque!~tachyon@user/torque
+the compiler uses this a lot. you can name a specific value and then leave everything else as integers. This gives you type safety and can make the code easier to understand
+
+1784003937
+perryprog!~perryprog@wikipedia/perryprog
+This also sounds a li'l X/Y problemy to me; more context would help (https://en.wikipedia.org/wiki/XY_problem)
+
+1784003967
+torque!~tachyon@user/torque
+yes, agreed the use case is unclear
+
+1784004196
+lingxu!~lingxu@user/lingxu
+What is a non-exhaustive enum? I just used exhausting feature of enum. And I don't like an idea of magic numbers, where 0 is not_ok. I have different functions that obey one interface and should return know up-front status, so caller will know all possible values at comptime. It's not only ok_[[:digit:]], but maybe_ok_, etc. It's more like I will add much more statuses than not_ok, ok, maybe_ok
+
+1784004214
+lingxu!~lingxu@user/lingxu
+Does it make sense?
+
+1784004244
+torque!~tachyon@user/torque
+soudns like you probably shouldn't take shortcuts and should give the members better names if theyre actually semantically meaningful beyond their values
+
+1784004292
+torque!~tachyon@user/torque
+a non-exhaustive enum is https://ziglang.org/documentation/master/#Non-exhaustive-enum
+
+1784004329
+lingxu!~lingxu@user/lingxu
+actually is not just ok, not_ok, but I compressed the meaning for the sake of comperhension what I'm trying to achieve
+
+1784004432
+torque!~tachyon@user/torque
+I guess I don't understand what shortcut you're trying to take. if the program logic depends on each member being distinct so that they can all be handled appropriately, then that's what they should be. What are you looking to simplify here?
+
+1784004559
+lingxu!~lingxu@user/lingxu
+I have multiple status producers and multiple status consumers, that enum is the status, each individual consumer handles different subset of statuses
+
+1784004577
+lingxu!~lingxu@user/lingxu
+Am I explaining clear?
+
+1784004599
+lingxu!~lingxu@user/lingxu
+At each time only one producer and consumer is active, but which one is not known at comptime
+
+1784004673
+lingxu!~lingxu@user/lingxu
+There are much more than this in the code, like observers, that might handle statuses as well. I use exhausting feature of enum, to not forget to update code in consumers, status observers
+
+1784004782
+torque!~tachyon@user/torque
+you could split it into separate enums and use a tagged union to categorize them but that indirection sounds worse to me. If there's a strict subset of members that a given function won't see, that's what `else => unreachable` is for. If you don't like that because it's potentially error prone when extending the enum (which is a fair criticism), I don't know that there's much else you can do besides
+
+1784004784
+torque!~tachyon@user/torque
+make each call site handle every case or do some higher-level redesign of your api
+
+1784004794
+lingxu!~lingxu@user/lingxu
+It feels like the non-exhaustive enum has no fit in my case
+
+1784004819
+lingxu!~lingxu@user/lingxu
+union of enums is too complicated
+
+1784004887
+lingxu!~lingxu@user/lingxu
+What about @EnumLiteral?
+
+1784004895
+torque!~tachyon@user/torque
+what about it
+
+1784004936
+lingxu!~lingxu@user/lingxu
+Can it be utilized in my use case?
+
+1784004956
+torque!~tachyon@user/torque
+I sincerely doubt it, since it just returns a type, and you need runtime values
+
+1784019269
+ifreund!2940d10f8b@user/ifreund
+lingxu: I'd use a non exhaustive enum with an ok() member function
+
+1784019285
+ifreund!2940d10f8b@user/ifreund
+then you could do `.none` or `.ok(1)` or `.ok(2)`
+
+1784019369
+lingxu!~lingxu@user/lingxu
+ifreund: how would it look?
+
+1784019384
+ifreund!2940d10f8b@user/ifreund
+`const Foo = enum(u32) { none, _, fn ok(x: u32) Foo { assert(x != 0); return @enumFromInt(x); } }`
+
+1784019387
+ifreund!2940d10f8b@user/ifreund
+something like that
+
+1784019469
+lingxu!~lingxu@user/lingxu
+It should work
+
+1784019471
+lingxu!~lingxu@user/lingxu
+Looks good
+
+1784019484
+ifreund!2940d10f8b@user/ifreund
+Actually, I personally would probably find a different way to represent my data but this seems to be what you were looking for :)
+
+1784019580
+lingxu!~lingxu@user/lingxu
+For debugging, it needs to be distinguishable between OKs
+
+1784024079
+dutchie!~dutchie@user/dutchie
+why not union(enum) { not_ok, ok: usize }
+
+1784024109
+dutchie!~dutchie@user/dutchie
+or whatever number type
+
+1784024233
+foxglv!~foxglv@user/sunflr
+idk
+
+1784024259
+lingxu!~lingxu@user/lingxu
+dutchie: that's even better, yeah
+
+1784024318
+lingxu!~lingxu@user/lingxu
+So I can expect switch to be exhaustive, while getting flexibility from ok field
+
+1784030011
+gschwind!~gschwind@user/gschwind
+not_ok look like an error, and `union(enum) { not_ok, ok: usize }` look like `!usize`
+
+1784030308
+dutchie!~dutchie@user/dutchie
+it's isomorphic to ?usize
+
+1784040649
+foxglv!~foxglv@user/sunflr
+what does isomorphic mean?
+
+1784040711
+perryprog!~perryprog@wikipedia/perryprog
+"basically the same"
+
+1784040774
+perryprog!~perryprog@wikipedia/perryprog
+For some examples—something like enum { a, b } is isomorphic to enum { c, d } as they have equivalent structure
+
+1784040842
+perryprog!~perryprog@wikipedia/perryprog
+And more formerly, it means that there's a way to convert from the first thing to the second thing and then back again while getting the same result, as well as vice versa
+
+1784040847
+perryprog!~perryprog@wikipedia/perryprog
+Formally, too!
+
+1784040984
+perryprog!~perryprog@wikipedia/perryprog
+So for union(enum) { not_ok, ok: usize } being isomorphic to ?usize we can see that in the happy path (?usize isn't null and the union is ok) we have ok <-> usize 
+
+1784040997
+perryprog!~perryprog@wikipedia/perryprog
+Then for the not happy path we have not_ok <-> null
+
+1784041037
+foxglv!~foxglv@user/sunflr
+ok i see :3 Cool
+
+1784041912
+lingxu!~lingxu@user/lingxu
+what's up with binary size on 0.15.2 and 0.16.0 versions?
+
+1784041932
+lingxu!~lingxu@user/lingxu
+using std outputs roughly 1 meg 
+
+1784042074
+foxglv!~foxglv@user/sunflr
+only thing i heard is that Io changes added the size to binaries
+
+1784044148
+Earnestly!~earnest@user/earnestly
+foxglv: ("same shape")
+
+1784044166
+foxglv!~foxglv@user/sunflr
+no idea what that means
+
+1784044173
+Earnestly!~earnest@user/earnestly
+A bit like how a mug and a donut are "isomorphic"
+
+1784044193
+foxglv!~foxglv@user/sunflr
+oh x3 Right. I got it 
+
+1784044257
+Earnestly!~earnest@user/earnestly
+It tends to basically mean that you can losslessly transform one data type to another and back again via some "function"
+
+1784044301
+foxglv!~foxglv@user/sunflr
+i seee
+
+1784044829
+Earnestly!~earnest@user/earnestly
+foxglv: (Usually people mean "equivalent")
+
+1784044852
+foxglv!~foxglv@user/sunflr
+X3 i get it!!
+
+1784053158
+Franciman!~Franciman@mx1.fracta.dev
+hi ziganders
+
+1784053162
+Franciman!~Franciman@mx1.fracta.dev
+thanks a lot for your work
+
+1784060491
+gera!~gera@user/gera
+Just getting started with zig, one annoying thing i noticed is that depending from where you run `zig build` it will use the different build cache
+
