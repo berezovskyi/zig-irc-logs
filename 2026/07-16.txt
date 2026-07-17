@@ -1,0 +1,808 @@
+1784160116
+prescientmoon!~prescient@user/prescientmoon
+Hi! Beginner question here. Is there a standard library type that's just "an array with a statically-known capacity but dynamically known length" (as in, one that stores the data inline instead of via a pointer)
+
+1784160291
+Affliction!affliction@idlerpg/player/affliction
+prescientmoon: ArrayList.initBuffer
+
+1784160329
+Affliction!affliction@idlerpg/player/affliction
+you'll want to use the *Bounded() methods on it for appending/inserting
+
+1784160383
+prescientmoon!~prescient@user/prescientmoon
+Affliction: does that not store a slice?
+
+1784160401
+Affliction!affliction@idlerpg/player/affliction
+I guess it's not Quite inline - the buffer is still technically outside the ArrayList itself, but it can be kept on the stack or with a manual alloc on the heap
+
+1784160410
+Affliction!affliction@idlerpg/player/affliction
+it does
+
+1784160421
+prescientmoon!~prescient@user/prescientmoon
+Hm, the "manual alloc on the heap" is the part I was trying to avoid
+
+1784160427
+prescientmoon!~prescient@user/prescientmoon
+I should maybe provide some context
+
+1784160448
+Affliction!affliction@idlerpg/player/affliction
+works fine on the stack
+
+1784160471
+Affliction!affliction@idlerpg/player/affliction
+var buf: [42]T = undefined; var list = ArrayList(T).initBuffer(&buf);
+
+1784160486
+prescientmoon!~prescient@user/prescientmoon
+I'm porting over a small game project of mine from odin. Said project uses Odin's "fixed capacity dynamic arrays" everywhere, such that the game only allocates one fat game struct at the beginning and then doesn't have to worry about allocations ever
+
+1784160498
+prescientmoon!~prescient@user/prescientmoon
+Well, the thing is, I don't really want the buffer to be on the stack
+
+1784160498
+Affliction!affliction@idlerpg/player/affliction
+makes sense
+
+1784160523
+Affliction!affliction@idlerpg/player/affliction
+the buffer can be wherever you wish, as long as it has a stable address
+
+1784160535
+prescientmoon!~prescient@user/prescientmoon
+I did a bit more googling and found references to "std.BoundedArray", but it seems to have been removed :(
+
+1784160554
+Affliction!affliction@idlerpg/player/affliction
+yeah, replaced with .initBuffer
+
+1784160571
+torque!~tachyon@user/torque
+if you don't want it on the stack and you don't want it on the heap, where exactly do you want it
+
+1784160618
+prescientmoon!~prescient@user/prescientmoon
+"the buffer can be whereved you wish, as long as it has a stable address" Right, I could probably pass an arena around and allocate the fixed buffers from there, but that does make it feel more complicated than it should be hmmmmm
+
+1784160643
+prescientmoon!~prescient@user/prescientmoon
+torque: I want it inline! (next to the length for example)
+
+1784160647
+Affliction!affliction@idlerpg/player/affliction
+they could be within your game state struct
+
+1784160654
+prescientmoon!~prescient@user/prescientmoon
+It will end up on the stack/heap eventually, of course
+
+1784160661
+prescientmoon!~prescient@user/prescientmoon
+but I don't want it detached from the actual array data structure
+
+1784160672
+Affliction!affliction@idlerpg/player/affliction
+but, yeah, wherever the buffer is, it'd need a stable address
+
+1784160691
+prescientmoon!~prescient@user/prescientmoon
+Affliction: Oh, that makes sense... So I guess for each such array I'd have an additional "..._buffer" field next to it?
+
+1784160695
+torque!~tachyon@user/torque
+you could very trivially write your own data structure
+
+1784160696
+Affliction!affliction@idlerpg/player/affliction
+otherwise, struct { items: [42]T; length: u8 };
+
+1784160707
+Affliction!affliction@idlerpg/player/affliction
+and a pile of methods to append/remove/etc
+
+1784160718
+Affliction!affliction@idlerpg/player/affliction
+prescientmoon: pretty much
+
+1784160755
+prescientmoon!~prescient@user/prescientmoon
+Hmm, thanks for the help
+
+1784160763
+prescientmoon!~prescient@user/prescientmoon
+I'll see what I end up liking the most
+
+1784160764
+torque!~tachyon@user/torque
+I assume the reason you want it inline is to avoid the extra pointer indirection. because otherwise it doesn't really matter where the memory lives
+
+1784160840
+prescientmoon!~prescient@user/prescientmoon
+torque: well, it just makes things super simple in my head... For example, if I want to have a super crude "quicksave" system for debugging, I can simply clone the entire game struct and then copy it pack to the main location whenever I need to undo to said state
+
+1784160857
+prescientmoon!~prescient@user/prescientmoon
+It feels simpler than having to have a sort of recursive cloner...
+
+1784160860
+Affliction!affliction@idlerpg/player/affliction
+ah
+
+1784160866
+Affliction!affliction@idlerpg/player/affliction
+so yeah, you wouldn't want pointers there
+
+1784160890
+prescientmoon!~prescient@user/prescientmoon
+It probably wouldn't work for more complicated projects, but my games have never run into issues with this
+
+1784160894
+Affliction!affliction@idlerpg/player/affliction
+well, you could probably do a pointer fixup pass, @fieldParentPtr to get the poitners to the buffers
+
+1784160896
+Affliction!affliction@idlerpg/player/affliction
+but, eh
+
+1784160904
+Affliction!affliction@idlerpg/player/affliction
+Alternatively
+
+1784160904
+prescientmoon!~prescient@user/prescientmoon
+hm, sounds complicated :p
+
+1784160909
+Affliction!affliction@idlerpg/player/affliction
+you could probably copy std.BoundedArray
+
+1784160920
+prescientmoon!~prescient@user/prescientmoon
+yeah, I should maybe just do that for now hmm
+
+1784160923
+Affliction!affliction@idlerpg/player/affliction
+just because it's no longer in std doesn't mean it's not still useful in niche cases :)
+
+1784160934
+torque!~tachyon@user/torque
+nothing wrong with writing your own simple data structures imo
+
+1784160946
+torque!~tachyon@user/torque
+if you have particular design constraints you might as well design something you can control
+
+1784160950
+prescientmoon!~prescient@user/prescientmoon
+fair! Would probably be a good learning exercise as well
+
+1784160966
+Affliction!affliction@idlerpg/player/affliction
+that too, if you've never built this type of data structure before, you might gain an appreciation for it
+
+1784160981
+prescientmoon!~prescient@user/prescientmoon
+My odin codebase already maintains a second "mostly copy" of the above structure that is copiable to the GPU (different alignment) anyways
+
+1784161027
+prescientmoon!~prescient@user/prescientmoon
+"mostly identical"*
+
+1784161029
+Affliction!affliction@idlerpg/player/affliction
+nice, throw the whole gamestate at the GPU and tell it to figure it out? that's one way to encourage offload :D
+
+1784161042
+prescientmoon!~prescient@user/prescientmoon
+hhh :p
+
+1784161072
+prescientmoon!~prescient@user/prescientmoon
+I have a simple 2d renderer where I just throw all the shapes in such an array and then push that to the GPU and then do manual vertex pulling (since it felt like the easiest to implement)
+
+1784161088
+Affliction!affliction@idlerpg/player/affliction
+makes sense
+
+1784161094
+prescientmoon!~prescient@user/prescientmoon
+The code uses sdl3, so it should pretty easy to port to zig hopefully
+
+1784161108
+Affliction!affliction@idlerpg/player/affliction
+I've used...
+
+1784161115
+prescientmoon!~prescient@user/prescientmoon
+Anyways, thank you very much for the tips!
+
+1784161123
+Affliction!affliction@idlerpg/player/affliction
+https://codeberg.org/7Games/zig-sdl3
+
+1784161124
+prescientmoon!~prescient@user/prescientmoon
+Oh, since you're here, I have another question
+
+1784161142
+Affliction!affliction@idlerpg/player/affliction
+has light abstractions, but it's mostly understandable
+
+1784161145
+prescientmoon!~prescient@user/prescientmoon
+Say I have a simple .aseprite file parser / atlas generator / collision map extractor
+
+1784161148
+prescientmoon!~prescient@user/prescientmoon
+Should that run as comptime?
+
+1784161153
+prescientmoon!~prescient@user/prescientmoon
+Or would that slow compile times
+
+1784161161
+prescientmoon!~prescient@user/prescientmoon
+I don't really know what the limits of comptime are
+
+1784161163
+Affliction!affliction@idlerpg/player/affliction
+maybe, there is caching
+
+1784161182
+prescientmoon!~prescient@user/prescientmoon
+It's all pixel art anyways (the resulting atlas is <= 4KiB)
+
+1784161196
+Affliction!affliction@idlerpg/player/affliction
+if your data structures are largely comptime'able, give it a go and see how it works
+
+1784161204
+prescientmoon!~prescient@user/prescientmoon
+How does the caching work btw?
+
+1784161219
+Affliction!affliction@idlerpg/player/affliction
+not confident enough in my knowledge to answer that
+
+1784161225
+Affliction!affliction@idlerpg/player/affliction
+"Just Fine!" for my use case
+
+1784161229
+prescientmoon!~prescient@user/prescientmoon
+Like, does the compiler detect when a function is pure or something for that?
+
+1784161236
+prescientmoon!~prescient@user/prescientmoon
+fair enough :p
+
+1784161243
+Affliction!affliction@idlerpg/player/affliction
+yeah, feels like it
+
+1784161263
+Affliction!affliction@idlerpg/player/affliction
+but yeah, I've also torpedoed the build time of the first build
+
+1784161284
+Affliction!affliction@idlerpg/player/affliction
+so, maybe have this stuff in a separate module? I think that'd get cached differently
+
+1784161298
+Affliction!affliction@idlerpg/player/affliction
+what did my half-written GBA game thath ad some comptime build stuff do...
+
+1784161374
+Affliction!affliction@idlerpg/player/affliction
+yeah looks like I .addAnonymousImport each field of each level
+
+1784161437
+Affliction!affliction@idlerpg/player/affliction
+most of this was years ago so I don't remember much
+
+1784161529
+Affliction!affliction@idlerpg/player/affliction
+looks like I have a comptime .load() which imports each field and rebuilds them into a struct for each level
+
+1784161570
+Affliction!affliction@idlerpg/player/affliction
+hm, not sure this is how I'd do it today, feels weird, but this was my first nontrivial zig project
+
+1784161579
+Affliction!affliction@idlerpg/player/affliction
+anyway, back in 3ish hours
+
+1784161853
+torque!~tachyon@user/torque
+I think you'd probably be better off writing the converter as a separate utility that outputs .zon or zig source code so the processing happens as part of the compilation process, but you can benefit from having a full program that does the conversion
+
+1784161911
+torque!~tachyon@user/torque
+theoretically gets better performance since the utility can be built with optimizations and only needs to be rebuilt if the utility source code changes. and better debuggability since you can have it do proper logging or emit intermediate file types or something
+
+1784161942
+torque!~tachyon@user/torque
+I mean if the conversion is trivial it's probably fine to do comptime but parsing files at comptime sounds like a bit of an abuse
+
+1784162201
+prescientmoon!~prescient@user/prescientmoon
+torque: Oh, I see... Will look into that
+
+1784162307
+perryprog!~perryprog@wikipedia/perryprog
+Eh I say comptime it first. Something something premature compile time avoidance
+
+1784162323
+perryprog!~perryprog@wikipedia/perryprog
+... is the root of all filesystems? Something like that
+
+1784162442
+Affliction!affliction@idlerpg/player/affliction
+Back for a sec, yeah that's what I did, databuilder program chews on the input data, serialises to an almost native form stored in files added as anonymous imports, which get packed into native structures at comptime
+
+1784162831
+Affliction!affliction@idlerpg/player/affliction
+Of course, going from PNG to GBAs native format might be a bit much for comptime
+
+1784162964
+Affliction!affliction@idlerpg/player/affliction
+and bounding box id and clipping, palette reduction, level data conversion, sound transcoding...
+
+1784162981
+Affliction!affliction@idlerpg/player/affliction
+Anyway, back later
+
+1784163087
+perryprog!~perryprog@wikipedia/perryprog
+can you even open files at comptime?
+
+1784163118
+perryprog!~perryprog@wikipedia/perryprog
+I mean there's @embedFile I guess
+
+1784163916
+Affliction!affliction@idlerpg/player/affliction
+yup, anonymous imports and embedFile apparantly
+
+1784163922
+Affliction!affliction@idlerpg/player/affliction
+no idea if this would build with modern zig
+
+1784164874
+prescientmoon!~prescient@user/prescientmoon
+Is there an interface that's like Io.Reader but can also seek to a certain position?
+
+1784164965
+prescientmoon!~prescient@user/prescientmoon
+I mean, I guess I could mutate .seek since I know I always pass it the full buffer, but I'm not sure that's the nicest idea code-quality-wise
+
+1784165064
+perryprog!~perryprog@wikipedia/perryprog
+I assume Io.File.Reader.seekTo isn't what you want?
+
+1784165179
+slynk!~ryank@user/slynk
+there is reader.toss(length) to skip bytes
+
+1784165218
+perryprog!~perryprog@wikipedia/perryprog
+and looks like it literally just mutates seek itself
+
+1784189244
+ifreund!2940d10f8b@user/ifreund
+prescientmoon: RE memory layout to make "quicksave" simple, you might be interested in this idea: https://www.hytradboi.com/2025/05c72e39-c07e-41bc-ac40-85e8308f2917-programming-without-pointers
+
+1784194013
+Reinhilde!ellenor@invaincu.qc.ca.umbrellix.net
+is it ok to just lurk?
+
+1784194054
+Affliction!affliction@idlerpg/player/affliction
+sure
+
+1784200466
+prescientmoon!~prescient@user/prescientmoon
+perryprog: I don't have a file reader, I have a simple Io.Reader... Can I use the former without a proper file?
+
+1784200509
+prescientmoon!~prescient@user/prescientmoon
+slynk: Hmm, I was also looking to go backwards, although maybe seek is the wrong word for that?
+
+1784200554
+prescientmoon!~prescient@user/prescientmoon
+For some context, I want to skip around in the file data to count the number of chunks of a given kind before allocating an array for them
+
+1784200564
+prescientmoon!~prescient@user/prescientmoon
+I should maybe not bother
+
+1784200640
+dutchie!~dutchie@user/dutchie
+arbitrary Io.Readers aren't seekable since they could be a network stream or something
+
+1784200734
+prescientmoon!~prescient@user/prescientmoon
+dutchie: Fair enough... Is there another type I should be using instead?
+
+1784200744
+prescientmoon!~prescient@user/prescientmoon
+Or should I just write my own
+
+1784200766
+dutchie!~dutchie@user/dutchie
+maybe just the File.Reader?
+
+1784200796
+dutchie!~dutchie@user/dutchie
+or you could slurp it into your own Giant ArrayList Buffer
+
+1784200835
+Affliction!affliction@idlerpg/player/affliction
+yup, if it's definitely a file, take a File.Reader
+
+1784200839
+prescientmoon!~prescient@user/prescientmoon
+Hm, I'm a bit wary of going with File.Reader because I'd like to be able to call the function without having a proper file
+
+1784200842
+Affliction!affliction@idlerpg/player/affliction
+if you might need to write, then a File
+
+1784200854
+prescientmoon!~prescient@user/prescientmoon
+Although maybe there's a way to init a file buffer from a simple buffer of bytes instead of a proper file
+
+1784200886
+Affliction!affliction@idlerpg/player/affliction
+then, I believe you'd be pretty much stuck with reinventing the wheel to a degree there.
+
+1784200896
+prescientmoon!~prescient@user/prescientmoon
+right
+
+1784200909
+Affliction!affliction@idlerpg/player/affliction
+Might be possible to have a sane API on top of a union { file, Reader.fixed }
+
+1784200935
+Affliction!affliction@idlerpg/player/affliction
+if it's practical for your whole "file" content to be in memory
+
+1784201029
+prescientmoon!~prescient@user/prescientmoon
+I mean yeah, the .aseprite files contain pixel art, they are freaking tiny :p (I can't see their actual size since my filesystem seems to show 4KiB for anything below that...)
+
+1784201069
+dutchie!~dutchie@user/dutchie
+probably easiest to just always work with []const u8 then
+
+1784201076
+prescientmoon!~prescient@user/prescientmoon
+Ok nvm, I can see their size programmatically, most of them are ~1KiB at most
+
+1784201082
+prescientmoon!~prescient@user/prescientmoon
+dutchie: fair
+
+1784201113
+Affliction!affliction@idlerpg/player/affliction
+sure, throw the whole thing into a buffer, then Reader.fixed gives you your convenience methods, and you can adjust .seek as needed
+
+1784201237
+Affliction!affliction@idlerpg/player/affliction
+you'll probably want to document that you're abusing the Reader this way, perhaps accept []const u8 and construct your own reader for random access
+
+1784201886
+Affliction!affliction@idlerpg/player/affliction
+thinking about how one might add seek to them, they'd have to be aware of how many bytes have passed through in total, so .seek would have to become % buf.len, and would be relative to where the Reader was constructed. So the Reader would also have to track the offset where it was constructed, or only support relative seeks.
+
+1784201970
+Affliction!affliction@idlerpg/player/affliction
+you Can clone positional File.Readers and have them all use the same fd (only close one of them), I did that for a file format which has multiple logical streams that need to be accessed simultaniously.
+
+1784202344
+gschwind!~gschwind@user/gschwind
+What about mmap the file ?
+
+1784202541
+Affliction!affliction@idlerpg/player/affliction
+sure, then it just becomes memory
+
+1784202556
+Affliction!affliction@idlerpg/player/affliction
+that too, can be wrapped in .fixed with arbitrary seek
+
+1784202666
+Affliction!affliction@idlerpg/player/affliction
+brb sleep
+
+1784202918
+Sivecano!~Sivecano@user/Sivecano
+one thing that still makes me sad is that while readers work at comptime, allocators don't... 
+
+1784204470
+hyper0031!~hyper@user/hyper0031
+Can I open a PR to add the constant `SO_NETNS_COOKIE` to std.os.linux? I'm currently hardcoding it in my project, but I don't see a reason why it shouldn't be in std
+
+1784205115
+Barion!~Thunderbi@user/Barion
+Sivecano: why do you need to allocate at compile time?
+
+1784205149
+Sivecano!~Sivecano@user/Sivecano
+Barion: to do things like preemtively loading an image
+
+1784205158
+Sivecano!~Sivecano@user/Sivecano
+ at comptime
+
+1784205195
+Barion!~Thunderbi@user/Barion
+Sivecano: @embedFile?
+
+1784205221
+Barion!~Thunderbi@user/Barion
+at least i use it to load shader at compile time
+
+1784205224
+Sivecano!~Sivecano@user/Sivecano
+well yeah, but loading would include a few more things
+
+1784205225
+ifreund!2940d10f8b@user/ifreund
+Sivecano: it will probably be possible to implement a comptime allocator eventually
+
+1784205242
+Sivecano!~Sivecano@user/Sivecano
+ifreund: :D
+
+1784205270
+ifreund!2940d10f8b@user/ifreund
+iirc the blocker is some code in the Allocator interface, not the functionality of "allocating" memory at comptime itself
+
+1784205286
+Barion!~Thunderbi@user/Barion
+Sivecano: ah, i see, decompression and stuff. yea that would be nice
+
+1784206198
+prescientmoon!~prescient@user/prescientmoon
+Affliction: I ended up simply creating a small BufferZipper struct together with the reading functions I need
+
+1784206246
+prescientmoon!~prescient@user/prescientmoon
+The parser mostly works. Now I only need to figure out how to decode the deflated color data 
+
+1784215614
+prescientmoon!~prescient@user/prescientmoon
+Are there any recommendations for which sdl3 bindings I should use? I found a bunch of different ones
+
+1784222013
+prescientmoon!~prescient@user/prescientmoon
+Hi, I've tried two different SDL3 binding repos, and both fail to build with very mysterious errors. After a bit more trial and error, I found out this only happens if my project directory lies inside a bind mount. Is there anywhere I could read more about this?
+
+1784222046
+prescientmoon!~prescient@user/prescientmoon
+Example error log: https://tmp.moonythm.dev/26-07-16-17-13-49.txt
+
+1784227727
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+prescientmoon: this is probably why https://bbs.archlinux.org/viewtopic.php?id=307233
+
+1784227814
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+you cant rename a file into another filesystem
+
+1784228198
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+you might be able to fix it by passing some options to zig like changing the cache dir?
+
+1784228343
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+i checked out ur site and thought it was cool ur studying maths! i have to prepare for my own math exam. wanna play mc sometime?
+
+1784229007
+prescientmoon!~prescient@user/prescientmoon
+dominick72_97: :O good luck with your math exam. What kind of exam is it?
+
+1784229013
+prescientmoon!~prescient@user/prescientmoon
+And sorry, I don't play mc.
+
+1784229043
+prescientmoon!~prescient@user/prescientmoon
+Thanks for the link! I ended up working around it by just moving my project dir somewhere else outside the bind mount :p (I guess I'm lucky that I can do this)
+
+1784229186
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+prescientmoon: my country is weird so we have to do highschool level maths in uni
+
+1784229212
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+aww it's alright im glad you fixed it!
+
+1784233029
+gera!~gera@user/gera
+When I download zig release binary it comes with 'lib' directory? Is it used? How does the zig executable know where its 'lib' is?
+
+1784233098
+rockorager!~rockorage@mail.spunky.lol
+ok ok i know most here are not big on ai. but i'm pretty happy with what i've been building so i'm going to talk about it anyways
+
+1784233154
+rockorager!~rockorage@mail.spunky.lol
+my current linux desktop is a wayland compositor in zig (not river, i built my own but use the river window management protocol + skipped wlroots because I wanted blur)
+
+1784233187
+rockorager!~rockorage@mail.spunky.lol
+i also have a tiny wayland only gui framework in zig + lua, so that is my entire shell (bar, notifications, osd, etc)
+
+1784233227
+rockorager!~rockorage@mail.spunky.lol
+i also wrote a posix shell in zig so that's my login shell, and also made a foot-inspired + libghostty backend terminal in zig
+
+1784233245
+rockorager!~rockorage@mail.spunky.lol
+And i'm pretty happy with it all
+
+1784233250
+rockorager!~rockorage@mail.spunky.lol
+that's all
+
+1784233268
+vyivel!~vyivel@user/Vyivel
+did you write ("write"?) your own wayland protocol impls
+
+1784233291
+rockorager!~rockorage@mail.spunky.lol
+I haven't "written" a line of the code - so no
+
+1784233298
+vyivel!~vyivel@user/Vyivel
+peculiar
+
+1784233324
+vyivel!~vyivel@user/Vyivel
+is it uploaded anywhere? i'd like to take a look if you don't mind
+
+1784233352
+rockorager!~rockorage@mail.spunky.lol
+github: rockorager/rush is the shell, rockorager/monstar is the terminal
+
+1784233372
+rockorager!~rockorage@mail.spunky.lol
+rockorager/keywork-compositor, rockorager/keywork, rockorager/keywork-shell
+
+1784233387
+vyivel!~vyivel@user/Vyivel
+thanks
+
+1784233414
+rockorager!~rockorage@mail.spunky.lol
+np. the keywork stuff i will admit is pure slop right now. rush and monstar are probably a bit better off 😂
+
+1784233469
+vyivel!~vyivel@user/Vyivel
+on a quick glance "slop" is an understatement
+
+1784233479
+rockorager!~rockorage@mail.spunky.lol
+lol
+
+1784233496
+vyivel!~vyivel@user/Vyivel
+what is that surface.zig lol
+
+1784233521
+rockorager!~rockorage@mail.spunky.lol
+which project
+
+1784233535
+vyivel!~vyivel@user/Vyivel
+keywork-compositor
+
+1784233581
+vyivel!~vyivel@user/Vyivel
+actually nvm it has unit tests which puts it above the majority of server implementations
+
+1784233581
+rockorager!~rockorage@mail.spunky.lol
+oh yeah. classic slop
+
+1784233599
+rockorager!~rockorage@mail.spunky.lol
+ai loves to make files way too big, it's pretty nuts
+
+1784234147
+vyivel!~vyivel@user/Vyivel
+okay overall looks like something that could generally work albeit completely unmaintainable and repeating issues from other servers
+
+1784234239
+rockorager!~rockorage@mail.spunky.lol
+At this point i'm taking that as a compliment haha. curious what the repeating issues from other servers are - i'll msg you though
+
+1784236925
+RelayChat!~RelayChat@user/RelayChat
+https://blog.cloudflare.com/_image?href=https%3A%2F%2Fblog.cloudflare.com%2F_emdash%2Fapi%2Fmedia%2Ffile%2F01KW47WGY8GKFJ60E93AX233VZ.png&w=1080&h=334&f=webp&fit=cover&position=center
+
+1784236933
+RelayChat!~RelayChat@user/RelayChat
+would zig have prevented this bug?
+
+1784236961
+RelayChat!~RelayChat@user/RelayChat
+something like .unwrap() wouldn't have been allowed in the first place because of implied hidden control flow, right?
+
+1784240491
+jjido!~jjido@2a02:c7c:a308:7800:a9fa:20c6:46fc:bd20
+how stable is Zig at the moment/
+
+1784240533
+jjido!~jjido@2a02:c7c:a308:7800:a9fa:20c6:46fc:bd20
+is the language pretty much done?
+
+1784241237
+Affliction!affliction@idlerpg/player/affliction
+RelayChat: unwrap would be similar to .? or catch/orelse @panic(); In any language if the programmer asks the program to crash when a condition isn't met, then, it'll crash.
+
+1784241262
+RelayChat!~RelayChat@user/RelayChat
+Affliction: yeah but the question is about explicitness
+
+1784241292
+RelayChat!~RelayChat@user/RelayChat
+if the unwrap() function had been inlined in that code snippet that major cloudflare bug likely wouldn't have escaped code review
+
+1784241395
+Affliction!affliction@idlerpg/player/affliction
+maybe, though in rust .unwrap() is well known that it shouldn't be used if you don't want to crash.
+
+1784241402
+Affliction!affliction@idlerpg/player/affliction
+generally thought should be given to every use of unwrap or expect
+
+1784241467
+Affliction!affliction@idlerpg/player/affliction
+so, if you want to be lazy with error handling and shoot yourself in the foot, zig lets you do that. If you genuinely do want to crash if this value isn't valid, zig has a similar pattern in catch/orelse @panic()
+
+1784241556
+Affliction!affliction@idlerpg/player/affliction
+jjido: Expect breaking changes each release. 0.15 was huge, 0.17 was expected to be smaller last I heard, though that was a while ago
+
+1784241612
+Affliction!affliction@idlerpg/player/affliction
+with a bit of luck, all the experimentation will be worth it on 1.0
+
+1784241772
+jjido!~jjido@2a02:c7c:a308:7800:a9fa:20c6:46fc:bd20
+Thanks Affliction.
+
+1784243617
+prescientmoon!~prescient@user/prescientmoon
+Hi! Is there a way to @intCast every element of a @Vector at once?
+
+1784244073
+Sivecano!~Sivecano@user/Sivecano
+prescientmoon: just use @intCast? 
+
+1784244181
+Sivecano!~Sivecano@user/Sivecano
+like, on the entire vector
+
+1784244381
+prescientmoon!~prescient@user/prescientmoon
+Ohh
+
+1784244388
+prescientmoon!~prescient@user/prescientmoon
+how did I not think to try that lol
+
+1784244393
+prescientmoon!~prescient@user/prescientmoon
+thanks
+
