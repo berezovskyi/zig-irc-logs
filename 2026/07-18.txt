@@ -1,0 +1,324 @@
+1784337644
+copygirl!~koppeh@copy.mcft.net
+What does the compiler do when I assign a field of an optional type to undefined?
+
+1784338011
+copygirl!~koppeh@copy.mcft.net
+like, could it randomly end up as `null` or is it special cased to be equivalent to `@as(T, undefined)`?
+
+1784338027
+torque!~tachyon@user/torque
+it's not special cased
+
+1784338032
+torque!~tachyon@user/torque
+it's undefined
+
+1784338069
+copygirl!~koppeh@copy.mcft.net
+I happen to be using an anonymous struct so @as will be awkward to type.
+
+1784338294
+copygirl!~koppeh@copy.mcft.net
+so how would you go about initializing a ?T field with a `fn init(*T)`?
+
+1784350024
+jonrm!~jonrm@user/jonrm
+hi, I'm new to zig, and when Ziglings told me to put on a wizard hat I laughed and decided to pop in here to say I like what you guys got going on over here, zig seems real cool!
+
+1784375759
+copygirl!~koppeh@copy.mcft.net
+I feel like I'm too used to Rust at this point, haha.
+
+1784375808
+copygirl!~koppeh@copy.mcft.net
+Could someone help me figure out how to store network state in a struct? I keep getting segmentation faults (that I don't know how to debug, to be honest).
+
+1784375888
+copygirl!~koppeh@copy.mcft.net
+Building an IRC client, so trying to build a struct with separate init, connect and readLoop functions. I need TLS support as well (duh), so I'm looking at this example: https://github.com/ianic/tls.zig/blob/main/demo/src/main.zig
+
+1784375959
+copygirl!~koppeh@copy.mcft.net
+I'm pretty sure I need to keep the buffers around, as well as the readers / writers
+
+1784375975
+copygirl!~koppeh@copy.mcft.net
+but I have a feeling something still goes out of scope and becomes invalid
+
+1784376059
+copygirl!~koppeh@copy.mcft.net
+https://gist.github.com/copygirl/014df3682b0baf5d1a318b0b9de21034
+
+1784376076
+copygirl!~koppeh@copy.mcft.net
+this doesn't look like good Zig code either
+
+1784376124
+copygirl!~koppeh@copy.mcft.net
+I also tried a tagged union instead of separate tcp and tls fields, but that lead to some code duplication.
+
+1784389387
+gschwind!~gschwind@user/gschwind
+copygirl, your defer root_ca.deinit(self.gpa); look too early
+
+1784389462
+copygirl!~koppeh@copy.mcft.net
+is it needed beyond the initial connection?
+
+1784389475
+gschwind!~gschwind@user/gschwind
+you probably want to deinit at disconnect
+
+1784389521
+gschwind!~gschwind@user/gschwind
+I just do a logical review
+
+1784389578
+gschwind!~gschwind@user/gschwind
+defer is called unconditionally when going out of the current scope
+
+1784389848
+copygirl!~koppeh@copy.mcft.net
+I removed the defer, so that's not it
+
+1784390025
+copygirl!~koppeh@copy.mcft.net
+I don't think the certificates are needed beyond initial connection and that should be done by the time tls.client is done (https://github.com/ianic/tls.zig/blob/main/src/root.zig#L36)
+
+1784390041
+copygirl!~koppeh@copy.mcft.net
+it's only needed for the handshake (to verify the server's authority)
+
+1784390065
+copygirl!~koppeh@copy.mcft.net
+(not complaining, just explaining, thanks for the help)
+
+1784390163
+gschwind!~gschwind@user/gschwind
+ok
+
+1784390165
+Gliptic!~glip@irc.glip.cc
+copygirl, first problem (that always happens): you cannot copy the .interface from a reader/writer somewhere else and expect it to work
+
+1784390203
+Gliptic!~glip@irc.glip.cc
+it's using @fieldParentPtr to find the struct it's embedded in (which won't be there if you copy it outside)
+
+1784390214
+Gliptic!~glip@irc.glip.cc
+so it must always be referred to by pointer
+
+1784390259
+copygirl!~koppeh@copy.mcft.net
+right. I think I was confused because some interfaces (like Allocator) go by-value
+
+1784390317
+Gliptic!~glip@irc.glip.cc
+yeah, that's probably why everyone does that mistake (including me in the beginning)
+
+1784390358
+Gliptic!~glip@irc.glip.cc
+but the difference is that allocator returns the interface from a function, .allocator()
+
+1784391052
+gschwind!~gschwind@user/gschwind
+thus copygirl should store the pointer of reader instead, i,e L15 should be `reader: *Io.Reader = &Io.Reader.failing` the same for the writer ?
+
+1784391095
+Gliptic!~glip@irc.glip.cc
+at least that
+
+1784391143
+copygirl!~koppeh@copy.mcft.net
+yeah that does fix the segfault, though I'm missing the PING message I used to get so the reader either doesn't get to it or the writer isn't sending properly (but I do call flush after every message), hmm
+
+1784391192
+perryprog!~perryprog@wikipedia/perryprog
+don't forget to f—ah
+
+1784391219
+Gliptic!~glip@irc.glip.cc
+I hate it when people forget to flush
+
+1784391349
+copygirl!~koppeh@copy.mcft.net
+oh, that'd do it
+
+1784391361
+copygirl!~koppeh@copy.mcft.net
+I'm writing to the TCP stream, not the TLS connection xD
+
+1784391494
+gschwind!~gschwind@user/gschwind
+I guess L64-65 was wring
+
+1784391800
+copygirl!~koppeh@copy.mcft.net
+hmm no I was actually connecting via plaintext. neither appears to actually send anything at the moment (I tried spamming sendRaw)
+
+1784391821
+copygirl!~koppeh@copy.mcft.net
+I do still get a timeout message if I leave the connection open long enough
+
+1784391857
+Gliptic!~glip@irc.glip.cc
+are you sending USER, NICK and responding to PING?
+
+1784391865
+copygirl!~koppeh@copy.mcft.net
+I updated the gist: https://gist.github.com/copygirl/014df3682b0baf5d1a318b0b9de21034
+
+1784391880
+copygirl!~koppeh@copy.mcft.net
+I'm not getting a PING, so I don't think NICK and USER are going out.
+
+1784391889
+copygirl!~koppeh@copy.mcft.net
+(It prints that it's sending them)
+
+1784391925
+Gliptic!~glip@irc.glip.cc
+why are you doing `catch {};` instead of try
+
+1784391946
+copygirl!~koppeh@copy.mcft.net
+I figure I don't want to handle connection errors in my send method
+
+1784391964
+copygirl!~koppeh@copy.mcft.net
+though I've converted the {} into @panic and got nothing
+
+1784391965
+Gliptic!~glip@irc.glip.cc
+I was thinking for e.g. writeAll
+
+1784391973
+Gliptic!~glip@irc.glip.cc
+ok
+
+1784392003
+copygirl!~koppeh@copy.mcft.net
+I figure fire-and-forget is reasonable, since my read loop will handle disconnects etc
+
+1784392054
+Gliptic!~glip@irc.glip.cc
+how would it handle disconnects if it doesn't get any errors from anywhere
+
+1784392082
+copygirl!~koppeh@copy.mcft.net
+the reader in loop() uses try?
+
+1784393142
+copygirl!~koppeh@copy.mcft.net
+but yeah the plaintext path is broken seemingly the same way. if only I could figure out what's wrong there
+
+1784393207
+Gliptic!~glip@irc.glip.cc
+use some network traffic sniffer for ${PLATFORM} maybe
+
+1784393293
+copygirl!~koppeh@copy.mcft.net
+aaaaaaaaaargh
+
+1784393301
+copygirl!~koppeh@copy.mcft.net
+`writer.writeAll("/r/n") catch {};`
+
+1784393304
+copygirl!~koppeh@copy.mcft.net
+catch the bug
+
+1784393349
+Gliptic!~glip@irc.glip.cc
+SLASH
+
+1784393373
+copygirl!~koppeh@copy.mcft.net
+I didn't catch it because I didn't remember rewriting that line but I must've \ to / when I did
+
+1784393397
+Gliptic!~glip@irc.glip.cc
+I glossed over it
+
+1784393414
+copygirl!~koppeh@copy.mcft.net
+who wouldn't? those tiny differences are EVIL
+
+1784393441
+copygirl!~koppeh@copy.mcft.net
+I feel like I need to change my theme to make escape sequences stand out more
+
+1784393512
+copygirl!~koppeh@copy.mcft.net
+ah dang Gram doesn't let me adjust theming easily
+
+1784393603
+copygirl!~koppeh@copy.mcft.net
+`netcat -l <port>` did help
+
+1784393616
+copygirl!~koppeh@copy.mcft.net
+"why is that all on one line- OOHHH!"
+
+1784393775
+copygirl!~koppeh@copy.mcft.net
+now then, I can focus on making this mess more readable
+
+1784396074
+perryprog!~perryprog@wikipedia/perryprog
+copygirl, does your syntax highlighting highlight control sequences? (Doesn't necessarily help you notice, of course)
+
+1784397049
+copygirl!~koppeh@copy.mcft.net
+perryprog: it does but strings are yellow and escape sequencess are green and I couldn't make it out without specifically looking for it
+
+1784397061
+perryprog!~perryprog@wikipedia/perryprog
+yeah thought that might be the case
+
+1784401303
+gera!~gera@user/gera
+Why is in build system guide https://ziglang.org/learn/build-system/ there's no space between options e.g. build--summary
+
+1784401441
+ifreund!2940d10f8b@user/ifreund
+I mean, it's certainly not intentional if that's what you're asking
+
+1784401462
+perryprog!~perryprog@wikipedia/perryprog
+see https://codeberg.org/ziglang/ziglang.org/issues/629
+
+1784401534
+perryprog!~perryprog@wikipedia/perryprog
+the shell block mentioned in that issue is auto generated from https://codeberg.org/ziglang/ziglang.org/src/branch/main/zig-code/build-system/3-standard-config-options/build.zig
+
+1784401568
+perryprog!~perryprog@wikipedia/perryprog
+and upstream zine issue is https://github.com/kristoff-it/zine/issues/124
+
+1784401742
+perryprog!~perryprog@wikipedia/perryprog
+ah this might actually be an issue with zig's tools/doctest.zig
+
+1784402229
+perryprog!~perryprog@wikipedia/perryprog
+ah and that's also in ziglang/docgen which is what ziglang.org uses and the issue ended up getting fixed there: https://codeberg.org/ziglang/docgen/issues/8
+
+1784402232
+perryprog!~perryprog@wikipedia/perryprog
+phew
+
+1784405662
+copygirl!~koppeh@copy.mcft.net
+Can I nest a format within a format without allocating a string?
+
+1784406213
+jjido!~jjido@2a02:c7c:a308:7800:5b9:6f47:e34b:6037
+is that for error handling
+
+1784406244
+Gliptic!~glip@irc.glip.cc
+copygirl, you can write formatted strings directly to a writer with .print(...)
+
