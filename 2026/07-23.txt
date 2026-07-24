@@ -1,0 +1,236 @@
+1784782920
+Affliction!affliction@idlerpg/player/affliction
+noted: std.mem.countScalar on a 5 meg @embedFile makes compile time take an eternity
+
+1784782968
+clevor!sid649024@id-649024.hampstead.irccloud.com
+Maybe do that in a run step?
+
+1784783085
+Affliction!affliction@idlerpg/player/affliction
+nah, I'll just do it at runtime, was hoping to filter the file and pre-cook it into a nicer internal form in one go, but it's no big deal
+
+1784783197
+Affliction!affliction@idlerpg/player/affliction
+it was quite surprising when it threw a compile error on the line after countScalar though, so it really did only get that far
+
+1784783277
+clevor!sid649024@id-649024.hampstead.irccloud.com
+A separate run step to do the pre-cooking is what I mean.
+
+1784783381
+Affliction!affliction@idlerpg/player/affliction
+sure, done that on another project, not really worth it for this one, just writing a simple tool
+
+1784783451
+Affliction!affliction@idlerpg/player/affliction
+5 megs isn't too much binary bloat these days, even if a fair chunk of it's going to be ignored!
+
+1784795160
+gschwind!~gschwind@user/gschwind
+fortunately .so are likely to be mmaped :)
+
+1784829906
+perryprog!~perryprog@wikipedia/perryprog
+I don't quite understand what -mcpu is and what the difference is between baseline and native. zig-bootstrap says to refer to zig's docs on what -mcpu does for details, but I can't find much there besides that it's to "Specify target CPU and feature set". (Ironically, what it says in the zig-bootstrap readme is more informative as it says "baseline" will target a generic CPU for the target and that native will target the native CPU, but I still
+
+1784829906
+perryprog!~perryprog@wikipedia/perryprog
+ don't know what the implications of that are)
+
+1784829943
+perryprog!~perryprog@wikipedia/perryprog
+Like it sounds like if I'm just building for the machine I'm currently on that I should use native, but zig-bootstrap says you probably want baseline
+
+1784830201
+jjido!~jjido@2a02:c7c:a308:7800:e160:38d8:6e1f:f0ee
+Isn't -mcpu a llvm flag?
+
+1784830362
+jjido!~jjido@2a02:c7c:a308:7800:e160:38d8:6e1f:f0ee
+https://discourse.llvm.org/t/when-to-use-mcpu-versus-march/47953/5
+
+1784830642
+perryprog!~perryprog@wikipedia/perryprog
+ah, I didn't realize that; thanks—so it sounds like -mcpu native wouldn't hurt in my case, if it even makes a difference at all (Apple Silicon)
+
+1784834873
+nickbors!~nickbors@user/NickBors
+i dont think i understand zig's concurrency
+
+1784834894
+nickbors!~nickbors@user/NickBors
+i genuinely am so stumped as to why what im doing blocks
+
+1784834917
+chmod222!~chmod222@user/chmod222
+Zig's concurrency is the same as most other language's concurrency
+
+1784834926
+chmod222!~chmod222@user/chmod222
+Provided you are using std.Io.Threaded or threads directly
+
+1784835077
+nickbors!~nickbors@user/NickBors
+well i'm not blaming zig, its clearly a skill issue
+
+1784835101
+nickbors!~nickbors@user/NickBors
+which stems from the fact that i never did anything super complex outside of C's basic poll on fds in a superloop
+
+1784835177
+nickbors!~nickbors@user/NickBors
+chmod222: my current architecture is a events (from multiple producers) -> one consumer -> one command producer -> multiple fds (consumers)
+
+1784835191
+nickbors!~nickbors@user/NickBors
+basically many-1, then 1-many
+
+1784835200
+nickbors!~nickbors@user/NickBors
+using Io.Queues for each side of the thing
+
+1784835210
+nickbors!~nickbors@user/NickBors
+im not even sure thats sensible
+
+1784835724
+perryprog!~perryprog@wikipedia/perryprog
+nickbors, are your producers and consumers actually being run on separate threads? I'd try comparing with https://codeberg.org/ziglings/exercises/src/branch/main/exercises/092_async8.zig
+
+1784835746
+perryprog!~perryprog@wikipedia/perryprog
+also good: https://codeberg.org/ziglings/exercises/src/branch/main/exercises/093_async9.zig
+
+1784836120
+nickbors!~nickbors@user/NickBors
+thanks perryprog ill check them out
+
+1784836122
+bblack!~bblack@wikimedia/bblack-WMF
+nickbors: abstractly (ignoring implementation details like Io.Threaded vs Io.Evented) - things only happen asynchronously by launching asynchronous "Tasks", via io.async() or io.concurrent().  If you're not calling those things, then everything is serialized.
+
+1784836201
+bblack!~bblack@wikimedia/bblack-WMF
+Zig's Io.Evented (which is not ready for real use, IMHO, it's lagging behind Io.Threaded for now) is the closest thing to get poll()-like behavior (in terms of runtime consequences and thread models, etc), but it does this through the same Task abstraction, so your code ends up looking more like Threaded-style code in C.
+
+1784836328
+bblack!~bblack@wikimedia/bblack-WMF
+there's also the io.operate() interface, which provides something that looks (in terms of your application code structure) more like a polling loop than threading, but it's also relatively-immature (and probably will only ever support a limited range of basic operations that are read/write-like)
+
+1784836369
+nickbors!~nickbors@user/NickBors
+bblack: im using concurrent currently (ha). Maybe the architecture i mentioned before just isnt the right fit? I want a UI that refreshes on events (from either stdin or a net socket) and then i want to be able to send commands to that same network socket (using the same tls client). Ultimately my use is event driven (its an IRC client) so it wouldnt make sense to have ui always redraw when no input or network events happened
+
+1784836379
+bblack!~bblack@wikimedia/bblack-WMF
+Io.Batch does multiple Operations (the same ones as io.operate()) "concurrently" in a single Task
+
+1784836393
+nickbors!~nickbors@user/NickBors
+perhaps theres something im missing but it seems like i need to have 2 producers and 2 consumers
+
+1784836400
+perryprog!~perryprog@wikipedia/perryprog
+bblack, Io.Evented is especially not ready for use considering calling its defer is a compile error (I literally just cherry-picked this into my local build a few minutes ago) https://codeberg.org/ziglang/zig/pulls/36113
+
+1784836425
+nickbors!~nickbors@user/NickBors
+stdin (P), net (P) ---> tui (C), net (C)
+
+1784836501
+nickbors!~nickbors@user/NickBors
+maybe a single-threaded event loop is more appropriate? but why not leverage threaded if i can?
+
+1784836528
+perryprog!~perryprog@wikipedia/perryprog
+nickbors, are your queue push/pulls in functions that are (somewhere in their call stack) getting executed with io.concurrent?
+
+1784836552
+bblack!~bblack@wikimedia/bblack-WMF
+either way, the existence and use of real OS-level threads is ~hidden implementation detail underneath Io.Evented (which also uses some threads) and Io.Threaded.  It's all "Tasks" and maybe "Operations" in the abstract interface for applications
+
+1784836553
+perryprog!~perryprog@wikipedia/perryprog
+(or via Io.Group)
+
+1784836598
+bblack!~bblack@wikimedia/bblack-WMF
+but yeah, it sounds like your PPCC should be 4 separate Tasks connected by a queue or two
+
+1784836730
+bblack!~bblack@wikimedia/bblack-WMF
+(I would assume two separate queues: one for the tui to read display-updating events from, and one for the network-writer task to read things to send from)
+
+1784836761
+nickbors!~nickbors@user/NickBors
+perryprog: yeah though my one consumer does getOne in the main thread
+
+1784836770
+nickbors!~nickbors@user/NickBors
+(command queue isnt set up yet)
+
+1784836775
+perryprog!~perryprog@wikipedia/perryprog
+yeah so keep in mind that'll be blockin
+
+1784836788
+perryprog!~perryprog@wikipedia/perryprog
+I'll pretend I meant blockin' and that that wasn't a typo
+
+1784836791
+nickbors!~nickbors@user/NickBors
+thats by design
+
+1784836800
+nickbors!~nickbors@user/NickBors
+no? event driven
+
+1784836802
+nickbors!~nickbors@user/NickBors
+i suppose
+
+1784836957
+perryprog!~perryprog@wikipedia/perryprog
+nickbors, yeah just making sure :P
+
+1784837047
+nickbors!~nickbors@user/NickBors
+perryprog: 
+
+1784837053
+nickbors!~nickbors@user/NickBors
+oh oops
+
+1784837065
+nickbors!~nickbors@user/NickBors
+wrong tmux pane.. i had a draft going on
+
+1784837068
+nickbors!~nickbors@user/NickBors
+forgive me
+
+1784837184
+perryprog!~perryprog@wikipedia/perryprog
+nw
+
+1784842390
+perryprog!~perryprog@wikipedia/perryprog
+haha, funny overlap of my shell reporting the SIGABRT and the build output: thread 13924184 panic: reached unreachable codefish
+
+1784843202
+rvrb!~rvrb@97-120-105-196.ptld.qwest.net
+random idea, but I am mulling over the potential for a @typeCaptures(T) builtin. I just want to be able to do, like, `T == @call(.compile_time, ArrayList, @typeCaptures(T))` to check that T is an ArrayList(U), then get U from it, you know?
+
+1784843254
+rvrb!~rvrb@97-120-105-196.ptld.qwest.net
+also, I definitely do too much metaprogramming 🙃️
+
+1784843357
+rvrb!~rvrb@97-120-105-196.ptld.qwest.net
+I guess the captures are a different thing than the arguments to the function that produced the type
+
+1784848610
+prescientmoon!~prescient@user/prescientmoon
+Hi! Is there a way to remove all the pesky SDL_ prefixes when using the translate-c generated sdl bindings?
+
