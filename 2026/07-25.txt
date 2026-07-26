@@ -1,0 +1,276 @@
+1784946340
+gera!~gera@user/gera
+Can translate-c remove automatically remove prefix so that e.g. `SDL_Init` becomes `sdl.Init` instead of `sdl.SDL_Init`?
+
+1784968231
+gschwind!~gschwind@user/gschwind
+gera, no
+
+1784970428
+gera!~gera@user/gera
+If I'm using a library that exposes system integration options, can I make them on by default in my build.zig?
+
+1784971717
+gera!~gera@user/gera
+or another question, how do I call a pub function from a dependency's build.zig?
+
+1784971751
+gera!~gera@user/gera
+Like I want to call this prepareSdl function https://codeberg.org/7Games/zig-sdl3/src/branch/master/build.zig#L83 in my build.zig
+
+1784972162
+gschwind!~gschwind@user/gschwind
+I never did this but maybe you want the add a step : https://ziglang.org/documentation/0.16.0/std/#std.Build.Step
+
+1784972333
+gschwind!~gschwind@user/gschwind
+have a look at https://ziglang.org/learn/build-system/
+
+1784976101
+gera!~gera@user/gera
+gera: i found i can access the dependency function with lazyImport but turns out it's not really what i want
+
+1784976164
+gera!~gera@user/gera
+*dependency's build.zig functions
+
+1784977039
+gera!~gera@user/gera
+oh and overriding system integration default is easy actually
+
+1784977046
+gera!~gera@user/gera
+_ = b.systemIntegrationOption("sdl", .{ .default = true });
+
+1784977056
+gera!~gera@user/gera
+before b.dependency()
+
+1784986306
+gera!~gera@user/gera
+How do I initialize this structure? https://codeberg.org/ziglang/zig/src/branch/master/lib/std/Build/Step/FindProgram.zig#L13
+
+1784986338
+gera!~gera@user/gera
+.{.names = .{"glslang"},} doesn't work. Sry for noob question
+
+1784986531
+gschwind!~gschwind@user/gschwind
+peraps : .{.names = .{&"glslang"},}
+
+1784986539
+gera!~gera@user/gera
+why &?
+
+1784986607
+gschwind!~gschwind@user/gschwind
+because string are `const [N]u8` and []const u8 are slice which are a kind of pointer 
+
+1784986645
+gschwind!~gschwind@user/gschwind
+in zig [N]T aren't pointers thay are the data
+
+1784986697
+gera!~gera@user/gera
+i'm still getting error: type '[]const []const u8' does not support array initialization syntax
+
+1784986750
+gschwind!~gschwind@user/gschwind
+add an another &: `.{.names = &.{&"glslang"},}`
+
+1784986816
+gera!~gera@user/gera
+error: expected array of 'u8', found '*const [7:0]u8'
+
+1784986969
+gera!~gera@user/gera
+oh it was .{.names = &.{"glslang"},}
+
+1784987045
+gschwind!~gschwind@user/gschwind
+yes maybe I was wrong
+
+1784987087
+gschwind!~gschwind@user/gschwind
+at less the idea of `[N]T` (array) vs `[]T` slice is correct
+
+1784987119
+gschwind!~gschwind@user/gschwind
+never remember the type of string :/
+
+1784987161
+gschwind!~gschwind@user/gschwind
+of literals string *
+
+1784987233
+gschwind!~gschwind@user/gschwind
+and I do not remember also the coersion rules belong string lirerals
+
+1784989047
+ifreund!2940d10f8b@user/ifreund
+gera: const options: Options = .{ .names = &.{"glslang"} };
+
+1784989085
+ifreund!2940d10f8b@user/ifreund
+@TypeOf("glslang") is `*const [7:0]u8`, which coerces to []const u8
+
+1784989235
+gschwind!~gschwind@user/gschwind
+thanks ifreund
+
+1784992954
+prescientmoon!~prescient@user/prescientmoon
+If I add a directory as an input to a tool in my build.zig, will the compiler watch all its contents when using --watch? Will this be recursive?
+
+1784996783
+ifreund!2940d10f8b@user/ifreund
+prescientmoon: no, it won't watch all the contents (at least last I checked
+
+1784996930
+prescientmoon!~prescient@user/prescientmoon
+ifreund: awh, sad
+
+1785001606
+gera!~gera@user/gera
+How do I specify a path for linkSystemLibrary except pkg-config? --search-prefix doesn't seem to do anythign
+
+1785002040
+gera!~gera@user/gera
+mb because of this https://codeberg.org/ziglang/zig/issues/32095
+
+1785005975
+mr_celo!~mr_celo@user/mr-celo:81133
+Hi everyone! Where is the best place for me to ask a random question about zig? I don't want to cause noise and I'm not very versed in IRC :)
+
+1785006167
+jjido!~jjido@2a02:c7c:a308:7800:9d28:e9:1f16:eef0
+IRC is noise itself
+
+1785006224
+mr_celo_!~mr_celo@user/mr-celo:81133
+Ok, then! :D With the new `std.testing.tmpDir()` returning a file descriptor, what is the best way to get its path? I want to create a unit test using libgit2 that requires a path for me to initiliaze the repo.
+
+1785006226
+mr_celo_!~mr_celo@user/mr-celo:81133
+Any suggestions?
+
+1785006286
+jjido!~jjido@2a02:c7c:a308:7800:9d28:e9:1f16:eef0
+That might be tricky
+
+1785009568
+farseen!~farseen@37.120.177.149
+mr_celo_, mr_celo, https://stackoverflow.com/questions/1188757/retrieve-filename-from-file-descriptor-in-c
+
+1785011894
+lingxu!~lingxu@user/lingxu
+compiling raylib zig example https://github.com/raysan5/raylib/tree/master/projects/Zig fails for me mith with/wo -Dzig 
+
+1785012011
+lingxu!~lingxu@user/lingxu
+https://pastebin.com/q2UBW96Q
+
+1785013364
+lingxu!~lingxu@user/lingxu
+static build fails as well
+
+1785017070
+copygirl!~koppeh@copy.mcft.net
+I'm tinkering around with JSON parsing, specifically Discord's gateway events: https://docs.discord.com/developers/events/gateway#gateway-events
+
+1785017128
+copygirl!~koppeh@copy.mcft.net
+so I have a JSON object where 1 or 2 fields affect how the rest of the struct should be parsed
+
+1785017204
+copygirl!~koppeh@copy.mcft.net
+because I can't guarantee that the necessary fields come first (which would make it trivial, I think), I'm not entirely sure how I should proceed.
+
+1785017406
+copygirl!~koppeh@copy.mcft.net
+I was considering throwing out the idea of supporting the usual `jsonParse` API and have it operate on a pre-allocated slice, then I can parse the identifying fields first, and afterwards parse the actual object I need by parsing the same slice a second time. thoughts?
+
+1785017726
+copygirl!~koppeh@copy.mcft.net
+which may only be feasible since what I'm trying to parse is the top-level object and should never become too large to fit into a reasonably sized buffer
+
+1785018011
+lingxu!~lingxu@user/lingxu
+copygirl: the op value defines the schema?
+
+1785018015
+copygirl!~koppeh@copy.mcft.net
+mhh wait I guess there's `parseFromValue`
+
+1785018046
+copygirl!~koppeh@copy.mcft.net
+`op` as well as `t` when the operation is `Dispatch`, I think.
+
+1785018138
+lingxu!~lingxu@user/lingxu
+I'm not familiar with zig API for json, but in go you would make d a type of https://pkg.go.dev/encoding/json#RawMessage
+
+1785018156
+lingxu!~lingxu@user/lingxu
+it's used for deferred parsing in such cases
+
+1785018180
+copygirl!~koppeh@copy.mcft.net
+I think that's what I can use `std.json.Value` for in this case
+
+1785018200
+copygirl!~koppeh@copy.mcft.net
+I just didn't realize there was a way to parse from such, instead of a reader, into a type
+
+1785018328
+lingxu!~lingxu@user/lingxu
+std.json.Value should work I think
+
+1785018419
+lingxu!~lingxu@user/lingxu
+or not
+
+1785018457
+copygirl!~koppeh@copy.mcft.net
+find out in the next episode of.. copygirl's adventures in Zig land!
+
+1785019107
+Affliction!affliction@idlerpg/player/affliction
+yeah, if you have no guarantee about field order, you can either deserialize into all forms simultaniously until you know what it is (might be fine if there's 2 or 3 variants, less so for 20 or 30), or go through a json.Value
+
+1785019271
+Affliction!affliction@idlerpg/player/affliction
+Or you could do 2 passes, first just looking for the op, the 2nd deserializing the appropriate variant
+
+1785019283
+Affliction!affliction@idlerpg/player/affliction
+That may or may not be practical
+
+1785019350
+copygirl!~koppeh@copy.mcft.net
+deserializing into all forms simultaneously is an interesting idea
+
+1785019438
+lingxu!~lingxu@user/lingxu
+i would use std.json.Value and switch case on op value, then json.parseFromValue, that feels to be correct
+
+1785019447
+Affliction!affliction@idlerpg/player/affliction
+Yeah, that'd be the easiest
+
+1785019829
+Affliction!affliction@idlerpg/player/affliction
+And, we're talking about discord traffic, probably don't have to process multiple gigabytes/s of it, easy and maintainable might be better
+
+1785019888
+copygirl!~koppeh@copy.mcft.net
+tiny bot for a single community, and I'm only doing what's necessary for now
+
+1785019890
+Affliction!affliction@idlerpg/player/affliction
+At the end of the day, plenty of other software consumes js by parsing and storing the whole tree, then only looks at 1 or 2 field :)
+
+1785019925
+copygirl!~koppeh@copy.mcft.net
+for a "proper" bot I should be using a proper library (if necessary contribute to it)
+
