@@ -1,0 +1,272 @@
+1785198930
+lingxu!~lingxu@user/lingxu
+Gliptic: yes, I force use of LLVM
+
+1785199159
+lingxu!~lingxu@user/lingxu
+i can confirm that build-exe uses -fllvm, but build-lib does not
+
+1785199264
+lingxu!~lingxu@user/lingxu
+will zig build --verbose be enough?
+
+1785201455
+lingxu!~lingxu@user/lingxu
+it's definetely something with my toolchain, because I can perferectly reproduce builds with arch containers
+
+1785201508
+lingxu!~lingxu@user/lingxu
+but now is the question, what's up with my toolchain?
+
+1785201515
+slynk!~ryank@user/slynk
+lingxu, just a guess, but have you tried explicitly setting unwind_tables to none
+
+1785201552
+lingxu!~lingxu@user/lingxu
+slynk: on the raylib_mod?
+
+1785201701
+lingxu!~lingxu@user/lingxu
+no, it does nothing for me
+
+1785201816
+slynk!~ryank@user/slynk
+bummer, yeah sorry not really familiar with the raylib stuff. i just remember something about weird relocations from unwind. thought it was worth mentioning
+
+1785209939
+lingxu!~lingxu@user/lingxu
+I want to define RL_MALLOC, RL_FREE, etc for raylib module, what do we have for such goal?
+
+1785210150
+Affliction!affliction@idlerpg/player/affliction
+"unhandled relocation type R_X86_64_PC64" yeah, 0.16 tends to do that
+
+1785210167
+Affliction!affliction@idlerpg/player/affliction
+.use_llvm = true in, iirc, the options for your executable... let me check
+
+1785210212
+lingxu!~lingxu@user/lingxu
+Affliction: i tried to build within container it aced, no problem
+
+1785210225
+Affliction!affliction@idlerpg/player/affliction
+huh, I have a raylib project being built in 0.16 that doesn't seem to use it
+
+1785210246
+Affliction!affliction@idlerpg/player/affliction
+I've definitely needed it for projects which include C code though
+
+1785210321
+Affliction!affliction@idlerpg/player/affliction
+ok, weird, all my projects now build without it
+
+1785210338
+Affliction!affliction@idlerpg/player/affliction
+I guess zig was doing certain versions of ld didn't support and my distro has since updated
+
+1785210349
+Affliction!affliction@idlerpg/player/affliction
+doing things certain*
+
+1785210384
+Affliction!affliction@idlerpg/player/affliction
+but yeah, that'd go in the build options for the exe
+
+1785210472
+Affliction!affliction@idlerpg/player/affliction
+Anyway, as for defines, if you're using @cImport, you can add @cDefines in there. I haven't used the translateC steps in build.zig yet
+
+1785210497
+Affliction!affliction@idlerpg/player/affliction
+but I'd imagine defines go somewhere there
+
+1785210536
+lingxu!~lingxu@user/lingxu
+Affliction: neither, I guess it's translateC but from raylib's build.zig
+
+1785210567
+Affliction!affliction@idlerpg/player/affliction
+most likely
+
+1785210575
+Affliction!affliction@idlerpg/player/affliction
+my one raylib project hasn't needed to set any
+
+1785210611
+lingxu!~lingxu@user/lingxu
+then it will use C malloc family functions
+
+1785210618
+Affliction!affliction@idlerpg/player/affliction
+indeed
+
+1785210631
+lingxu!~lingxu@user/lingxu
+btw that's what I used to build the raylib example
+
+1785210635
+lingxu!~lingxu@user/lingxu
+https://pastebin.com/NAzAXcxr
+
+1785210653
+lingxu!~lingxu@user/lingxu
+docker run --rm -v $(pwd):/raylib -w /raylib/projects/Zig zig:0.16.0 zig build
+
+1785210710
+lingxu!~lingxu@user/lingxu
+just an artifact from my suffering :)
+
+1785210750
+lingxu!~lingxu@user/lingxu
+the command you run from the raylib source code
+
+1785210800
+lingxu!~lingxu@user/lingxu
+Affliction: so don't you think that it actually might be funny or even useful to redefine the alloctor for raylib
+
+1785210822
+lingxu!~lingxu@user/lingxu
+from c_allocator, to DebugAllocator, so you can debug which models you forget to unload
+
+1785210851
+Affliction!affliction@idlerpg/player/affliction
+sure could be useful, yeah
+
+1785210853
+lingxu!~lingxu@user/lingxu
+I was just curious, but now it seems to have a real use case
+
+1785211417
+lingxu!~lingxu@user/lingxu
+maybe someone capable could file an issue to add such feature
+
+1785211470
+Affliction!affliction@idlerpg/player/affliction
+oh I'd be very surprised if there wasn't a way already, just not something I've explored, myself. Someone here might have some idea
+
+1785211531
+lingxu!~lingxu@user/lingxu
+maybe, I'll try some spells from the build system
+
+1785249138
+gera!~gera@user/gera
+How do I print an error if the optinal type is null and if it's not get its value?
+
+1785249468
+dutchie!~dutchie@user/dutchie
+option orelse blk: { std.log.err("option was empty", .{}); break :blk default_value; }
+
+1785249506
+dutchie!~dutchie@user/dutchie
+or bail out in that block by returning or whatever
+
+1785249572
+gera!~gera@user/gera
+that's a bit ugly and i don't have default value
+
+1785249600
+gschwind!~gschwind@user/gschwind
+if (option == null) ?
+
+1785249609
+gera!~gera@user/gera
+ok but then how do you get rid of ?
+
+1785249613
+gera!~gera@user/gera
+do you define another variable?
+
+1785249649
+dutchie!~dutchie@user/dutchie
+maybe just `orelse return error.MissingValue` then
+
+1785249682
+dutchie!~dutchie@user/dutchie
+if (option) |value| { do stuff with option } else { value was missing }
+
+1785249688
+dutchie!~dutchie@user/dutchie
+might be the best way to go about it
+
+1785249713
+gera!~gera@user/gera
+b
+
+1785249718
+gera!~gera@user/gera
+yeah that's nicer thanks
+
+1785249772
+gera!~gera@user/gera
+still i don't understand how to rewrite this
+
+1785249774
+gera!~gera@user/gera
+    const window_opt: *c.SDL_Window = c.SDL_CreateWindow("Hello!", 640, 480, 0);
+
+1785249776
+gera!~gera@user/gera
+    if (window_opt == null) {
+
+1785249778
+gera!~gera@user/gera
+        std.debug.print("Failed to create window!", .{});
+
+1785249780
+gera!~gera@user/gera
+        return 1;
+
+1785249782
+gera!~gera@user/gera
+    }
+
+1785249784
+gera!~gera@user/gera
+    const window = window_opt.?;
+
+1785249799
+dutchie!~dutchie@user/dutchie
+don't paste big blocks of code into IRC, use a pastebin service like https://zigbin.io/
+
+1785249805
+gera!~gera@user/gera
+yeah yeah
+
+1785249823
+dutchie!~dutchie@user/dutchie
+for that I'd use the orelse thing before
+
+1785249849
+dutchie!~dutchie@user/dutchie
+you don't need to name it since you're returning: `window_opt orelse { std.debug.print(...); return 1; }`
+
+1785249862
+dutchie!~dutchie@user/dutchie
+(but it's almost certainly better to return a proper error union)
+
+1785249864
+gera!~gera@user/gera
+ah ok
+
+1785249897
+dutchie!~dutchie@user/dutchie
+and you might as well use it straight away on the function call
+
+1785249991
+gera!~gera@user/gera
+what's zig equivalent of c exit()?
+
+1785250097
+gera!~gera@user/gera
+ah found it, std.process.exit
+
+1785250100
+gera!~gera@user/gera
+thanks dutchie 
+
+1785255761
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+note that if you use that your defers wont get called
+
