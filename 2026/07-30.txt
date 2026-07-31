@@ -1,0 +1,184 @@
+1785435279
+vyivel!~vyivel@user/Vyivel
+working on a qt bridge for zig; the main idea is to let users create qobject types with properties/signals/methods and work with them as they would in c++. i also want qmlls integration, which ideally requires generating metadata based on the types at build time. so, is there a way to get a list of types (or any comptime values, really) from a project in build.zig?
+
+1785435293
+vyivel!~vyivel@user/Vyivel
+(i hope my goal is clear enough here…)
+
+1785435728
+vyivel!~vyivel@user/Vyivel
+@import() in build.zig fails because the types in question use depend on a module added with translate-c which isn't available from build.zig itself
+
+1785436297
+slynk!~ryank@user/slynk
+idk about from build but you could use @typeInfo(@This()), I use it to touch all types like https://zigbin.io/993c58
+
+1785436551
+vyivel!~vyivel@user/Vyivel
+neat but doesn't work across imports
+
+1785436576
+mfwitten!~unknown@gateway/tor-sasl/mfwitten
+Howdy. Is it expected that `zig build-exe` should take 25 seconds on a 2-line "hello world" program? I've downloaded and set up a working `zig` (version `0.17.0-dev.1471+ff10b90bc`) on a "32-bit" mode 64-bit Intel Atom Z3735F (i.e., a somewhat old, but still useful "netbook" system); I suppose I'm worried that the edit-compile-run cycle might become impractical for anything but the simplest of programs. 
+
+1785436582
+mfwitten!~unknown@gateway/tor-sasl/mfwitten
+Thanks in advance for your thoughts on the matter.
+
+1785436692
+mfwitten!~unknown@gateway/tor-sasl/mfwitten
+(to be clear, just changing the string literal of that "hello world" test program causes the whole 25-second cycle again.)
+
+1785439667
+ifreund!2940d10f8b@user/ifreund
+vyivel: qmlls is a language server for QML? It is planned to expose type information from a long-running compiler process with some kind of custom protocol/query API as the basis for language servers eventually
+
+1785439754
+vyivel!~vyivel@user/Vyivel
+yes, qmlls is a qml language server
+
+1785439823
+ifreund!2940d10f8b@user/ifreund
+vyivel: as for how to do this right now, I think you could write a zig script with a main() function that is executed during the build process and imports the types you want to introspect and does the code generation you want
+
+1785439826
+vyivel!~vyivel@user/Vyivel
+i saw the proposals regarding information exposure to a zig lsp but that seems unrelated to my case 
+
+1785439839
+ifreund!2940d10f8b@user/ifreund
+this is not very different from how zig-wayland's wayland-scanner works
+
+1785439872
+vyivel!~vyivel@user/Vyivel
+s/lsp/ls/
+
+1785439882
+vyivel!~vyivel@user/Vyivel
+yeah a separate program sounds like the way to go
+
+1785439889
+vyivel!~vyivel@user/Vyivel
+thanks
+
+1785439898
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1785442172
+ersei!~d76d5@user/d76d5
+hey all, I have a quick question about zig and concurrency. I have a tcp server that waits on accept in a "while (true)" loop. I want to spawn a handler with io.concurrent. what would be the best/idiomatic way to handle allocator cleanups?
+
+1785442310
+ersei!~d76d5@user/d76d5
+would a `defer if (handler.cancel(io)) gpa.free(handler_object) else {};` work?
+
+1785442412
+ersei!~d76d5@user/d76d5
+but since that's inside the while loop, won't it run at the end of the scope?
+
+1785442525
+ersei!~d76d5@user/d76d5
+alternatively, is there a better pattern instead of the "while (true)" loop?
+
+1785442940
+Sivecano!~Sivecano@user/Sivecano
+vyivel: you can just @import the relevant zig files and introspect them or have a helper script that does that (just give the relevant paths as compiletime options).
+
+1785442974
+Sivecano!~Sivecano@user/Sivecano
+(nvm, I was too far scrolled up in my client)
+
+1785443037
+vyivel!~vyivel@user/Vyivel
+i thought of using a helper script which imports a path passed as an option but apparently @import requires a string literal
+
+1785445305
+ifreund!2940d10f8b@user/ifreund
+vyivel: ok, it's hacky but you need two levels of helper script
+
+1785445336
+ifreund!2940d10f8b@user/ifreund
+the first takes paths as arguments and generates the second with @import()s with hardcoded string literals
+
+1785445415
+Sivecano!~Sivecano@user/Sivecano
+ifreund: can't you just pass in an options struct (using b.addOptions) ?
+
+1785445435
+ifreund!2940d10f8b@user/ifreund
+Sivecano: like vyivel said, @import() requires a string literal
+
+1785445445
+ifreund!2940d10f8b@user/ifreund
+a comptime-known string is not sufficient
+
+1785445464
+Sivecano!~Sivecano@user/Sivecano
+that's wild...
+
+1785445482
+ifreund!2940d10f8b@user/ifreund
+it allows everything that happens before sema to be embarassingly parallel :)
+
+1785445501
+ifreund!2940d10f8b@user/ifreund
+https://mlugg.co.uk/posts/incremental-compilation-internals/
+
+1785445572
+ifreund!2940d10f8b@user/ifreund
+think of the generate second script as a query asking the zig compiler a question about the paths passed to the first script
+
+1785445592
+ifreund!2940d10f8b@user/ifreund
+the first script has the task of putting together the query
+
+1785445609
+ifreund!2940d10f8b@user/ifreund
+and compiling/running the second script is executing the query
+
+1785445647
+ifreund!2940d10f8b@user/ifreund
+at least, that's one way to see this as not actually a hack :D
+
+1785445701
+vyivel!~vyivel@user/Vyivel
+my current idea is to provide smth like qtbridge.addExecutable(b, ...), that would require the root module to provide a qt_types value alongside main; then it would actually build the module both as the target executable and as a library a metadata dumper would link to
+
+1785445742
+Sivecano!~Sivecano@user/Sivecano
+then you don't need two scripts I think
+
+1785445743
+vyivel!~vyivel@user/Vyivel
+haven't checked yet if that is viable at all
+
+1785445753
+Sivecano!~Sivecano@user/Sivecano
+you can just add the main module as an import to the script
+
+1785445772
+Sivecano!~Sivecano@user/Sivecano
+and that could then introspect the contents of qt_types
+
+1785445806
+vyivel!~vyivel@user/Vyivel
+yeah this approach doesn't need "dynamic" imports at all
+
+1785446057
+Sivecano!~Sivecano@user/Sivecano
+vyivel: not sure it would work if you're trying to do codegen that depends on this introspection and that links back to the main module
+
+1785446160
+vyivel!~vyivel@user/Vyivel
+the project builds fine without codegen, but it needs to communicate some metadata to the c++ side at runtime
+
+1785446200
+vyivel!~vyivel@user/Vyivel
+i *think* it'll work fine but i'm also too sleepy for this
+
+1785449142
+ersei!~d76d5@user/d76d5
+I figured out to use Io.Group
+
