@@ -1,0 +1,188 @@
+1785457511
+cedrichutchings!~cedrichut@user/cedrichutchings
+Noticed that https://ziglang.org/documentation/master has dropped the instruction to run `zig test -femit-docs` to generate docs, how do we do that now?
+
+1785457849
+cedrichutchings!~cedrichut@user/cedrichutchings
+Tried searching through the commits on master, didn't see any that mentioned removing -femit-docs
+
+1785496083
+rcdecv!~rcdecv@user/rcdecv
+What is Zulip?
+
+1785509152
+ersei!~d76d5@user/d76d5
+rcdev: self hosted slack
+
+1785516151
+pkradiator!~user@user/PKDrinker
+Hello Ziggers
+
+1785516355
+dominick72_97!d47d3c244a@user/dominick72-97:46390
+hey
+
+1785516697
+pkradiator!~user@user/PKDrinker
+dominick72_97: How's it going?
+
+1785516709
+pkradiator!~user@user/PKDrinker
+I am really new to zig.
+
+1785524923
+doclic!~doclic@user/doclic
+pkradiator: hello zigger :)
+
+1785527020
+perryprog!~perryprog@wikipedia/perryprog
+Not so sure about that demonym, chief
+
+1785527475
+doclic!~doclic@user/doclic
+as long as you don't make a typo it's fine!
+
+1785533285
+ersei!~d76d5@user/d76d5
+hey all, what could cause a test to hang? I got to the end of the test block, but zig test just gets stuck
+
+1785533305
+ersei!~d76d5@user/d76d5
+I am spawning a handful of threads and not joining all of them
+
+1785533315
+ersei!~d76d5@user/d76d5
+they're being detached instead
+
+1785533443
+perryprog!~perryprog@wikipedia/perryprog
+ersei, have you tried running it under a debugger and sigint'ing it once it's stuck?
+
+1785533501
+perryprog!~perryprog@wikipedia/perryprog
+Er, SIGSTOP not SIGINT
+
+1785533513
+perryprog!~perryprog@wikipedia/perryprog
+(Just ctrl+c it)
+
+1785533599
+ersei!~d76d5@user/d76d5
+stuck in __syscall_cancel_arch
+
+1785533609
+ersei!~d76d5@user/d76d5
+in libc
+
+1785533650
+perryprog!~perryprog@wikipedia/perryprog
+Run "bt"?
+
+1785533734
+ersei!~d76d5@user/d76d5
+__syscall_cancel_arch x2, __internal_syscall_cancel, wait4, ?? x3 __libc_start_call_main, impl, ??
+
+1785533750
+ersei!~d76d5@user/d76d5
+sorry for no ^c/^v, it's on my work laptop
+
+1785533766
+perryprog!~perryprog@wikipedia/perryprog
+I mean that's a pretty good way of conveying it for IRC :P
+
+1785533797
+ersei!~d76d5@user/d76d5
+sorry the first call was only one of it
+
+1785533855
+ersei!~d76d5@user/d76d5
+__syscall_cancel_arch, __internal_syscall_cancel, __syscall_cancel, wait4, ?? x3 __libc_start_call_main, impl, ??
+
+1785533891
+ersei!~d76d5@user/d76d5
+only defers I have in that block are for some allocator frees but even removing those it hangs
+
+1785533900
+ersei!~d76d5@user/d76d5
+so code execution reaches the last line
+
+1785534007
+perryprog!~perryprog@wikipedia/perryprog
+and you pinky-promise you detached /every/ thread?
+
+1785534033
+ersei!~d76d5@user/d76d5
+pinkie promise :)
+
+1785534051
+perryprog!~perryprog@wikipedia/perryprog
+what happens if you run it single threaded?
+
+1785534063
+ersei!~d76d5@user/d76d5
+each thread started in the test is joined or detached
+
+1785534076
+ersei!~d76d5@user/d76d5
+deadlock since threads are producers/consumers
+
+1785534099
+ersei!~d76d5@user/d76d5
+I am mixing io.concurrent and std.Thread...
+
+1785534122
+ersei!~d76d5@user/d76d5
+test launches fns with std.Thread
+
+1785534140
+ersei!~d76d5@user/d76d5
+each fn will use io to launch some groups for async there
+
+1785534164
+perryprog!~perryprog@wikipedia/perryprog
+oh right so it'd just compile error with -fsingle-threaded 
+
+1785534169
+ersei!~d76d5@user/d76d5
+yep
+
+1785534198
+perryprog!~perryprog@wikipedia/perryprog
+what happens if you don't run it as a test, but just as a binary?
+
+1785534287
+ersei!~d76d5@user/d76d5
+hangs then too
+
+1785534394
+ersei!~d76d5@user/d76d5
+I'm certain it has to do with some of the threads I spawn that might not be cleaning up properly?
+
+1785534723
+perryprog!~perryprog@wikipedia/perryprog
+I'm not sure how familiar you are with whatever debugger you were using but there should be a way to switch between threads and see what their backtraces are
+
+1785534823
+ersei!~d76d5@user/d76d5
+only two threads
+
+1785534843
+ersei!~d76d5@user/d76d5
+but I switched some threads to use io instead and it works so /shrug
+
+1785534867
+ersei!~d76d5@user/d76d5
+I think something got stuck on implicit thread cancellation but deferring group.cancel forced the cleanup
+
+1785534881
+ersei!~d76d5@user/d76d5
+perryprog: thanks for the help :)
+
+1785534893
+perryprog!~perryprog@wikipedia/perryprog
+Well, attempted help :P
+
+1785535400
+ersei!~d76d5@user/d76d5
+thanks anyway!
+
