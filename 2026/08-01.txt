@@ -1,0 +1,144 @@
+1785569707
+pkradiator!~user@user/PKDrinker
+hello guys
+
+1785569727
+pkradiator!~user@user/PKDrinker
+How is zig for an OS project?
+
+1785570278
+Affliction!affliction@idlerpg/player/affliction
+probably fine, haven't done an OS but I have done (part of) a bare metal program. most of the standard lib can work freestanding, you'll just have to bring the I/O stuff.
+
+1785570621
+pkradiator!~user@user/PKDrinker
+Affliction: Does that mean I will have to implement IO stuff.
+
+1785570810
+Affliction!affliction@idlerpg/player/affliction
+zig std doesn't have NVMe or AHCI drivers, an implementation of whatever filesystem you're planning on using, drivers for whatever network card you have, that's up to you as the one writing the OS
+
+1785570871
+Affliction!affliction@idlerpg/player/affliction
+packed structs are nice for poking many of the registers that have multiple bitfields though
+
+1785570895
+Affliction!affliction@idlerpg/player/affliction
+or do you mean, do you have to have that stuff, to use std? nope
+
+1785570944
+Affliction!affliction@idlerpg/player/affliction
+since, in zig 0.16, anything which expects to do I/O takes an std.Io implementation, you can fill that in as you go
+
+1785570946
+pkradiator!~user@user/PKDrinker
+Can porting minix be a good choice?
+
+1785570967
+Affliction!affliction@idlerpg/player/affliction
+no idea
+
+1785577387
+pkradiator!~user@user/PKDrinker
+ls
+
+1785577617
+Affliction!affliction@idlerpg/player/affliction
+build.zig   build.zig.zon    src   zig-out
+
+1785602288
+zigger!~zigger@user/zigger
+hi i noticed recvmsg_multishot (the udp version of multishot recv)  is not impemented in std.linux.IoUring. is this intended?
+
+1785605775
+chmod222!~chmod222@user/chmod222
+It's not so much unintended as it is unfinished
+
+1785605803
+chmod222!~chmod222@user/chmod222
+The std.Io.Evented implementations (which IoUring is) are works in progress
+
+1785605815
+chmod222!~chmod222@user/chmod222
+Especially network support is broadly unimplemented as of 0.16
+
+1785619574
+RavenJoad!~user@168.91.208.173
+I have had a long-standing desire to package Ghostty in Guix. https://codeberg.org/guix/guix/pulls/4087 But I hit a roadblock that I was not sure could be solved well. The main blocker was how Zig looks up dependencies in zig-cache. Particularly the hashes that are used (see lines 956-963 in the PR). Does Zig REQUIRE those hashes? Or can we drop dependencies in a specific spot?
+
+1785620184
+perryprog!~perryprog@wikipedia/perryprog
+RavenJoad, are --cache-dir and --global-cache-dir what you're looking for?
+
+1785620278
+RavenJoad!~user@168.91.208.173
+I did set --system, since that disabled Zig (at the time) from downloading the dependencies. Guix builds (like Nix) don't have an Internet connection in the build environment.
+
+1785620344
+perryprog!~perryprog@wikipedia/perryprog
+Uhh so at what point can you download the dependencies
+
+1785620387
+RavenJoad!~user@168.91.208.173
+You have to do it ahead of time (in another build if it's a library to link against). So when you build something, the dependencies are already on-disk when this build starts.
+
+1785620420
+perryprog!~perryprog@wikipedia/perryprog
+So --fetch=all isn't a help?
+
+1785620429
+perryprog!~perryprog@wikipedia/perryprog
+Maybe --fork would work, that lets you specify a path to a source tree
+
+1785620679
+RavenJoad!~user@168.91.208.173
+I may be misunderstanding what the --fetch flag does for "zig build". `zig build --fetch=all` is impossible when building a Zig package because there is no network in the environment. 
+
+1785620710
+RavenJoad!~user@168.91.208.173
+As for --fork, it seems like that expects a single path/source for the entire dependency graph? 
+
+1785620761
+perryprog!~perryprog@wikipedia/perryprog
+RavenJoad, you can specify it multiple times
+
+1785620813
+perryprog!~perryprog@wikipedia/perryprog
+And also in my defense I haven't—and can't :(—use Guix 
+
+1785621057
+RavenJoad!~user@168.91.208.173
+So I can do --fork=path/to/imgui --fork=path/to/zig-wayland ... for each dependency? That is better, than what I was doing, but still feels like a hack because we need to manually specify each path to Zig (which can be automated, but seems like it should be unnecessary?).
+
+1785621123
+RavenJoad!~user@168.91.208.173
+This isn't necessarily a Guix-specific thing. Really the problem comes down to "how can I do `zig build --system ...` while providing local versions of built dependencies?" (--system needed to prevent Zig from downloading things.)
+
+1785621522
+perryprog!~perryprog@wikipedia/perryprog
+RavenJoad: this is me grasping at straws but I assume this doesn't help? https://codeberg.org/guix/guix/src/branch/master/guix/build/zig-build-system.scm#L70-L91
+
+1785621709
+perryprog!~perryprog@wikipedia/perryprog
+looks like it's used for mepo in geo.scm
+
+1785621714
+RavenJoad!~user@168.91.208.173
+perryprog: Ahh... That is new. zig-build-system did not do that before. Or maybe it did, but things did not work correctly. I forget at this point. I will have to look into it a little bit more.
+
+1785621725
+perryprog!~perryprog@wikipedia/perryprog
+they call me the Guix genius
+
+1785621743
+perryprog!~perryprog@wikipedia/perryprog
+it's funny because I was just reading its info manuals yesterday and being sad about no macOS support
+
+1785621978
+RavenJoad!~user@168.91.208.173
+I will have to try this again. Ghostty is probably the most complicated Zig package in Guix right now (from a packaging perspective) since it uses a bunch of C/C++ and Zig libraries. 
+
+1785622047
+perryprog!~perryprog@wikipedia/perryprog
+I imagine, yeah
+
