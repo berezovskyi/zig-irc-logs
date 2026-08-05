@@ -1,0 +1,472 @@
+1785801815
+gera!~gera@user/gera
+Any linear algebra lib for 0.17?
+
+1785803799
+ersei!~d76d5@user/d76d5
+@bitCast won't work since the endianness is being swapped..
+
+1785804505
+slynk!~ryank@user/slynk
+there is @byteSwap, are you dealing with arch thing or network byte order?
+
+1785804956
+andrewrk!~andrewrk@mail.ziglang.org
+endianness is irrelevant to @bitCast 
+
+1785805026
+andrewrk!~andrewrk@mail.ziglang.org
+it operates on logical bit order
+
+1785806531
+santy!~santy@user/santy
+so @bitCast(0x3f800000) turns to 1.0f?
+
+1785808549
+ersei!~d76d5@user/d76d5
+slynk: byteSwap works in byte multiples of 8, I have 11 byte chunks
+
+1785808637
+andrewrk!~andrewrk@mail.ziglang.org
+santy: right. and it does that on both big and little endian targets
+
+1785809630
+slynk!~ryank@user/slynk
+ersei, 11byte or 11bit. [n]u8 -> [n]u11 is what you mentioned? but 3bits of the u8 should start in the upper part? I think you need an [n]u16 in the middle, cast to that, <<3 then swap, then @truncate to the u11?
+
+1785809756
+slynk!~ryank@user/slynk
+sounds like a coding test lol
+
+1785810849
+slynk!~ryank@user/slynk
+https://zigbin.io/00f862
+
+1785810869
+ersei!~d76d5@user/d76d5
+not a coding test haha, converting a sha256sum into 24 words
+
+1785810882
+ersei!~d76d5@user/d76d5
+had it working w loops, wanted to find a nicer way to do it
+
+1785811164
+ersei!~d76d5@user/d76d5
+slynk: byteSwap then to u11 is interpreting the first u8 as the lower bytes and the second as the upper bytes or something
+
+1785811168
+ersei!~d76d5@user/d76d5
+something is being mangled
+
+1785811192
+slynk!~ryank@user/slynk
+yeah i rushed that a bit
+
+1785811272
+perryprog!~perryprog@wikipedia/perryprog
+the time pressure between "have you tried X solution" and then giving a tested example is always rough ;P
+
+1785811367
+ersei!~d76d5@user/d76d5
+no worries, it's just a fun mental exercise to see if I can do it faster than loops
+
+1785811650
+ersei!~d76d5@user/d76d5
+loops meaning iterating over evefy byte
+
+1785811858
+slynk!~ryank@user/slynk
+i feel that, I saw linus talking about walking inodes so i was trying to figure that out in zig https://zigbin.io/777b4f
+
+1785811913
+slynk!~ryank@user/slynk
+oh i forgot the rollover +%=
+
+1785826147
+lingxu!~lingxu@user/lingxu
+what's cracking?
+
+1785826390
+Affliction!~afflictio@idlerpg/player/affliction
+it's where heavier hydrocarbons are broken down into lighter ones
+
+1785826436
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ACTION hides his pirated binaries
+
+1785826505
+Affliction!~afflictio@idlerpg/player/affliction
+anyone got a keygen and no-cd for zig 0.17?
+
+1785826535
+Reinhilde!ellenor@invaincu.qc.ca.umbrellix.net
+:D
+
+1785826541
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+knowing Andrew, the keygen would have awesome tracker soundtrack
+
+1785829740
+athetos!~athetos@user/athetos
+i gather there isn't a groff version of the language reference? i looked in ziglang/zig/doc/langref and it looks like it only builds to html
+
+1785830013
+ifreund!2940d10f8b@user/ifreund
+athetos: nope
+
+1785830108
+athetos!~athetos@user/athetos
+oh well guess if i ever have to read it on a craptop i'll just xlinks it
+
+1785855190
+lingxu!~lingxu@user/lingxu
+how do we traslate diz? while ((key = GetKeyPressed()) != 0) {
+
+1785855197
+lingxu!~lingxu@user/lingxu
+it's C obviously
+
+1785855213
+lingxu!~lingxu@user/lingxu
+what's a nice way to write the same thing in Zig?
+
+1785855492
+lingxu!~lingxu@user/lingxu
+I guess it should be something with optional and while (...) |key|, but how to make 0 a null value? Wrap the function?
+
+1785856059
+lingxu!~lingxu@user/lingxu
+wrapper is fine ty
+
+1785856488
+santy!~santy@user/santy
+I think you can get it to look like 
+
+1785856503
+santy!~santy@user/santy
+while (getKeyPressed()) |key| {} 
+
+1785856505
+santy!~santy@user/santy
+while (getKeyPressed()) |key| {}
+
+1785856556
+santy!~santy@user/santy
+where getKeyPressed returns either null or a enum that represents the key you want ig.
+
+1785856612
+santy!~santy@user/santy
+so basically turn sentinel into an optional
+
+1785857806
+lingxu!~lingxu@user/lingxu
+yes i just did the same thing, i was wondering maybe zig gives as optional cast, where i provide like this @optionalCast(GetKeyPressed(), 0)
+
+1785857871
+lingxu!~lingxu@user/lingxu
+@optionalCast(value: anytype, sentinel: @TypeOf(value)) ?@TypeOf(value) you got the idea I think
+
+1785860654
+ifreund!2940d10f8b@user/ifreund
+you can write that function in zig "userland" if you want, though I generally find that metaprogramming of that kind hurts readability rather than helping
+
+1785861913
+lingxu!~lingxu@user/lingxu
+ifreund: oh, yeah, I don't mind write a wrapper. What do you mean about saying metaprogramming here, writing a wrapper around GetKeyPressed or having such cast builtin?
+
+1785862027
+lingxu!~lingxu@user/lingxu
+i really love statement chaining in zig, like .case => |value| if (value == 100) { ... }. Really helps make nesting/identation as small as possible
+
+1785862068
+lingxu!~lingxu@user/lingxu
+So I would rather use zig Optional feature instead of while (true) { key and break statement
+
+1785870013
+ersei!~d76d5@user/d76d5
+ok back to my earlier conversation about @bitCast to convert an array of u8s into u11s
+
+1785870034
+ersei!~d76d5@user/d76d5
+it appears to not work as expected
+
+1785872973
+santy!~santy@user/santy
+what was the expected behaviour?
+
+1785873289
+ersei!~d76d5@user/d76d5
+so if I take an array [33]u8 filled with 1..33 and bitcast to [24]u11, then check the memory in GDB, I would expect the first value of the second array to be 0b00000001000 but I instead get 0b01000000001
+
+1785873699
+darkling!~darkling@2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space
+You're on a little-endian system.
+
+1785873733
+darkling!~darkling@2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space
+Well, that'd be my first guess.
+
+1785873910
+darkling!~darkling@2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space
+The first u11 is bits 7-0 in the first byte, and then bits 10-8 in the second, matching little-endianness.
+
+1785873926
+bblack!~bblack@wikimedia/bblack-WMF
+I know that *currently*, union(enum) doesn't take advantage of packing opporuntities, i.e. @sizeOf(union(enum) { a: u31, b: u31 }) is 8, not 4.  It it a fundamental thing that will always be that way, or just nobody has bothered to optimize these?
+
+1785873944
+darkling!~darkling@2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space
+It looks like bits 10-8 are then packed at the bottom of the second byte, from the result you've shown.
+
+1785874121
+bblack!~bblack@wikimedia/bblack-WMF
+basically I want the equivalent of: packed struct { data: packed union { a: u31, b: u31, }, which: enum(u1) { a, b } };
+
+1785874147
+bblack!~bblack@wikimedia/bblack-WMF
+but without losing the ergonomics of union(enum) behaviors
+
+1785874222
+santy!~santy@user/santy
+yea this looks like a endianess issue
+
+1785874226
+santy!~santy@user/santy
+have you tried using
+
+1785874228
+santy!~santy@user/santy
+like
+
+1785874230
+santy!~santy@user/santy
+std.BitReader
+
+1785874292
+santy!~santy@user/santy
+its filling the least significant bits
+
+1785874961
+banna!~banna@banna.tech
+I know this type of thing *shouldnt* change behavior depending on the backend used... but could it? (assuming same arch)
+
+1785874996
+banna!~banna@banna.tech
+I'm more or less curious on if anyone has a fun way to verify this off the top of their head c:
+
+1785875940
+bxtn!~user@user/bxtn
+question: is there a way to declare array of varying sizes in runtime that i'm missing? 
+
+1785875988
+bxtn!~user@user/bxtn
+as in a previous const computes what it should be, and then using `var buffer = [buf_len]u8 = undefined;`
+
+1785876113
+bxtn!~user@user/bxtn
+i'm presuming the “types must be comptime-known” part of the error means what i'm doing is wrong. is there a different way? am i being too exacting and a [128]u8 would be just as fine?
+
+1785876178
+vyivel!~vyivel@user/Vyivel
+is buf_len computed at runtime and assigned to a const, or is it computed at comptime?
+
+1785876198
+bxtn!~user@user/bxtn
+computed at runtime.
+
+1785876216
+vyivel!~vyivel@user/Vyivel
+i think you should be using allocator.alloc then
+
+1785876269
+bxtn!~user@user/bxtn
+guess the part where i'd need to wrangle the “where are the bytes?” part was bound to come up sooner or later.
+
+1785876298
+bxtn!~user@user/bxtn
+thanks. i'll give it a crack.
+
+1785876309
+vyivel!~vyivel@user/Vyivel
+yw
+
+1785877129
+rockorager!~rockorage@mail.spunky.lol
+bxtn: if you know the length is always less than some reasonable value, you may want to do the [n]u8 with a sentinal or length. as always, depends on your goals and perf characteristics
+
+1785877179
+rockorager!~rockorage@mail.spunky.lol
+access patterns, etc
+
+1785877207
+bxtn!~user@user/bxtn
+yeah. that was an idea but better nate than lever to figure this out.
+
+1785878178
+ersei!~d76d5@user/d76d5
+santy: don't see anything by that name in 0.16..
+
+1785878263
+banna!~banna@banna.tech
+ersei: due to laziness, do you have a .zig that shows this bitcast behavior?
+
+1785878340
+ElSucioDan!~dan@user/ElSucioDan
+bxtn: I'm not sure, but I think that is a case for a many-item pointer.
+
+1785879057
+ersei!~d76d5@user/d76d5
+banna: const a: [33]u8 = [_]u8{1, 2, 3, ..., 33}; const b: [24]u11 = @bitCast(a); for (a) |n| std.debug.print("{b:08} ", .{n}); std.debug.print("\n", .{}); for (b) |n| std.debug.print("{b:011} ", .{n}); std.debug.print("\n", .{}); 
+
+1785879088
+ersei!~d76d5@user/d76d5
+throw that in a main, fill out the 1,2,...,33
+
+1785879119
+banna!~banna@banna.tech
+thanks!!
+
+1785879306
+lingxu!~lingxu@user/lingxu
+ersei: what are you trying to achieve with the @bitCast? You can't bitCast 33 u8 to 24 u11 because of alignment between elements, each element will occupy 2 bytes instead of 11 bits
+
+1785879380
+ersei!~d76d5@user/d76d5
+lingxu: convert an array of bytes into an array of bytes with different bases (convert array of u8 into array of u11, with ie the first u11 being the firdt u8 then the first 3 bits of the second u8
+
+1785879405
+ersei!~d76d5@user/d76d5
+converting sha256sums into mnemonic by looking up in an array by index
+
+1785879408
+ersei!~d76d5@user/d76d5
+I have a version that works w loops but wanted a cooler way
+
+1785879438
+lingxu!~lingxu@user/lingxu
+you got data sample for me?
+
+1785879449
+lingxu!~lingxu@user/lingxu
+I will try an idea
+
+1785879488
+ersei!~d76d5@user/d76d5
+data sample meaning
+
+1785879508
+ersei!~d76d5@user/d76d5
+the array is 2048 elements (2^11)
+
+1785879512
+lingxu!~lingxu@user/lingxu
+in: [33]u8 = { ... }; expected: [24]u11 = { ... };
+
+1785879797
+ersei!~d76d5@user/d76d5
+in: 0x12, 0x24, 0x90, 0xbf, 0x84, 0x1a, 0x39, 0x61, 0xca, 0x07, 0xda, 0x00, 0xca, 0x46, 0x66, 0x35, 0xa2, 0xaa, 0x39, 0x88, 0xfb, 0xaa, 0xc3, 0xef, 0x78, 0x9b, 0x47, 0x92, 0x31, 0x61, 0x22, 0x7f, 0x00
+
+1785879807
+ersei!~d76d5@user/d76d5
+sorry for the delay, typing it out on my phone
+
+1785879922
+lingxu!~lingxu@user/lingxu
+it's ok, lol, it should be rough
+
+1785879955
+ersei!~d76d5@user/d76d5
+out: 0x124, 0x17f, 0x41, 0x51c, 0x587, 0x140, 0x7da, 0x6, 0x291, 0x4cc, 0x35a, 0x155, 0xe6, 0x11f, 0x3aa, 0x61f, 0x3de, 0x136, 0x479, 0x118, 0x584, 0x44f, 0x700
+
+1785880488
+lingxu!~lingxu@user/lingxu
+ok, vectors don't work here too because the have simd alignment of 16 bytes I guess
+
+1785880552
+lingxu!~lingxu@user/lingxu
+are you trying to make it fast? reuse memory? or code redability
+
+1785880586
+ersei!~d76d5@user/d76d5
+for fun :) avoiding branches
+
+1785880597
+ersei!~d76d5@user/d76d5
+also out was completely wrong
+
+1785880598
+ersei!~d76d5@user/d76d5
+lol
+
+1785880790
+ersei!~d76d5@user/d76d5
+145, 292, 383, 65, 1308, 1415, 320, 2010, 6, 657, 1228, 858, 341, 230, 287, 938, 1567, 990, 310, 1145, 280, 1412, 1103, 1792
+
+1785880903
+lingxu!~lingxu@user/lingxu
+nah, sorry, I give up :P atleast for now
+
+1785880984
+ersei!~d76d5@user/d76d5
+no worries
+
+1785881687
+lingxu!~lingxu@user/lingxu
+actually...
+
+1785882984
+lingxu!~lingxu@user/lingxu
+ersei: i'm not sure how which bits you include
+
+1785883026
+lingxu!~lingxu@user/lingxu
+but you can grasp my idea, there is no branching and calling code is rather simple, no branching, pure magic number X)
+
+1785883221
+lingxu!~lingxu@user/lingxu
+ersei: https://pastebin.com/iZkwPmzN
+
+1785883278
+lingxu!~lingxu@user/lingxu
+I tried to write test with your testdata, but it's failing, I couldn't grasp the bit pattern
+
+1785884527
+lingxu!~lingxu@user/lingxu
+ersei: or this one :P https://pastebin.com/nq7rfRHU
+
+1785885404
+ersei!~d76d5@user/d76d5
+imagine it like you take a bunch of u8s as base2 in a string
+
+1785885414
+ersei!~d76d5@user/d76d5
+split the string into 11 bit chunks
+
+1785885429
+ersei!~d76d5@user/d76d5
+interpret each of those chunks as base2 numbers
+
+1785885444
+ersei!~d76d5@user/d76d5
+no endianness
+
+1785886121
+ersei!~d76d5@user/d76d5
+also tryinf to do this at comptime for arbitrary integer arrays
+
+1785886877
+ixb!~ixb@user/ixb
+There's probably a better place to ask this but I figure it's common enough that somebody knows off the top of their head, and it's quite common, what's a good way to make c bindings while also modifying the translate-c output? 
+
+1785886896
+ixb!~ixb@user/ixb
+I'm writing bindings and currently I have a build.zig process that goes like 'translate-c into a file' -> modify 'translate-c' -> @import the modified translate-c so I can use comptime to reflect on it easily and generate nicer and more zig-y functions for some things.
+
+1785886934
+ixb!~ixb@user/ixb
+But I'm willing to bet I'm overcomplicating it by a lot. Fairly new to zig itself though, not too familiar with everything just yet and wanting to hear about how it's usually done here. Oh and the c header may change, sometimes.
+
+1785887049
+perryprog!~perryprog@wikipedia/perryprog
+build system protocol PR moved. We're now very very close to ZLS for master 🎉
+
