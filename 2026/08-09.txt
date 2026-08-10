@@ -1,0 +1,408 @@
+1786233822
+bxtn!~user@user/bxtn
+i'm kind of lost regarding std.http. so i have my request and sendBodiless() and flush it. i take it receiveHead() is the way to go to get the http response? and where is the body/json i'm looking for? is it something i'll need to pipe from std.http.Client.Response.reader()?
+
+1786233975
+Affliction!~afflictio@idlerpg/player/affliction
+the latter iirc, one sec, I'll see how I did it
+
+1786234144
+Affliction!~afflictio@idlerpg/player/affliction
+https://bpa.st/6ZTY5NZPK67TZOE5WLJCBI3GQU is a wrapper I cobbled together for this use case
+
+1786234160
+Affliction!~afflictio@idlerpg/player/affliction
+a "Here's a URL, give me a reader" kind of API
+
+1786234263
+Affliction!~afflictio@idlerpg/player/affliction
+but yeah, once you've got the response, .reader() will give you the raw (possibly compressed) payload
+
+1786234327
+bxtn!~user@user/bxtn
+thanks. internet's working a little better and saw https://cookbook.ziglang.cc/05-01-http-get/ which does basically the same thing so at least i'm on the right track.
+
+1786234337
+Affliction!~afflictio@idlerpg/player/affliction
+Took me a bit to figure out too, ended up looking at how .fetch() worke
+
+1786234417
+bxtn!~user@user/bxtn
+fetch looks like it just returns a struct with the status code, which doesn't do me much good.
+
+1786234427
+perryprog!~perryprog@wikipedia/perryprog
+Yeah, people need to stop trying to make fetch happen :/
+
+1786234448
+perryprog!~perryprog@wikipedia/perryprog
+(Specifically Gretchen!)
+
+1786234454
+Affliction!~afflictio@idlerpg/player/affliction
+bxtn: you can pass it in a writer
+
+1786234459
+Affliction!~afflictio@idlerpg/player/affliction
+in the options 
+
+1786234489
+bxtn!~user@user/bxtn
+huh. guess there is FetchOptions.response_writer.
+
+1786234503
+bxtn!~user@user/bxtn
+the “reader” part was a little confusing since it sounds like it'd be reading input.
+
+1786234506
+Affliction!~afflictio@idlerpg/player/affliction
+yeah, so you could pass that to an allocating writer, or a file, or something else
+
+1786235201
+bxtn!~user@user/bxtn
+Affliction: come to think of it, why did you go this route instead of fetch? i only did because i didn't know fetch could do that, going by the return signature alone.
+
+1786235235
+Affliction!~afflictio@idlerpg/player/affliction
+streaming parse of potentially a large amount of XML was the initial usecase
+
+1786235283
+Affliction!~afflictio@idlerpg/player/affliction
+but yeah, if you're ultimately going to be .stream*()ing it to a writer, fetch is probably the way to go
+
+1786235599
+bxtn!~user@user/bxtn
+that sounds like a better bet.
+
+1786240639
+bxtn!~user@user/bxtn
+“no field or member function named ‘sendBodiless’ in …!http.Client.Request”
+
+1786240661
+bxtn!~user@user/bxtn
+last i checked, there is. and with a `try`.
+
+1786240781
+perryprog!~perryprog@wikipedia/perryprog
+bxtn: sounds like you maybe aren't unwrapping the error? (note the "!")
+
+1786240809
+bxtn!~user@user/bxtn
+wasn't that part of the `try` keyword in `try request.sendBodiless();`?
+
+1786240811
+Affliction!~afflictio@idlerpg/player/affliction
+specifically for request()
+
+1786240841
+bxtn!~user@user/bxtn
+d'oh. now i see. forgot to `try` on the client.request(…).
+
+1786240848
+Affliction!~afflictio@idlerpg/player/affliction
+indeed
+
+1786240850
+Affliction!~afflictio@idlerpg/player/affliction
+I guess you could do: try (try request).sendBodiless();
+
+1786240855
+Affliction!~afflictio@idlerpg/player/affliction
+if at first you don't succeed... :)
+
+1786240865
+perryprog!~perryprog@wikipedia/perryprog
+.unwrap() and panic?
+
+1786240948
+perryprog!~perryprog@wikipedia/perryprog
+(.? and experience unchecked illegal behavior doesn't have the same ring to it)
+
+1786243529
+carsonc!~carsonc@user/carsonc
+hello
+
+1786246489
+andrewrk!~andrewrk@mail.ziglang.org
+hello carsonc 
+
+1786246802
+carsonc!~carsonc@user/carsonc
+Howsa going? I was about to ask for someone to explain some implicit return error I was getting but ended up getting it in the meantime lol
+
+1786246861
+bxtn!~user@user/bxtn
+the frustrating part of searching for answers online now is all the old answers that don't apply anymore. trying to figure out the json thing now and it's almost a circular "expected type *Reader, got **Reader" and "unable to dereference reader" type of shenanigans.
+
+1786247003
+carsonc!~carsonc@user/carsonc
+got a minimal PoC of error? I could take a look
+
+1786247089
+bxtn!~user@user/bxtn
+i'd say i didn't but now it's a memory leak on the parsing instead of a compiling error so... pretty sure a different problem means we're making progress, right?
+
+1786247183
+carsonc!~carsonc@user/carsonc
+lol. always gotta hope
+
+1786249753
+carsonc!~carsonc@user/carsonc
+goodnight all
+
+1786249761
+carsonc!~carsonc@user/carsonc
+or whichever time of day it is for you...
+
+1786278613
+bxtn!~user@user/bxtn
+finally. it works. the http response's reader passes successfully into json.parseFromTokenSoruce. you know what this means? time to write up an article and contribute to the ephemeral pile of "how to do $thing in zig" only to be uselessly outdated by 0.17's release.
+
+1786279940
+lumidify!~lumidify@user/lumidify
+If I iterate over a StringHashMap twice without modifying it inbetween, is the order guaranteed to be the same? The order itself doesn't matter, it just needs to be the same both times. I can't think of a hashmap implementation where it would make sense for the order to change when the hashmap wasn't modified, but I'm wondering if there's any guarantee of that.
+
+1786280665
+Barion!~Thunderbi@user/Barion
+lumidify: as long as the map is not modified the order _should_ stay the same
+
+1786280681
+Barion!~Thunderbi@user/Barion
+*should*
+
+1786280810
+lumidify!~lumidify@user/lumidify
+Yeah, that's what I thought. If I want to be on the safe side, I guess I'll just have to store the keys in a list the first time so I can be certain that I access them in the same order the second time (although I guess that also has a lot of overhead becasue of all the lookups instead of just iterating directly over the entire hashmap).
+
+1786281095
+slynk!~ryank@user/slynk
+unless you give the hashmap to something else you own the memory
+
+1786282605
+lumidify!~lumidify@user/lumidify
+Of course I own the memory, but the hashmap implementation could theoretically choose to give me a completely random iteration order every time I call .iterator() (although I don't think any sensible implementation would do that, but I'm not an expert on hashmaps).
+
+1786283063
+slynk!~ryank@user/slynk
+I feel like you have been harmed by other languages lol. zig is just adding to an index and pulling next linear item https://codeberg.org/ziglang/zig/src/branch/master/lib/std/array_hash_map.zig#L272
+
+1786283150
+bxtn!~user@user/bxtn
+to be fair, i wouldn't really be using a hash map if i needed my ducks in order too. hash maps imply more random-access than sequential-access.
+
+1786284929
+Barion!~Thunderbi@user/Barion
+should the debug allocator catch use after free issues?
+
+1786285582
+ahto!~ahto@user/ahto
+Barion: Not sure it is able to do that, I believe you will need to use valgrind for this
+
+1786285600
+ahto!~ahto@user/ahto
+However, this issue may be relevant to you https://codeberg.org/ziglang/zig/issues/35894
+
+1786285772
+ahto!~ahto@user/ahto
+Barion: There is something called SafeAllocator that seems scheduled for next release? idk, possibly someone who is closer to the compiler will know the status of that
+
+1786286394
+Barion!~Thunderbi@user/Barion
+ahto: thanks, seems like SafeAllocator will replace DebugAllocator in the future
+
+1786286498
+Barion!~Thunderbi@user/Barion
+my problem was that the code ran fine with DebugAllocator (it does not reuse memory) but as soon as i switched to release i got a segv which was annoying to debug. SafeAllocator should segv in this case
+
+1786286814
+ahto!~ahto@user/ahto
+Barion:  Switched the build to use ReleaseSafe or ReleaseFast? I guess you may be able to use ValidationAllocator wrapper to check your allocations. It is mostly just leak detection afaict in 0.16
+
+1786286844
+ahto!~ahto@user/ahto
+Otherwise - yeah, Valgrind or ASAN* (*Not sure if ASAN works properly, haven't tried it)
+
+1786286910
+ahto!~ahto@user/ahto
+Actually, Valgrind may not play nicely on mac fwiw, so it depends on your platform
+
+1786286935
+Barion!~Thunderbi@user/Barion
+ahto: ReleaseFast segved, ReleaseSafe gave me a stack trace and aborted (which made it possible to find the leak)
+
+1786286996
+ahto!~ahto@user/ahto
+Barion: Ah! Neato, yeah I was curious what Release mode you had it under.
+
+1786292376
+Barion!~Thunderbi@user/Barion
+would you guys recommend writing self.* = undefined; in every deinit?
+
+1786294735
+ersei!~d76d5@user/d76d5
+Barion: in release modes that won't do anything
+
+1786294756
+ersei!~d76d5@user/d76d5
+if you wanna do something like that, memset it to zero or something
+
+1786294780
+ersei!~d76d5@user/d76d5
+or make self an optional and set it to null
+
+1786294786
+Barion!~Thunderbi@user/Barion
+ersei: it catches use after free in debug
+
+1786295799
+ersei!~d76d5@user/d76d5
+even better have the variable go out of scope on deinit
+
+1786295918
+Barion!~Thunderbi@user/Barion
+ersei: yes programming can be easy when the code is simple
+
+1786306056
+seanh!uid72485@id-72485.ilkley.irccloud.com
+Hi all! I just recently started studying Zig in my spare time. Really attracted both by the project's politics and by the language itself. I'm a web developer in my day job (Python, TypeScript, ...) but I've always been curious about how programming languages are designed and implemented. Anyway, just thought I'd say hi while I'm sitting here reading the Zig docs
+
+1786306159
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+seanh: hi and welcome
+
+1786306189
+username-generic!~user@user/username-generic
+seanh: Have fun!
+
+1786306381
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+seanh: have fun reading the docs. ziglings is often recommended as a starting point for playing around with zig: https://codeberg.org/ziglings/exercises/#ziglings
+
+1786306481
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+seanh: and as you said that you are curious about how prog langs are implemented, i also dare you to look in to the sources of zig itself. IMHO it's surprisingly approachable and pleasant to read
+
+1786306537
+seanh!uid72485@id-72485.ilkley.irccloud.com
+Thanks! I'm one of those people who likes to read the docs from start to finish. But once I've finished with that Ziglings might be a good next thing
+
+1786306563
+eggbert!~eggbert@user/Eggbert
+beastd: ziglings is so much fun
+
+1786306603
+eggbert!~eggbert@user/Eggbert
+out of all the implementations of the "ings" for programming langauges (i.e. rustligns, c-lings etc.) ive liked ziglings the most
+
+1786306604
+seanh!uid72485@id-72485.ilkley.irccloud.com
+I also have no idea how such a thing as a compiler or interpreter could possibly be implemented, so I've got copies of Writing a C Compiler and Crafting Interpreters, thought I might do the exercises from those books in Zig
+
+1786306624
+eggbert!~eggbert@user/Eggbert
+you have a physical copy of crafting interpreters???
+
+1786306673
+seanh!uid72485@id-72485.ilkley.irccloud.com
+@beastd You're now the second person who's said to me why not just read the source code of Zig! It seems mad, the idea that the code for such a thing could possibly be comprehensible by a mere app coder like me. But I might actually try it, sounds fun
+
+1786306707
+seanh!uid72485@id-72485.ilkley.irccloud.com
+@eggbert Yeah. Although to be honest, if you're actually gonna work through it, the online copy is probably better. The hard copy is quite unweildy
+
+1786306748
+eggbert!~eggbert@user/Eggbert
+seanh: i can imagine
+
+1786306755
+eggbert!~eggbert@user/Eggbert
+still super nerdy and cool to have it physical
+
+1786306764
+eggbert!~eggbert@user/Eggbert
+i bet it looks HOTTTT on a bookshelf lol
+
+1786306822
+seanh!uid72485@id-72485.ilkley.irccloud.com
+I was between jobs recently so I bought Crafting Interpreters intending to study it because I think programming languages are neat and was always curious. Then of course I barely got started and I got a new job, doing more web development. Gotta pay the bills
+
+1786306840
+eggbert!~eggbert@user/Eggbert
+awwwwww
+
+1786306873
+eggbert!~eggbert@user/Eggbert
+hopefully you can find time to have fun with it even with the webslop
+
+1786306909
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+seanh: reading docs from start to finish is not a bad approach at all. docs is really important almost as important as implementation. and after you finish you can judge the quality of the docs and you know a of a huge bag of things that exist that you might otherwise not know and therefore either try to implement yourself or give up on
+
+1786307024
+seanh!uid72485@id-72485.ilkley.irccloud.com
+@eggbert https://usercontent.irccloud-cdn.com/file/0cOBjxLC/IMG_1042.heic
+
+1786307063
+seanh!uid72485@id-72485.ilkley.irccloud.com
+@eggbert I appreciate the sympathy! Hopefully one day I will quit the webslop job, as well
+
+1786307200
+eggbert!~eggbert@user/Eggbert
+so cool!
+
+1786307209
+eggbert!~eggbert@user/Eggbert
+i didn't know irc supported pfps
+
+1786307274
+username-generic!~user@user/username-generic
+I'll second that.
+
+1786307288
+Ellenor!ellenor@invaincu.qc.ca.umbrellix.net
+it doesn't; some IRC clients do
+
+1786307384
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+lumidify: for StringHashMap I see no such guarantee in the docs
+
+1786307390
+seanh!uid72485@id-72485.ilkley.irccloud.com
+Yeah, I'm using IRCCloud, just drag-dropped the image. I considered an IRC client as a fun first project to do in Zig, but several people already had that idea!
+
+1786307437
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+lumidify: when looking at the impl i thinks that it is std.hash_map.HashMap constructed to work with strings
+
+1786307505
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+slynk: you were pointing at the source of std.ArrayHashMap which is not related to StringHashMap or am I missing sth?
+
+1786307551
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+lumidify: so consulting the docs of HashMap should be appropriate
+
+1786307557
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+if i read it correctly for iteration no order is guaranteed and iteration itself might not be very efficient
+
+1786307566
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+docs also say iterators are invalidated by modification
+
+1786307583
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+looking into the source of the iterator impl specifically. if i'm not mistaken: doing multiple iterations without modification in between should yield the same order
+
+1786307604
+lumidify!~lumidify@user/lumidify
+beastd: Yeah, that was pretty much my conclusion as well. The current implementation does give the same order when the hashmap wasn't modified, but there's no guarantee that won't change.
+
+1786307610
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+i would say the docs could be more elaborate and explicit about those things. i prefer being clear about the contract. not sure if others agree
+
+1786307647
+beastd!~kvirc@p5b0c7650.dip0.t-ipconnect.de
+lumidify: yeah, that sounds correct
+
