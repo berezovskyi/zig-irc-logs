@@ -1,0 +1,840 @@
+1786509004
+vyivel!~vyivel@user/Vyivel
+const std = @import("std"); pub fn main() !void { const s = "ab.cdef"[3..]; @compileLog(s); @compileError(s); }
+
+1786509021
+vyivel!~vyivel@user/Vyivel
+the discrepancy between log and error output is confusing, is it a bug?
+
+1786509524
+Affliction!~afflictio@idlerpg/player/affliction
+worked that way for as long as I've known
+
+1786510023
+vyivel!~vyivel@user/Vyivel
+is it intentional?
+
+1786510513
+Affliction!~afflictio@idlerpg/player/affliction
+I assume so, based on its output that's included in the docs: https://ziglang.org/documentation/master/#compileLog
+
+1786511149
+vyivel!~vyivel@user/Vyivel
+the problem isn't that it prints types, it's that the string isn't sliced
+
+1786511167
+vyivel!~vyivel@user/Vyivel
+@compileError prints cdef and @compileLog printa ab.cdef
+
+1786511277
+Affliction!~afflictio@idlerpg/player/affliction
+oh yeah, that's interesting
+
+1786511313
+Affliction!~afflictio@idlerpg/player/affliction
+the *const [4:0]u8 even more so, wonder if there's some comptime implementation details leaking through
+
+1786511400
+torque!~tachyon@user/torque
+that behavior goes back to 0.10.0 based on some godbolt sleuthing interestingly enough
+
+1786511432
+torque!~tachyon@user/torque
+older than I expected
+
+1786511539
+torque!~tachyon@user/torque
+I wonder if there's a bug ticket for this already
+
+1786511563
+Affliction!~afflictio@idlerpg/player/affliction
+If it's reflecting internal state as designed, it's probably not a Bug, but it's certainly at least unintuitive
+
+1786511597
+torque!~tachyon@user/torque
+well, it's not right because it doesn't actually indicate what the slice is pointing to properly
+
+1786511653
+torque!~tachyon@user/torque
+if it included an index or something I could maybe see it but I'd still disagree
+
+1786511769
+torque!~tachyon@user/torque
+fwiw string literals are actually pointers to const arrays and slicing them with comptime known bounds results in another pointer to an array so the `*const [4:0] u8` is correct and implies that the original string was sliced to its last 4 characters
+
+1786511815
+vyivel!~vyivel@user/Vyivel
+yeah, the reported type is right
+
+1786511834
+Affliction!~afflictio@idlerpg/player/affliction
+right, but it's showing presumably the original literal, not the sliced form. As a user, having both at the same time would justifiably trigger a "wtf?" response
+
+1786511862
+vyivel!~vyivel@user/Vyivel
+indeed, got bitten by it while debugging my comptime string stuff
+
+1786511915
+torque!~tachyon@user/torque
+the point is that what is being printed is not the original literal so why on earth would the compile log show the original literal
+
+1786511921
+torque!~tachyon@user/torque
+it should show just the contents of the slice
+
+1786511935
+Affliction!~afflictio@idlerpg/player/affliction
+agreed
+
+1786516499
+Barion!~Thunderbi@user/Barion
+what are your best/favorite zig tips and tricks?  
+
+1786516797
+ifreund!2940d10f8b@user/ifreund
+vyivel: Indeed, I would consider that @compileLog() behavior a compiler bug
+
+1786516871
+ifreund!2940d10f8b@user/ifreund
+vyivel: https://github.com/ziglang/zig/issues/21596
+
+1786517410
+piroquinha!~bucetinha@user/teucu
+hello! is zig comparable to C++?
+
+1786517422
+piroquinha!~bucetinha@user/teucu
+feature and performance wise?
+
+1786517530
+Affliction!~afflictio@idlerpg/player/affliction
+depends on the C++ features you use
+
+1786517559
+piroquinha!~bucetinha@user/teucu
+value semantics and easy memory access
+
+1786517563
+Affliction!~afflictio@idlerpg/player/affliction
+you could think of it as somewhere between C and oldschool C++ with some newer things mixed in in a way
+
+1786517570
+piroquinha!~bucetinha@user/teucu
+interesting
+
+1786517570
+Affliction!~afflictio@idlerpg/player/affliction
+those? sure
+
+1786517577
+piroquinha!~bucetinha@user/teucu
+what about templates?
+
+1786517613
+Affliction!~afflictio@idlerpg/player/affliction
+for generics? easy, can't say I've fully explored templates beyond that in C++
+
+1786517627
+Affliction!~afflictio@idlerpg/player/affliction
+my own C++ style was very "C with classes" anyway
+
+1786517636
+Affliction!~afflictio@idlerpg/player/affliction
+that sort of style will translate nicely
+
+1786517657
+piroquinha!~bucetinha@user/teucu
+I see
+
+1786517677
+piroquinha!~bucetinha@user/teucu
+can you tell me more about zig generics? do they do type erasure or is it also code generation?
+
+1786517697
+Affliction!~afflictio@idlerpg/player/affliction
+programmer's model is a function which returns a type
+
+1786517749
+piroquinha!~bucetinha@user/teucu
+I don't get it
+
+1786517806
+Affliction!~afflictio@idlerpg/player/affliction
+so, you'd have something like: pub fn Type(comptime T: anytype) type { return struct { foo: T, bar: std.ArrayList(T), ... } }
+
+1786517827
+Affliction!~afflictio@idlerpg/player/affliction
+which, if you're not used to the syntax...
+
+1786517831
+piroquinha!~bucetinha@user/teucu
+oh cool! 
+
+1786517840
+piroquinha!~bucetinha@user/teucu
+can I do classes with T too?
+
+1786517844
+Affliction!~afflictio@idlerpg/player/affliction
+function called Type, taking an arg called T which can be any type
+
+1786517850
+Affliction!~afflictio@idlerpg/player/affliction
+kinda, no inheritence
+
+1786517851
+Affliction!~afflictio@idlerpg/player/affliction
+but, you can have methods
+
+1786517866
+Affliction!~afflictio@idlerpg/player/affliction
+https://ziglang.org/documentation/0.16.0/std/#src/std/array_list.zig is basically how std::vector is implemented
+
+1786517868
+piroquinha!~bucetinha@user/teucu
+I believe ArrayList is also generic, right?
+
+1786517877
+Affliction!~afflictio@idlerpg/player/affliction
+indeed
+
+1786517882
+piroquinha!~bucetinha@user/teucu
+:)))))
+
+1786517906
+piroquinha!~bucetinha@user/teucu
+how are the performance benchmarks compared to equivalent C++ code?
+
+1786517907
+Affliction!~afflictio@idlerpg/player/affliction
+so you call ArrayList(T) at comptime, which generates a struct where T is whatever type you're interested in
+
+1786517933
+Affliction!~afflictio@idlerpg/player/affliction
+Pretty close to clang iirc, don't have any off hand...
+
+1786517959
+piroquinha!~bucetinha@user/teucu
+and it is a full compiler or is it a frontend to another compiler or maybe llvm?
+
+1786517967
+cnx!~cnx@tem.loang.net
+yes
+
+1786517980
+piroquinha!~bucetinha@user/teucu
+yes for 1, 2 or 3? :D
+
+1786517989
+Affliction!~afflictio@idlerpg/player/affliction
+bit of both, LLVM is used for its release optimization, debug on x86 and ARM are getting their own code generators written
+
+1786518012
+Affliction!~afflictio@idlerpg/player/affliction
+mostly for build speed, you'll get to know and hate the "LLVM Emit Object" phase :D
+
+1786518014
+piroquinha!~bucetinha@user/teucu
+my final question: libraries and ABI
+
+1786518024
+piroquinha!~bucetinha@user/teucu
+I believe you interface with C libraries, right?
+
+1786518033
+Affliction!~afflictio@idlerpg/player/affliction
+indeed
+
+1786518051
+piroquinha!~bucetinha@user/teucu
+and do zig libraries have a stable ABI?
+
+1786518063
+Affliction!~afflictio@idlerpg/player/affliction
+not for its native calling convention and struct layout
+
+1786518067
+piroquinha!~bucetinha@user/teucu
+ugh
+
+1786518072
+Affliction!~afflictio@idlerpg/player/affliction
+gives compiler more degrees of freedom
+
+1786518082
+Affliction!~afflictio@idlerpg/player/affliction
+"extern struct"s will naturally match C
+
+1786518083
+piroquinha!~bucetinha@user/teucu
+but portability sucks, like C++ libs too
+
+1786518087
+Affliction!~afflictio@idlerpg/player/affliction
+and functions can be tagged with callconv(.c)
+
+1786518091
+Affliction!~afflictio@idlerpg/player/affliction
+yeah
+
+1786518106
+cnx!~cnx@tem.loang.net
+zig can only compile to c abi shared libraries
+
+1786518109
+Affliction!~afflictio@idlerpg/player/affliction
+you're not going to mix dynamic libs between different compiler versions
+
+1786518122
+cnx!~cnx@tem.loang.net
+so you don't run into libc++ situations
+
+1786518126
+piroquinha!~bucetinha@user/teucu
+I am a C++ fanatic, but I recognize its defects and I am searching equivalent languages to see how it can be replaced or improved
+
+1786518138
+piroquinha!~bucetinha@user/teucu
+I heard about Carbon and Zig. Rust too, but no thanks
+
+1786518182
+Affliction!~afflictio@idlerpg/player/affliction
+I'll say I've enjoyed zig, coming from C and rust
+
+1786518201
+piroquinha!~bucetinha@user/teucu
+hmm hold on. I missed something that cnx just said. so if I generate a library with zig, it will be a C library?
+
+1786518225
+cnx!~cnx@tem.loang.net
+you can only generate c shared object
+
+1786518226
+piroquinha!~bucetinha@user/teucu
+what about classes?
+
+1786518255
+cnx!~cnx@tem.loang.net
+zig libraries are to be statically compiled (not linked, since it'll be one compilation unit) together with the executable
+
+1786518261
+piroquinha!~bucetinha@user/teucu
+hmm you don't have inheritance, so your classes may just be a pack of functions that have (self) as the first arg...
+
+1786518303
+Affliction!~afflictio@idlerpg/player/affliction
+pretty much, though I don't think methods get automatically exported... hm
+
+1786518313
+piroquinha!~bucetinha@user/teucu
+no vptr bullshit means that you can map methods directly to normal functions
+
+1786518315
+Affliction!~afflictio@idlerpg/player/affliction
+or how they're namespaced
+
+1786518334
+Affliction!~afflictio@idlerpg/player/affliction
+oh we have plenty of vtables, they're just explicit now :)
+
+1786518337
+piroquinha!~bucetinha@user/teucu
+you probably do something about name mangling to have a consistent interface
+
+1786518340
+Affliction!~afflictio@idlerpg/player/affliction
+std.mem.Allocator and std.Io for instance
+
+1786518352
+piroquinha!~bucetinha@user/teucu
+oh! you have vtables? but you said "no inheritance". so what are these vtables for?
+
+1786518374
+Affliction!~afflictio@idlerpg/player/affliction
+dynamic dispatch
+
+1786518392
+piroquinha!~bucetinha@user/teucu
+hmm so you must have interfaces then?
+
+1786518406
+Affliction!~afflictio@idlerpg/player/affliction
+indeed, Allocator is the main examples newbies will run into
+
+1786518409
+piroquinha!~bucetinha@user/teucu
+got it
+
+1786518413
+Affliction!~afflictio@idlerpg/player/affliction
+along with Io, Reader, and Writer
+
+1786518425
+piroquinha!~bucetinha@user/teucu
+still can map directly, since you can encode the vtable in the function itself
+
+1786518429
+Affliction!~afflictio@idlerpg/player/affliction
+https://ziglang.org/documentation/0.16.0/std/#std.mem.Allocator and https://ziglang.org/documentation/0.16.0/std/#src/std/mem/Allocator.zig for the source there
+
+1786518451
+Affliction!~afflictio@idlerpg/player/affliction
+https://ziglang.org/documentation/0.16.0/std/#std.heap.ArenaAllocator for an implementation and https://ziglang.org/documentation/0.16.0/std/#src/std/heap/ArenaAllocator.zig its source
+
+1786518465
+Affliction!~afflictio@idlerpg/player/affliction
+constructors are generally called "init"
+
+1786518471
+Affliction!~afflictio@idlerpg/player/affliction
+as a keyword to search for there
+
+1786518482
+piroquinha!~bucetinha@user/teucu
+do you have destructors too?
+
+1786518488
+ifreund!2940d10f8b@user/ifreund
+no RAII
+
+1786518488
+Affliction!~afflictio@idlerpg/player/affliction
+just another method, deinit
+
+1786518492
+Affliction!~afflictio@idlerpg/player/affliction
+^
+
+1786518493
+piroquinha!~bucetinha@user/teucu
+ifreund, noooo
+
+1786518495
+Affliction!~afflictio@idlerpg/player/affliction
+but, 'defer'
+
+1786518498
+Affliction!~afflictio@idlerpg/player/affliction
+and 'errdefer'
+
+1786518501
+piroquinha!~bucetinha@user/teucu
+defer == GO
+
+1786518503
+ifreund!2940d10f8b@user/ifreund
+that's probably the biggest difference from C++
+
+1786518509
+Affliction!~afflictio@idlerpg/player/affliction
+so, you still have to call the destructor somewhere
+
+1786518520
+Affliction!~afflictio@idlerpg/player/affliction
+but, defer and errdefer can do cleanup
+
+1786518530
+piroquinha!~bucetinha@user/teucu
+Go uses defer to emulate scope based resource management
+
+1786518534
+ifreund!2940d10f8b@user/ifreund
+idiomatic zig is data-oriented and does not call destructors for every object in a list, instead it frees all at once as a batch
+
+1786518544
+Affliction!~afflictio@idlerpg/player/affliction
+eg, if I'm writing a func that allocs temp memory, "errdefer" can clean it up if something goes wrong
+
+1786518544
+ifreund!2940d10f8b@user/ifreund
+https://www.hytradboi.com/2025/05c72e39-c07e-41bc-ac40-85e8308f2917-programming-without-pointers
+
+1786518567
+piroquinha!~bucetinha@user/teucu
+why can't you just use defer instead of errdefer?
+
+1786518581
+Affliction!~afflictio@idlerpg/player/affliction
+defer always calls it on scope end, errdefer only if we're returning an error
+
+1786518590
+piroquinha!~bucetinha@user/teucu
+hmmm
+
+1786518592
+Affliction!~afflictio@idlerpg/player/affliction
+which, no exceptions, errors are basically enums
+
+1786518596
+ifreund!2940d10f8b@user/ifreund
+zig's defer is differnt from go's defer by the way
+
+1786518598
+Affliction!~afflictio@idlerpg/player/affliction
+and have additional syntactic sugar
+
+1786518625
+ifreund!2940d10f8b@user/ifreund
+Zig's defer runs based on lexical scope, go's runs at the end of the current function
+
+1786518628
+piroquinha!~bucetinha@user/teucu
+no exceptions at all, like Go?
+
+1786518632
+Affliction!~afflictio@idlerpg/player/affliction
+indeed
+
+1786518640
+Affliction!~afflictio@idlerpg/player/affliction
+special error values are used instead
+
+1786518640
+piroquinha!~bucetinha@user/teucu
+and returning multiple values like Go as well?
+
+1786518644
+Affliction!~afflictio@idlerpg/player/affliction
+nope
+
+1786518654
+Affliction!~afflictio@idlerpg/player/affliction
+failableFunc() will return !T
+
+1786518656
+Affliction!~afflictio@idlerpg/player/affliction
+or ErrType!T
+
+1786518661
+Affliction!~afflictio@idlerpg/player/affliction
+ErrType is basically an enum
+
+1786518663
+piroquinha!~bucetinha@user/teucu
+ah a sum type
+
+1786518663
+ifreund!2940d10f8b@user/ifreund
+error handling is not very similar to go, it feels like exceptions without the longjmp
+
+1786518673
+Affliction!~afflictio@idlerpg/player/affliction
+(or !T for any possible error)
+
+1786518692
+Affliction!~afflictio@idlerpg/player/affliction
+and there's syntax for eg: "try failableFunc()" which propagates the error if it happens
+
+1786518693
+piroquinha!~bucetinha@user/teucu
+so you propagate errors returning sum types from functions... kinda like Go, but neater
+
+1786518710
+Affliction!~afflictio@idlerpg/player/affliction
+or "failableFunc() catch |e| {/*do a thing with the error value*/}"
+
+1786518732
+Affliction!~afflictio@idlerpg/player/affliction
+which can also simplify down to substituting a default
+
+1786518741
+piroquinha!~bucetinha@user/teucu
+ahhh some compiler aid for error propagation looks nice. I have had it with Go when I was chaining lots of function calls which propagated errors
+
+1786518744
+ifreund!2940d10f8b@user/ifreund
+yes, if go added reasonable syntax sugar they could have something close to Zig's errors
+
+1786518745
+piroquinha!~bucetinha@user/teucu
+too verbose and boring
+
+1786518748
+Affliction!~afflictio@idlerpg/player/affliction
+const val = failableFunc() catch 42; // 42 default
+
+1786518774
+Affliction!~afflictio@idlerpg/player/affliction
+similar syntax for optionals, ?T, ?*T for nullable pointers, no size overhead
+
+1786518787
+Affliction!~afflictio@idlerpg/player/affliction
+"orelse" syntax for handling code or providing a default
+
+1786518792
+piroquinha!~bucetinha@user/teucu
+are optionals monadic? can I chain stuff with them?
+
+1786518818
+piroquinha!~bucetinha@user/teucu
+kotlin got optionals and nullables pretty right on that matter
+
+1786518822
+Affliction!~afflictio@idlerpg/player/affliction
+I admit I don't really know what a monad is, despite my bit of rust background heh
+
+1786518827
+ifreund!2940d10f8b@user/ifreund
+idiomatic Zig is imperative in style, not functional
+
+1786518846
+piroquinha!~bucetinha@user/teucu
+so no special operators for optionals?
+
+1786518853
+ifreund!2940d10f8b@user/ifreund
+you can try and write it in a functional style, but it will have high friction
+
+1786518859
+piroquinha!~bucetinha@user/teucu
+:(
+
+1786518877
+Affliction!~afflictio@idlerpg/player/affliction
+other than orelse? if (maybe_thing) |thing| {/* do a thing with thing */} else {/* no thing */}
+
+1786518890
+piroquinha!~bucetinha@user/teucu
+but no mapping
+
+1786518904
+Affliction!~afflictio@idlerpg/player/affliction
+hm
+
+1786518912
+Affliction!~afflictio@idlerpg/player/affliction
+ifs can return values
+
+1786518914
+ifreund!2940d10f8b@user/ifreund
+Zig doesn't have "capturing lambdas" like c++
+
+1786518927
+piroquinha!~bucetinha@user/teucu
+but you have first order functions, right?
+
+1786518934
+Affliction!~afflictio@idlerpg/player/affliction
+but, yeah, probably not in the .and_then(), etc that rust has
+
+1786518957
+Affliction!~afflictio@idlerpg/player/affliction
+function pointers, and structs containing methods are generally how that style's done
+
+1786518977
+ifreund!2940d10f8b@user/ifreund
+piroquinha: yes, you can pass around function pointers
+
+1786518981
+Affliction!~afflictio@idlerpg/player/affliction
+eg, HashMap can accept custom hash and comparison implementations with that style
+
+1786518984
+ifreund!2940d10f8b@user/ifreund
+but no capturing, that's a hidden allocation
+
+1786518997
+Affliction!~afflictio@idlerpg/player/affliction
+^, lambdas become explicit structs
+
+1786519018
+Affliction!~afflictio@idlerpg/player/affliction
+bit more annoying, but still replicable
+
+1786519028
+Affliction!~afflictio@idlerpg/player/affliction
+anyway, gotta afk for a bit, back in an hourish
+
+1786519037
+Affliction!~afflictio@idlerpg/player/affliction
+might be worth considering ziglings
+
+1786519046
+piroquinha!~bucetinha@user/teucu
+C++ lambdas don't do allocations (they are just boilerplate for generated anonymous classes with constructor parameters). std::function is the problem, since it does type erasure, it has to allocate a buffer for the closure
+
+1786519085
+ifreund!2940d10f8b@user/ifreund
+anyhow, if you're not scared off by "no RAII" I'd suggest you give zig a try
+
+1786519108
+ifreund!2940d10f8b@user/ifreund
+you will likely be pleasantly surprised by the user-experience of comptime
+
+1786519109
+piroquinha!~bucetinha@user/teucu
+yeah! I am kinda used to RAII in C++, but I think I can manage it with defer
+
+1786519115
+ifreund!2940d10f8b@user/ifreund
+it's so much more than constexpr in C++
+
+1786519122
+piroquinha!~bucetinha@user/teucu
+my favorite feature
+
+1786519126
+Affliction!~afflictio@idlerpg/player/affliction
+<3 comptime
+
+1786519134
+ifreund!2940d10f8b@user/ifreund
+think constexpr, but it also replaces templates and the preprocessor
+
+1786519136
+piroquinha!~bucetinha@user/teucu
+comptime is not my favorite C++ feature
+
+1786519139
+ifreund!2940d10f8b@user/ifreund
+all in one conistent feature
+
+1786519151
+piroquinha!~bucetinha@user/teucu
+it takes forever to compile
+
+1786519168
+ifreund!2940d10f8b@user/ifreund
+oh, you will love Zig's incremental compilation :)
+
+1786519173
+ifreund!2940d10f8b@user/ifreund
+https://mlugg.co.uk/posts/incremental-compilation-internals/
+
+1786519174
+Affliction!~afflictio@idlerpg/player/affliction
+piroquinha: Oh, yeah, you can also fall through the same trap I did: Use the zig compiler as a C cross compiler (which it does very nicely out of the box)
+
+1786519195
+piroquinha!~bucetinha@user/teucu
+looks like you are doing great with Zig
+
+1786519204
+piroquinha!~bucetinha@user/teucu
+does it have a lot of bugs? or is it pretty stable now?
+
+1786519220
+Affliction!~afflictio@idlerpg/player/affliction
+not many bugs on the stable releases, though the language is still in flux
+
+1786519227
+Affliction!~afflictio@idlerpg/player/affliction
+expect refactors every major release
+
+1786519231
+ifreund!2940d10f8b@user/ifreund
+It's stable enough to write large projects in
+
+1786519250
+Affliction!~afflictio@idlerpg/player/affliction
+possibly significant ones in 0.15, though 0.16 -> 0.17 supposedly is less painful than that was, heh
+
+1786519272
+piroquinha!~bucetinha@user/teucu
+thanks for all the answers and getting along with me <3
+
+1786519285
+ifreund!2940d10f8b@user/ifreund
+it doesn't feel complete/polished in all aspect yet though
+
+1786519300
+ifreund!2940d10f8b@user/ifreund
+some things are already amazing, some are just not finished :)
+
+1786519308
+ifreund!2940d10f8b@user/ifreund
+piroquinha: no problem, happy hacking!
+
+1786519310
+piroquinha!~bucetinha@user/teucu
+I should sleep. it's super late here. but I got carried away -_-   
+
+1786519322
+piroquinha!~bucetinha@user/teucu
+I will try it . I hope Bazel has support for it
+
+1786523109
+stag1e!~stag1e@user/stag1e
+Many lifetimes ago I used to chat on #archlinux and Earnestly you were always active there. It takes me back to see your nick (still) here :D
+
+1786531859
+Barion!~Thunderbi@user/Barion
+is c_longdouble the same as f80? if so why does it exist?
+
+1786532091
+Affliction!~afflictio@idlerpg/player/affliction
+I assume it's whatever long double is on various platforms. Presumably f80 on x86, probably something else on other platforms
+
+1786532131
+Gliptic!~glip@irc.glip.cc
+long double can be various things, e.g. 128-bit, 80-bit, I think also 64-bit
+
+1786532528
+Barion!~Thunderbi@user/Barion
+i looked at the docs and there it states that the c equivalent of f80 is long double 
+
+1786532529
+Barion!~Thunderbi@user/Barion
+https://ziglang.org/documentation/master/#Primitive-Types
+
+1786547336
+themanchicken!~manchicke@user/themanchicken
+Hey friends. Is there an idiomatically correct way to link to a library with a relative file path? I'm trying to do some interop work, so I have a .so that I want to link to from my Zig program, but it's not a system-installed library with `pkg-config`.
+
+1786547559
+themanchicken!~manchicke@user/themanchicken
+... and no sooner than I ask that I spot `exe.root_module.linkLibrary()`. (https://ziglang.org/documentation/0.16.0/std/#std.Build.Module.linkLibrary)
+
+1786551530
+bblack!~bblack@wikimedia/bblack-WMF
+Barion: re: f80/c_longdouble, I think the correct way to interpret that table line is "on platforms/ABIs that have an f80 "long double", f80 would be equivalent to it.  For platforms that don't, f80 has no C equivalent.
+
+1786551586
+bblack!~bblack@wikimedia/bblack-WMF
+I don't think it's meant to imply the opposite (that C "long double" in any ABI, or equivalently c_longdouble, are always the same as f80)
+
+1786551655
+bblack!~bblack@wikimedia/bblack-WMF
+maybe that could be clarified succinctly
+
+1786570284
+chmod222!~chmod222@user/chmod222
+Question for the connoisseurs of crimes against memory safety, assuming I have an []u8 that I guarantee to be of size "m*n", how illegal is it to create a [][m]u8 by doing essentially "areas.ptr = @ptrCast(big.ptr); areas.len = ptr.len / n"?
+
+1786570312
+chmod222!~chmod222@user/chmod222
+It _seems_ to compile
+
+1786570323
+chmod222!~chmod222@user/chmod222
+In my mind, it _should_ be safe
+
+1786570412
+chmod222!~chmod222@user/chmod222
+It seems I can even forgoe the manualy slice putting together and @ptrCast the whole thing to [][m]u8
+
+1786572010
+bblack!~bblack@wikimedia/bblack-WMF
+chmod222: I think it's actually ok, so long as there's no unnatural alignment involved (which there isn't in your explanation).
+
+1786572057
+bblack!~bblack@wikimedia/bblack-WMF
+but yeah, I think you can just ptrcast that
+
+1786572122
+chmod222!~chmod222@user/chmod222
+It apparently works quite well, I forgot how liberating it can be if the compiler simply trusts you
+
+1786572163
+chmod222!~chmod222@user/chmod222
+And I spent over a decade in C where that sort of stuff would *seem* to be fine but then punish you
+
+1786572359
+bblack!~bblack@wikimedia/bblack-WMF
+https://zigbin.io/ec5d64
+
+1786572370
+bblack!~bblack@wikimedia/bblack-WMF
+^ this was my trivial proof to myself
+
