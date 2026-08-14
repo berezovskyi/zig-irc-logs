@@ -1,0 +1,116 @@
+1786586569
+slowstatic!~slowstati@user/slowstatic
+I'm losing my mind, can anyone help me understand why a C function segfaults when I pass it a heap allocated array, but does not segfault on a stack allocated one? https://bpa.st/JEPA
+
+1786586739
+rockorager!~rockorage@mail.spunky.lol
+the allocated `data` already is a pointer
+
+1786586771
+rockorager!~rockorage@mail.spunky.lol
+sorry, `data` is a slice
+
+1786586832
+rockorager!~rockorage@mail.spunky.lol
+you want data.ptr for the allocated version
+
+1786586928
+rockorager!~rockorage@mail.spunky.lol
+you basically created a struct that has fields ptr and len, so &data points to that struct
+
+1786587027
+slowstatic!~slowstati@user/slowstatic
+I have spent hours debugging this, and only in the last 30 minutes noticed a pass/fail between stack/heap. I can't believe how long this has been staring me in the face. Thanks for pointing it out rockorager 
+
+1786587051
+rockorager!~rockorage@mail.spunky.lol
+you can also use array.ptr, btw
+
+1786587061
+rockorager!~rockorage@mail.spunky.lol
+&array == array.ptr
+
+1786587194
+andrewrk!~andrewrk@mail.ziglang.org
+slowstatic: there are tools that can help you to identify the answer to "why is this happening?" faster
+
+1786587306
+andrewrk!~andrewrk@mail.ziglang.org
+in this case though, your problem is abusing `var`. you should always use `const` when you can. you have 2 instances in this snippet that should be `const` instead of var. and it would have caught the issue
+
+1786587345
+andrewrk!~andrewrk@mail.ziglang.org
+I mean for local variables
+
+1786587404
+andrewrk!~andrewrk@mail.ziglang.org
+there are exactly two reasons to use `var`: 1. allocating memory on the stack, and 2. the loop iterator
+
+1786587421
+andrewrk!~andrewrk@mail.ziglang.org
+`allocator` and `data` in your "totally segfaults" test case are neither
+
+1786587486
+andrewrk!~andrewrk@mail.ziglang.org
+but also your while loops would be better written as for loops in this snippet
+
+1786587564
+andrewrk!~andrewrk@mail.ziglang.org
+also your for loop would be better written to accept data as the for expression. that would have also revealed the issue
+
+1786587641
+andrewrk!~andrewrk@mail.ziglang.org
+great little snippet to learn by. thanks for sharing
+
+1786587664
+slowstatic!~slowstati@user/slowstatic
+I appreciate the feedback! This was much more help than I expected
+
+1786587749
+andrewrk!~andrewrk@mail.ziglang.org
+actually the for loops should be replaced by @memset
+
+1786587907
+slowstatic!~slowstati@user/slowstatic
+for the stack allocated array I could use `const data = [_]u8{0} ** (w * h * n);` instead right?
+
+1786587927
+andrewrk!~andrewrk@mail.ziglang.org
+but you're trying to write into data
+
+1786587973
+andrewrk!~andrewrk@mail.ziglang.org
+you want `var data: [w * h * n]u8 = @splat(0);`
+
+1786587976
+slowstatic!~slowstati@user/slowstatic
+yes oops, I meant var
+
+1786588024
+slowstatic!~slowstati@user/slowstatic
+I didn't realize splat worked on arrays, for some reason I thought that was for just vectors :S
+
+1786613156
+stag1e!~stag1e@user/stag1e
+https://ziglang.org/documentation/0.16.0/#Invalid-Enum-Cast how to catch invalid values without explicitly listing them in a `if` statement?
+
+1786613247
+ifreund!2940d10f8b@user/ifreund
+stag1e: std.enums.fromInt()
+
+1786613297
+stag1e!~stag1e@user/stag1e
+Amazing, thank you
+
+1786623226
+slowstatic!~slowstati@user/slowstatic
+is there another way I could write this such that the f64 result type propagates to @floatFromInt so I don't have to wrap it with @as? https://bpa.st/IDVQ
+
+1786623996
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+aside from extracting them to separate variables, probably nto
+
+1786623999
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+*not
+
