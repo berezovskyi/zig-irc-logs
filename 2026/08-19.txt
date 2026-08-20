@@ -1,0 +1,340 @@
+1787126158
+ovf!sid19068@hampstead.irccloud.com
+great workaround, thanks! i've probably said it before that your and alexrp's work on making clang into an actual cross compiler is truly marvellous. i wish it was easier to leech off it without buying in to more of zig. :-)
+
+1787137718
+mercenary!~mercenary@user/mercenary
+is it possible to get a list of 'what would be downloaded' out of zig.zon, and park those artifacts somewhere so it can build on a non-networked builder?
+
+1787140739
+clevor!sid649024@id-649024.hampstead.irccloud.com
+mercenary: zig build --fetch=[all|needed]
+
+1787140852
+mercenary!~mercenary@user/mercenary
+clevor: that fetches into current dir/cache, as far as I can see
+
+1787140929
+mercenary!~mercenary@user/mercenary
+the background: distro build system works off recipe files, that have exactly what needs fetching, checksums, and where to park it (and built-in caching etc.).
+
+1787140973
+mercenary!~mercenary@user/mercenary
+Once fetched, you want to be able to park of the fetched things into each build container (x86, arm, ...)
+
+1787141359
+ifreund!2940d10f8b@user/ifreund
+mercenary: determining what "would be downloaded" requires fetching the build.zig.zon's of dependencies to know what transitive dependencies are needed
+
+1787141486
+ifreund!2940d10f8b@user/ifreund
+distro's I'm familiar with generally have "fetch" stage with network access followed by a "build" stage without network access
+
+1787141497
+ifreund!2940d10f8b@user/ifreund
+is there a problem with running zig fetch during the "fetch" stage?
+
+1787141511
+ifreund!2940d10f8b@user/ifreund
+or is there some other special requirement that your distro has?
+
+1787141548
+ifreund!2940d10f8b@user/ifreund
+would you rather have a tool that is run once by the packager to fetch the dependency graph from the network and then hardcode that list into the package definition?
+
+1787141555
+ifreund!2940d10f8b@user/ifreund
+I believe nix has something like that for zig
+
+1787141557
+mercenary!~mercenary@user/mercenary
+indeed. 'fetch' is limited to 'get tarball, check CRC', and do not run anything. 'build' runs in restricted environment, without network access
+
+1787141593
+ifreund!2940d10f8b@user/ifreund
+https://github.com/nix-community/zon2nix
+
+1787141600
+mercenary!~mercenary@user/mercenary
+And yes, that is what I am looking for, packager tool that tells me 'package X needs A,B,C'
+
+1787141673
+ifreund!2940d10f8b@user/ifreund
+the example in the readme doesn't show transitive dependencies, but I assume that must be supported for the tool to be useful?
+
+1787141705
+ifreund!2940d10f8b@user/ifreund
+arguably this tool should be provided by the zig toolchain of course :P
+
+1787141718
+mercenary!~mercenary@user/mercenary
+Thanks, let me have a look at that, even if it isn't exactly what I need it can probably be massaged into something useful
+
+1787141758
+ifreund!2940d10f8b@user/ifreund
+ah, this one might be more up to date: https://github.com/Cloudef/zig2nix
+
+1787141760
+mercenary!~mercenary@user/mercenary
+(next question: where to park it off in $builddir?, but we'll get to that)
+
+1787141795
+ifreund!2940d10f8b@user/ifreund
+mercenary: https://codeberg.org/river/river/src/branch/main/PACKAGING.md#zig-package-manager
+
+1787141827
+ifreund!2940d10f8b@user/ifreund
+assuming that isn't out of date, I haven't tried it myself in a while but nobody has complained yet :)
+
+1787141870
+mercenary!~mercenary@user/mercenary
+that'll work, thanks
+
+1787141952
+mercenary!~mercenary@user/mercenary
+I just wish languages would remain languages, instead of wanting to grow into ecosystems, but this seems fixable
+
+1787146077
+chmod222!~chmod222@user/chmod222
+I believe there is also the option to explicitely provide the packages to the build CLI and not have it download them, which is inteded for such cases where the build is executed as part of a distro package
+
+1787146085
+chmod222!~chmod222@user/chmod222
+But documentation is always an issue
+
+1787158601
+vyivel!~vyivel@user/Vyivel
+is there a way to test for compile errors?
+
+1787158668
+vyivel!~vyivel@user/Vyivel
+if it helps, all the errors i'm interested in are emitted with a @compileError wrapper
+
+1787158675
+perryprog!~perryprog@wikipedia/perryprog
+Having extremely simple tests that just calls your function in some simple manner is one way
+
+1787158716
+vyivel!~vyivel@user/Vyivel
+sorry i mean i need to check that code does *not* compile
+
+1787158729
+perryprog!~perryprog@wikipedia/perryprog
+ah
+
+1787158763
+perryprog!~perryprog@wikipedia/perryprog
+there's some examples of that in zig's codebase; let me find one
+
+1787158930
+perryprog!~perryprog@wikipedia/perryprog
+vyivel, see https://codeberg.org/ziglang/zig/src/branch/master/test/cases/compile_errors/address_of_number_literal.zig
+
+1787159020
+perryprog!~perryprog@wikipedia/perryprog
+you'll then need some form of https://codeberg.org/ziglang/zig/src/branch/master/test/src/Cases.zig
+
+1787159085
+vyivel!~vyivel@user/Vyivel
+aha
+
+1787159087
+vyivel!~vyivel@user/Vyivel
+thank you
+
+1787164321
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: there is `zig build --fetch` as well 
+
+1787164397
+andrewrk!~andrewrk@mail.ziglang.org
+mercenary: what you are wishing for means, in practice, for upstream application developers to not have the ability to have dependencies
+
+1787164411
+andrewrk!~andrewrk@mail.ziglang.org
+however, collaboration is good
+
+1787164416
+andrewrk!~andrewrk@mail.ziglang.org
+so be careful what you wish for 
+
+1787164509
+mercenary!~mercenary@user/mercenary
+andrewrk: I am aware. I wish for more work, and therefore more control, for packagers.
+
+1787164673
+mercenary!~mercenary@user/mercenary
+From my point of view, it would be nice if languages did not include their own 'package managers', but projects just included a list of 'depends on X>0.6, Y>=1.3.0'
+
+1787164727
+mercenary!~mercenary@user/mercenary
+makes hunting down 'what do we need to rebuild because something 4 levels down the dependency tree has a CVE' so much easier
+
+1787164869
+zwynd!~zwynd@user/zwynd
+Hello, I have a question about the Zig parser source code... would this be the right place to ask?
+
+1787164883
+vyivel!~vyivel@user/Vyivel
+yes
+
+1787165002
+zwynd!~zwynd@user/zwynd
+Thanks! I am confused about something: I see that in the "extra_data" structures there's often "[]const Node.Index" fields or "start: Node.Index, end: Node.Index" fields to signify like... a list of nodes. for example for a function call, a list of parameters, or for a struct literal, a list of values, etc. Is that correct?
+
+1787165315
+andrewrk!~andrewrk@mail.ziglang.org
+mercenary: both system package managers (targeting end users) and upstream package managers (targeting upstream maintainers) are needed
+
+1787165319
+andrewrk!~andrewrk@mail.ziglang.org
+one of them is not a substitution for the other
+
+1787165420
+vyivel!~vyivel@user/Vyivel
+zwynd: i actually have no idea but quick grepping suggests it is
+
+1787165431
+andrewrk!~andrewrk@mail.ziglang.org
+but anyway you have exactly what you are asking for with zig build system. I have been very careful to accomodate system package management. I hope you found the --system flag. Let me know if you have any more feature requests or suggestions to make the workflow smoother
+
+1787165445
+andrewrk!~andrewrk@mail.ziglang.org
+I used to do debian packaging 
+
+1787165523
+zwynd!~zwynd@user/zwynd
+vyivel: Right. I am a little confused because, given "extra_data" is just a flat list of ints, if you are parsing, say... a function call within the fields of a struct literal, wouldn't the two list of indices overlap if all the info you have is "first" and "last"?
+
+1787165567
+mercenary!~mercenary@user/mercenary
+andrewrk: I will experiment, and see what works on a couple of real-life zig projects that looked interesting.
+
+1787165597
+vyivel!~vyivel@user/Vyivel
+zwynd: i'm assuming the list is treated as a flattened tree
+
+1787165612
+mercenary!~mercenary@user/mercenary
+haven't dived deep into the problem yet, besides 'hmm, yet another 'wants to download things, and does not seem to listen to https_proxy'
+
+1787165635
+vyivel!~vyivel@user/Vyivel
+although i'd rather let someone more knowledgable respond to that before i write too much misinfo
+
+1787165686
+andrewrk!~andrewrk@mail.ziglang.org
+  --system [pkgdir]            Disable package fetching; enable all integrations
+
+1787165704
+andrewrk!~andrewrk@mail.ziglang.org
+  --fetch[=mode]               Fetch dependency tree (optionally choose laziness) and exit
+
+1787165746
+zwynd!~zwynd@user/zwynd
+vyivel: Fair enough. What I mean is, if you have something like... ".{1, 2, call(1, 2), 3}", if the first node of the list of values in the struct literal is the "1", and the last is the "3", the nodes of the list of "1, 2" from the list of function call arguments is gonna end up in the middle of that while you're parsing
+
+1787165846
+andrewrk!~andrewrk@mail.ziglang.org
+zwynd: for small nodes the data is in the union which has two fields. if the data can't fit in there, one of the fields indexes into that extra_data array
+
+1787165905
+andrewrk!~andrewrk@mail.ziglang.org
+the example you've created is a struct_init node. have a look at the doc comments of std.zig.Ast.Node.Tag.struct_init
+
+1787165947
+andrewrk!~andrewrk@mail.ziglang.org
+actually sorry it's one of the array_init variants
+
+1787166032
+andrewrk!~andrewrk@mail.ziglang.org
+mercenary: what system are you looking into packaging for?
+
+1787166123
+mercenary!~mercenary@user/mercenary
+andrewrk: alpine-derivative, I eventually hit the 'there are 3 annoyances that I want going in a different direction than where alpine is going'
+
+1787166242
+mercenary!~mercenary@user/mercenary
+too many things that require 'options="net"' being one of them
+
+1787166299
+andrewrk!~andrewrk@mail.ziglang.org
+good luck
+
+1787166357
+mercenary!~mercenary@user/mercenary
+thanks, I will need it. still lots of work to be done.
+
+1787166481
+zwynd!~zwynd@user/zwynd
+andrewrk: Thanks for answering! I sort of understand where the data is stored, I just don't understand how lists of nodes can be stored in the same ArrayList without any overlap? Assuming both need to be stored in extra_data, and you're parsing array_init, collecting list A of the indices of each expression, you hit an expression that needs a list
+
+1787166482
+zwynd!~zwynd@user/zwynd
+B of indices stored in extra_data, how do you manage to not "interrupt" list A with list B's indices?
+
+1787166663
+andrewrk!~andrewrk@mail.ziglang.org
+zwynd: the parser collects the list in separate memory until the list is finished, then it copies the list all at once into extra_data
+
+1787166815
+zwynd!~zwynd@user/zwynd
+andrewrk: OH. That makes way too much sense. Thank you.
+
+1787166909
+andrewrk!~andrewrk@mail.ziglang.org
+np
+
+1787166983
+andrewrk!~andrewrk@mail.ziglang.org
+there's a group of very enthusiastic people currently in the process of reexamining parsing of zig with the main goal of making a resilient parser for IDEs. you might enjoy saying hello to those folks. they're very chatty in the "Zig Resilient Parser" channel on https://zsf.zulipchat.com/
+
+1787167156
+zwynd!~zwynd@user/zwynd
+oh? I thought the parser was already pretty resilient?
+
+1787167299
+andrewrk!~andrewrk@mail.ziglang.org
+it would mean entirely eliminating error.ParseFailed
+
+1787167561
+vyivel!~vyivel@user/Vyivel
+sounds nice for zig fmt
+
+1787167762
+zwynd!~zwynd@user/zwynd
+ooh! I have been trying to architecture my own parser like that, with no parse failed errors, mainly by having a .invalid AST node
+
+1787167802
+zwynd!~zwynd@user/zwynd
+however, the "lhs or rhs can either be an index into another ast node or into any of the extra data structures" architecture of a "zig-style parser" means it's not very useful for ASTs regardless
+
+1787167847
+zwynd!~zwynd@user/zwynd
+I was experimenting with having every extra data structure start with a "Type" enum field precisely to fix this, but then it adds unnecesary size to it
+
+1787167998
+andrewrk!~andrewrk@mail.ziglang.org
+well, those people are exchanging a great quantity of words about this very topic
+
+1787168085
+zwynd!~zwynd@user/zwynd
+I may join in heh, thanks for the recommendation. I thought the zulip chat was only for contributors.
+
+1787168152
+andrewrk!~andrewrk@mail.ziglang.org
+well it's also for contributors to the ecosystem which basically means doing anything open source with zig
+
+1787168180
+zwynd!~zwynd@user/zwynd
+Oh! That's nice. I am trying to build my own little language in it, but so far I am just parsing. :P
+
+1787168215
+andrewrk!~andrewrk@mail.ziglang.org
+well, that's the first step :)
+
+1787168232
+zwynd!~zwynd@user/zwynd
+Slowly but surely...
+
