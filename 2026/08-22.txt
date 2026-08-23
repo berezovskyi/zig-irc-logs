@@ -1,0 +1,56 @@
+1787376338
+jonrm!~jonrm@user/jonrm
+when I'm getting pointers back from a C library (miniaudio) and casting them to regular Zig pointers, how should I determine whether or not to add @alignCast? I'm reading examples, and sometimes it's there and sometimes it isn't, but I can't deduce why
+
+1787376748
+torque!~tachyon@user/torque
+it's required when going from smaller alignment to larger alignment (e.g align(1) to align(4)). since anyopaque pointers are align(1) naturally iirc, normally you need the alignCast when casting from them
+
+1787376780
+torque!~tachyon@user/torque
+normally if you are missing it and it's needed the compiler will give you an error
+
+1787376919
+jonrm!~jonrm@user/jonrm
+ah that makes sense thank you! the case I was looking at where it was used was anyopaque, but where it wasn't used was a known type
+
+1787377012
+jonrm!~jonrm@user/jonrm
+and you are right, it does give a compiler error when removed from the anyopaque case
+
+1787439216
+leon-p!1b22ab9492@user/leon-p
+hmm, so in C the field 'msg_name' of 'struct msghr' maybe NULL for a connected socket. However Io.net.OutgoingMessage.address, which appears to be the zig equivalent, is not null-able. Is this an oversight or on purpose?
+
+1787440130
+leon-p!1b22ab9492@user/leon-p
+I guess for now a workaround is to use posix.system.mmsghdr and the raw sendMany() function from the io vtable
+
+1787440238
+Affliction!~afflictio@idlerpg/player/affliction
+yeah, does look like an oversight, I'd be tempted to try setting it to .{.ip4 = std.mem.zeroes(Ip4Addrss)}
+
+1787440397
+Affliction!~afflictio@idlerpg/player/affliction
+even if the intent is to be explicit about where the socket is connected, still doesn't make sense for unix sockets
+
+1787440455
+leon-p!1b22ab9492@user/leon-p
+well, it'll also panic if the socket is already connect
+
+1787441006
+leon-p!1b22ab9492@user/leon-p
+unfortunately setting it to a dummy IpAddres{ .ip4 = mem.zeroes(Ip4Address) } also raises the error, @memset()'ing it to zero doesn't work either :/
+
+1787441324
+leon-p!1b22ab9492@user/leon-p
+unfortunately I need to send file descriptors over the socket, otherwise I'd be fine with the writer I get from Io.net.Stream...
+
+1787441623
+Affliction!~afflictio@idlerpg/player/affliction
+yeah, might have to drop down an abstraction layer - but it's known - https://codeberg.org/ziglang/zig/issues/30892
+
+1787441974
+leon-p!1b22ab9492@user/leon-p
+guess I do, thanks
+
