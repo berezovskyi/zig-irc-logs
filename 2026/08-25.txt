@@ -1,0 +1,124 @@
+1787627798
+santy!~santy@user/santy
+*ok
+
+1787650653
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+i do feel that this should work:  https://bpa.st/2G3SY  i know it's not explicitly ina conditional but it effectively is, right?
+
+1787650695
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+(context: @branchHint() just after conditional with return)
+
+1787680779
+seank!~sean@user/seank
+I've got a packed struct I'm reading an initial BMP image header into using the file.readStreaming() function. It seems to me that this function can read less than desired, so I'm utilizing it inside a while loop until either the read_bytes is 0 and I return EndOfStream, or I've read the buffer's length in bytes in which case I return the struct instance. Is this the correct approach since zig 0.16.0
+
+1787680781
+seank!~sean@user/seank
+doesn't seem to have a readStreamingAll() that could technically do what my while loop is doing?
+
+1787684496
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+this is weird & looks like a bug:  https://bpa.st/55E72  compiler thinks it's u3 but it has values up to 255
+
+1787684868
+Gliptic!~glip@irc.glip.cc
+netvor, sliceAsBytes will not care that the array is nominally "u3", the storage is still u8
+
+1787684903
+Gliptic!~glip@irc.glip.cc
+so you've circumvented the type-checking by basically ptrCasting []u3 to []u8
+
+1787684977
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+the intent is to generate a bunch of u3's.   i thought i could shuffle the underlying bytes and then interpret the slice.   and the doc of the std.mem functions seems to support that
+
+1787684990
+Gliptic!~glip@irc.glip.cc
+the u3 are not bitpacked
+
+1787685001
+Gliptic!~glip@irc.glip.cc
+each u3 is u8 storage
+
+1787685007
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+oh i didn't realize that
+
+1787685033
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+so i'm better off using packed struct, i guess.  thanks
+
+1787685067
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+but the behavior is still weird.  i'm nor sure i should be able to circumvent type checking
+
+1787685137
+Gliptic!~glip@irc.glip.cc
+why would sliceAsBytes refuse in this particular case
+
+1787685145
+Gliptic!~glip@irc.glip.cc
+"Given a slice, returns a slice of the underlying bytes, preserving pointer attributes."
+
+1787685148
+Gliptic!~glip@irc.glip.cc
+that's exactly what it did
+
+1787685185
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+but it also changed the type of the slice
+
+1787685194
+Gliptic!~glip@irc.glip.cc
+no
+
+1787685258
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+i mean it kept the *type* but "broke" it .. now the values i get from that variable don't fit u3\
+
+1787685270
+Gliptic!~glip@irc.glip.cc
+format seems to write the full integer values, I think it's assumed that the upper bits should just be 0
+
+1787685296
+Gliptic!~glip@irc.glip.cc
+well, you broke it by writing values larger than a u3 into what is supposed to be a u8
+
+1787685304
+Gliptic!~glip@irc.glip.cc
+*u3
+
+1787685313
+netvor!~netvor@2a00:ca8:a1f:cd0:8608:18b4:9aef:10d5
+it's not just format, i actually used those u3's to multiply other numbers and i got wrong results
+
+1787685313
+bblack!~bblack@wikimedia/bblack-WMF
+does std have a type that represents a bitpacked array for odd-sized integers?
+
+1787685343
+Gliptic!~glip@irc.glip.cc
+because the compiler assumes you haven't broken the values, thus skipping the masking that would otherwise be necessary
+
+1787687948
+spader!~spader@user/spader
+can anyone recommend some reading on fuzzing? a while back i heard about this approach from maybe andrew where you run your program, get a list of all allocations, and then re-run it up to each of those points and make sure that every failed allocation can be handled
+
+1787687953
+spader!~spader@user/spader
+then i started digging into tigerbeetle
+
+1787687974
+spader!~spader@user/spader
+and i feel like my brain got pried open and rebuilt
+
+1787688002
+spader!~spader@user/spader
+wondering if anyone has any good references for all this stuff? i know that's pretty broad but yeah any repos, papers, talks, books, whatever
+
+1787693960
+andrewrk!~andrewrk@mail.ziglang.org
+bblack: I believe that would be one of the data structures in std.enums. let me know if that is or is not the case
+
