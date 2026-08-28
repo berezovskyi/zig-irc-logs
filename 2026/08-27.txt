@@ -1,0 +1,204 @@
+1787817398
+Psy-Q!~psy-q@user/psy-q
+i've been hemming and hawing about which language to use for a small hobby thing where python, ruby, go would be an obvious choice, but zig is much more interesting re: governance model, cross-compilation etc.
+
+1787817412
+Psy-Q!~psy-q@user/psy-q
+it's just terrifying because low-level
+
+1787817462
+Psy-Q!~psy-q@user/psy-q
+i guess it's probably not yet the right time to jump in until a few more convenience libraries pop up (specifically about controlling subprocesses in my case)
+
+1787817553
+gschwind!~gschwind@user/gschwind
+Psy-Q, You can use most C/C++ library
+
+1787818469
+Affliction!~afflictio@idlerpg/player/affliction
+zig's much less terrifying than C if that's your ref for low level languages
+
+1787818524
+Affliction!~afflictio@idlerpg/player/affliction
+strangely I haven't done any subprocess wrangling in zig yet so, can't say what that's like
+
+1787818547
+Affliction!~afflictio@idlerpg/player/affliction
+though the compiler does a fair bit, and what's useful for the compiler and might be useful elsewhere tends to land in std
+
+1787818651
+Affliction!~afflictio@idlerpg/player/affliction
+https://ziglang.org/documentation/0.16.0/std/#std.process 
+
+1787818699
+Affliction!~afflictio@idlerpg/player/affliction
+at any rate, starting on ziglings might help you decide if it's worth looking further at, and this channel is pretty friendly if you have further questions
+
+1787821208
+Psy-Q!~psy-q@user/psy-q
+ah yes, i had a brief look at std.process and Child and those, i realize it can't be a one-liner like python given what zig can do but i was still a bit scared. the maximum complexity i had to consider so far for spawning processes was back with ruby's Open3.popen3
+
+1787821272
+Psy-Q!~psy-q@user/psy-q
+gschwind: good point, i'll check if there are some libs there that add some sugar to managing subprocesses (beyond what std.process has). or i just learn std.process properly and write my own little wrapper :)
+
+1787821685
+Affliction!~afflictio@idlerpg/player/affliction
+If you want a "one liner", .run() runs the process and gives you a RunResult with the accumulated stdout and stderr
+
+1787821722
+Affliction!~afflictio@idlerpg/player/affliction
+Naturally you'll still need to give it an allocator, and free the buffers that it allocates, something you'll have to get used to if you're otherwise used to py
+
+1787821772
+Affliction!~afflictio@idlerpg/player/affliction
+huh, no stdin options in RunOptions?
+
+1787821838
+Affliction!~afflictio@idlerpg/player/affliction
+admittedly, there are still gaps in std, and what exists can still be breakingly-changed (usually still for the better, but still, expect refactors each release)
+
+1787821891
+Affliction!~afflictio@idlerpg/player/affliction
+The docs are sometimes a bit sparse too, I should hurry up and get a codeberg account and see if I can contribute there.
+
+1787822417
+Psy-Q!~psy-q@user/psy-q
+i probably have to think about streaming the output (the process emits \n-delimited JSON lines) so i don't slurp up everything, although the data should be < 1 MB so maybe .run() can just absorb it all. i'll play with that too, thanks!
+
+1787827840
+bblack!~bblack@wikimedia/bblack-WMF
+re: std.process: run() is a simpler wrapper for a specific use-case: run a command that doesn't need stdin, capture both stdout and stderr into buffers, return those and the child's exit status.
+
+1787827995
+bblack!~bblack@wikimedia/bblack-WMF
+spawn() or spawnPath() is probably what you want for anything a bit trickier where you may way to stream any of the 3 standard FDs etc (see SpawnOptions)
+
+1787829996
+Affliction!~afflictio@idlerpg/player/affliction
+IMO it is a little surprising .run() doesn't have an option for a Reader or slice to pipe into the new proc's stdin, "spawn, throw input at process, get output" strikes me as a common use case
+
+1787831274
+Sivecano!~Sivecano@user/Sivecano
+why is max_iovecs_len in Io.Threaded so low?
+
+1787831302
+Sivecano!~Sivecano@user/Sivecano
+maybe I'm not seeing something here but doesn't this seriously hamper our ability to optimize writes
+
+1787831303
+Sivecano!~Sivecano@user/Sivecano
+?
+
+1787831354
+Sivecano!~Sivecano@user/Sivecano
+8 is nowhere near the usual OS limits
+
+1787831366
+Sivecano!~Sivecano@user/Sivecano
+I mean the default limit for linux is 1024
+
+1787832698
+leon-p!1b22ab9492@user/leon-p
+the relationship between the amount of iovecs and the amount of time needed to perform an operation isn't linear, you eventually hit a plateau. It also depends on the size of the buffer
+
+1787836068
+bblack!~bblack@wikimedia/bblack-WMF
+Affliction: re: run()'s lack of stdin: I think that's because it's all they needed for internal use-cases, and adding stdin to the mix and having it work for the single-threaded case is a bit of complex work (cf Io.File.MultiReader they're using to single-thread-multiplex stdout+stderr - you'd have to have something similar that also supporting writing the stdin stream at the same time as well)
+
+1787836086
+bblack!~bblack@wikimedia/bblack-WMF
+which is in turn all tied up with how Operation and Batch etc work, which still seem like a bit of a WIP to me.
+
+1787836167
+bblack!~bblack@wikimedia/bblack-WMF
+but if you're not limiting yourself to single-threaded mode (or single-Task?), it's also not hard to build on spawn() with separate io.concurrent() tasks handling each of the 3 std streams if needed.
+
+1787836193
+bblack!~bblack@wikimedia/bblack-WMF
+(or use Batch directly, possibly)
+
+1787836310
+bblack!~bblack@wikimedia/bblack-WMF
+all related things saw a lot of development leading up to 0.16.x, but seem to be relatively-on-pause while other priorities are tackled during the 0.17 cycle (although there have been a few std.Io changes as well)
+
+1787838794
+Sivecano!~Sivecano@user/Sivecano
+I love when writing a list of strings becomes O(n^2)
+
+1787838854
+Franciman!~Franciman@mx1.fracta.dev
+hi Sivecano i'm using your wm
+
+1787838856
+Franciman!~Franciman@mx1.fracta.dev
+thanks
+
+1787838869
+Sivecano!~Sivecano@user/Sivecano
+:)
+
+1787838892
+Sivecano!~Sivecano@user/Sivecano
+Franciman: hope you like it 
+
+1787838897
+Franciman!~Franciman@mx1.fracta.dev
+i have a problem with channel, so i'm using kwim
+
+1787838902
+Franciman!~Franciman@mx1.fracta.dev
+but it's my distro-related
+
+1787838926
+Franciman!~Franciman@mx1.fracta.dev
+i love the configurability of this new river
+
+1787838935
+Sivecano!~Sivecano@user/Sivecano
+it's awesome
+
+1787838946
+Sivecano!~Sivecano@user/Sivecano
+I was messing around with multi-seat a few days ago
+
+1787838948
+Sivecano!~Sivecano@user/Sivecano
+and it's so fun
+
+1787838961
+Franciman!~Franciman@mx1.fracta.dev
+oh gosh, I apologise, i just realized i'm on #zig, not #river
+
+1787839061
+Sivecano!~Sivecano@user/Sivecano
+Franciman: happens to me too often
+
+1787852818
+Sivecano!~Sivecano@user/Sivecano
+std.Writer.writeVecAll should not be O(n^2)
+
+1787857859
+andrewrk!~andrewrk@mail.ziglang.org
+Sivecano: huh why is that the case?
+
+1787858197
+andrewrk!~andrewrk@mail.ziglang.org
+oh I see your PR now
+
+1787868744
+andrewrk!~andrewrk@mail.ziglang.org
+new devlog entry: https://ziglang.org/devlog/2026/#2026-08-27
+
+1787869136
+Affliction!~afflictio@idlerpg/player/affliction
+Nice, I have a use case for that, relying on remembering to not call anything which might realloc could lead to mistakes
+
+1787869322
+Affliction!~afflictio@idlerpg/player/affliction
+Is there memory overhead for tracking that? or does it use some special sentinel (top bit?) in the capacity?
+
+1787869492
+Affliction!~afflictio@idlerpg/player/affliction
+looks like the hashmap variant doesn't
+
