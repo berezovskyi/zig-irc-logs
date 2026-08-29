@@ -1,0 +1,236 @@
+1787876818
+andrewrk!~andrewrk@mail.ziglang.org
+Affliction: the memory overhead is always paid for in safe optimization modes (all ArrayList have a std.debug.SafetyLock field now). not per element tho, it's per ArrayList
+
+1787876843
+andrewrk!~andrewrk@mail.ziglang.org
+in fast and small modes, the field is void
+
+1787876909
+andrewrk!~andrewrk@mail.ziglang.org
+I don't think there's much value in making a compact ArrayList struct - you shouldn't really have N of them you know?
+
+1787876929
+andrewrk!~andrewrk@mail.ziglang.org
+show me an ArrayList(ArrayList(T)) and I can probably come up with a better memory layout...
+
+1787876998
+andrewrk!~andrewrk@mail.ziglang.org
+but anyway if you wanted to do that you'd already want to make something more compact like struct {ptr: [*]T, len: u32, cap: u32}
+
+1787877131
+andrewrk!~andrewrk@mail.ziglang.org
+on 64-bit targets, that's 16 bytes, compared to 24 bytes using usize for len and cap
+
+1787877190
+andrewrk!~andrewrk@mail.ziglang.org
+array list elements have short lifetimes anyway so you could easily store the elements compacted, and then only temporarily expand to real ArrayList, do some operations, and then store back into the parent array again
+
+1787877194
+Affliction!~afflictio@idlerpg/player/affliction
+more, HashMap(ArrayList) which is indeed used dynamically. Naturally that's an option too
+
+1787877232
+andrewrk!~andrewrk@mail.ziglang.org
+I kinda wonder if a special purpose data structure makes sense for that use case
+
+1787877273
+Affliction!~afflictio@idlerpg/player/affliction
+Might be a bit niche for std?
+
+1787877274
+andrewrk!~andrewrk@mail.ziglang.org
+because that is indeed a useful pattern, but you could probably come up with a scheme that lets one big flat backing allocation be used for hash map keys and values as well as the inner array list data
+
+1787877313
+Affliction!~afflictio@idlerpg/player/affliction
+hm
+
+1787877326
+andrewrk!~andrewrk@mail.ziglang.org
+https://en.wikipedia.org/wiki/Multimap
+
+1787904287
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+is there a relatively easy way to export all public declarations from a module and re-declare them with same name but prefix?  eg. i have math.zig and math/rec.zig  which declares `pub fn clamp(..) ..`  but in math.zig i want to expose `pub fn recClamp()`.    and i want to do this automatically for every new pub fn i add to rec.zig\
+
+1787904317
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+by "relatively easy" i mean it does not involve some build.zig shenanigans
+
+1787904454
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+otoh i would be fine with temporary solution, because the itch this would scratch is temporary: i still keep figuring out how to shape the api surface so i keep changing stuff and with explicit re-declarations it is really error prone.
+
+1787904813
+ifreund!2940d10f8b@user/ifreund
+netvor_: why not math.rec.clamp()?
+
+1787904875
+ifreund!2940d10f8b@user/ifreund
+that is the intended way to do what you are doing, if you insist on not using actual namespaces and instead prefixing your function names manually you will continue to experience unecessary friction :)
+
+1787905264
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+i actually had it that way first and i found it cumbersome.   because (esp. for things like this) i learned to like explicit single imports, so i kept typing `
+
+1787905291
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+const recClamp = @import("foo").math.rec.clamp;`
+
+1787905351
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+at least with the way my editor is set up, having the name identical makes it really easy
+
+1787905417
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+i also like flat structure for modules,  trying to keep max 2 levels per lib or so
+
+1787905536
+netvor_!~netvor@2a00:ca8:a1f:cd0:6ff0:b713:7775:f1a8
+i do feel like the thing i want is kinda against zig philosophy, and i like zig philosophy a lot, so i'm fine if this is not easy to do
+
+1787919015
+bblack!~bblack@wikimedia/bblack-WMF
+is it in scope for Io.Batch to eventually get complicated-enough for cases such as: using a persistent Batch as the multiplexer for a variable number of concurrent TCP streams, each with distinct timeouts, like the core of some network server? (the key here is there would be a per-Operation timeout in addition to the overall batchAwaitConcurrent timeout, and thus it would return (at the latest) at the 
+
+1787919021
+bblack!~bblack@wikimedia/bblack-WMF
+earliest of the global + all the per-op timeouts.
+
+1787919049
+bblack!~bblack@wikimedia/bblack-WMF
+or is it intended to just be for simpler use-cases where a singular timeout is always sufficient?
+
+1787919742
+bblack!~bblack@wikimedia/bblack-WMF
+my thinking is that, if that's possible, an efficient application could self-manage OS-level threading (for better threadlocal + atomics hacks) and still have a Batch-on-Evented{thread_limit = 0} to do a sort of high-level poll-like loop over many concurrent network ops.
+
+1787919796
+bblack!~bblack@wikimedia/bblack-WMF
+the alternative to achieve the same aims, would be to give users of Evented a larger degree of control/insight on Task/Fiber:Thread(and/or cpu) mappings
+
+1787919822
+bblack!~bblack@wikimedia/bblack-WMF
+and then stick to the much-simpler (conceptually) model of a Task per stream or whatever
+
+1787920115
+bblack!~bblack@wikimedia/bblack-WMF
+[maybe for that latter part, it would be enough if Evented enumerated the threads it creates, and provided thread start/stop hooks which provide that ID as an argument, and a way for a Task to query the thread# it's running under]
+
+1787926683
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+hello
+
+1787926691
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+is the zig compiler self contained?
+
+1787926978
+perryprog!~perryprog@wikipedia/perryprog
+britney, if you mean self-hosted, it is, yeah
+
+1787926985
+perryprog!~perryprog@wikipedia/perryprog
+also heya!
+
+1787927115
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+perryprog: so i could throw it into a minimal linux distro that doesn't have C headers?
+
+1787927162
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+im looking for a C compiler for https://git.cerberusgames.ca/Starstreak/BritneyDOS
+
+1787927179
+ifreund!2940d10f8b@user/ifreund
+britney: the zig compiler has no system dependencies, so yes
+
+1787927187
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+swank! :D
+
+1787927194
+ifreund!2940d10f8b@user/ifreund
+the tarballs from ziglang.org are statically linked :)
+
+1787927217
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+BritneyDOS will have a compiler then!
+
+1787927271
+ifreund!2940d10f8b@user/ifreund
+fun project :)
+
+1787927310
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+it is
+
+1787927314
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+its quite insane
+
+1787927326
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+but also i'll throw it onto my pi zero w
+
+1787943802
+jan_2!~jan@user/jangorecki
+Hi, I would like to contribute data analytics related functions. What could be good candidate upstream project for me to took into? Jan
+
+1787946887
+bblack!~bblack@wikimedia/bblack-WMF
+w/hois britney
+
+1787946897
+Digit!~user@user/digit
+ACTION checks on status of Pheonix, sees "Phoenix is currently in development as is not meant to by used by end-users." still in https://git.dec05eba.com/phoenix/about/ and carries on dreaming of implementing a complete os and software stack entirely in zig as a daily driver
+
+1787946899
+bblack!~bblack@wikimedia/bblack-WMF
+typo :)
+
+1787946975
+bblack!~bblack@wikimedia/bblack-WMF
+britney: is BritneyDOS for some kind of meta-game? or just fun? I was noticing the "games" in the URL
+
+1787947891
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+bblack: i normally make video games
+
+1787947895
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+this is just for fun
+
+1787948249
+bblack!~bblack@wikimedia/bblack-WMF
+britney: it brings back memories even just reading about it (old DOS stuff) :)
+
+1787948426
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+bblack: =)
+
+1787953700
+flower_!~archie@83-81-123-193.cable.dynamic.v4.ziggo.nl
+I want to spawn a child and give it the environment of the parent, but add one env var to that env map. What is the best approach for this?
+
+1787956630
+wsommers!wsommers@user/wsommers
+flower_: it looks like you could clone the parent's environ_map, add your new var with put, and pass it to spawn in the SpawnOptions struct
+
+1787959108
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+bblack: it started as kind of a joke but then LLM took it seriously and i want to see where things end up
+
+1787959132
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+in the end i may kill the DOS pathing and use it for real
+
+1787959144
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+lightweight linux distro
+
+1787959159
+britney!~myNick@vps-eb8aba06.vps.ovh.ca
+GO/Linux
+
