@@ -1,0 +1,124 @@
+1788078075
+ersei!~d76d5@user/d76d5
+hey all, trying to build a zig project for embedded. I have some tests I want to run on my host machine (x86). Can I run "zig build test" under x86 but run "zig build" under arm?
+
+1788078870
+Digit!~user@user/digit
+ersei: yes.   (is my naive guess.)
+
+1788078889
+ersei!~d76d5@user/d76d5
+no it tries to compile then fails to run the exe since I'm on x86
+
+1788078915
+ersei!~d76d5@user/d76d5
+but if I choose -Dtarget=x86_64-linux, then because I have _start exported + custom linker due to writing embedded, it won't compile then either
+
+1788078925
+ersei!~d76d5@user/d76d5
+just wanna run module tests
+
+1788078935
+ersei!~d76d5@user/d76d5
+only have them enabled in build.zig too
+
+1788091630
+vyivel!~vyivel@user/Vyivel
+are there any projects that do their own build artifact caching? do they use b.cache_root or their own folders? if the former, are there any conventions? any example implementations?
+
+1788091814
+ifreund!2940d10f8b@user/ifreund
+vyivel: it should always be possible to leverage the standard caching system provided by the zig build system using run steps
+
+1788091869
+vyivel!~vyivel@user/Vyivel
+i need a specific directory layout
+
+1788091884
+vyivel!~vyivel@user/Vyivel
+maybe caching is the wrong word here
+
+1788091910
+vyivel!~vyivel@user/Vyivel
+hm yeah probably is
+
+1788092087
+ifreund!2940d10f8b@user/ifreund
+vyivel: hmm, is the specific directory layout required as input to a later step in the build process?
+
+1788092092
+ifreund!2940d10f8b@user/ifreund
+or what is it for?
+
+1788092120
+vyivel!~vyivel@user/Vyivel
+to point qml language server to
+
+1788092173
+vyivel!~vyivel@user/Vyivel
+so it's less of a cache and more of an output thing actually
+
+1788092319
+ifreund!2940d10f8b@user/ifreund
+but would you expect it to be installed to the installation prefix when using e.g. `zig build install --prefix ~/.local`?
+
+1788092351
+vyivel!~vyivel@user/Vyivel
+ifreund: nope, it's purely for development
+
+1788092382
+ifreund!2940d10f8b@user/ifreund
+I think using a run step to put it .zig-cache makes sense then
+
+1788092427
+vyivel!~vyivel@user/Vyivel
+hm okay
+
+1788099041
+mim!~mim@2804:1e68:8401:c4d0:8a1f:d351:59a0:26ef
+I would like to create a "base" union type which have some declarations and funcions and populate its fields by using some metaprogramming, but idk how to do that. The use case would be: I define an unions with some fields and then "merge" is with the base one, so that the result union has both fields defined in the former and the functions from the base
+
+1788099153
+mim!~mim@2804:1e68:8401:c4d0:8a1f:d351:59a0:26ef
+The problem is: the @Union() builtin doesn't have a way to receive declarations and funcions, neither std.builtin.Type.@"union" have anythin about the declarations beside its names
+
+1788099174
+mim!~mim@2804:1e68:8401:c4d0:8a1f:d351:59a0:26ef
+is it possible to do what I want?
+
+1788101637
+ifreund!2940d10f8b@user/ifreund
+mim: if I understand correctly what you want, the closest you can get is to have two layers: a struct type containing the function decls you want which has a field with a type created using @Union()
+
+1788101717
+ifreund!2940d10f8b@user/ifreund
+you're correct that types created using @Struct()/@Union() cannot have declarations
+
+1788102733
+mim!~mim@2804:1e68:8401:c4d0:8a1f:d351:59a0:26ef
+ifreund: yeah, I thought about it and it seens the most direct form to represent what I want. Thx for your reply
+
+1788104060
+ifreund!2940d10f8b@user/ifreund
+no problem :)
+
+1788125640
+wsommers!wsommers@user/wsommers
+this might be the wrong place to ask, but I've been looking into improving the state of building ffmpeg with zig recently and I've gotten a little confused
+
+1788125653
+wsommers!wsommers@user/wsommers
+as it stands, allyourcodebase/ffmpeg only enables support for cpu extensions if those features are explicitly available on the provided target, but ffmpeg has runtime cpu feature detection for all available architectures, so it seems like it should be possible to just enable everything
+
+1788125677
+wsommers!wsommers@user/wsommers
+the problem though is that llvm throws an error if you try to use an extension instruction without enabling the relevant feature, and there's no way to turn it off. I can't simply add those features to the target because that might impact codegen for the rest of ffmpeg. even the upstream configure script will disable cpu features on non-x86 targets due to these errors, rendering runtime feature detection kind of pointless (x86 seems to avoid 
+
+1788125677
+wsommers!wsommers@user/wsommers
+this because it's assembled with nasm instead of clang)
+
+1788125693
+wsommers!wsommers@user/wsommers
+is this something llvm should address? or should upstream ffmpeg really just be annotating functions properly with __attribute__((target(...)))? either way, this isn't that big of a deal, it just seems kinda silly.
+
