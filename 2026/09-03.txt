@@ -1,0 +1,248 @@
+1788437498
+mlugg!~mlugg@2001:19f0:7401:8244:5400:ff:fe24:ff33
+In case anyone isn't aware, the next Zig Day in Bristol is only a couple of days out! Make sure to RSVP (https://luma.com/k9n5lz69) if you're planning to come :)
+
+1788438049
+prescientmoon!~prescient@user/prescientmoon
+Hi! What should I use for basic datetime handling? That is, I need to be able to parse RFC 3339 literals and later print the timestamps in various (pre-defined) formats.
+
+1788438415
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+https://github.com/rockorager/zeit
+
+1788438821
+prescientmoon!~prescient@user/prescientmoon
+tranzystorekk: thanks!
+
+1788439418
+rockorager!~rockorage@mail.spunky.lol
+prescientmoon: zeit uses runtime formatting, if you have predefined formats it might be worth makign comptime formatters - particularly if you are logging or something
+
+1788439761
+prescientmoon!~prescient@user/prescientmoon
+rockorager: I do have predefined formats. What does making "comptime formatters" mean here?
+
+1788439815
+prescientmoon!~prescient@user/prescientmoon
+(For context, I'm making a SSG for personal use, so it's not like the number of formatted timestamps will ever that large
+
+1788439825
+prescientmoon!~prescient@user/prescientmoon
+)
+
+1788439842
+rockorager!~rockorage@mail.spunky.lol
+ah i wouldn't worry about it then
+
+1788439961
+rockorager!~rockorage@mail.spunky.lol
+basically, the parsing of the format string happens at runtime. normal zig formatters are comptime parsed
+
+1788446519
+themanchicken!~manchicke@user/themanchicken
+Hey friends, I'm wondering if anybody has thoughts on what I might be doing wrong here. I'm trying to make this line pretty-print command-line args as JSON, and it's just minifying regardless of which args I pass.
+
+1788446550
+themanchicken!~manchicke@user/themanchicken
+Operative line: std.log.debug("{}\n", .{std.json.fmt(&params, .{ .whitespace = .indent_2, .escape_unicode = false, .emit_null_optional_fields = true, .emit_nonportable_numbers_as_strings = true })});
+
+1788446576
+themanchicken!~manchicke@user/themanchicken
+I'm getting the exact same output regardless of the `.whitespace` option provided.
+
+1788448493
+themanchicken!~manchicke@user/themanchicken
+Ok, I think I got it. Needed to pass "{f}\n" as the format rather than "{}\n".
+
+1788471453
+magic_number!~anthony@user/magic-number:13852
+Been trying to coerce a literal string to a [*c]u8 in Zig 0.16.0, all of the online forum and blog posts for this are a bit older than 0.16.0 and the methods don't seem to apply anymore. How might I do this?
+
+1788471815
+andrewrk!~andrewrk@mail.ziglang.org
+magic_number: https://ziglang.org/documentation/0.16.0/#C-Pointers
+
+1788471835
+andrewrk!~andrewrk@mail.ziglang.org
+if you formulate a question that is not answered here I'll answer it by enhancing the lang ref
+
+1788472963
+magic_number!~anthony@user/magic-number:13852
+andrewrk: I believe I found the answer here: https://ziglang.org/documentation/0.16.0/#constCast, at least I'm arriving at a different error now.
+
+1788473135
+andrewrk!~andrewrk@mail.ziglang.org
+presumably the [*c]u8 is mutable memory which is not allowed for string literals. are you sure you can const cast
+
+1788473150
+Affliction!~afflictio@idlerpg/player/affliction
+hm, are strings stored in .rodata or .data? If the former, you'll segfault on write
+
+1788473152
+andrewrk!~andrewrk@mail.ziglang.org
+why isn't the pointer a const pointer to begin with?
+
+1788473165
+andrewrk!~andrewrk@mail.ziglang.org
+Affliction: not segfaulting on write would be even worse...
+
+1788473172
+Affliction!~afflictio@idlerpg/player/affliction
+indeed
+
+1788473188
+magic_number!~anthony@user/magic-number:13852
+I'm working with a c lib that has it specifically not a const pointer.
+
+1788473191
+Affliction!~afflictio@idlerpg/player/affliction
+I ran into  a similar footgun in python, believe it or not
+
+1788473213
+andrewrk!~andrewrk@mail.ziglang.org
+still my question is not answered. are you sure the C lib will not write to the pointer
+
+1788473245
+andrewrk!~andrewrk@mail.ziglang.org
+maybe the .h file should be changed rather than adding const cast
+
+1788473392
+magic_number!~anthony@user/magic-number:13852
+Haven't not gotten to the point of verifying if the C lib can write to the pointer after a const cast, just got it to compile a few minutes ago. It is now throwing a free() error due to invalid pointer. Changing the header file is one option but as it's not my C lib it would be easier overall it seems to not do that.
+
+1788473420
+Affliction!~afflictio@idlerpg/player/affliction
+does it expect to take ownership of the memory you pass it?
+
+1788473445
+Affliction!~afflictio@idlerpg/player/affliction
+if so, you'll want to .dupe (or .dupeZ) it with the C allocator
+
+1788473466
+Affliction!~afflictio@idlerpg/player/affliction
+which, will also get you a copy that can be written to at will
+
+1788473571
+andrewrk!~andrewrk@mail.ziglang.org
+you should never use const cast before verifying such things
+
+1788473601
+andrewrk!~andrewrk@mail.ziglang.org
+your debugging session right now is likely due to ignoring this advice
+
+1788473853
+magic_number!~anthony@user/magic-number:13852
+For the specific pointer I'm working with the lib does expect to free the memory. For another pointer of the same situation, the lib doesn't seem to care about freeing the memory. Is the advice in the lang ref because I don't see it near const cast? Or is this just general advice?
+
+1788473909
+Affliction!~afflictio@idlerpg/player/affliction
+general advice, many compilers store strings in .rodata, which isn't writable
+
+1788473927
+Affliction!~afflictio@idlerpg/player/affliction
+(and, it would be weird and unintuitive if your string literal changed at runtime)
+
+1788473961
+Affliction!~afflictio@idlerpg/player/affliction
+and, const as a pointer attribute, means the memory should not be written to
+
+1788474022
+andrewrk!~andrewrk@mail.ziglang.org
+consider the implications of freeing a string literal. how would that work? what would that even do? 
+
+1788474034
+Affliction!~afflictio@idlerpg/player/affliction
+Modify the binary on disk :D
+
+1788474078
+Ellenor!ellenor@invaincu.qc.ca.umbrellix.net
+<jest>overwrite the literal in memory?</jest>
+
+1788474141
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ACTION can feel his nasal demons wakign up
+
+1788474241
+Affliction!~afflictio@idlerpg/player/affliction
+hm, hypothetically... linksection(.data)...
+
+1788474244
+Affliction!~afflictio@idlerpg/player/affliction
+brb doing evil things
+
+1788474379
+Affliction!~afflictio@idlerpg/player/affliction
+damn, right, string literals are pointers to an array of comptime known size, not just arrays of comptime known size, probably won't work
+
+1788474394
+Affliction!~afflictio@idlerpg/player/affliction
+but then... .*
+
+1788474404
+magic_number!~anthony@user/magic-number:13852
+fair, and I am now seeing the implication of not checking the lib source first. quite new territory for me, but i don't mind the advice or the learning.
+
+1788474537
+andrewrk!~andrewrk@mail.ziglang.org
+the point is specifically to not reach for @constCast pretty much ever. when you actually need it, you'll know
+
+1788474597
+Affliction!~afflictio@idlerpg/player/affliction
+ok, no need to overcomplicate it with linksection, obviously .* lets you assign an array to a var
+
+1788474711
+magic_number!~anthony@user/magic-number:13852
+Affliction: tried .* too, no compilation. i'll check out the dupeZ with the c allocator.
+
+1788474789
+Affliction!~afflictio@idlerpg/player/affliction
+magic_number: I mean, https://bpa.st/7LCG35DCDG3F3OINE6UGQHL3SQ
+
+1788474820
+Affliction!~afflictio@idlerpg/player/affliction
+that is more explicit that the variable will be modified
+
+1788475159
+magic_number!~anthony@user/magic-number:13852
+well my bad, it does compile, but I still get a free() invalid pointer error.
+
+1788475219
+Affliction!~afflictio@idlerpg/player/affliction
+right, so it expects something allocated with malloc, which zig wrapps with std.heap.c_allocator
+
+1788475267
+andrewrk!~andrewrk@mail.ziglang.org
+the documentation for the C library you are using should have told you that you need to malloc the string 
+
+1788475281
+andrewrk!~andrewrk@mail.ziglang.org
+it should say something like, "this function takes ownership of a string allocated with malloc"
+
+1788475292
+andrewrk!~andrewrk@mail.ziglang.org
+and it is a pretty weird thing to do, generally
+
+1788475336
+andrewrk!~andrewrk@mail.ziglang.org
+what C lib is it anyway
+
+1788475564
+magic_number!~anthony@user/magic-number:13852
+libvirt and specifically this function: https://libvirt.org/html/libvirt-libvirt-host.html#virConnectOpenAuth which takes a callback that i'm writing.
+
+1788475687
+Affliction!~afflictio@idlerpg/player/affliction
+name is a const char, so it shouldn't be modified and passing a literal should just work
+
+1788475738
+magic_number!~anthony@user/magic-number:13852
+It's the result that is having the issue, which I have to populate which is just a char *. https://libvirt.org/html/libvirt-libvirt-host.html#virConnectCredential
+
+1788475796
+Affliction!~afflictio@idlerpg/player/affliction
+ah
+
+1788476029
+Affliction!~afflictio@idlerpg/player/affliction
+since there's also a length, perhaps you're supposed to allocate memory, and set resultlen to the length of it? could be made more explicit
+
