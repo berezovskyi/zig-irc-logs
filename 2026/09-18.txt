@@ -1,0 +1,104 @@
+1789703309
+chooky!~chooky@user/chooky
+Is it possible to cancel a std.http.Client.fetch call? I've got a fetch hitting a long-poll endpoint in a thread and cancellation of said thread hangs the program.
+
+1789703881
+Affliction!~afflictio@idlerpg/player/affliction
+is it practical to, instead of using a thread, use Io.concurrent()? if so, I assume (but haven't tested) calling .cancel() on that would do it
+
+1789703948
+chooky!~chooky@user/chooky
+Affliction: Oops! I just realised I typed thread instead of Io.concurrent(). That is how I'm running this background fetch
+
+1789703985
+Affliction!~afflictio@idlerpg/player/affliction
+yeah, I was looking to see if threads had a .cancel, heh
+
+1789703993
+chooky!~chooky@user/chooky
+mb mb 😓
+
+1789703997
+Affliction!~afflictio@idlerpg/player/affliction
+Guess that assumption is wrong, which kind of feels like there's a bug somewhere
+
+1789704009
+chooky!~chooky@user/chooky
+I have a stack trace of the hanging program if that's helpful for you?
+
+1789704023
+Affliction!~afflictio@idlerpg/player/affliction
+You are potentially handling error.Cancelled?
+
+1789704039
+chooky!~chooky@user/chooky
+Handling as such: _ = poller.cancel(self.io) catch {}
+
+1789704057
+Affliction!~afflictio@idlerpg/player/affliction
+I mean, in the task
+
+1789704057
+chooky!~chooky@user/chooky
+Oh, you mean, from the fetch?
+
+1789704060
+Affliction!~afflictio@idlerpg/player/affliction
+yeah
+
+1789704095
+Affliction!~afflictio@idlerpg/player/affliction
+if you're consuming that error and retrying, that might lead to your task spinning
+
+1789704108
+chooky!~chooky@user/chooky
+func (try client.fetch()) catch |err| switch (err) { error.Canceled => return error.Canceled, etc } - I presume so
+
+1789704118
+Affliction!~afflictio@idlerpg/player/affliction
+looks sane to me
+
+1789704140
+chooky!~chooky@user/chooky
+I can send through a link to the diff + stacktrace if that will help with any of your assumptions?
+
+1789704170
+Affliction!~afflictio@idlerpg/player/affliction
+I think we're out of my depth and someone else with a bit more experience in async might be more helpful, but I'll take a look
+
+1789704367
+chooky!~chooky@user/chooky
+https://brookjeynes.dev/paste/io-hang-diff.html
+
+1789704367
+chooky!~chooky@user/chooky
+src/chat.zig:98 is handling the cancellation, src/screens/Chat.zig: is the fetch itself https://fossil.brookjeynes.dev/fossil-forum-tui/artifact?name=0b2ebdbdc6&ln=108
+
+1789704380
+chooky!~chooky@user/chooky
+This is the stack trace for when I hit ctrl+c - https://brookjeynes.dev/paste/ctrl-c-hang-gdb.txt
+
+1789704390
+chooky!~chooky@user/chooky
+I hope that helps 🙏
+
+1789704449
+chooky!~chooky@user/chooky
+src/screens/Chat.zig -> src/chat.zig:108 (wrong file sorry)
+
+1789704666
+Affliction!~afflictio@idlerpg/player/affliction
+so the main things I'm looking for are discarded errors, 'try' should propagate Canceled but any "catch {}" or similar on something which might involve I/O and return Canceled could consume it
+
+1789704717
+chooky!~chooky@user/chooky
+The Io concurrent stuff was introduced in the diff, the repo file was for context on existing code
+
+1789704970
+Affliction!~afflictio@idlerpg/player/affliction
+nothing sticks out to me
+
+1789705039
+chooky!~chooky@user/chooky
+thanks for taking a look, I appreciate the help!
+
