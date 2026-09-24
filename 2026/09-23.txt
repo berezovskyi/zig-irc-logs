@@ -1,0 +1,236 @@
+1790122306
+chooky!~chooky@user/chooky
+andrewrk: I've created an issue with some example code usage and a stack trace. Thanks for acknowledging this! https://codeberg.org/ziglang/zig/issues/36931
+
+1790122439
+andrewrk!~andrewrk@mail.ziglang.org
+thanks for the report!
+
+1790125330
+chooky!~chooky@user/chooky
+andrewrk: I was meaning to mention as well - If the fixes (from your judgement) to the above issue seem relatively self-contained, I'd be more than happy to look at similar ways cancellation is implemented and take a stab at fixing it myself?
+
+1790125347
+rsarv3006_!~rsarv3006@user/rsarv3006
+good evening y'all
+
+1790126862
+andrewrk!~andrewrk@mail.ziglang.org
+chooky: I think fixing cancelation issues are fairly contributor friendly
+
+1790127067
+chooky!~chooky@user/chooky
+andrewrk: outside of reading the contributor docs, is there anything else I should do before tackling work? I'll add a comment to the issue mentioning I'll take a stab at it so others are aware?
+
+1790128926
+andrewrk!~andrewrk@mail.ziglang.org
+that should be enough I think
+
+1790154805
+mamu!~ubuntu@130.61.249.100
+Hi, I am very new to zig and don't know a lot (started to read about it this weekend, I like the no-slop policy btw). The thing that itches me most right now is the "Illegal Behaviour" section in the docs. It states that "If Unchecked Illegal Behavior is invoked at runtime, anything can happen [...] calling arbitrary functions". The long list that then follows are only examples where safety checks
+
+1790154807
+mamu!~ubuntu@130.61.249.100
+exits. Is there an example where stuff really goes south and an arbitrary function is called? If so, how does one best make sure that constructs like that do not exist in my codebase?
+
+1790155299
+Affliction!~afflictio@idlerpg/player/affliction
+don't have a demo, but I could conceive eg, reaching unreachable code might let the program counter fall into the following function
+
+1790155359
+Affliction!~afflictio@idlerpg/player/affliction
+naturally, anything can happen in a memory use-after-free too, especially if there's type confusion between 2 types that happen to have a function pointer or vtable at the same address
+
+1790155415
+Affliction!~afflictio@idlerpg/player/affliction
+Pretty much, in ReleaseFast, the compiler doesn't emit checks for unchecked illegal behavior, and is free to assume it'll never happen
+
+1790155488
+Affliction!~afflictio@idlerpg/player/affliction
+and, in whatever bad state arises, anything can happen
+
+1790169051
+mamu!~ubuntu@130.61.249.100
+With the risk of asking stupid questions here: What ways are there to reach unreachable code? The only one that is in the example (https://ziglang.org/documentation/master/#Reaching-Unreachable-Code) just explicitly "calls/states" unreachable. And even then (in the example) the runtime seems to catch it perfectly without going crazy.
+
+1790169399
+ifreund!2940d10f8b@user/ifreund
+mamu: that question is equivalent to "why do assertions exist?"
+
+1790169557
+ifreund!2940d10f8b@user/ifreund
+assertions exist to catch programming mistakes and faulty assumptions, for example the assumtion that certain branches cannot be reached due to how the program is structured
+
+1790169588
+ifreund!2940d10f8b@user/ifreund
+it is always indicative of a bug written by the programmer if unreachable code is reached
+
+1790170078
+mamu!~ubuntu@130.61.249.100
+Ok, if unreachable can only be reached manually then I wonder which code there really is that is IB and unchecked (more precisely uncheckable as one can turn off checks). It is the sentence "Some IB is safety checked[...] All other IB is unchecked" Which other IB is there if I have all checks on?
+
+1790170224
+mamu!~ubuntu@130.61.249.100
+sorry for asking so stubbornly, Or is it just that here might be cases that cause IB but neither these cases nor the absence of them is known?
+
+1790170668
+ifreund!2940d10f8b@user/ifreund
+mamu: a use after free is unchecked illegal behavior for example
+
+1790170765
+ifreund!2940d10f8b@user/ifreund
+branching on undefined memory is also unchecked illegal behavior
+
+1790170824
+ifreund!2940d10f8b@user/ifreund
+note that it is planned to explore even more in-depth safety checks (e.g. https://codeberg.org/ziglang/zig/issues/36237)
+
+1790170914
+ifreund!2940d10f8b@user/ifreund
+and to be clear, all illegal behavior is the result of programmer error
+
+1790170937
+ifreund!2940d10f8b@user/ifreund
+stating that "unreachable can only be reached manually" rather misses the point
+
+1790171335
+mamu!~ubuntu@130.61.249.100
+Ok, now I have stuff to read, Thanks for the examples, pointers and the patience :)
+
+1790171459
+bblack!~bblack@wikimedia/bblack-WMF
+an interesting related tautology is "all programmer errors are potentially IB"
+
+1790171599
+bblack!~bblack@wikimedia/bblack-WMF
+the interesting subset is "kinds of programmer errors which currently constitute uncatchable IB"
+
+1790171616
+bblack!~bblack@wikimedia/bblack-WMF
+which is a set that will narrow over time
+
+1790186747
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: use after free being unchecked illegal behavior is allocator-dependant. SafeAllocator for instance, with some caveats, turns UAF into well-defined use of memory that is set to 0xaa bytes. in the common case of pointer access, this will certainly trap on most targets
+
+1790186810
+sam!b8f15a4bbd@golang/sam
+Does anyone know if it's documented why the design decision to have modules be implicit structs was made? I can't even find this documented in the docs, and it feels a bit like an internal implementation detail leaking into the code. Makes it impossible to "grep Foo = struct {" or similar, so I'm wondering what the benefit is or when I should use this over a more explicit struct?
+
+1790186954
+andrewrk!~andrewrk@mail.ziglang.org
+sam: files have to be *something*. by making them structs, the language is simpler. before, there was a special type that only existed for files. now there is no such type
+
+1790187019
+sam!b8f15a4bbd@golang/sam
+So it is an internal implementation detail that's leaking into the public syntax? I just couldn't find it documented anywhere (but I do see it used in the standard library), so I wasn't even sure if it was intentional.
+
+1790187032
+sam!b8f15a4bbd@golang/sam
+And it's unclear to me when I'd use one or the other
+
+1790187056
+andrewrk!~andrewrk@mail.ziglang.org
+what in the world are you talking about
+
+1790187065
+i_am_sam!~halloy729@user/i-am-sam:60665
+I've never used zig, and Im new to IRC, so sorry if Im in the wrong spot, but my god, Im really liking this Andrew Kelley guy. I've read like 5 of his blog posts and really liked the most recent one: https://andrewkelley.me/post/dont-take-black-pill.html I also love that he banned ai in his jetbrains interview. I want to join the movement, whatever it is!
+
+1790187101
+sam!b8f15a4bbd@golang/sam
+I'm not sure how else to phrase it, sorry. Just trying to figure out when I'd use explicit structs vs. the implicit files thing. What part is unclear though, maybe I can rephrase? Sorry
+
+1790187149
+andrewrk!~andrewrk@mail.ziglang.org
+sam: does this help? https://ziglang.org/documentation/0.16.0/#Avoid-Redundant-Names-in-Fully-Qualified-Namespaces
+
+1790187174
+andrewrk!~andrewrk@mail.ziglang.org
+welcome, i_am_sam. perhaps you might be interested to see if there is a https://zig.day/ meetup in your local city
+
+1790187187
+ifreund!2940d10f8b@user/ifreund
+andrewrk: UAF for stack memory isnt allocator dependant :P
+
+1790187210
+andrewrk!~andrewrk@mail.ziglang.org
+ifreund: good point, my brain was stuck on heap allocations for some reason
+
+1790187578
+i_am_sam!~halloy729@user/i-am-sam:60665
+Thanks andrewrk! Unfortunately there is not. I'd love to meet more people like this. It seems like Andrew Kelley is into like, the free software sort of stuff. Love the idea of "Software You Can Love" - definitely curious to learn more about that
+
+1790187682
+vyivel!~vyivel@user/Vyivel
+not sure if you know but you're talking to him
+
+1790187850
+i_am_sam!~halloy729@user/i-am-sam:60665
+hahahah god, thats embarrassing! And awesome. Did not expect that at all. Hi Andrew, thanks for all your posts!
+
+1790188463
+ahills!ahills@user/ahills
+i_am_sam: you might be interested in the "software should work" conference from earlier this year, pretty sure most of the talks have been recorded and uploaded – softwareshould.work
+
+1790188495
+i_am_sam!~halloy729@user/i-am-sam:60665
+Nice, I'll check that out. Thank you!
+
+1790189189
+sam!b8f15a4bbd@golang/sam
+andrewrk: Ah, okay, thank you, I didn't consider how it would affect the import names
+
+1790189193
+sam!b8f15a4bbd@golang/sam
+That makes sense
+
+1790194056
+kylep!78500fbf0f@user/kylep
+hello o/ 
+
+1790194203
+kylep!78500fbf0f@user/kylep
+I'm new to zig - just got my 100th ziglings done, working on building a little interpreter in zig
+
+1790194231
+kylep!78500fbf0f@user/kylep
+been really enjoying it. feels fresher than C, but scratches the low level itch
+
+1790194615
+bblack!~bblack@wikimedia/bblack-WMF
+:)
+
+1790194771
+andrewrk!~andrewrk@mail.ziglang.org
+welcome kylep 
+
+1790194880
+kylep!78500fbf0f@user/kylep
+hey andrewrk, I can only assume you're the creator XD
+
+1790194901
+kylep!78500fbf0f@user/kylep
+been going through and watching your talks, especially liked don't take the black pill
+
+1790195086
+andrewrk!~andrewrk@mail.ziglang.org
+thank you
+
+1790195369
+kylep!78500fbf0f@user/kylep
+sure - I'll stop fanboying and start lurking, see you around!
+
+1790196743
+nonoriri!~nonoriri@user/nonoriri
+the black pill was the funniest talk i ever seen :D 
+
+1790197125
+kylep!78500fbf0f@user/kylep
+^ certainly it's up there in the ranks among "simple made easy" for me
+
+1790197631
+kylep!78500fbf0f@user/kylep
+if there's other recommended talks, I'm all ears
+
