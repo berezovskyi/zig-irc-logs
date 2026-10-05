@@ -1,0 +1,156 @@
+1791073751
+Smithx10!sid243404@id-243404.helmsley.irccloud.com
+What does the tombstone in the tier list mean?  Saw it next to Illumos, and FreeBSD
+
+1791075357
+Affliction!~afflictio@idlerpg/player/affliction
+Smithx10: "Targets marked with 🪦 are obsolescent; the Zig compiler and standard library maintain best-effort support for them, but that support is expected to be removed eventually. "
+
+1791080951
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I've been learning the zig build system by doing build systems for various software I use, and the one I'm working on depends on a little repo with a single relevant (lua) file in it. What's the idiomatic way to pull that in to a zig package? Just vendor it, or depend on it somehow?
+
+1791117735
+timide!~timide@user/timide
+do i necessarily need a local time.h including my own libc time.h (using gnulibc), a translateC and link libc in order to use strftime?
+
+1791118103
+Affliction!~afflictio@idlerpg/player/affliction
+sure would be nice to have some basic time stuff in std, I do exactly the same in one of my projects - but it fortunately is already using other C libs so, path of least resistance.
+
+1791118118
+Affliction!~afflictio@idlerpg/player/affliction
+I know someone's linked a 3rd party time lib here at some point, don't recall what it was called
+
+1791118299
+timide!~timide@user/timide
+found zeit but i'd prefer to use zig std or libc :)
+
+1791118412
+Affliction!~afflictio@idlerpg/player/affliction
+heh, this was certainly interesting... https://bpa.st/QCPRWBXFP5AFXWKKXPHLFYJJSM
+
+1791118453
+Affliction!~afflictio@idlerpg/player/affliction
+zig clock -> c tm -> c strftime -> zig writer with centering. Beautifully seamless interop.
+
+1791118586
+Affliction!~afflictio@idlerpg/player/affliction
+the more I look at that the worse it looks, 32 byte buf for a UI field that can only practically hold 20 chars? Can't afford to waste those 12 bytes in this economy!
+
+1791118601
+Affliction!~afflictio@idlerpg/player/affliction
+yeah, zeit might have been what I was thinking of
+
+1791118627
+Affliction!~afflictio@idlerpg/player/affliction
+I only used libc because I'm already using it, otherwise I'd have probably reinvented the wheel...
+
+1791118634
+Affliction!~afflictio@idlerpg/player/affliction
+anyway, brb sleep
+
+1791119216
+ahto!~ahto@user/ahto
+Oh! Didn't realise 0.17.0 got released
+
+1791123604
+chmod222!~chmod222@user/chmod222
+Oh boy, here I go fixing migration errors again
+
+1791128108
+timide!~timide@user/timide
+Affliction: so in the end i have a time.zig where i defined extern "C" strftime/strptime and extern struct tm, link the libc and it works
+
+1791129062
+craigbro!~user@163.252.128.212
+naively trying to print out the field names of a struct, but it field_names appears to be an empty slice for std.log  
+
+1791129110
+craigbro!~user@163.252.128.212
+aka, I would expect @typeInfo(std.log).@"struct".field_names to not be empty...
+
+1791129697
+craigbro!~user@163.252.128.212
+@typeInfo(std.log).@`struct".field_names[0] throws a compile time error that I cannot index into an empty slice.  I suspect I have some learning to do about []const [:0]const u8  
+
+1791130268
+craigbro!~user@163.252.128.212
+ah, std.log is a struct, but apparently is not populated with all of the pub values in the top level of lib/std/log.zig as I had suspected...  
+
+1791132140
+craigbro!~user@163.252.128.212
+ah, found where std.lang.Type lives, and realize now that decl_names
+
+1791132164
+craigbro!~user@163.252.128.212
+zig metaprogramming with comptime is pretty hot
+
+1791144606
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+if I want to add a dependency to my build that isn't a zig package, like a tarball with c source files, how do I declare that? do I have to repackage it with a build.zig.zon to make it into a zig package?
+
+1791144951
+timide!~timide@user/timide
+ryanprior: in general i use "zig fetch --save <name> path/to/tarball", in build.zig.zon you can import it with b.dependency and use translateC to create a module
+
+1791144998
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+if you need to build a whole external c project from source can look at how https://github.com/BratishkaErik/ncdu handles ncurses
+
+1791145082
+timide!~timide@user/timide
+for example with sqlite3.c: https://gist.github.com/corps-fini/7cdb699b861c0489a39772fc2590da4d
+
+1791145082
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+tranzystorekk: I tried that, and I've been looking at other zig build systems and seen similar things so I thought that was the idiomatic approach, but it hasn't worked for me. Maybe I'm missing something fundamental as a beginner that everybody else takes for granted, please point out basics if it seems like I got ahead of myself somehow
+
+1791145150
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+specifically, I ran `zig fetch --save https://path-to-my.tar.gz` in my project directory, and it failed, saying "fetched package has no build.zig.zon file"
+
+1791145180
+timide!~timide@user/timide
+yes you need to give it a name
+
+1791145209
+timide!~timide@user/timide
+zig fetch --save packagename https://
+
+1791145301
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I tried that too and that fails with "error: unexpected extra parameter" so I was thinking maybe that was a feature of an older version of zig that was removed? but maybe I'm just using it wrong?
+
+1791145311
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I'm on zig 0.16
+
+1791145336
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i think it might be `zig fetch --save=pkgname url`
+
+1791145360
+timide!~timide@user/timide
+yes :D
+
+1791145384
+timide!~timide@user/timide
+--save=[name]                 Add the fetched package to build.zig.zon as name
+
+1791145395
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+okay, breakthrough XX
+
+1791145442
+timide!~timide@user/timide
+anyone noticed http client request.deinit hanging when used before reading the response body?
+
+1791145659
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+never tried not handling the response body
+
+1791150781
+marty_fly!~user@user/marty-fly:59610
+Has anyone gotten the tracy profiler to work well with zig? I have the frame profiling working, but last time I tried using instrumentation profiling, tracy just crashed on me
+
