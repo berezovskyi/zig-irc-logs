@@ -1,0 +1,96 @@
+1791653657
+darkling!~darkling@savella.carfax.org.uk
+If I'm writing an allocator in rust, I have to supply an allocate and deallocate method, and *both* of them get given a length. I'm looking at (I think) the allocator interface for zig, and the deallocator doesn't get a length.
+
+1791653683
+darkling!~darkling@savella.carfax.org.uk
+So do I have to maintain metadata in the allocator of all allocated extents and their lengths?
+
+1791655417
+jonrm!~jonrm@user/jonrm
+darkling: I'm not an expert but IIUC the allocator vtable entry for `free` requires a slice, not just a pointer. slices have lengths attached
+
+1791655647
+darkling!~darkling@savella.carfax.org.uk
+Hmm. free() and destroy() both seem to take anytype, but if there's an additional constraint that the anytype is a slice, that makes sense.
+
+1791655685
+jonrm!~jonrm@user/jonrm
+ah, that's the difference between the interface provided by std, and the vtable, which is the part you'd need to implement if you wanted to make your own
+
+1791655693
+darkling!~darkling@savella.carfax.org.uk
+The raw*() methods take a slice.
+
+1791655705
+jonrm!~jonrm@user/jonrm
+the std interface should make sure your implementation gets a slice
+
+1791655745
+darkling!~darkling@savella.carfax.org.uk
+*clicks on VTable* Aaaah, I think I see.
+
+1791655808
+SarahMalik!ellenor@invaincu.qc.ca.umbrellix.net
+ACTION cuts pie
+
+1791655824
+SarahMalik!ellenor@invaincu.qc.ca.umbrellix.net
+ACTION omnomnom a slice
+
+1791657124
+estherbunny!~esther@user/estherbunny
+how do i chain a reader and a writer? more specifically i want to pass the result of a std.http.fetch into std.json.parseFromTokenSource
+
+1791657173
+estherbunny!~esther@user/estherbunny
+theres a reader method to stream into a writer but the other way around doesnt exit
+
+1791657213
+estherbunny!~esther@user/estherbunny
+i mean i assume im gonna need a buffer of some kind in between probably
+
+1791657435
+ifreund!2940d10f8b@user/ifreund
+estherbunny: Reader.streamRemaining()
+
+1791657466
+ifreund!2940d10f8b@user/ifreund
+there are also other Reader.stream* functions for other use cases
+
+1791657501
+estherbunny!~esther@user/estherbunny
+sorry, i meant chain a writer and a reader
+
+1791657504
+estherbunny!~esther@user/estherbunny
+but i think i got it
+
+1791661557
+andrewrk!~andrewrk@mail.ziglang.org
+estherbunny: a stream pipeline looks like: -> reader -> reader ->  .... -> writer -> writer -> 
+
+1791661586
+andrewrk!~andrewrk@mail.ziglang.org
+in other words you have a chain of readers followed by a chain of writers and at some point you have the only place that a reader connects to a writer, and that's where your "driver" code goes
+
+1791667547
+estherbunny!~esther@user/estherbunny
+andrewrk: doesn't a writer need to feed into a reader sometimes? e.g. http fetch body writer into json parser, or maybe it doesnt count because there's a buffer in between, anyway, this is the code i ended up with: https://pastes.io/AJyDh5tN, lmk if there's a better way to do it
+
+1791667954
+estherbunny!~esther@user/estherbunny
+s/lmk/feel free to lmk/
+
+1791670504
+andrewrk!~andrewrk@mail.ziglang.org
+estherbunny_: in zig std lib, it's not the case. a writer always outputs to another writer, or terminates
+
+1791670525
+andrewrk!~andrewrk@mail.ziglang.org
+that's the main difference between it and a reader. otherwise there would be no need for 2 different things
+
+1791670905
+estherbunny_!~esther@user/estherbunny
+andrewrk: i think i get it, thx :)
+
