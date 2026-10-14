@@ -1,0 +1,140 @@
+1791891291
+chjlsch!~Betterbir@user/chjlsch
+Just finished the ziglings exercises, and i'm really loving Zig so far. Type reflection is so much easier compared to rust. Zig doesn's need a serde equivalent, because the language has all the tools included. Also the functionality of the popular bitflags crate is just *in the language itself*!
+
+1791891352
+chjlsch!~Betterbir@user/chjlsch
+I'm a bit afraid of the build system though... but it seems powerful and maintainable.
+
+1791903372
+Sivecano!~Sivecano@user/Sivecano
+I'm actually getting my dbus client library to work
+
+1791903376
+Sivecano!~Sivecano@user/Sivecano
+I wish the dbus specification was a bit easier to read tho
+
+1791915234
+andrewrk!~andrewrk@mail.ziglang.org
+chjlsch: there is complexity in the build system for sure, but there are also a lot of examples to look at. feel free to ask questions here and I can try to find you nice recipes to look at
+
+1791917230
+thirdNick!~twelve@197.211.52.176
+hi all
+
+1791921781
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+i probably need to dive into code, but for packaging purposes does aro or translate-c have some options to configure things like include dirs via environment vars?
+
+1791921903
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+in all my latest attempts to package zig, missing includes have been the biggest headache, and for the future of zig, since translate-c is a core component, better configurability would be very nice to have
+
+1791927348
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I'm working on a build system for libraries that have a mix of native compiled components and lua source code. I want to provide downstream projects with lib modules & also lua scripts. Any advice on how to accomplish that?
+
+1791927418
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I've got a system worked out for the native parts, I can build the native modules & use the lua c api to offer an integration API that downstream can use to preload the native components using one function call.
+
+1791927511
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+What I've got in mind for the lua component is to use a tool step during the build to bundle all the lua scripts into one, and freeze that as a constant string inside that native integration library, so that when you call the function to preload the native components, it can then also have the interpreter eval the bundled lua string.
+
+1791927547
+andrewrk!~andrewrk@mail.ziglang.org
+if you're talking about the zig build system, you can already just access all the source files from a dependency package 
+
+1791927604
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+andrewrk: yes I'm using the zig build system, and I am already reaching into dependency packages for lua sources. The line where I hesitate to cross is reaching into dependencies' dependencies. Maybe I should not be precious about that?
+
+1791927650
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+But when I got to that point where I needed lua files from libs I do not depend on directly, I was like, I should find a way to make this less baroque for upstreams, so that an upstreaming depending on me does not have to know about the repo structure of their dependency's dependency's dependency.
+
+1791927979
+andrewrk!~andrewrk@mail.ziglang.org
+why does someone depending on you have to be aware that you're reaching into a dependency's dependency?
+
+1791928073
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+so as an example, the person depending on me needs to have all the lua modules that I use, available at runtime. I wrote lua function foo, which calls into lua function bar which I get from my dependency, and that calls into lua function baz which it depends upon (but I don't.) And in my repo, lua sources are in dist/, but in the repo that implements baz, lua sources are in src/
+
+1791928098
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+the person depending on me is going to have to know to put all those correct directories on their lua path in order for their interpreter to be able to find everything
+
+1791928107
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I want to remove that complexity for them
+
+1791928356
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+the first way I tried to do this is by creating an install step that takes all my dependencies' lua files and installs them neatly into a directory structure in my package output. if you install my library, you can use my provided integration API to load the native parts, and then just put one directory (my lib's lua/ dir) on your lua path, and you're set
+
+1791928421
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+but that doesn't seem to work as neatly for people who depend on my lib as a zig dependency, instead of installing it. then they get my native modules but I don't see any neat way for them to run my installation steps to benefit from that tidy directory of lua files
+
+1791928498
+andrewrk!~andrewrk@mail.ziglang.org
+hmm this sounds like an interesting use case that I'm not sure I'll be able to understand while giving you my divided attention here on IRC. would you be willing to write this up as a "use case" issue? basically you don't need to fill out the bug report template, just try to explain clearly the problem you're trying to solve 
+
+1791928540
+andrewrk!~andrewrk@mail.ziglang.org
+maybe show the solution that you *could* do but it is undesirable for some reason
+
+1791928595
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+sure, I'll link the issue here when I've created it. and/or would be happy to schedule a call if this is interesting to you. I think that a strong & well documented pattern here would be useful for anybody who is building libraries with mixed script & native components.
+
+1791930079
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+andrewrk: https://codeberg.org/ziglang/zig/issues/37225
+
+1791932600
+andrewrk!~andrewrk@mail.ziglang.org
+thanks!
+
+1791934401
+squeek502!~squeek502@user/squeek502
+ryanprior, does addNamedWriteFiles seem useful to you? the idea i had in mind would be to gather the lua scripts in the returned WriteFile instead of installing them directory, and then both you and users could use installDirectory with the WriteFile.getDirectory() to do the installation
+
+1791934519
+squeek502!~squeek502@user/squeek502
+installing them directly*
+
+1791935130
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+so I just read some docs and a blog post on this after you mentioned it on Codeberg. let me check my understanding:
+
+1791935155
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+unlike installed files, which only get written when you install the library itself, a WriteFile (which can also be a directory of files) can be given a name, which is then available in the build context of the downstream depending build system
+
+1791935228
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+so as a library, I write all my Lua files that I need into a directory, and add that directory as a WriteFile; and then as a consumer of that library, I get the directory from the WriteFile and install it during my own install step, so that my user has it at runtime.
+
+1791935237
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+all correct? if so that seems viable
+
+1791935544
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+also squeek502 I just realized why your username rang a bell: you did Zua, which I found when searching for zig+lua resources. cool stuff
+
+1791935740
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+do you have a take on zlua? I've been following its development, I especially like how it has an extended standard lib built in.
+
+1791935741
+squeek502!~squeek502@user/squeek502
+yeah, WriteFile essentially gives you a directory in the cache that you can populate with whatever, and it'll all have integration with the cache system. There's an example here if you haven't seen it: https://ziglang.org/learn/build-system/#write-files
+
+1791935963
+squeek502!~squeek502@user/squeek502
+ryanprior, i haven't seen zlua, got a link?
+
