@@ -1,0 +1,128 @@
+1791936019
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+squeek502: you bet, it's https://github.com/grant-wade/zlua
+
+1791936078
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I have not actually used it yet or made any judgments about it, been too busy dealing with PUC Lua and luajit as it is, but I thought maybe as somebody more steeped in Zig & Lua implementation you'd be well situated to evaluate it
+
+1791936104
+squeek502!~squeek502@user/squeek502
+cool, looks like they got quite a bit further than i did :)
+
+1791938620
+squeek502!~squeek502@user/squeek502
+ryanprior, here's the idea i had in mind if you haven't already gotten there: https://zigbin.io/61cac1
+
+1791941729
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+ooh, zigbin, looks nice. thank you for the example code squeek502! I had planned on pushing forward with my impl this evening but distracted myself cooking and reading :)
+
+1791948656
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+squeek502: putting this down for the night, but I got the NamedWriteFiles working, I'm consuming lua-http in a downstream test project, installing its lua scripts and loading them.
+
+1791948684
+squeek502!~squeek502@user/squeek502
+nice!
+
+1791948715
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+This reveals some sort of initialization bug in whatever I'm doing with cqueues so still some more layers to unravel, but I feel really good about having a way to handle this that feels concordant with the Zig build system.
+
+1791948781
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I may still put in a step that allows bundling and freezing the lua files for use cases where you just want to deploy a single binary, but that's optional now.
+
+1792003680
+chjlsch!~Betterbir@user/chjlsch
+Hi folks! I'm having trouble reading a file, even though i'm using the same code as in the ziglings exersice. Using zig version 0.17.0 (and the matching ziglings version). I get segmentation faults and panics on switch on corrupt value and stuff. I've created a zigbin at https://zigbin.io/00b1e3. 
+
+1792004388
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+chjlsch: you need to take interface via a pointer: const reader = &file_reader.interface; and file_reader needs to be a var
+
+1792004456
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+plus, it would be good not to use the reader buffer as output for readSliceShort (create another array)
+
+1792004494
+chjlsch!~Betterbir@user/chjlsch
+tranzystorekk: omg thanks, it works now! thats a mean error message, but it makes sence if you look at the readSliceShort params.
+
+1792004569
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+zig auto casts that to a pointer, but by then you're not using the intended Reader, but its copy instead
+
+1792004617
+chjlsch!~Betterbir@user/chjlsch
+ah, i see. well now i know ^^
+
+1792004632
+chjlsch!~Betterbir@user/chjlsch
+thanks again for the fast help!
+
+1792004724
+chjlsch!~Betterbir@user/chjlsch
+oh i missed your second reply. if you don't mind, why is it bad to use just one array?
+
+1792004787
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the first one serves as a buffer for the reader, overwriting it might summon nasal demons
+
+1792004919
+chjlsch!~Betterbir@user/chjlsch
+nasal demons don't sound good, but would it be o.k. if i'm only reading from it?
+
+1792004943
+chjlsch!~Betterbir@user/chjlsch
+or is it better hygiene to not touch that buffer
+
+1792005226
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+the latter
+
+1792005322
+chjlsch!~Betterbir@user/chjlsch
+sounds reasonable, thanks
+
+1792007730
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+squeek502: my lua-http build is working with my downstream depending project. Very pleased with how that came out. The issue I had with a panic on initialization ended up being cqueues exercising undefined behavior, which GCC/glibc turned into a noop but Zig turned into a panic. So that's actually a minor Zig W I guess.
+
+1792008663
+beastd!~kvirc@p5b3690bd.dip0.t-ipconnect.de
+ryanprior: "Zig W"?
+
+1792008683
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+beastd: a win ("W") for Zig
+
+1792008732
+beastd!~kvirc@p5b3690bd.dip0.t-ipconnect.de
+ah oh ok. win sounds about right
+
+1792008741
+darkling!~darkling@savella.carfax.org.uk
+I read it as "wicket". Quite the opposite sort of thing. :)
+
+1792009792
+squeek502!~squeek502@user/squeek502
+ryanprior, undefined behavior sanitizer is turned on by default in safe modes for C code compiled by zig, if you need to turn it off there's `sanitize_c` in Module/Module.CreateOptions
+
+1792010593
+beastd!~kvirc@p5b3690bd.dip0.t-ipconnect.de
+squeek502: as long as it is UB (not a false potive), i think it is a win to have it on by default and to fix the code to avoid UB
+
+1792010922
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+that's what I tried first, I patched cqueues to return early in the situation where UB would have been exercised, and it's working for me so far.
+
+1792010955
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+https://github.com/ryanprior/cqueues/commit/1b9cd54883743358029373cb58d71427ba7359c1
+
+1792017216
+squeek502!~squeek502@user/squeek502
+beastd, agreed, and it's led to many fixes in C projects; just giving info on how it can be worked around until its fixed upstream
+
