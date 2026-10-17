@@ -1,0 +1,328 @@
+1792116353
+wsommers!wsommers@user/wsommers
+quick question: is there any reason for the b.addTranslateC options to not accept null for optimize? the recent change making standardOptimizeOption optional broke the TrueType build script for this reason
+
+1792118129
+andrewrk!~andrewrk@mail.ziglang.org
+wsommers: I got a bit distracted with some other changes but I was thinking of reverting that API breakage...
+
+1792118147
+andrewrk!~andrewrk@mail.ziglang.org
+probably translate-c needs it because it will affect which macros are defined, for example NDEBUG
+
+1792146373
+estherbunny!~esther@user/estherbunny
+hey gang, build system question, im trying to compile two cpp files into objects with addCSourceFiles and link them into a (tranlate-c) module, and it's also linked to a dynamic system library, however im getting some undefined symbol errors (symbols from the system lib) at runtime, when i manually compile the objects with g++ or clang++ though and then add them with addObjectFile it works fine, is this perhaps a know issue with zig c++?
+
+1792147139
+ifreund!2940d10f8b@user/ifreund
+estherbunny: note that with C++, all object files linked must be compiled with the exact same compiler
+
+1792147156
+ifreund!2940d10f8b@user/ifreund
+the ABI isn't stable/consistent across compilers like in C
+
+1792147181
+estherbunny!~esther@user/estherbunny
+ah, well that explains it :P
+
+1792147225
+estherbunny!~esther@user/estherbunny
+ty ifreund!
+
+1792147393
+Reinhilde!ellenor@invaincu.qc.ca.umbrellix.net
+what a disaster
+
+1792147685
+vyivel!~vyivel@user/Vyivel
+i'm pretty sure g++ and clang++ are compatible but they have to use the same std library
+
+1792147721
+vyivel!~vyivel@user/Vyivel
+zig uses libc++ so if a dynamic library uses libstdc++ (it does on most linux distros) you'll have Problems 
+
+1792148027
+estherbunny!~esther@user/estherbunny
+:////
+
+1792148070
+vyivel!~vyivel@user/Vyivel
+yeahh
+
+1792148088
+chmod222!~chmod222@user/chmod222
+Probably safest just to compile everything you feed to Zig via Clang
+
+1792148092
+vyivel!~vyivel@user/Vyivel
+it would be nice if zig could use the system c++ lib
+
+1792148102
+chmod222!~chmod222@user/chmod222
+Since that is what Zig will indirectly use
+
+1792148133
+vyivel!~vyivel@user/Vyivel
+my project depends on qt :\ 
+
+1792148167
+chmod222!~chmod222@user/chmod222
+Time to dust off the ol' qmake I guess!
+
+1792148176
+chmod222!~chmod222@user/chmod222
+Vendoring is back in style
+
+1792148187
+vyivel!~vyivel@user/Vyivel
+nah they're using cmake these days
+
+1792148199
+chmod222!~chmod222@user/chmod222
+Holy moly
+
+1792148204
+chmod222!~chmod222@user/chmod222
+Do they still use moc?
+
+1792148208
+vyivel!~vyivel@user/Vyivel
+yep
+
+1792148211
+chmod222!~chmod222@user/chmod222
+Hated moc
+
+1792148221
+vyivel!~vyivel@user/Vyivel
+partially reimplemented it in zig in comptime
+
+1792148229
+chmod222!~chmod222@user/chmod222
+There's probably some criminal stuff you can do with C++26 reflection nowadays
+
+1792148255
+vyivel!~vyivel@user/Vyivel
+iirc they evaluated c++26 stuff and decided it's not quite enough for qt
+
+1792148268
+vyivel!~vyivel@user/Vyivel
+could be outdated info though
+
+1792148367
+chmod222!~chmod222@user/chmod222
+Even if it were, it's probably an option in 30 years when C++26 is widely available
+
+1792154450
+estherbunny!~esther@user/estherbunny
+ifreund: does the zig build system support linker namespaces? https://stackoverflow.com/a/67522688
+
+1792154542
+estherbunny!~esther@user/estherbunny
+"It should be possible to use linker namespaces to completely isolate dependencies"
+
+1792154882
+ifreund!2940d10f8b@user/ifreund
+estherbunny: mixing C++ compiled by different compilers is not supported by zig
+
+1792154918
+ifreund!2940d10f8b@user/ifreund
+if you want to hack at it don't let me stop you, but you're on your own :P
+
+1792155042
+estherbunny!~esther@user/estherbunny
+its just, the c++ im compiling is actually a c binding to the dynamic system lib, so i just feel like it should be possible to compile that bit, which then has the C api and then statically link it into my exe as a sort of shim, zig would only interface with the shim via the c abi
+
+1792155113
+estherbunny!~esther@user/estherbunny
+it works when i build and link the shim as an .so, but i dont really want to have to "ship" (its a hobby project so im not really shipping anything, but bear with me :P) an extra .so for this
+
+1792155141
+ifreund!2940d10f8b@user/ifreund
+the interface between zig and the C ABI of your C++ object isn't where the issue 
+
+1792155161
+estherbunny!~esther@user/estherbunny
+then where is the issue?
+
+1792155163
+ifreund!2940d10f8b@user/ifreund
+the issue is the interface between the C++ object built by Zig and the C++ object provided by the system
+
+1792155258
+estherbunny!~esther@user/estherbunny
+ah no, sorry to be unclear, ive already accepted that ill have to compile the objects manually, but can i statically link the objects in then?
+
+1792155304
+estherbunny!~esther@user/estherbunny
+s/the objects/the shim/
+
+1792155334
+estherbunny!~esther@user/estherbunny
+and then the shim would dynamically link to the system lib...
+
+1792155800
+estherbunny!~esther@user/estherbunny
+in principle, zig wouldn't even have to know that the shim was linked against libstdc++, right?
+
+1792155822
+estherbunny!~esther@user/estherbunny
+i mean i dont actually know enough about linkers, but i hope so lol
+
+1792159876
+chmod222!~chmod222@user/chmod222
+Staying on the topic of C/C++ interop, from my quick experiment it seems that -femit-h is still nonfunctional?
+
+1792159931
+chmod222!~chmod222@user/chmod222
+I have resorted to adding `// C: int fn(...);` comments that I `grep -R` out into a .h file so I'm functional, but a proper header emit would be fun
+
+1792162458
+ii8!~ii8@2001:19f0:7400:144b::55
+Hello. Does putting `volatile` on `asm` ensure that reads are not reordered over it, and also that they are not optimized away? If for example both the `asm volatile` and variable read are together in a loop, does zig assume the asm can affect the value of the variable?
+
+1792173480
+andrewrk!~andrewrk@mail.ziglang.org
+ii8: you need a "memory" clobber for that
+
+1792175013
+ii8!~ii8@2001:19f0:7400:144b::55
+Right I see. So what is the correct way to manage data being modified from different interrupt routines in a single-core embedded program?
+
+1792175130
+ii8!~ii8@2001:19f0:7400:144b::55
+I don't expect I need atomic instructions because there's only a single thread. But using volatile is wrong too I think. I just need the compiler to not optimise my loads sometimes.
+
+1792175217
+darkling!~darkling@savella.carfax.org.uk
+That's usually what volatile gets used for: if the data location can be modified by something outside the current linear execution, then it's volatile.
+
+1792175280
+darkling!~darkling@savella.carfax.org.uk
+Doesn't matter whether it's different CPUs, different threads, or an interrupt routine -- all of them look more or less the same.
+
+1792176838
+ii8!~ii8@2001:19f0:7400:144b::55
+darkling: The zig reference says volatile is *only* for MMIO, not for any kind of concurrency
+
+1792176984
+andrewrk!~andrewrk@mail.ziglang.org
+that's for volatile pointers. for asm it just means "has side effects"
+
+1792176997
+andrewrk!~andrewrk@mail.ziglang.org
+I mean it's the same meaning in both cases. "has side effects"
+
+1792177010
+ii8!~ii8@2001:19f0:7400:144b::55
+Yes yes right
+
+1792177116
+ii8!~ii8@2001:19f0:7400:144b::55
+But then I'm not sure how to load changes made in another ISR
+
+1792177272
+ii8!~ii8@2001:19f0:7400:144b::55
+In practice it works if there is an asm volatile nearby, but I'm guessing that's just an accident then and not guaranteed
+
+1792183879
+chjlsch!~Betterbir@user/chjlsch
+I just learned that std.ArrayList can be used with a static array, and does not need an allocator, if i don't want to. This makes me very happy, lots of things in the stdlib are just very thoughtful and flexible. Great work folks, whoever you all are, who contributed to the stdlib!
+
+1792184008
+chjlsch!~Betterbir@user/chjlsch
+i know andrewrk probably worked on that part too, so thank you andrew
+
+1792185474
+andrewrk!~andrewrk@mail.ziglang.org
+chjlsch: happy hacking
+
+1792185971
+andrewrk!~andrewrk@mail.ziglang.org
+chjlsch: over time, for cases when one wants to return an array of things, I've found the most flexible pattern to be accepting a mutable array list as a function parameter, and then appending to it, without clearing it
+
+1792186742
+tsmanner!~tsmanner@136.226.60.193
+Is there a straightforward way to set up a C or C++ header-only library in a build.zig?  I am hoping to get the same ux for all the libraries in my little cluster of things, but one of them has no source files.  I'd *rather* not spoof a library with an empty C file.
+
+1792186796
+tsmanner!~tsmanner@136.226.60.193
+Getting a LazyPath to the eventual headers install dir would also serve my purposes here, but I don't see an obvious way to do that either.
+
+1792186984
+Sivecano!~Sivecano@user/Sivecano
+tsmanner: you want to use b.addNamedLazyPath to expose a LazyPath to the header file to the build.zig that consumes the library
+
+1792187135
+Sivecano!~Sivecano@user/Sivecano
+or if you need to modify the file as part of build, then addNamedWriteFiles also works really well
+
+1792187359
+tsmanner!~tsmanner@136.226.60.193
+I was hoping to avoid iterating over all the headers, since I have a single include dir to install.  Libraries can use `installDirectory` or `addInstallDirectory` with `.install_dir = .header` and file extension include/excludes.  I like that API quite a bit for expressing what my public headers are.  A different project that depends on this one, if it has a lib compiled, can just link that library.  Ideally there'd be a way to say 
+
+1792187360
+tsmanner!~tsmanner@136.226.60.193
+`downstream.addIncludePath(upstream.getInstallDirectory(.header))` or something.
+
+1792187798
+andrewrk!~andrewrk@mail.ziglang.org
+tsmanner: I think I can find you an example of doing that
+
+1792187850
+andrewrk!~andrewrk@mail.ziglang.org
+look at the way libz_dep is used: https://github.com/allyourcodebase/ffmpeg/blob/main/build.zig
+
+1792187892
+andrewrk!~andrewrk@mail.ziglang.org
+https://github.com/allyourcodebase/zlib/blob/d3b5519d3b73616a6bfece0712f080029d2a9244/build.zig#L47
+
+1792188037
+tsmanner!~tsmanner@136.226.60.193
+Great, I'll take a look!  Wading through allyourcodebase was a bit daunting. Thanks!
+
+1792188710
+tsmanner!~tsmanner@136.226.60.193
+libz has sources to compile along with the headers it packages, so it gets to use the magic installHeadersDirectory and have the actually-installed files forwarded to things that link it.  I have a lib here with no sources, only headers.  Making a dummy library with no CSourceFiles and no zig root leads to `error: the linker needs one or more objects to link`
+
+1792188799
+tsmanner!~tsmanner@136.226.60.193
+I'm still poking around in the std lib to see if there's a LazyPath to the install tree that `b.addInstallDirectory` creates
+
+1792188847
+andrewrk!~andrewrk@mail.ziglang.org
+if it's just independent source files, you can use dep.path("foo.h") to get a LazyPath to a file
+
+1792188921
+andrewrk!~andrewrk@mail.ziglang.org
+why not simply a .c file that #define the options you want, then #include the "header-only" file in question, then you can addIncludePath(dep.path("include")) on it
+
+1792189197
+tsmanner!~tsmanner@136.226.60.193
+That's what I'm doing for now, I guess I just like the way dep.artifact("lib") and installDirectory() work.  I may not want to install all headers, and I don't want to have to change the layout of the upstream or make the downstream understand the layout of the upstream too much
+
+1792189228
+tsmanner!~tsmanner@136.226.60.193
+dep.artifact is a name->*Compile contract that the upstream has to honor, but it makes no other statement about the organization of that code
+
+1792189374
+tsmanner!~tsmanner@136.226.60.193
+I think I misinterpreted your suggestion - are you suggesting a dummy file that just uses the includes and makes an empty lib, and then using that through dep.artifact to "link" it in the downstream?  I can live wth that, just want to make sure I didn't miss something wrt install directories
+
+1792191865
+tsmanner!~tsmanner@136.226.60.193
+I'm going with LazyPath{ .cwd_relative = dep.builder.getInstallPath(.header, "") } for now, it seems like the most direct way to forward the installed headers to a downstream compile, I'll probably wrap it in something to also add the dependOn(dep.getInstallStep())
+
+1792193716
+andrewrk!~andrewrk@mail.ziglang.org
+tsmanner: you don't have to do anything to expose source files in a package; the dependant can already access all those files
+
+1792193888
+tsmanner!~tsmanner@136.226.60.193
+I don't necessarily want to expose every file, just like how an installHeaderDirectory includes/excludes patterns.  I suppose the parent can also just install the child paths it cares about exposing alongside it's own content too
+
+1792193927
+tsmanner!~tsmanner@136.226.60.193
+I was hoping to reuse the include/exclude rules from the dependency for that
+
