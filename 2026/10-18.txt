@@ -1,0 +1,268 @@
+1792292090
+lavafroth!~h@user/lavafroth
+Hi everyone!
+
+1792292612
+cnx!~cnx@tem.loang.net
+o/
+
+1792293199
+lavafroth!~h@user/lavafroth
+I've just started learning zig. My goal is to build a sticky keys daemon for linux with the io_uring library.
+
+1792310697
+vyivel!~vyivel@user/Vyivel
+there's no way to pin a single struct field at offset 0 while letting zig rearrange everything else, right?
+
+1792310784
+ersei!~d76d5@user/d76d5
+what're you trying to do?
+
+1792310860
+vyivel!~vyivel@user/Vyivel
+ersei: embed a qobject-derived type into a custom struct so that a qobject pointer is equivalent to a pointer to that struct
+
+1792311023
+ersei!~d76d5@user/d76d5
+packed struct + align(1)?
+
+1792311131
+ersei!~d76d5@user/d76d5
+setting the struct as extern c should also make the order nonrandom
+
+1792311153
+ersei!~d76d5@user/d76d5
+but idk if it'll let zig arrange the other fields..
+
+1792311163
+ersei!~d76d5@user/d76d5
+without a nested struct if ur ok w that
+
+1792311224
+vyivel!~vyivel@user/Vyivel
+extern is very restrictive as it assumes all fields are extern(-compatible), same for packed
+
+1792311240
+vyivel!~vyivel@user/Vyivel
+nesting results in very ugly code
+
+1792311374
+vyivel!~vyivel@user/Vyivel
+so far my options are 1) sidestepping the whole issue by adding a bunch of heap allocations, 2) wasting 32 bytes or so per object if it's created by qml, only 8 bytes otherwise 3) comptime asserting that the offset is 0 and letting the user figure out how to rearrange the fields to achieve that
+
+1792311391
+vyivel!~vyivel@user/Vyivel
+and option 3 apparently shouldn't even work! https://github.com/ziglang/zig/issues/8642
+
+1792311392
+twelve!uid771702@id-771702.lymington.irccloud.com
+if you’re avoiding extern and other modifiers, perhaps you should rely on @fieldParentPtr, to get the parent struct since the layout maybe reordered?
+
+1792311480
+vyivel!~vyivel@user/Vyivel
+qt does this thing where if you create an object from qml, it allocates memory for it, then does an equivalent of placement new into it, and assumes that it points to a qobject, so my constructor function must initialize the object in that memory so that the qobject field has offset 0
+
+1792311514
+vyivel!~vyivel@user/Vyivel
+everywhere else i managed to get by with @fieldParentPtr, yes, but here it doesn't work
+
+1792311577
+vyivel!~vyivel@user/Vyivel
+struct field offset specifiers when 🙏 
+
+1792311728
+vyivel!~vyivel@user/Vyivel
+oh well, option 2 then
+
+1792333637
+Earnestly!~earnest@user/earnestly
+cf. Amdahl's law. This has been expanded to USL (universal scalability law) which demonstrates that parallel systems can actually /slow down/ as incoherency increases, not only plateauing. http://www.perfdynamics.com/Manifesto/USLscalability.html - There's a lot of interest research on how distributed/parallel systems tend to much slower per-watt/unit-of-computation than raw single threaded
+
+1792333639
+Earnestly!~earnest@user/earnestly
+performance with lots of hertz
+
+1792333669
+Earnestly!~earnest@user/earnestly
+(Martin Thompson has a few talks which covers this iirc)
+
+1792345050
+ledx!~thomas@user/ledx
+I get this error on my linux workstation, but not on my macbook: panic: invalid enum value. both are running zig 0.17.0. does the error make sense? (error above code in paste) https://dpaste.com/DP2KA4YYQ
+
+1792345568
+vyivel!~vyivel@user/Vyivel
+ledx: n.leaf checks that leaf is active but the check is done on uninitialized data; do n.* = .{ .leaf = .{...} } instead, same as in create_internal
+
+1792346001
+ledx!~thomas@user/ledx
+vyivel: perfect! thanks :) kind of weird it didn't fail on macOS though?
+
+1792346031
+vyivel!~vyivel@user/Vyivel
+operating on uninitialized data = anything can happen, including successful execution
+
+1792346885
+ledx!~thomas@user/ledx
+vyivel: makes sense
+
+1792356138
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I have been searching for an example of how to iterate over the command line args (argv) and seeing a lot of stuff that seems not to work. Has the API for this changed or am I doing it wrong? can anybody point me to a simple example?
+
+1792356441
+vyivel!~vyivel@user/Vyivel
+ryanprior: https://lemon.eclair.cafe/Wc6OhHmj.zig
+
+1792356450
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+not sure what you tried, but the args iterator has been there since at least 0.16: https://ziglang.org/documentation/0.17.0/std/#std.process.Args.Iterator
+
+1792356571
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I found the args iterator (grepping around the zig std source code) but can't find an example of how to use it and am not experienced enough to just look at the functions and be like "oh yeah sure"
+
+1792356609
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+vyivel's example is pretty to-the-point then
+
+1792356814
+boomlinde!~boomlinde@user/boomlinde
+docs on Args.iterate currently suggest using ,iterateAllocator for cross-platform code. not sure which platform that wouldn't work with, but i suppose windows might use a different encoding
+
+1792356917
+vyivel!~vyivel@user/Vyivel
+right, yeah
+
+1792356919
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+Iterator.initAllocator has special cases for windows and wasi
+
+1792356922
+vyivel!~vyivel@user/Vyivel
+windows args are in tf-16
+
+1792356925
+vyivel!~vyivel@user/Vyivel
+wtf-16*
+
+1792357072
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I tried to use argsAllocator and was not successful, but certainly there's things I do not know, and as I try various things from different examples I find, none of them work, but I can't tell if it's because I am literally typing something wrong, or violating some assumption, or using an old API, or what
+
+1792357105
+vyivel!~vyivel@user/Vyivel
+"none of them work" is not a lot to work with
+
+1792357120
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+can you pastebin your code?
+
+1792357163
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+sure, it's a mess though and mostly unrelated to what I'm trying to do. I was like "I will simply read a string from argv and load it into a data structure" and like an hour later I'm feeling pretty defeated on this
+
+1792357211
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+https://zigbin.io/90019c
+
+1792357253
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+right now I'm trying my latest different thing, which is using toSlice, but I've tried it basically every way I can think of
+
+1792357280
+vyivel!~vyivel@user/Vyivel
+unrelated: consider using init.gpa instead of std.heap.page_allocator
+
+1792357321
+vyivel!~vyivel@user/Vyivel
+otherwise that looks fine to me?
+
+1792357355
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+yeah, any errors or unexpected results?
+
+1792357364
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+sure, I've seen std.heap.page_allocator in many examples, this is one-time init code anyway so not something where I expect different allocator strategies to make a lot of difference
+
+1792357388
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+okay so my current error is: src/main.zig:74:33: error: type 'fn () @typeInfo(@typeInfo(@TypeOf(main.Lua.init)).@"fn".return_type.?).error_union.error_set!main.Lua' does not support field access
+
+1792357420
+vyivel!~vyivel@user/Vyivel
+uh
+
+1792357428
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+this tells me basically nothing, I don't know why the type is so convoluted, don't know what "does not support field access" means
+
+1792357429
+vyivel!~vyivel@user/Vyivel
+in that line, "init" refers to the init function in Lua
+
+1792357450
+vyivel!~vyivel@user/Vyivel
+you don't need that iterator at all actually if you have the slice already
+
+1792357467
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+oh no that's left over from when I was trying to create the iterator in that function
+
+1792357517
+vyivel!~vyivel@user/Vyivel
+right, so if you remove it, it should work
+
+1792357531
+boomlinde!~boomlinde@user/boomlinde
+minimal example use: https://zigbin.io/7a97b9
+
+1792357571
+vyivel!~vyivel@user/Vyivel
+init already has a suitable allocator! there's no need get another one! >_< 
+
+1792357631
+vyivel!~vyivel@user/Vyivel
+(btw, the convoluted type is of the "init" function, and that's why it says "does not support field access"; you can't get a field of a function while the code tries to get `init.minimal`)
+
+1792357633
+boomlinde!~boomlinde@user/boomlinde
+Init.Minimal does not. no need to get one from Init when there's a perfectly good one at heap.smp_allocator
+
+1792357645
+boomlinde!~boomlinde@user/boomlinde
+:D
+
+1792357672
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+sidenote: init member fn triggering this basilisk of an error seems like a shortcoming in zig compile errors
+
+1792357753
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+and/or name resolution
+
+1792357787
+ryanprior!~ryanprior@2602:61:7197:bb00:955d:fa6a:d32f:6a7b
+I changed to use std.heap.smp_allocator, removed that extra iterator, and added a few @ptrCast's, and now I'm getting a failure where I call SIGABRT, which means I've probably passed from "using zig wrong" into "using lua wrong" so thank you very much
+
+1792357814
+vyivel!~vyivel@user/Vyivel
+yw, good luck in further debugging
+
+1792357832
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+stay strong on the C FFI frontlines, soldier
+
+1792357835
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+ACTION salutes
+
+1792357840
+boomlinde!~boomlinde@user/boomlinde
+<o
+
+1792357963
+boomlinde!~boomlinde@user/boomlinde
+you should be fine with std.Init.gpa if you already have the full Init though
+
