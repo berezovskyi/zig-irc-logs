@@ -1,0 +1,196 @@
+1792464064
+daurnimator!~daurnimat@vultr.daurnimator.com
+Is there a way to have `zig fetch` not use the global cache dir?
+
+1792464223
+daurnimator!~daurnimat@vultr.daurnimator.com
+i.e. fetch into local cache dir (specified with `zig fetch --cache-dir ./my-cache`) rather than the global cache
+
+1792464385
+ElSucioDan!~dan@user/ElSucioDan
+daurnimator: According to `zig fetch --help`, there is a `--global-cache-dir` that seems to do what you want
+
+1792464413
+daurnimator!~daurnimat@vultr.daurnimator.com
+ElSucioDan: 1. that's the global cache dir; not the local one. 2. that doesn't exist in 0.17.0 (it did in 0.15.0 though)
+
+1792464460
+ElSucioDan!~dan@user/ElSucioDan
+daurnimator: oh, my bad, but at least I learned something new 
+
+1792464527
+daurnimator!~daurnimat@vultr.daurnimator.com
+looks like `ZIG_GLOBAL_CACHE_DIR` does still work with 0.17.0 though. (the --global-cache-dir argument seems to have disappeared for some reason)
+
+1792464579
+daurnimator!~daurnimat@vultr.daurnimator.com
+but using the global cache as a local cache forces the first time setup to run every time and puts that in the cache. I wanted to just fetch the package(s) I want into their own cache
+
+1792465037
+lavafroth!~h@user/lavafroth
+Is this akin to the global cache in Go?
+
+1792466432
+torque!~tachyon@user/torque
+in 0.17.0, running `zig build` should put the packages used into a local `zig-pkg` directory by default. not sure if `zig fetch` does this also
+
+1792483283
+vyivel!~vyivel@user/Vyivel
+is there a way to write std.Build.LazyPaths into a file in bulk? passing them all as arguments to a helper program works but surely there must be a better way
+
+1792506200
+estherbunny!~esther@user/estherbunny
+is there a nice way to write something resembling a do while loop in zig?
+
+1792507341
+meidam!~meidam@user/meidam
+I imagine that you've looked through the "while" section in the language reference?
+
+1792507753
+estherbunny!~esther@user/estherbunny
+yes yes
+
+1792514958
+vyivel!~vyivel@user/Vyivel
+https://ziglang.org/perf/ css seems to be broken?
+
+1792515365
+tafa!~tafa@user/tafa
+any doc or free content/book to learn zig from scratch?
+
+1792515365
+tafa!~tafa@user/tafa
+I come from C++ world
+
+1792515529
+vyivel!~vyivel@user/Vyivel
+i learned mostly by reading river source code and the language reference
+
+1792515551
+vyivel!~vyivel@user/Vyivel
+i've seen https://codeberg.org/ziglings/exercises/#ziglings recommended quite a few times, maybe try that
+
+1792515620
+tafa!~tafa@user/tafa
+vyivel: Tnx mate
+
+1792518411
+estherbunny!~esther@user/estherbunny
+tafa: i also recommend reading the language docs (https://ziglang.org/documentation/0.17.0/) from start to finish
+
+1792518475
+estherbunny!~esther@user/estherbunny
+does ziglings also teach std, vyivel?
+
+1792518528
+vyivel!~vyivel@user/Vyivel
+haven't tried them myself, but based on the readme, it teaches some parts of it
+
+1792518548
+estherbunny!~esther@user/estherbunny
+neat
+
+1792518865
+estherbunny!~esther@user/estherbunny
+tafa: also discovered https://www.ziglang.in/ today, might be worth a look
+
+1792519015
+vyivel!~vyivel@user/Vyivel
+funny how you can look at a site and immediately tell it was made by an llm
+
+1792520965
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+im much more happy to see projects like https://pedropark99.github.io/zig-book/ get continuously maintained, or forked if needed
+
+1792525109
+estherbunny!~esther@user/estherbunny
+are git deps not cloned with submodules??
+
+1792525210
+tranzystorekk!86175ff574@voidlinux/maintainer/tranzystorekk
+considering zig doesnt include a git impl, likely yes
+
+1792525272
+estherbunny!~esther@user/estherbunny
+:P
+
+1792527133
+estherbunny!~esther@user/estherbunny
+how do i signal to the build system that a system command changes the contents of a directory? specifically, running `cmake --build <dir>`, the build system doesn't realise that it needs to wait for cmake to finish
+
+1792527751
+tsmanner!~tsmanner@136.226.60.193
+You shouldn't necessarily have to tell it about the dir, it sounds like there's just a missing other_thing.dependOn(&cmake.step) to make sure it knows that the other_thing can't run until the cmake step is complete
+
+1792527927
+estherbunny!~esther@user/estherbunny
+yeah, that ought to be it
+
+1792527948
+estherbunny!~esther@user/estherbunny
+but im not sure what other_thing is supposed to be in my case :P
+
+1792527976
+tsmanner!~tsmanner@136.226.60.193
+What happens that makes you think the build isn't waiting for cmake to finish?
+
+1792528022
+estherbunny!~esther@user/estherbunny
+bc im trying to depend on it from a translate-c Translator
+
+1792528215
+tsmanner!~tsmanner@136.226.60.193
+Got it, I'm poking around a bit
+
+1792528260
+estherbunny!~esther@user/estherbunny
+found it: `translator.run.step.dependOn(...)` :)
+
+1792528304
+estherbunny!~esther@user/estherbunny
+tsmanner: to answer your question, there was a filenotfound error, but no build error
+
+1792528382
+tsmanner!~tsmanner@136.226.60.193
+That makes sense, it was a race that cmake could never win.  That looks like the right function to me!
+
+1792534784
+estherbunny!~esther@user/estherbunny
+im building an .so using cmake called via addSystemCommand, but how do i properly dynamically link it with my exe? currently im doing `const libtorrent_so = build_dir.path(b, "libtorrent-rasterbar.so"); libtorrent_c.mod.addObjectFile(libtorrent_so); libtorrent_c.mod.addLibraryPath(build_dir); const install_libtorrent = b.addInstallLibFile(libtorrent_so, "libtorrent-rasterbar.so"); //...` but then ldd'ing my exe reveals that it's now linked against the 
+
+1792534785
+estherbunny!~esther@user/estherbunny
+zig cache :/ (`libtorrent-rasterbar.so.2.1 => .zig-cache/o/35a68810aee9b0bd3ef057efbfb0fdb7/build/libtorrent-rasterbar.so.2.1 (0x00007f460f000000)`)
+
+1792534868
+estherbunny!~esther@user/estherbunny
+logically that makes sense, but when i change it to `libtorrent_c.mod.addLibraryPath(.zig_lib);`, the exe links against the system lib instead
+
+1792534935
+estherbunny!~esther@user/estherbunny
+what i really want is `libtorrent-rasterbar.so.2.1 => ../lib/libtorrent-rasterbar.so.2.1 (...)` or i guess `libtorrent-rasterbar.so.2.1 => /absolute/path/to/lib/libtorrent-rasterbar.so.2.1 (...)`
+
+1792535551
+tsmanner!~tsmanner@136.226.60.193
+That .so is being created by a Run step that calls cmake and then make/ninja in the generated build dir?
+
+1792535638
+estherbunny!~esther@user/estherbunny
+yes, exactly
+
+1792536779
+tsmanner!~tsmanner@136.226.60.193
+If you add the b.getInstallStep().dependOn(&install_libtorrent.step) it should show up in zig-out/lib/.  If that works, you might be able to do exe_mod.addLibraryPath(b.graph.path(.install_lib, "")) to have it add the path to the install location's lib/ dir
+
+1792537310
+estherbunny!~esther@user/estherbunny
+the .so shows up in my zig-out/lib, but no dice on the second step :/
+
+1792537510
+estherbunny!~esther@user/estherbunny
+its late tho, so im gonna give up for today
+
+1792537519
+estherbunny!~esther@user/estherbunny
+thx for the help tho tsmanner :)
+
