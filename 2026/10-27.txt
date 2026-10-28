@@ -1,0 +1,116 @@
+1793065927
+torque!~tachyon@user/torque
+you could write a function that takes a tuple of values and does some sweet comptime garbage to get multiple unwrapping behavior in userspace
+
+1793065986
+torque!~tachyon@user/torque
+here's a dumb example I came up with https://zig.godbolt.org/z/ahhjd5Mcz
+
+1793122830
+andrewrk!~andrewrk@mail.ziglang.org
+Sweet Comptime Garbage sounds like the band that all the zig mascots play in together in their free time
+
+1793124205
+grayhatter!~grayhatte@user/grayhatter
+hey, can I make a request? Next time something changes e.g. -Doptimize= no longer working as expected with values like ReleaseSafe instead of silently giving a debug build, maybe instead emit a warning?
+
+1793124369
+andrewrk!~andrewrk@mail.ziglang.org
+I'm guessing you passed -D to zig rather than zig build, which causes it to be treated as a macro
+
+1793124441
+grayhatter!~grayhatte@user/grayhatter
+this was my command `zig build deploy -p ~/gr.ht/srv/http/srctree/ -Doptimize=safe && ssh gr.ht killall srctree`
+
+1793124449
+grayhatter!~grayhatte@user/grayhatter
+did I do something wrong?
+
+1793124475
+grayhatter!~grayhatte@user/grayhatter
+I *think* ReleaseSafe still worked as I expected? but the output said debug
+
+1793124517
+grayhatter!~grayhatte@user/grayhatter
+so now I'm very confused, because I'm sure I saw it say `debug` and not safe or ReleaseSafe in the self clearing output
+
+1793124572
+andrewrk!~andrewrk@mail.ziglang.org
+passing unrecognized args to zig build causes a failure
+
+1793124604
+grayhatter!~grayhatte@user/grayhatter
+srctree restarted, so I know zig exited 0
+
+1793124859
+grayhatter!~grayhatte@user/grayhatter
+no, again, this is my error, my build file was broken, it works as expected if you're not dumb... thanks again, and sorry
+
+1793124878
+andrewrk!~andrewrk@mail.ziglang.org
+it's ok
+
+1793124915
+andrewrk!~andrewrk@mail.ziglang.org
+I'm in the middle of documenting the build system btw
+
+1793124942
+grayhatter!~grayhatte@user/grayhatter
+Oh, thank you for --fork!
+
+1793124959
+grayhatter!~grayhatte@user/grayhatter
+that feature has saved me 10s of hours already
+
+1793125132
+grayhatter!~grayhatte@user/grayhatter
+my mistake was createModule() had omitted .optimize, which I think I assumed that it would use whatever the command line default was, I assumed that because IIRC .target was required, which lead me to assume optimize was more magic? Either way, I'm currently surprised that it's an op... oh, that's changed from 0.16?
+
+1793125223
+grayhatter!~grayhatte@user/grayhatter
+figuring out how to correctly use LazyPath between libraries is the only thing that I feel is still confusing. I can offer examples of what I expected but failed if that would help writing better docs. ¯\_(ツ)_/¯
+
+1793135571
+sskras!sid542048@id-542048.tinside.irccloud.com
+Wow, impressive news: https://x.com/mitchellh/status/2115145749378011267
+
+1793139431
+n0den1te!~n0den1te@user/n0den1te
+Hi - if I have a function that returns !void, does it have to carry the taint all the way up the call chain? Can I not wrap the tainted call in a block and leave the rest of the functions unaffected? 
+
+1793139694
+squishy!squishy@squishybloob.com
+if you handle it locally, instead of using "try"
+
+1793139978
+n0den1te!~n0den1te@user/n0den1te
+squishy: where can I read about them? (Sorry, I only just started looking at Zig since this past weekend)
+
+1793140162
+n0den1te!~n0den1te@user/n0den1te
+Ah, I see: https://ziglang.org/documentation/0.17.0/#try
+
+1793140333
+squishy!squishy@squishybloob.com
+try is just syntax sugar that is a catch block which returns the error(hence requiring a function using try to have an error return type itself)
+
+1793140543
+n0den1te!~n0den1te@user/n0den1te
+so error return types must be distinct, not !void as they cannot be captured? 
+
+1793140759
+squishy!squishy@squishybloob.com
+a ! without a distinct errorset on the left(left side of ! is error type, right side is value type), is computed by the compiler, works fine with captures; the compiler can deduce it (explicit error sets are nice for public apis though)
+
+1793140930
+squishy!squishy@squishybloob.com
+(there is also anyerror, a global error set of all error types in a program, but the only time i ever needed it personally was for dynamically assigned callback shenenigans)
+
+1793141329
+n0den1te!~n0den1te@user/n0den1te
+squishy: thanks, I think I'll have to try out some more before coming back. Also, I see this: https://ziglang.org/documentation/0.17.0/#Merging-Error-Sets
+
+1793141429
+squishy!squishy@squishybloob.com
+:) also right below that section is the explanation of the deducing of errorsets i mentioned
+
