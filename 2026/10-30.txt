@@ -1,0 +1,148 @@
+1793366594
+datboi!~datboi@user/datboi
+hi!!
+
+1793370922
+ckafi!b45335d33f@user/ckafi
+hello
+
+1793373892
+UsrBinAnnika!~annika@109.255.154.246
+well met
+
+1793381684
+datboi!~datboi@user/datboi
+This is the time I actually sit down and learn Zig lol
+
+1793381746
+boomlinde!~boomlinde@user/boomlinde
+good luck!
+
+1793392925
+ekaitz!~Ekaitz@91.116.158.194
+hi! where can i read the documentation of the `zig` command? is there any?
+
+1793395176
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+`var arena = init.arena; defer arena.deinit(); ...` makes my program segfault. Any idea why? Doesn't segfault if I remove the `arena.deinit`
+
+1793395256
+ersei!~d76d5@user/d76d5
+init.arena is used by cleanup
+
+1793395267
+ersei!~d76d5@user/d76d5
+shouldn't deinit arena if you're not initing it
+
+1793395324
+ersei!~d76d5@user/d76d5
+doing "var arena = init.arena" does not init arena
+
+1793395381
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+Oh, the `defer arena.deinit()` is actually the pattern for `std.heap.ArenaAllocator.init()` (if it still exists)?
+
+1793395466
+ersei!~d76d5@user/d76d5
+meaning?
+
+1793395542
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+the examples I saw were mentioning `std.heap.ArenaAllocator`, but couldn't find it in 0.17 ,so I figured it changed
+
+1793395585
+ersei!~d76d5@user/d76d5
+no it still exists in 0.17
+
+1793395608
+ersei!~d76d5@user/d76d5
+init.arena is an instance of std.heap.ArenaAllocator that zig gives you
+
+1793395630
+ersei!~d76d5@user/d76d5
+it is created before main() and taken down after main()
+
+1793395661
+ersei!~d76d5@user/d76d5
+you calling deinit on it in main causes it to crash since zig will also deinit it after main
+
+1793395696
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+oh, I see. Am I correct in assuming it is a good fit for a small cli program (not calling deinit by hand)
+
+1793395720
+ersei!~d76d5@user/d76d5
+it is a good fit for doing things with args/env vars
+
+1793395738
+ersei!~d76d5@user/d76d5
+anything that is done a fixed number of times and will live as long as the program
+
+1793395787
+ersei!~d76d5@user/d76d5
+so if your cli is allocating a fixed number of things there, never needing to deallocate, then init.arena is a good choice
+
+1793395801
+ersei!~d76d5@user/d76d5
+otherwise the GPA might be better
+
+1793395819
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+Ok, makes sense
+
+1793395854
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+I can still call the deinit before a replace (execve)?
+
+1793395861
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+can/should
+
+1793395921
+ersei!~d76d5@user/d76d5
+can't see why it wouldn't work, but my intuition says to not since the kernel will nuke it all anyway on execve
+
+1793395947
+ersei!~d76d5@user/d76d5
+and maybe your execve argc points to some memory in the arena
+
+1793396060
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+in this particular case it doesn't, but the idea is to let the kernel handle the memory then?
+
+1793396185
+ersei!~d76d5@user/d76d5
+execve gives a newly initialized stack / heap / bss
+
+1793396217
+ersei!~d76d5@user/d76d5
+so the kernel will deallocate all old memory
+
+1793396236
+ersei!~d76d5@user/d76d5
+same deal when the process exits really
+
+1793396253
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+cool, thanks :-)
+
+1793403263
+ulhar!ulhar@user/ulhar
+if i have a FixedBufferAllocator operating on memory I own, is there a way to serialize said FBA's state? (Allocator.ptr and Allocator.vtable seem like they might be juicy but I'm not certain)
+
+1793403664
+Affliction!affliction@idlerpg/player/affliction
+I've had similar thoughts about passing a TLS connection (and associated fds) between processes (naturally this would involve the associated readers and writers, similar problem). You'd have to know the size of what's behind .ptr, and rebuild the vtable on deserialization.
+
+1793403725
+Affliction!affliction@idlerpg/player/affliction
+And since we're not talking about extern/packed structs, their memory layout has no guarantees, so ideally you know the concerete implementation and can recursively serialize its fields. Which, for FixedBufferAllocator, you probably do.
+
+1793403850
+Affliction!affliction@idlerpg/player/affliction
+Any pointers within the arena will also have to be fixed up, though you could mmap its backing store at a known address (which may fail)
+
+1793403914
+Affliction!affliction@idlerpg/player/affliction
+that is, pointers within, to objects within. Presumably you have no pointers from the outside (so, why serialize it at all?)
+
