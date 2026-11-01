@@ -1,0 +1,492 @@
+1793404871
+ulhar!ulhar@user/ulhar
+if it clarifies my intent: the FBA's state (and the state of the corresponding buffer) would stay in-process
+
+1793405075
+ulhar!ulhar@user/ulhar
+it would be similar to the savestate systems in most emulators
+
+1793405860
+Affliction!affliction@idlerpg/player/affliction
+that'll simplify the memory layout problem at least
+
+1793406052
+Affliction!affliction@idlerpg/player/affliction
+I guess, as long as you don't have pointers from the outside in (except to perhaps a known root object that's always at a known address, due to being allocated first), you could copy the buffer, assume the type and copy what's behind .ptr, and restore them. Probably plenty of footguns still to be aware of though.
+
+1793406108
+Affliction!affliction@idlerpg/player/affliction
+I assume all FixedBUfferAllocators share the same vtable, might want to double check that assumption, too.
+
+1793409950
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+if I need to send a zig struct over the wire, is there a standard way of doing that? in other words I need to serialize my struct to bytes
+
+1793409961
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+(and later de-serialize it)
+
+1793410209
+torque!~tachyon@user/torque
+the easiest way is to use an `extern struct` and ptrcast it to `[]const u8` if you don't care about endianness or using non-extern types
+
+1793410489
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I don't mind using extern, but I think I care about endianness - doesn't that matter when sending over the wire?
+
+1793410544
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+ah I guess std.Io.Writer.writeStruct let's me set the endianness
+
+1793410583
+torque!~tachyon@user/torque
+it doesn't matter if the sender and the consumer are both the same endian
+
+1793410591
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+ah true
+
+1793410632
+torque!~tachyon@user/torque
+I haven't looked at writeStruct, that probably does what you want more reliably than a blind ptrcast
+
+1793410803
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+I'll admit I don't understand the implementation, but the test example seems to indicate it does what I want https://ziglang.org/documentation/0.17.0/std/#std.Io.Writer.writeStruct
+
+1793411167
+torque!~tachyon@user/torque
+it basically just does the ptrcast I suggested except it checks if the desired endianness matches the host endianness and does all the byteswapping if they don't
+
+1793411884
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+ah yes I see
+
+1793417789
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+lbuf 16
+
+1793417803
+ezzieyguywuf!~weechat@user/ezzieyguywuf
+sorry lol
+
+1793417804
+Affliction!affliction@idlerpg/player/affliction
+You do have to still do something about pointers/slices 
+
+1793427616
+ckafi!b45335d33f@user/ckafi
+man compiling lldb on an underpowered laptop is no fun
+
+1793427630
+ckafi!b45335d33f@user/ckafi
+what other debugger do y'all use?
+
+1793436222
+novacaine!~novacaine@user/novacaine
+clion?
+
+1793438712
+ckafi!b45335d33f@user/ckafi
+novacaine: for zig?
+
+1793441090
+n0den1te!~n0den1te@user/n0den1te
+Hi - is there any reason why zig does not complain about unused top-level variables or unused modules? 
+
+1793441210
+n0den1te!~n0den1te@user/n0den1te
+https://ziglang.org/documentation/0.17.0/#Values --> std.os is unused here
+
+1793469273
+lumidify!~lumidify@user/lumidify
+Is there a good way to check if two opened directories refer to the same directory? I can use std.Io.Dir.stat() and compare the inodes, but that might give false positives when the directories are on different filesystems. I saw that some POSIX C code additionally checks the st_dev field of 'struct stat', but std.Io.File.Stat in Zig doesn't seem to expose that. Is the best option to just use the POSIX 
+
+1793469279
+lumidify!~lumidify@user/lumidify
+interface directly (my program doesn't really need to be portable to non-POSIX systems), or is there a better way?
+
+1793473131
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: are you here?
+
+1793473145
+ekaitz!~Ekaitz@91.116.158.194
+i have some river packaging discussion going on in guix and I need advice
+
+1793475272
+ekaitz!~Ekaitz@91.116.158.194
+the debate comes from here: https://github.com/riverwm/river/blob/main/PACKAGING.md
+
+1793475281
+ekaitz!~Ekaitz@91.116.158.194
+is DESTDIR some river-specific thing
+
+1793475284
+ekaitz!~Ekaitz@91.116.158.194
+?
+
+1793475294
+ekaitz!~Ekaitz@91.116.158.194
+or is it a zig-build thingie?
+
+1793475388
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: this is the discussion if you want to take part https://codeberg.org/guix/guix/issues/12230
+
+1793475414
+ekaitz!~Ekaitz@91.116.158.194
+I'm not asking you to do, if you tell me what we should do I take care of it myself
+
+1793475695
+ekaitz!~Ekaitz@91.116.158.194
+(tested. DESTDIR is zig stuff, not just river's)
+
+1793476112
+Earnestly!~earnest@user/earnestly
+ekaitz: DESTDIR is a GNU standard packaging feature which many things have adopted the semantics of
+
+1793476147
+ekaitz!~Ekaitz@91.116.158.194
+yep, i just wanted to know who reads that
+
+1793476160
+ekaitz!~Ekaitz@91.116.158.194
+it could have been river's build system reading env-vars
+
+1793476162
+Earnestly!~earnest@user/earnestly
+Hm, fair enough
+
+1793476176
+ekaitz!~Ekaitz@91.116.158.194
+but it looks like it's zig itself
+
+1793476309
+ekaitz!~Ekaitz@91.116.158.194
+now I understood well what's going on
+
+1793476314
+vyivel!~vyivel@user/Vyivel
+related https://codeberg.org/ziglang/zig/issues/37124
+
+1793476369
+ekaitz!~Ekaitz@91.116.158.194
+vyivel: exactly!
+
+1793476373
+ekaitz!~Ekaitz@91.116.158.194
+that's the exact issue!
+
+1793476407
+ekaitz!~Ekaitz@91.116.158.194
+thank you, i'll link them and let people discuss for the moment
+
+1793476548
+ekaitz!~Ekaitz@91.116.158.194
+oh there's another issue here
+
+1793476582
+ekaitz!~Ekaitz@91.116.158.194
+I'll talk with ifreund because I think this is specific to river
+
+1793476680
+ifreund!2940d10f8b@user/ifreund
+ekaitz: that zig issue is why river doesn't support Zig 0.17.0, it has no relevance to packaging river 0.4.8
+
+1793476721
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: our issue is Guix builds first and installs later, so if we DESTDIR=out zig build --prefix "" 
+
+1793476735
+ekaitz!~Ekaitz@91.116.158.194
+and then move the output to /gnu/store/... things get weird
+
+1793476754
+ekaitz!~Ekaitz@91.116.158.194
+the only possible solution is to set the --prefix to /gnu/store/...
+
+1793476770
+ekaitz!~Ekaitz@91.116.158.194
+which would install directly
+
+1793476780
+ifreund!2940d10f8b@user/ifreund
+isn't that exactly how prefix and DESTDIR are supposed to be used?
+
+1793476784
+ifreund!2940d10f8b@user/ifreund
+I don't see what the problem is
+
+1793476790
+ekaitz!~Ekaitz@91.116.158.194
+or, set the DESTDIR to some local folder, with the --prefix=/gnu/store... and then move
+
+1793476802
+ifreund!2940d10f8b@user/ifreund
+--prefix is where river will live when unpacked by the guix package manager
+
+1793476814
+ifreund!2940d10f8b@user/ifreund
+DESTDIR is where to put the build artifacts output by the zig build system
+
+1793476847
+ekaitz!~Ekaitz@91.116.158.194
+what we often do is treat the output of the build like the / in a container
+
+1793476853
+ekaitz!~Ekaitz@91.116.158.194
+with /bin /lib /...
+
+1793476860
+ifreund!2940d10f8b@user/ifreund
+this is completely standard build system terminology as far as I'm aware, $DESTDIR should work the same with cmake, meson etc.
+
+1793476865
+ekaitz!~Ekaitz@91.116.158.194
+and then we put things on the store
+
+1793476920
+ekaitz!~Ekaitz@91.116.158.194
+yes yes, the thing here is if we set the prefix the files would be in $DESTDIR/gnu/store..../bin  
+
+1793476944
+ifreund!2940d10f8b@user/ifreund
+which is expected no?
+
+1793476958
+ekaitz!~Ekaitz@91.116.158.194
+normally we would do $DESTDIR/bin
+
+1793476993
+ekaitz!~Ekaitz@91.116.158.194
+and then move to the location in the store
+
+1793477006
+ifreund!2940d10f8b@user/ifreund
+how would you normally expect to inform the build system of the prefix it will be installed to so it can put this information in .pc file?
+
+1793477029
+ifreund!2940d10f8b@user/ifreund
+Note, I think this pattern of embedding install prefixes in build artifact is bad, but thats just how pkg-config works
+
+1793477043
+ekaitz!~Ekaitz@91.116.158.194
+that's a good question!
+
+1793477058
+ekaitz!~Ekaitz@91.116.158.194
+i'm not very good with pkg-config to be honest
+
+1793477077
+ekaitz!~Ekaitz@91.116.158.194
+i think we might patch things in the files, but I'm not sure
+
+1793477081
+ekaitz!~Ekaitz@91.116.158.194
+i'll dig it up
+
+1793477249
+ekaitz!~Ekaitz@91.116.158.194
+i think the biggest issue here is the lack of separation between configure, build and install steps that guix expects
+
+1793477253
+ifreund!2940d10f8b@user/ifreund
+if it's easier for you to use --prefix /usr and then replace /usr with /gnu/store... in the .pc file afterwards by all means do that
+
+1793477273
+ekaitz!~Ekaitz@91.116.158.194
+in guix i would say the pk-config files are just set most of the times in the configure step
+
+1793477358
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: do you think this pattern is common enough so we should move it to the `zig-build-system` in guix or is it just river-specific?
+
+1793477386
+ifreund!2940d10f8b@user/ifreund
+there's nothing at all river-specific about anything I've seen in those links or mentioned here
+
+1793477407
+ifreund!2940d10f8b@user/ifreund
+if you need to separate "build" and "install" when using the Zig build system, the correct way is https://codeberg.org/river/river/src/branch/main/PACKAGING.md#build-prefix-and-destdir
+
+1793477488
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: yes, we are using that as a reference! (it has served us good!)
+
+1793477496
+ekaitz!~Ekaitz@91.116.158.194
+the problem is the following:     cp -r /tmp/river-destdir/* /desired/install/location
+
+1793477518
+ekaitz!~Ekaitz@91.116.158.194
+that doesn't work with the pc files unles your --prefix is /desired/install/location
+
+1793477534
+ekaitz!~Ekaitz@91.116.158.194
+that's what somehow is river specific
+
+1793477560
+ifreund!2940d10f8b@user/ifreund
+no, it's specific to any project that distributes a pkg-config file
+
+1793477565
+ekaitz!~Ekaitz@91.116.158.194
+well, many other projects could ship with the pc thingie
+
+1793477572
+ekaitz!~Ekaitz@91.116.158.194
+right
+
+1793477625
+ekaitz!~Ekaitz@91.116.158.194
+okay
+
+1793477635
+ekaitz!~Ekaitz@91.116.158.194
+i think i understood everything now
+
+1793477638
+ifreund!2940d10f8b@user/ifreund
+note that it would also be "valid" for a project to embed an absolute path to e.g. a config file or resource directory including the install prefix in the output binary
+
+1793477649
+ifreund!2940d10f8b@user/ifreund
+though of course I think that's bad design
+
+1793477654
+ekaitz!~Ekaitz@91.116.158.194
+it's time for guix to take a decision how to fix this thingie
+
+1793477669
+ekaitz!~Ekaitz@91.116.158.194
+yeah... this is very tricky
+
+1793477675
+ifreund!2940d10f8b@user/ifreund
+but it's technically not restricted to .pc files, they are just the most common use-case
+
+1793477680
+ekaitz!~Ekaitz@91.116.158.194
+each case should be reviewed 
+
+1793477695
+ekaitz!~Ekaitz@91.116.158.194
+this also happens with other build systems
+
+1793477707
+ekaitz!~Ekaitz@91.116.158.194
+in the end, you can do *whatever you want* in a build system
+
+1793477715
+ifreund!2940d10f8b@user/ifreund
+If you can deal with setting --prefix to the actually /gnu/store path things will end up installed at, do that
+
+1793477727
+ifreund!2940d10f8b@user/ifreund
+even if it makes copying out of the DESTDIR easier
+
+1793477730
+ifreund!2940d10f8b@user/ifreund
+*harder
+
+1793477764
+ekaitz!~Ekaitz@91.116.158.194
+*my* problem now is to take a decision on standardizing that, or leave it as we had it and make some extra code for river and all projects that use the --prefix for configuration
+
+1793477766
+ifreund!2940d10f8b@user/ifreund
+otherwise you have to rely on patching and being able to identify all the places the prefix path is embedded
+
+1793477776
+ekaitz!~Ekaitz@91.116.158.194
+yes...
+
+1793477794
+ekaitz!~Ekaitz@91.116.158.194
+i don't love the --prefix solution but it's practical
+
+1793477820
+ekaitz!~Ekaitz@91.116.158.194
+thanks a lot
+
+1793477823
+ifreund!2940d10f8b@user/ifreund
+what's not to love about it? it replacing hacky patching with using the build system as intended :D
+
+1793477838
+ifreund!2940d10f8b@user/ifreund
+embrace the inherent complexity in your lovely packaging system :P
+
+1793477882
+ekaitz!~Ekaitz@91.116.158.194
+i don't love not having a simple directory structure in the output folder
+
+1793477892
+ekaitz!~Ekaitz@91.116.158.194
+sometimes when things go wrong one has to dig inside
+
+1793477907
+ekaitz!~Ekaitz@91.116.158.194
+i mean, it's not a big deal
+
+1793477949
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: on the other hand, your guide as-is doesn't work with river :)
+
+1793477957
+ifreund!2940d10f8b@user/ifreund
+how so?
+
+1793477993
+ekaitz!~Ekaitz@91.116.158.194
+it sets the --prefix to /usr and then puts the project somewhere else
+
+1793477995
+ekaitz!~Ekaitz@91.116.158.194
+does that work?
+
+1793478074
+ifreund!2940d10f8b@user/ifreund
+it's an example demonstrating mechanism, would you rather I wrote /place/to/install/temporarily/before/archiving/usr?
+
+1793478128
+ifreund!2940d10f8b@user/ifreund
+though actually that would be wrong, it's correct to leave off the /usr at the end
+
+1793478161
+ekaitz!~Ekaitz@91.116.158.194
+from my side, it gave me the impression that there was nothing else to do
+
+1793478169
+ifreund!2940d10f8b@user/ifreund
+I see no problem with the current example
+
+1793478185
+ifreund!2940d10f8b@user/ifreund
+there is nothing else to do if you use the prefix river will be installed to on the target system
+
+1793478215
+ekaitz!~Ekaitz@91.116.158.194
+it's the pc files which would be weird
+
+1793478239
+ifreund!2940d10f8b@user/ifreund
+I'm going to stop saying the same thing again and again now and go back to reading :P
+
+1793478262
+ekaitz!~Ekaitz@91.116.158.194
+ifreund: i'm sorry
+
+1793478280
+ekaitz!~Ekaitz@91.116.158.194
+thank you for your help
+
+1793481906
+stag1e!~stag1e@user/stag1e
+If at comptime I get std.ArrayList(T) then it seems like it is impossible to get back that T?
+
+1793487221
+cdbob!~cdbob@user/cdbob
+join #rust
+
