@@ -6,3 +6,63 @@ Looks like there's no zig build flag to specify where the langref goes to?
 exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
 just been bit by the `assert(path.isAbsolute(absolute_path));` in `std.Io.Dir.accessAbsolute`. Is it a common pattern?
 
+1794055687
+ifreund!2940d10f8b@user/ifreund
+exfalsoquodlibet: if your path isn't guaranteed to be absolute, then you need to explicitly specify which directory it should be opened relative to
+
+1794055713
+ifreund!2940d10f8b@user/ifreund
+it is common in Zig to use assertions to catch programming mistakes if that's what you're asking?
+
+1794055748
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+yes, I guess I've been scared by the `unreachable` in the traces :-)
+
+1794055807
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+focusing on the idea that its semantic is "impossible state"
+
+1794055860
+ifreund!2940d10f8b@user/ifreund
+indeed, `unreachable` is only reached due to programmer error
+
+1794055889
+ifreund!2940d10f8b@user/ifreund
+and having lots of good assertions really helps to align the programmer's mental model with reality
+
+1794055908
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+in my naive understanding, it was not reachable at all. Like it would violate an internal invariant for a data structure.
+
+1794055943
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+but in fact it also include caller error (failing to check a precondition)
+
+1794055947
+ifreund!2940d10f8b@user/ifreund
+well yes, it is not reached at all when your code is perfect
+
+1794056065
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+hehe, mine is not probably not perfect, but it's a bit better now :-)
+
+1794056110
+ifreund!2940d10f8b@user/ifreund
+well you're not alone there, perfection is nearly impossible for non-trivial software :)
+
+1794056124
+ifreund!2940d10f8b@user/ifreund
+but we can get very close with the right effort and techniques
+
+1794056142
+exfalsoquodlibet!a7085e0f71@user/exfalsoquodlibet
+and now that I'm sure I check all the preconditions of the function, I can put an `catch unreachable` so that the compiler can optimize IIUC?
+
+1794056224
+ifreund!2940d10f8b@user/ifreund
+exfalsoquodlibet: you can only catch unreachable if you know that a function will never return an error, in the case of making a syscall to access the filesystem, catch unreachable would never be correct
+
+1794056257
+ifreund!2940d10f8b@user/ifreund
+the operating system could report an error for many reasons, and there's no way to know in advance if it will do so or not
+
