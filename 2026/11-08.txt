@@ -1,0 +1,140 @@
+1794100314
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Is dupeZ->dupeSentinel(..., 0) in 0.17? 
+
+1794103703
+Affliction!affliction@idlerpg/player/affliction
+bwbuhse: indeed, newer form is naturally more general
+
+1794145369
+Sivecano!~Sivecano@user/Sivecano
+how do I use sockets in nonblocking mode?
+
+1794146686
+Sivecano!~Sivecano@user/Sivecano
+is there just no api for nonblocking socket operations?
+
+1794146839
+mefistofeles!~mefistofe@user/mefistofeles
+Sivecano: I don't know if std.net and std.posix does that
+
+1794146858
+mefistofeles!~mefistofe@user/mefistofeles
+but you can also explore pure C alternatives such as https://github.com/nanomsg/nng 
+
+1794147036
+Sivecano!~Sivecano@user/Sivecano
+I don't need fancy libraries
+
+1794147046
+Sivecano!~Sivecano@user/Sivecano
+I literally just want a nonblocking unix socket
+
+1794147059
+Sivecano!~Sivecano@user/Sivecano
+I guess time to do this myself :/
+
+1794147098
+mefistofeles!~mefistofe@user/mefistofeles
+whatever works for you
+
+1794147108
+mefistofeles!~mefistofe@user/mefistofeles
+¯\_(ツ)_/¯
+
+1794147292
+Sivecano!~Sivecano@user/Sivecano
+I just took the file descriptor from std.Io.net.Stream and stuck it in a std.Io.File :/
+
+1794147293
+Sivecano!~Sivecano@user/Sivecano
+works
+
+1794147317
+Sivecano!~Sivecano@user/Sivecano
+'cos Io.File can actually handle the descriptor being in nonblocking mode
+
+1794148565
+Sivecano!~Sivecano@user/Sivecano
+I mean, all I want to do is poll on a list of file descriptors and then run through all of them to see If they have data. 
+
+1794152649
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Affliction: yeah makes sense, I was just making sure I didn't miss anything since I didn't see it in the release notes specifically 
+
+1794153559
+mefistofeles!~mefistofe@user/mefistofeles
+Sivecano: yeah, io stream sounds like a good fit for it
+
+1794159886
+ifreund!2940d10f8b@user/ifreund
+Sivecano: sounds like what you really want is an event based rather than thread based Io implementation
+
+1794159932
+ifreund!2940d10f8b@user/ifreund
+there is an event based one that use iouring on linux and kqueue on BSDs for example but isnt mature yet
+
+1794160228
+Sivecano!~Sivecano@user/Sivecano
+ifreund: I'm not sure this integrates that well with polling file descriptors obtained from C libraries (I don't read them directly and just poll them as a performance measure).
+
+1794160409
+Sivecano!~Sivecano@user/Sivecano
+I guess I could use the select syscall as well but I'm currently just managing a bunch of nonblocking file descriptors and running through them in a loop. at the end of the loop I call poll to wait. that's why I care about non-blocking socket operations.
+
+1794160548
+Sivecano!~Sivecano@user/Sivecano
+this is the code in question: https://codeberg.org/Sivecano/layer_bongocat/src/commit/113098efa2a2e87e68f5a8a3c84a2311f0f0d336/bongo.zig#L389-L398
+
+1794161259
+ifreund!2940d10f8b@user/ifreund
+Sivecano: calling poll maually is essentially implementing your own event loop rather than using the one provided by std.Io
+
+1794161365
+ifreund!2940d10f8b@user/ifreund
+which is fine if that works for your use-case I guess
+
+1794161404
+ifreund!2940d10f8b@user/ifreund
+I'm pretty sure one could structure things differently using io.async such that the std.Io event loop could be used
+
+1794161447
+ifreund!2940d10f8b@user/ifreund
+I haven't tried to integrate libwayland into Zig event loop, but I had good success integrating it into Janet's event loop for example
+
+1794161462
+ifreund!2940d10f8b@user/ifreund
+https://codeberg.org/ifreund/janet-wayland/src/commit/0aea1ae8c2b462d609fc739acceeb9ead315c07f/src/wayland-native.c#L372
+
+1794161494
+ifreund!2940d10f8b@user/ifreund
+I'm pretty sure one would do more or less the same thing with std.Io.Evented
+
+1794172810
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+Is there any good relatively recent example of how to write nice bindings for C stdlib stuff? I just want to write the current time and zeit AFAICT doesn't respect the locale, so I was just going to use strftime but that's led me down a rabbit hole of trying to write nicer bindings than just the translate-c output
+
+1794175215
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+oh I `zig translate-c <path to time.h>` then slowly fucking with the output seems to be getting me there
+
+1794176570
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+bwbuhse: actually i thought strftime should already be exposed in some Zig standard modules. seems i'm wrong?
+
+1794176961
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+beastd: yeah I at least didn't see it in the zig stdlib docs
+
+1794178228
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+what does noalias mean
+
+1794178288
+bwbuhse!~The_Buhs@user/The-Buhs/x-5080862
+https://ziggit.dev/t/noalias-for-dummies/13957/4 oh I found this
+
+1794181975
+ElliotLurie!~Elliot_Lu@user/ElliotLurie
+Hi, how do you correctly use buffer references/physical storage buffers in Zig spirv shaders? Are there are any examples online?
+
