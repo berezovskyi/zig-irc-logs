@@ -1,0 +1,148 @@
+1794627516
+ElSucioDan!~dan@user/ElSucioDan
+Hi. Why does the "learn" section is hide?
+
+1794627534
+ElSucioDan!~dan@user/ElSucioDan
+the learn section in ziglang.org
+
+1794629232
+rtae!~rtae@user/rtae
+ElSucioDan: 'learn' was renamed to 'introduction'
+
+1794674489
+RavenJoad!~user@168.91.208.173
+I have a test in Ghostty that is taking a very long time to run (~10 minutes) when Guix builds the package. The Zig test runner is not giving me any helpful information about which test is the slow one. `--verbose` is already passed to "zig build test". Parallelism is not the issue here, it showed up with parallel-jobs=1 and parallel-jobs=N.
+
+1794674537
+RavenJoad!~user@168.91.208.173
+Are there any other flags that I can pass to find out which test is the one that is slow? (There are some fontconfig errors, but I don't see how that would make a test spiral into the 10 minute range.)
+
+1794674668
+sam!b8f15a4bbd@golang/sam
+I'm struggling to understand how modules interact with the build system. If I have a module, "pipewire" at src/root.zig and a module "spa" at src/spa/root.zig that is imported by pipewire, and I generate a library libpipewire and then build the docs for it, I only see the docs for the public stuff in pipewire. I'm not sure what to do to have both documented. build.zig for reference: https://paste.debian.net/hidde
+
+1794674668
+sam!b8f15a4bbd@golang/sam
+n/865d568f
+
+1794674966
+sam!b8f15a4bbd@golang/sam
+Oh wait, if I manually browse to #spa it works, so maybe it's just the docs template that doesn't provide a way to select from multiple modules and not a problem with how I setup the build
+
+1794684985
+johhk!fa953c3419@user/johhk
+So i want to simply perform the same task that one would accomplish using execvpe(3) in C; the documentation for std.process.replace says that it's unsafe ton call in a forked child. hand-rolling my own solution including path lookup feels seriously wrong, could someone enlighten me what the proper way to do this is?
+
+1794684998
+johhk!fa953c3419@user/johhk
+(I've considered just calling libc's excvpe)
+
+1794685087
+johhk!fa953c3419@user/johhk
+the concrete use case here is in a programming language interpreter, so i cannot predict whether the user will call exec after a fork or not
+
+1794693799
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+johhk: hmm. what do you mean you cannot predict if the user will call exec after fork? how doesn the 
+
+1794693817
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+*does the user call fork to begin with?
+
+1794693888
+johhk!fa953c3419@user/johhk
+beastd: essentially I want to avoid having a separate function for "new process with new program" and "just run this function in a new process"
+
+1794693966
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+i'm not sure i fullly understand it. sorry
+
+1794694353
+johhk!fa953c3419@user/johhk
+the main question I have is why std.process.replace is illegal to call in a forked process
+
+1794694380
+johhk!fa953c3419@user/johhk
+assuming memory has been mapped private, the new process doesn't share the parent's address space
+
+1794694390
+johhk!fa953c3419@user/johhk
+or is this related to potential multithreading?
+
+1794694418
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+i mean there is also std.c.execve (which lacks path search but otherwise has what you need i think)
+
+1794694460
+johhk!fa953c3419@user/johhk
+yeah, im using the posix version right now
+
+1794694488
+johhk!fa953c3419@user/johhk
+honestly, writing my own path search when the same code exists in the stdlib already exists was what lead me to ask this
+
+1794694562
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+is execvpe standard?
+
+1794694648
+johhk!fa953c3419@user/johhk
+afaik in posix, yes
+
+1794694660
+johhk!fa953c3419@user/johhk
+but realistically it's just a wrapper around execve that also performs search through PATH
+
+1794694668
+johhk!fa953c3419@user/johhk
+which is what std.process.replace also does
+
+1794694703
+Earnestly!~earnest@user/earnestly
+(vpe isn't posix)
+
+1794694748
+johhk!fa953c3419@user/johhk
+yeah, only the env-less version is
+
+1794694771
+johhk!fa953c3419@user/johhk
+execvp(3)
+
+1794694773
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+POSIX (even recent 2024 edition) only defines: execl(), execle(), execlp(), execv(), execve(), execvp()
+
+1794694945
+johhk!fa953c3419@user/johhk
+which still includes PATH-searching variants
+
+1794695594
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+johhk: i presume std.process.replace does things that are not safe after fork
+
+1794695901
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+johhk: yeah. not not sure what the policy is about which standard C and POSIX functions to include in the zig std lib
+
+1794695936
+johhk!fa953c3419@user/johhk
+honestly, i can fully understand (and prefer it) that the full awkward C-ness isn't there
+
+1794695953
+johhk!fa953c3419@user/johhk
+like, i would not want the -l versions (if they're even possible to implement)
+
+1794695997
+beastd!~kvirc@p5b370805.dip0.t-ipconnect.de
+johhk: but anyway wouldn't it still be quite limiting in your interpreter to allow fork without exec? how would the user know what he does in the fork is fine or undefined behavior?
+
+1794696031
+johhk!fa953c3419@user/johhk
+at least from my point of view, if it works for the unix shell, it can work for me
+
+1794696049
+johhk!fa953c3419@user/johhk
+i.e. yes you can have less-predictable behavior for I/O but it should pretty much never cause actual issues
+
