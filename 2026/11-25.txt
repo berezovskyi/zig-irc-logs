@@ -1,0 +1,152 @@
+1795609639
+rsarv3006!~rsarv3006@user/rsarv3006
+Suggestions for a zig based regex lib? Thanks y'all!
+
+1795613582
+danschnau!~danschnau@user/danschnau
+Would that be something to add to the stdlib?
+
+1795617581
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+Do I get a benefit from using a `* const` parameter vs. a plain one? i.e. `doThing(arg: *const Type)` instead of `doThing(arg: Type)`.
+
+1795618348
+ifreund!2940d10f8b@user/ifreund
+fleischie: the semantics are different, pass by reference vs pass by value
+
+1795618363
+ifreund!2940d10f8b@user/ifreund
+which is "faster" depends on the type
+
+1795619534
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+OK. Sound like I shouldn't concern myself with this until I have a performance/memory bottleneck, right?
+
+1795619542
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+idk, if you can answer this.
+
+1795619569
+vigoux!~vigoux@user/vigoux
+fleischie: I don't think there would be a memory concern
+
+1795619613
+vigoux!~vigoux@user/vigoux
+IIRC, what changes is if you want to compute something based on addresses and want to make sure the address of, say, a field of `arg` is actually that of the caller's `arg`
+
+1795619642
+vigoux!~vigoux@user/vigoux
+Otherwise, the compiler pretty well optimizes the emitted code (IIRC) when passing structs as "values" in arguments
+
+1795619953
+ifreund!2940d10f8b@user/ifreund
+fleischie: there are cases where one this is a correctness issue as well, see e.g. std.HashMap.iterator()
+
+1795620017
+vigoux!~vigoux@user/vigoux
+ifreund: I think this is what I meant too: sometimes you really need to pass the address of _that value_ rather than the value itself.
+
+1795620044
+vigoux!~vigoux@user/vigoux
+I _think_ though that the compiler is free to optimize and use pointers (not sure though, can't rememebr the semantics of e.g. C around this)
+
+1795620609
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+ifreund: Do you mean "The iterator is invalidated if the map is modified"?
+
+1795620838
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+Intuitively I would reach for the plain value then, unless I have a specific use case that requires a const-ptr.
+
+1795621021
+vigoux!~vigoux@user/vigoux
+I would too indeed. IMO the difference is more semantics-wise rather than performance-wise
+
+1795621099
+ifreund!2940d10f8b@user/ifreund
+fleischie: the returned iterator holds a pointer into the hash map
+
+1795621112
+ifreund!2940d10f8b@user/ifreund
+if you pass the hash map by value, this is semantically a dangling pointer to the stack
+
+1795621212
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+Ah ok. Good to keep in mind.
+
+1795621227
+fleischie!c3c01eb63c@2a03:6000:1812:100::2f4
+Thanks ifreund and vigoux.
+
+1795621343
+vigoux!~vigoux@user/vigoux
+Thanks ifreund, indeed passing a struct by value amounts to put in on the stack (though I thought there was optimizations that could kick in to avoid that, IIRC)
+
+1795621752
+ifreund!2940d10f8b@user/ifreund
+vigoux: zig used to always "optimize" pass-by-value for structs to a hidden pass by reference, but this was a footgun and was removed
+
+1795621790
+ifreund!2940d10f8b@user/ifreund
+llvm may be able to optimize some cases, but in general you should use a constant pointer for large values
+
+1795621792
+vigoux!~vigoux@user/vigoux
+oh, that's probably what I rememebered then... I saw that the return value version of this is planned to be removed too
+
+1795626368
+rsarv3006!~rsarv3006@user/rsarv3006
+@danschnau that's a great question, I'd be curious to hear from andrewrk on that one. I see that there are a couple of options but I was curious if anyone has any experience/recommendations.
+
+1795628115
+ifreund!2940d10f8b@user/ifreund
+there are a billion "regex" variants, I'd say no it does not belong in the standard library
+
+1795628158
+ifreund!2940d10f8b@user/ifreund
+though I suppose we will have to implement the libc regex flavor eventually for the zig libc project
+
+1795628292
+rsarv3006!~rsarv3006@user/rsarv3006
+apolgoies for the elementary question but what you do mean a billion regex variants?
+
+1795628612
+darkling!~darkling@2001-ba8-1f1-f0e6-0-0-0-2.autov6rev.bitfolk.space
+There's lots of dialects of regular expressions, with different escaping rules, supporting different sets of operators and character classes.
+
+1795628875
+rsarv3006!~rsarv3006@user/rsarv3006
+ah the whole competing standards gag, thank you
+
+1795629046
+Earnestly!~earnest@user/earnestly
+ifreund: ERE is safe if you want to expose it via posix bits
+
+1795632791
+andreyorst!~m-4sgxnc@195.154.83.132
+If I do compile-time loops and embedded assets parsing, and hitting the "evaluation exceeded 1000 backwards branches" error - am I doing something wrong or I just need to reconfigure this?
+
+1795632821
+andreyorst!~m-4sgxnc@195.154.83.132
+maybe like there's some annotation to tell the compiler that the loop is not infinite, so it won't panic on too much compile-time work
+
+1795632830
+estherbunny!~esther@user/estherbunny
+andreyorst: use @setEvalBranchQuota
+
+1795632862
+andreyorst!~m-4sgxnc@195.154.83.132
+so this is the only way?
+
+1795632887
+andreyorst!~m-4sgxnc@195.154.83.132
+I mean, I know about that one, but wasn't sure - this seems to be a bit weird to tune the compiler in this way
+
+1795632984
+vyivel!~vyivel@user/Vyivel
+that's the intended way
+
+1795635134
+andreyorst!~m-4sgxnc@195.154.83.132
+k, thank!
+
